@@ -6,7 +6,7 @@ id: hdb-resale-contract
 description:
   purpose: Data quality contract for Singapore HDB resale transactions
   limitations: Based on public transaction records
-  usage: Validate HDB resale flat transaction data
+  usage: Validate HDB resale flat transaction data for completeness, conformity, and accuracy.
 
 schema:
   - name: hdb_resale_prices
@@ -15,64 +15,119 @@ schema:
       - name: month
         logicalType: string
         physicalType: varchar
-        description: Month (YYYY-MM)
+        description: "The month of the transaction in YYYY-MM format."
         quality:
           - type: sql
-            name: "Month Format Check"
-            description: "Month should be in YYYY-MM format"
-            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE month NOT LIKE '____-__'"
+            name: "month_not_null"
+            description: "The transaction month must not be empty."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE month IS NULL'
+            mustBe: 0
+            dimension: "completeness"
+          - type: sql
+            name: "month_format_check"
+            description: "The transaction month must be in YYYY-MM format."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE month NOT LIKE ''____-__'''
             mustBe: 0
             dimension: "conformity"
-
-      - name: flat_type
-        logicalType: string
-        physicalType: varchar
-        description: Flat Type
-        quality:
-          - type: sql
-            name: "flat_type_enum"
-            description: "Flat Type should be one of the allowed values"
-            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE flat_type NOT IN ('1 ROOM', '2 ROOM', '3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE', 'MULTI-GENERATION')"
-            mustBe: 0
-
-      - name: resale_price
-        logicalType: number
-        physicalType: decimal
-        description: Resale Price
-        quality:
-          - type: sql
-            name: "resale_price_positive"
-            description: "Resale price should be positive"
-            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price <= 0"
-            mustBe: 0
 
       - name: town
         logicalType: string
         physicalType: varchar
-        description: Town
+        description: "The town where the flat is located."
         quality:
           - type: sql
             name: "town_not_null"
-            description: "Town should not be null"
-            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE town IS NULL"
+            description: "The town name must not be empty."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE town IS NULL'
             mustBe: 0
+            dimension: "completeness"
+
+      - name: flat_type
+        logicalType: string
+        physicalType: varchar
+        description: "The type of the HDB flat."
+        quality:
+          - type: sql
+            name: "flat_type_enum"
+            description: "The flat type must be one of the officially recognized values."
+            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE flat_type NOT IN ('1 ROOM', '2 ROOM', '3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE', 'MULTI-GENERATION')"
+            mustBe: 0
+            dimension: "validity"
+
+      - name: storey_range
+        logicalType: string
+        physicalType: varchar
+        description: "The range of storeys (e.g., 01 TO 03)."
+        quality:
+          - type: sql
+            name: "storey_range_format"
+            description: "The storey range must follow the '## TO ##' format."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE storey_range NOT LIKE ''__ TO __'''
+            mustBe: 0
+            dimension: "conformity"
 
       - name: floor_area_sqm
         logicalType: number
         physicalType: decimal
-        description: Floor Area in Square Meters
+        description: "The floor area of the flat in square meters."
         quality:
           - type: sql
-            name: "floor_area_reasonable"
-            description: "Floor area should be between 20-400 sqm (allows for large executive units)"
-            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE floor_area_sqm < 20 OR floor_area_sqm > 400"
+            name: "floor_area_is_numeric"
+            description: "The floor area must be a valid number."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE NOT REGEXP_MATCHES(CAST(floor_area_sqm AS VARCHAR), ''^[0-9]+(\.[0-9]+)?$'')'
             mustBe: 0
+            dimension: "conformity"
+          - type: sql
+            name: "floor_area_not_null"
+            description: "The floor area must not be empty."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE floor_area_sqm IS NULL'
+            mustBe: 0
+            dimension: "completeness"
+          - type: sql
+            name: "floor_area_reasonable"
+            description: "The floor area should be within a reasonable range (e.g., 20-400 sqm)."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE floor_area_sqm < 20 OR floor_area_sqm > 400'
+            mustBe: 0
+            dimension: "accuracy"
 
-    quality:
-      - type: sql
-        name: "no_null_resale_prices"
-        description: "Resale price should not be null"
-        query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price IS NULL"
-        mustBe: 0
-        dimension: "completeness"
+      - name: lease_commence_date
+        logicalType: integer
+        physicalType: int
+        description: "The year the lease for the flat commenced."
+        quality:
+          - type: sql
+            name: "lease_commence_date_is_integer"
+            description: "The lease commence date must be a valid integer."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE TRY_CAST(lease_commence_date AS INTEGER) IS NULL AND lease_commence_date IS NOT NULL'
+            mustBe: 0
+            dimension: "conformity"
+          - type: sql
+            name: "lease_commence_date_not_null"
+            description: "The lease commence date must not be empty."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE lease_commence_date IS NULL'
+            mustBe: 0
+            dimension: "completeness"
+          - type: sql
+            name: "lease_commence_date_valid_year"
+            description: "The lease commence date should be a valid 4-digit year (e.g., between 1960 and 2025)."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE lease_commence_date < 1960 OR lease_commence_date > 2025'
+            mustBe: 0
+            dimension: "validity"
 
+      - name: resale_price
+        logicalType: number
+        physicalType: decimal
+        description: "The resale price of the flat in Singapore Dollars."
+        quality:
+          - type: sql
+            name: "resale_price_is_numeric"
+            description: "The resale price must be a valid number, optionally with up to 2 decimal places."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE NOT REGEXP_MATCHES(CAST(resale_price AS VARCHAR), ''^[0-9]+(\.[0-9]{1,2})?$'')'
+            mustBe: 0
+            dimension: "conformity"
+          - type: sql
+            name: "resale_price_positive"
+            description: "The resale price must be a positive number."
+            query: 'SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price <= 0'
+            mustBe: 0
+            dimension: "accuracy"

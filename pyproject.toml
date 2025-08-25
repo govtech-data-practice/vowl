@@ -10,8 +10,11 @@ description = "A SQL-powered data quality validation library for pandas and spar
 dependencies = [
     "pandas>=1.3.0",
     "pyyaml>=5.4.0",
-    "duckdb>=0.8.0",
+    "duckdb>=0.8.0", 
 ]
+
+[project.optional-dependencies]
+spark = ["pyspark>=3.2.0"]
 
 [project.scripts]
 dataquality = "dataquality.cli:main"
