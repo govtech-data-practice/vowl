@@ -19,38 +19,63 @@ class PandasExecutor(BaseExecutor):
             dataframe: The pandas DataFrame to validate
             
         Returns:
-            A tuple containing validation summary report and enhanced DataFrame
+            A tuple containing:
+            - A summary dictionary of the validation results.
+            - A DataFrame containing only the rows that failed one or more checks.
         """
         overall_start_time = time.time()
       
+        # Get checks from the contract and add a temporary row index for tracking
         sql_checks = self.contract.get_sql_checks()
-        enhanced_df = self._prepare_df_for_validation(dataframe)
+        source_df_with_id = self._add_row_indices(dataframe)
         
-        results = []
-        passed_count = 0
-        failed_count = 0
+        results, passed_count, failed_count, list_of_failed_dfs = [], 0, 0, []
         
+        # Run each SQL check individually
         for check in sql_checks:
-            result = self._run_check(enhanced_df, check)
+            result = self._run_check(source_df_with_id, check)
             results.append(result)
             
-            if result.failed_row_indices:
-                self._mark_failed_rows(enhanced_df, result.failed_row_indices, check['name'])
+            # If a check fails, collect the indices of the failed rows
+            if result.status == "FAILED" and result.failed_row_indices:
+                failed_df_for_check = pd.DataFrame({
+                    '__row_index': result.failed_row_indices,
+                    'dq_failed_tests': check['name']
+                })
+                list_of_failed_dfs.append(failed_df_for_check)
             
             if result.status == "PASSED":
                 passed_count += 1
             else:
                 failed_count += 1
+        # Combine all failure information into a single DataFrame
+        full_failed_rows_df = None
+        if list_of_failed_dfs:
+            failures_df = pd.concat(list_of_failed_dfs, ignore_index=True)
+            
+            # Group failures by row to get all failed tests for each row
+            failures_by_row = failures_df.groupby('__row_index')['dq_failed_tests'].apply(list).reset_index()
+            
+            # Join back to the original data to create a complete failed rows report
+            full_failed_rows_df = pd.merge(
+                source_df_with_id,
+                failures_by_row,
+                on='__row_index',
+                how='inner'
+            )
+
+        # Build the summary and return the results bundle
+        total_rows = len(source_df_with_id)
+        failed_rows_count = len(full_failed_rows_df) if full_failed_rows_df is not None else 0
         
-        total_rows = len(enhanced_df)
-        failed_rows = len(enhanced_df[enhanced_df['dq_validation_status'] == 'FAILED'])
-        
-        summary = self._build_summary(results, sql_checks, passed_count, failed_count, total_rows, failed_rows)
+        summary = self._build_summary(results, sql_checks, passed_count, failed_count, total_rows, failed_rows_count)
         
         overall_execution_time_ms = (time.time() - overall_start_time) * 1000
-        summary["validation_summary"]["overall_execution_time_ms"] = round(overall_execution_time_ms, 2)
+        summary["validation_summary"]["total_execution_time_ms"] = round(overall_execution_time_ms, 2)
         
-        return summary, enhanced_df
+        final_result_bundle = {"source_df": source_df_with_id, "failed_rows_df": full_failed_rows_df}
+
+        return summary, final_result_bundle
 
     def _prepare_df_for_validation(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """
@@ -91,15 +116,18 @@ class PandasExecutor(BaseExecutor):
                                   expected_value=expected_value, execution_time_ms=execution_time_ms)
 
         try:
+            # DuckDB can query pandas DataFrames directly. We register the DataFrame as a virtual table
+            query = query.replace('{table_name}', f'"{table_name}"')
+
             conn = duckdb.connect()
-            df_with_index = self._add_row_indices(dataframe)
-            conn.register(table_name, df_with_index)
+            conn.register(table_name, dataframe)
             
             result = conn.execute(query).fetchone()
             actual_value = result[0] if result else 0
             test_passed = (actual_value == expected_value)
             failed_rows = []
             
+            # If the check fails, run a second query to get the specific failed row indices
             if not test_passed:
                 failed_rows = self._find_failed_rows(conn, query, table_name)
             
@@ -148,6 +176,7 @@ class PandasExecutor(BaseExecutor):
         row_query = self._to_row_query(query, table_name)
         if row_query:
             try:
+                # Return a list of all '__row_index' values from the failing rows.
                 return [row[0] for row in conn.execute(row_query).fetchall()]
             except Exception:
                 pass

@@ -1,4 +1,6 @@
-from typing import Dict, Any, List, Tuple, Union
+# File: dataquality/executors/spark_executor.py
+
+from typing import Dict, Any, Tuple
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.types import StringType, ArrayType
@@ -6,23 +8,12 @@ import time
 
 from .base_executor import BaseExecutor, CheckResult
 
-
 class SparkExecutor(BaseExecutor):
     """
     SQL-based data quality validator for Spark DataFrames using Spark SQL.
     """
-    
+
     def __init__(self, contract_path: str):
-        """
-        Initialize the Spark executor with a data quality contract.
-        
-        Args:
-            contract_path: Path to the YAML contract file containing validation rules
-            
-        Raises:
-            ValueError: If no contract path is provided
-            RuntimeError: If Spark session is not available
-        """
         super().__init__(contract_path)
         try:
             self.spark = SparkSession.getActiveSession()
@@ -31,199 +22,121 @@ class SparkExecutor(BaseExecutor):
         except Exception as e:
             raise RuntimeError(f"Failed to get or create Spark session: {e}")
 
+    def __enter__(self):
+        """Sets up the context for validation by defining the temp view name."""
+        self.temp_view_name = f"__dqmk_temp_view_{int(time.time())}"
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Tears down the context by dropping the temp view."""
+        if hasattr(self, 'temp_view_name') and self.spark.catalog.tableExists(self.temp_view_name):
+            self.spark.catalog.dropTempView(self.temp_view_name)
+
     def validate(self, dataframe: DataFrame) -> Tuple[Dict[str, Any], DataFrame]:
         """
-        Validate a Spark DataFrame against the loaded data quality contract.
-        
-        Args:
-            dataframe: The Spark DataFrame to validate
-            
-        Returns:
-            A tuple containing validation summary report and enhanced Spark DataFrame
+        Validate a Spark DataFrame against the loaded data quality contract
         """
         overall_start_time = time.time()
-
         sql_checks = self.contract.get_sql_checks()
-        table_name = self.contract.get_table_name()
-        
-        # Prepare DataFrame with data quality tracking columns and register as temp view
-        enhanced_df = self._prepare_df_for_validation(dataframe)
-        enhanced_df.createOrReplaceTempView(table_name)
-        
-        results = []
-        passed_count = 0
-        failed_count = 0
-        
-        # Execute each validation check
+        real_table_name = self.contract.get_table_name()
+        temp_view_name = self.temp_view_name
+
+        # Add a unique ID to the original data for joining later
+        source_df_with_id = dataframe.withColumn("__row_id", F.monotonically_increasing_id())
+        source_df_with_id.createOrReplaceTempView(temp_view_name)
+
+        results, passed_count, failed_count, list_of_failed_dfs = [], 0, 0, []
+
+        # 1. COLLECT: Run checks and collect failures in a list
         for check in sql_checks:
-            result = self._run_check(table_name, check)
+            result = self._run_check(real_table_name, temp_view_name, check)
             results.append(result)
+            if result.status == "FAILED" and result.failed_row_indices is not None:
+                failed_df_for_check = result.failed_row_indices.withColumn("description", F.lit(check['name']))
+                list_of_failed_dfs.append(failed_df_for_check)
+
+            if result.status == "PASSED": passed_count += 1
+            else: failed_count += 1
+
+        # 2. UNION & JOIN: Create one simple DataFrame of all failures and join it back
+        full_failed_rows_df = None
+        if list_of_failed_dfs:
+            failures_df = list_of_failed_dfs[0]
+            if len(list_of_failed_dfs) > 1:
+                for i in range(1, len(list_of_failed_dfs)):
+                    failures_df = failures_df.unionByName(list_of_failed_dfs[i])
             
-            # Update row-level failure tracking for failed checks
-            if result.failed_row_indices is not None:
-                enhanced_df = self._mark_failed_rows(enhanced_df, result.failed_row_indices, check['name'])
-                # Update the temp view with the modified DataFrame
-                enhanced_df.createOrReplaceTempView(table_name)
+            # Group failures by row to get all descriptions for each row
+            failures_by_row = failures_df.groupBy("__row_id").agg(
+                F.collect_list("description").alias("dq_failed_tests")
+            )
             
-            # Update check counters
-            if result.status == "PASSED":
-                passed_count += 1
-            else:
-                failed_count += 1
+            # Join the full source data with the grouped failures
+            full_failed_rows_df = source_df_with_id.join(
+                failures_by_row,
+                "__row_id",
+                "inner"
+            )
+
+        # 3. SUMMARY & RETURN: Build the summary and return the complete failed DataFrame
+        total_rows = source_df_with_id.count()
+        # Cache the final failed df
+        if full_failed_rows_df is not None:
+            full_failed_rows_df = full_failed_rows_df.cache()
+
+        failed_rows_count = full_failed_rows_df.count() if full_failed_rows_df is not None else 0
         
-        # Calculate summary statistics
-        total_rows = enhanced_df.count()
-        failed_rows = enhanced_df.filter(F.col("dq_validation_status") == "FAILED").count()
-        
-        # Generate validation summary report
-        summary = self._build_summary(results, sql_checks, passed_count, failed_count, total_rows, failed_rows)
-    
-        # Add overall timing to summary
+        summary = self._build_summary(results, sql_checks, passed_count, failed_count, total_rows, failed_rows_count)
         overall_execution_time_ms = (time.time() - overall_start_time) * 1000
-        summary["validation_summary"]["overall_execution_time_ms"] = round(overall_execution_time_ms, 2)
+        summary["validation_summary"]["total_execution_time_ms"] = round(overall_execution_time_ms, 2)
         
-        # Clean up temp view
-        self.spark.catalog.dropTempView(table_name)
-        
-        return summary, enhanced_df
+        # Return the complete failed DataFrame that includes failure descriptions
+        final_result_bundle = {"source_df": source_df_with_id, "failed_rows_df": full_failed_rows_df}
+
+        return summary, final_result_bundle
 
     def _prepare_df_for_validation(self, dataframe: DataFrame) -> DataFrame:
-        """
-        Add data quality tracking columns to DataFrame.
-        
-        Args:
-            dataframe: The original Spark DataFrame to validate
-            
-        Returns:
-            Enhanced Spark DataFrame with data quality tracking columns added
-        """
-        # Add unique row identifier and data quality tracking columns
-        enhanced_df = dataframe.withColumn(
-            "__row_id", F.monotonically_increasing_id()
-        ).withColumn(
-            "dq_failed_tests", F.array().cast(ArrayType(StringType()))
-        ).withColumn(
-            "dq_validation_status", F.lit("PASSED")
-        )
-        
-        return enhanced_df
+        """Adds unique row identifier and data quality tracking columns."""
+        return dataframe.withColumn("__row_id", F.monotonically_increasing_id()) \
+                        .withColumn("dq_failed_tests", F.array().cast(ArrayType(StringType()))) \
+                        .withColumn("dq_validation_status", F.lit("PASSED"))
 
-    def _run_check(self, table_name: str, check: Dict[str, Any]) -> CheckResult:
-        """
-        Execute a single validation check.
-        
-        Args:
-            table_name: Name of the temporary view for the DataFrame
-            check: Dictionary containing the validation check definition
-            
-        Returns:
-            CheckResult object containing the outcome of the validation check
-        """
+    def _run_check(self, real_table_name: str, temp_view_name: str, check: Dict[str, Any]) -> CheckResult:
+        """Executes a single validation check and returns its result."""
         start_time = time.time()
-    
-        check_name = check.get("name", "Unnamed Check")
-        query = check.get("query")
-        expected_value = check.get("mustBe")
+        check_name, query, expected_value = check.get("name", "Unnamed Check"), check.get("query"), check.get("mustBe")
 
         if not query:
-            execution_time_ms = (time.time() - start_time) * 1000
-            return CheckResult(check_name, "FAILED", "No SQL query provided.", 
-                                expected_value=expected_value, execution_time_ms=execution_time_ms)
+            return CheckResult(check_name, "FAILED", "No SQL query provided.", expected_value=expected_value)
 
         try:
-            # Execute the validation query using Spark SQL
-            result_df = self.spark.sql(query)
-            actual_value = result_df.collect()[0][0]
-
-            # Determine if the check passed
+            # Execute the check query and get the result
+            execution_query = query.replace('{table_name}', temp_view_name)
+            actual_value = self.spark.sql(execution_query).collect()[0][0]
             test_passed = (actual_value == expected_value)
             failed_rows_df = None
-            
-            # If check failed, identify which rows caused the failure
+            status = "PASSED" if test_passed else "FAILED"
+
+            # If the test failed, try to get the specific rows that failed
             if not test_passed:
-                row_query = self._to_row_query(query, table_name)
+                row_query = self._to_row_query(execution_query, temp_view_name)
                 if row_query:
                     try:
-                        failed_rows_df = self.spark.sql(row_query)
-                        # Cache the result since we'll use it multiple times
-                        failed_rows_df.cache()
-                    except Exception:
-                        # If row-level query fails, we still have the aggregate result
-                        pass
+                        failed_rows_df = self.spark.sql(row_query).select("__row_id")
+                    except Exception as e:
+                        print(f"Warning: Could not get row-level detail for check '{check_name}'. Error: {e}")
 
-            # Calculate execution time
             execution_time_ms = (time.time() - start_time) * 1000
-
-            # Prepare validation result
-            status = "PASSED" if test_passed else "FAILED"
             details = f"Expected {expected_value}, got {actual_value}"
-            
-            return CheckResult(check_name, status, details, actual_value, expected_value, 
-                                failed_rows_df, execution_time_ms=execution_time_ms)
-
+            return CheckResult(check_name, status, details, actual_value, expected_value, failed_rows_df, execution_time_ms)
         except Exception as e:
-            execution_time_ms = (time.time() - start_time) * 1000
-            return CheckResult(check_name, "FAILED", f"Spark SQL Error: {e}", 
-                                expected_value=expected_value, execution_time_ms=execution_time_ms)
-    
-    def _mark_failed_rows(self, enhanced_df: DataFrame, failed_rows_df: DataFrame, check_name: str) -> DataFrame:
-        """
-        Mark specific rows as failed for a given check.
-        
-        Args:
-            enhanced_df: The DataFrame with data quality columns
-            failed_rows_df: DataFrame containing rows that failed the validation
-            check_name: Name of the validation check that failed
-            
-        Returns:
-            Updated Spark DataFrame with failure information added
-        """
-        if failed_rows_df is None:
-            return enhanced_df
-        
-        # Add check name to failed rows
-        failed_rows_with_check = failed_rows_df.withColumn(
-            "failed_check_name", F.lit(check_name)
-        ).select("__row_id", "failed_check_name")
-        
-        # Join with main DataFrame and update failed tests array
-        updated_df = enhanced_df.join(
-            failed_rows_with_check, on="__row_id", how="left"
-        ).withColumn(
-            "dq_failed_tests",
-            F.when(
-                F.col("failed_check_name").isNotNull(),
-                F.array_union(F.col("dq_failed_tests"), F.array(F.col("failed_check_name")))
-            ).otherwise(F.col("dq_failed_tests"))
-        ).withColumn(
-            "dq_validation_status",
-            F.when(
-                F.col("failed_check_name").isNotNull(),
-                F.lit("FAILED")
-            ).otherwise(F.col("dq_validation_status"))
-        ).drop("failed_check_name")
-        
-        return updated_df
+            return CheckResult(check_name, "FAILED", f"Spark SQL Error: {e}", expected_value=expected_value)
 
     def _get_row_identifier(self) -> str:
-        """
-        Get the column name used for row identification in Spark DataFrames.
-        
-        Returns:
-            Column name for row identification in Spark DataFrames
-        """
+        """Returns the column name used for row identification in Spark."""
         return "__row_id"
 
     def _get_failed_rows_count(self, failed_row_indices: DataFrame) -> int:
-        """
-        Get the count of failed rows from a Spark DataFrame.
-        
-        Args:
-            failed_row_indices: Spark DataFrame containing failed rows
-            
-        Returns:
-            Number of failed rows
-        """
-        if failed_row_indices is None:
-            return 0
+        """Returns the count of failed rows from a Spark DataFrame."""
+        if failed_row_indices is None: return 0
         return failed_row_indices.count()

@@ -35,7 +35,7 @@ source venv/bin/activate
 
 Install the package and its dependencies. The `-e` flag allows you to make changes to the source code and have them immediately reflected.
 ```bash
-pip install -e 
+pip install -e .
 ```
 
 ### 4. Run the Demos

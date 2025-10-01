@@ -20,7 +20,7 @@ class CheckResult:
         Args:
             check_name: Name of the validation check that was executed
             status: Result status ('PASSED' or 'FAILED')
-            details: Human-readable description of the validation outcome
+            details: Description of the validation outcome
             actual_value: The actual value returned by the validation query
             expected_value: The expected value that the check should have returned
             failed_row_indices: Row identifiers that failed this check (list for pandas, DataFrame for Spark)
@@ -54,6 +54,21 @@ class BaseExecutor(ABC):
         if not contract_path:
             raise ValueError("A contract path must be provided.")
         self.contract = Contract.from_yaml(contract_path)
+
+    def __enter__(self):
+        """
+        Enters the context for the executor.
+        This can be used for setup tasks like creating temp views.
+        By default, it does nothing.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exits the context for the executor.
+        This is used for cleanup tasks. By default, it does nothing.
+        """
+        pass
 
     @abstractmethod
     def validate(self, dataframe: Any) -> Tuple[Dict[str, Any], Any]:
