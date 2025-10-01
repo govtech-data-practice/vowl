@@ -11,10 +11,13 @@ description = "A SQL-powered data quality validation library for pandas and spar
 [project.optional-dependencies]
 pandas = [
     "pandas",
-    "duckdb"
+    "duckdb",
+    "PyYAML"
+    
 ]
 spark = [
-    "pyspark"
+    "pyspark",
+    "PyYAML"
 ]
 # To install everything for local development
 all = [
