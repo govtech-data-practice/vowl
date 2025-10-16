@@ -8,26 +8,29 @@ version = "1.0.0"
 description = "A SQL-powered data quality validation library for pandas and spark DataFrames."
 
 
+# Core dependencies (always installed)
+dependencies = [
+    "PyYAML>=5.4.0",
+]
+
 [project.optional-dependencies]
+# Pandas
 pandas = [
-    "pandas",
-    "duckdb",
-    "PyYAML"
-    
+    "pandas>=1.3.0",
+    "duckdb>=0.8.0",
 ]
+
+# Spark  
 spark = [
-    "pyspark",
-    "PyYAML"
+    "pyspark>=3.0.0",
 ]
-# To install everything for local development
+
+# Everything (pandas + spark)
 all = [
-    "dataquality[pandas]",
-    "dataquality[spark]"
+    "pandas>=1.3.0",
+    "duckdb>=0.8.0",
+    "pyspark>=3.0.0",
 ]
-
-
-[project.scripts]
-dataquality = "dataquality.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

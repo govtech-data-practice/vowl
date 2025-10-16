@@ -31,11 +31,42 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. Install in Editable Mode
+### 3.1 Install in Editable Mode
 
 Install the package and its dependencies. The `-e` flag allows you to make changes to the source code and have them immediately reflected.
 ```bash
-pip install -e .
+# For pandas support
+pip install -e '.[pandas]'
+
+# For spark support
+pip install -e '.[spark]'
+
+# For both pandas and spark
+pip install -e '.[all]'
+```
+
+### 3.2 Install from Wheel
+First, build the wheel:
+
+```bash
+# Clean previous builds
+rm -rf dist/ build/ *.egg-info src/*.egg-info
+
+# Build the package
+python -m build
+```
+
+Then install from the wheel:
+
+```bash
+# For pandas support
+pip install 'dist/dataquality-1.0.0-py3-none-any.whl[pandas]'
+
+# For spark support
+pip install 'dist/dataquality-1.0.0-py3-none-any.whl[spark]'
+
+# For both
+pip install 'dist/dataquality-1.0.0-py3-none-any.whl[all]'
 ```
 
 ### 4. Run the Demos
@@ -98,47 +129,61 @@ from dataquality import validate_data
 # 1. Load your data
 df = pd.read_csv("test/HDBResale.csv")
 
-# 2. Run the validation
-result = validate_data(df, contract_path="src/dataquality/contracts/hdb_resale.yaml")
-
-# 3. Get a complete report printed to the console and saved to files
-result.display_full_report()
+# 2. Run the validation (context manager handles cleanup automatically)
+with validate_data(df, contract_path="src/dataquality/contracts/hdb_resale.yaml") as result:
+    # 3. Get a complete report
+    result.display_full_report()
 ```
 
-This single command gives you a complete overview:
-
+**Output:**
 ```
-=== Validation Summary ===
-Total Checks:           11
-Passed:                 11
-Failed:                 0
-Success Rate:           100.0%
-Total Rows:             1,000
-Rows with Failures:     0
-Total Execution Time:   145.23 ms
+=== Data Quality Validation Results ===
 
-✅ No failed rows found!
+ OVERALL DATA QUALITY
+   Data Quality:     99.997%
+   Clean Records:         201,873 of 201,879 rows
+   Records with Issues:   6 row(s)
 
-💾 Results saved:
+ VALIDATION CHECKS
+   Total Rules Executed:  13
+   Rules Passed:          9
+   Rules Failed:          4
+   Check Pass Rate:       69.2%
+
+ PERFORMANCE
+   Total Execution:       836.67 ms
+
+=== Sample of Failed Rows (5 of 7 total) ===
+      month        town flat_type block       street_name storey_range  floor_area_sqm  ...
+0   2017-01  ANG MO KIO    3 ROOM   219  ANG MO KIO AVE 1     07 TO 09            67.0  ...
+...
+
+Results saved:
    - Data:    dq_results_enhanced_data.csv
    - Summary: dq_results_summary.json
 ```
 
+---
+
 ## 🔧 The `ValidationResult` Object: Your Toolkit
 
-The `validate_data` function returns a single, powerful `ValidationResult` object. This object is your main tool for interacting with the outcome of the validation run.
+The `validate_data` function returns a powerful `ValidationResult` object that provides multiple ways to interact with your validation results.
 
-Here are the methods you can call on it:
+### Core Methods
 
-| Method/Property | What It Does | When to Use It |
-| :--- | :--- | :--- |
-| `display_full_report()` | **Prints a complete summary**, shows failed rows, and saves results to files. | For interactive analysis or a quick, complete overview. The "one-button" solution. |
-| `print_summary()` | Prints **only the high-level statistics** (pass/fail counts, success rate, etc.). | When you only need the aggregate statistics for a report or log. |
-| `show_failed_rows(max_rows=5)` | **Displays a sample of the rows** that failed validation directly in the console. | When you want to quickly inspect the problematic data without saving anything. |
-| `save()` | **Saves the summary (JSON) and the full enhanced DataFrame (CSV)** to disk. | When you need to persist the results for later analysis, auditing, or sharing. |
-| `get_failed_rows()` | **Returns a DataFrame** containing *only* the rows that failed one or more checks. | For deep-dive analysis or routing bad data to a remediation pipeline. |
-| `get_passed_rows()` | **Returns a DataFrame** containing *only* the rows that passed all checks. | When you want to programmatically separate and work with the clean data. |
-| `.passed` (Property) | Returns a simple **`True` or `False`** indicating if all checks passed. | **Crucial for automation.** Use it in `if` statements to control your pipeline's flow. |
+| Method/Property | What It Does | Returns |
+|-----------------|--------------|---------|
+| **`print_summary()`** | Prints high-level statistics (pass/fail counts, success rate, performance) | `self` (chainable) |
+| **`show_failed_rows(max_rows=5)`** | Displays sample of failed rows in console | `self` (chainable) |
+| **`display_full_report()`** | Prints summary + shows failed rows (convenience method) | `self` (chainable) |
+| **`save(output_dir=".", prefix="dq_results")`** | Saves enhanced CSV and summary JSON to disk | `self` (chainable) |
+| **`get_enhanced_df()`** | Returns original DataFrame with `dq_validation_status` and `dq_failed_tests` columns | DataFrame |
+| **`get_failed_rows()`** | Returns DataFrame of only rows that failed, with `description` column | DataFrame or None |
+| **`get_passed_rows()`** | Returns DataFrame of only rows that passed all checks | DataFrame |
+| **`compute_metrics()`** | Returns rule-level metrics (source_table, dimension, dq_rule, pass_rate, etc.) | DataFrame |
+| **`.passed`** (property) | Boolean indicating if all checks passed | `True`/`False` |
+
+---
 
 ## 💡 How It Works: Architecture
 
@@ -153,72 +198,64 @@ Here are the methods you can call on it:
     *   The `SparkExecutor` uses the cluster's native **Spark SQL** engine, allowing for distributed validation on massive datasets.
 4.  **Enrichment & Return**: The executor runs each check, identifies any failing rows, and enhances the original DataFrame with `dq_validation_status` and `dq_failed_tests` columns. It then bundles this enhanced DataFrame and a detailed summary into the `ValidationResult` object and returns it.
 
-This design means you never have to worry about the underlying execution engine. Your code remains clean and engine-agnostic.
-
 ## ⚙️ Real-World Use Cases & Patterns
 
 Here’s how you can apply `dqmk` in different scenarios.
 
-### Pattern 1: Interactive Analysis (Data Scientist)
+### Interactive Analysis
 
 Quickly understand the quality of a new dataset.
 
 ```python
+import pandas as pd
 from dataquality import validate_data
 
-# Exploring a new dataset
 df = pd.read_csv("new_dataset.csv")
-result = validate_data(df, "contract.yaml")
 
-# Get a quick, comprehensive report
-result.display_full_report()
-
-# Now, programmatically analyze the failures
-if not result.passed:
-    failed_df = result.get_failed_rows()
-    print("\nTop reasons for failure:")
-    print(failed_df['dq_failed_tests'].explode().value_counts())
+with validate_data(df, "contract.yaml") as result:
+    result.display_full_report()
+    
+    if not result.passed:
+        failed_df = result.get_failed_rows()
+        print(failed_df['description'].value_counts())
 ```
 
-### Pattern 2: Automated Data Pipeline (Data Engineer)
+---
 
-Use `.passed` to make your pipeline robust and divert bad data.
+### Production Pipeline with Quality checks
+
+Automated data routing based on validation results:
 
 ```python
 from dataquality import validate_data
 
-# In an Airflow task or Databricks job
 raw_df = spark.read.table("staging.customer_uploads")
-result = validate_data(raw_df, "contracts/customers.yaml")
 
-if result.passed:
-    # Quality is perfect, promote the original data to production
-    print("All checks passed. Promoting data.")
-    raw_df.write.mode("overwrite").saveAsTable("production.customers")
-else:
-    # Quality issues found, take action
-    print("Data quality issues detected. Diverting bad data for review.")
+with validate_data(raw_df, "contracts/customers.yaml") as result:
     
-    # Send bad data to a quarantine table
-    failed_data = result.get_failed_rows()
-    failed_data.write.mode("append").saveAsTable("quarantine.failed_customers")
-    
-    # Optionally, promote only the clean data
-    passed_data = result.get_passed_rows()
-    passed_data.drop("dq_failed_tests", "dq_validation_status").write.mode("overwrite").saveAsTable("production.customers")
+    if result.passed:
+        raw_df.write.mode("overwrite").saveAsTable("production.customers")
+    else:
+        result.get_failed_rows().write.mode("append").saveAsTable("quarantine.failed_customers")
+        result.get_passed_rows().write.mode("overwrite").saveAsTable("production.customers")
 ```
 
-### Pattern 3: Custom Reporting
+---
 
-The fluent interface allows you to chain methods to create custom reports without saving files.
+### Custom Metrics & Monitoring
+
+Track quality trends over time:
 
 ```python
 from dataquality import validate_data
 
-df = pd.read_csv("data.csv")
-result = validate_data(df, "contract.yaml")
-
-# I just want to see the summary and a few bad rows on my screen
-print("--- Custom Validation Report ---")
-result.print_summary().show_failed_rows(max_rows=3)
+with validate_data(df, "contract.yaml") as result:
+    
+    metrics = result.compute_metrics()
+    
+    metrics.groupby('dimension').agg({
+        'failed_row_count': 'sum',
+        'pass_rate': 'mean'
+    }).to_csv(f"metrics_{today}.csv")
 ```
+
