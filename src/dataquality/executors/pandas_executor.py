@@ -19,9 +19,11 @@ class PandasExecutor(BaseExecutor):
             dataframe: The pandas DataFrame to validate
             
         Returns:
-            A tuple containing:
-            - A summary dictionary of the validation results.
-            - A DataFrame containing only the rows that failed one or more checks.
+        A tuple containing:
+        - summary (dict): Validation results summary with statistics and check details
+        - result_bundle (dict): Dictionary with keys:
+            - 'source_df': Original DataFrame with '__row_index' column added
+            - 'failed_rows_df': DataFrame of failed rows with 'description' column
         """
         overall_start_time = time.time()
       
@@ -40,7 +42,7 @@ class PandasExecutor(BaseExecutor):
             if result.status == "FAILED" and result.failed_row_indices:
                 failed_df_for_check = pd.DataFrame({
                     '__row_index': result.failed_row_indices,
-                    'dq_failed_tests': check['name']
+                    'description': check['name']
                 })
                 list_of_failed_dfs.append(failed_df_for_check)
             
@@ -53,21 +55,25 @@ class PandasExecutor(BaseExecutor):
         if list_of_failed_dfs:
             failures_df = pd.concat(list_of_failed_dfs, ignore_index=True)
             
-            # Group failures by row to get all failed tests for each row
-            failures_by_row = failures_df.groupby('__row_index')['dq_failed_tests'].apply(list).reset_index()
+            # # Group failures by row to get all failed tests for each row
+            # failures_by_row = failures_df.groupby('__row_index')['dq_failed_tests'].apply(list).reset_index()
             
             # Join back to the original data to create a complete failed rows report
             full_failed_rows_df = pd.merge(
                 source_df_with_id,
-                failures_by_row,
+                failures_df,
                 on='__row_index',
                 how='inner'
             )
 
         # Build the summary and return the results bundle
         total_rows = len(source_df_with_id)
-        failed_rows_count = len(full_failed_rows_df) if full_failed_rows_df is not None else 0
-        
+
+        failed_rows_count = 0
+        if list_of_failed_dfs:
+            all_failed_indices = pd.concat(list_of_failed_dfs, ignore_index=True)
+            failed_rows_count = all_failed_indices['__row_index'].nunique()
+                
         summary = self._build_summary(results, sql_checks, passed_count, failed_count, total_rows, failed_rows_count)
         
         overall_execution_time_ms = (time.time() - overall_start_time) * 1000

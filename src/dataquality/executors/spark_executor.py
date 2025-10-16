@@ -34,8 +34,19 @@ class SparkExecutor(BaseExecutor):
 
     def validate(self, dataframe: DataFrame) -> Tuple[Dict[str, Any], DataFrame]:
         """
-        Validate a Spark DataFrame against the loaded data quality contract
+        Validate a Spark DataFrame against the loaded data quality contract.
+        
+        Args:
+            dataframe: The Spark DataFrame to validate
+            
+        Returns:
+            A tuple containing:
+            - summary (dict): Validation results summary with statistics and check details
+            - result_bundle (dict): Dictionary with keys:
+                - 'source_df': Original DataFrame with '__row_id' column added
+                - 'failed_rows_df': Spark DataFrame of failed rows with 'description' column
         """
+
         overall_start_time = time.time()
         sql_checks = self.contract.get_sql_checks()
         real_table_name = self.contract.get_table_name()
@@ -47,7 +58,7 @@ class SparkExecutor(BaseExecutor):
 
         results, passed_count, failed_count, list_of_failed_dfs = [], 0, 0, []
 
-        # 1. COLLECT: Run checks and collect failures in a list
+        # run checks and collect failures in a list
         for check in sql_checks:
             result = self._run_check(real_table_name, temp_view_name, check)
             results.append(result)
@@ -58,7 +69,7 @@ class SparkExecutor(BaseExecutor):
             if result.status == "PASSED": passed_count += 1
             else: failed_count += 1
 
-        # 2. UNION & JOIN: Create one simple DataFrame of all failures and join it back
+        # create one simple DataFrame of all failures and join it back
         full_failed_rows_df = None
         if list_of_failed_dfs:
             failures_df = list_of_failed_dfs[0]
@@ -66,26 +77,22 @@ class SparkExecutor(BaseExecutor):
                 for i in range(1, len(list_of_failed_dfs)):
                     failures_df = failures_df.unionByName(list_of_failed_dfs[i])
             
-            # Group failures by row to get all descriptions for each row
-            failures_by_row = failures_df.groupBy("__row_id").agg(
-                F.collect_list("description").alias("dq_failed_tests")
-            )
-            
-            # Join the full source data with the grouped failures
+            # join the source data with the failures (one row per failed test)
             full_failed_rows_df = source_df_with_id.join(
-                failures_by_row,
+                failures_df,
                 "__row_id",
                 "inner"
             )
 
-        # 3. SUMMARY & RETURN: Build the summary and return the complete failed DataFrame
         total_rows = source_df_with_id.count()
         # Cache the final failed df
         if full_failed_rows_df is not None:
             full_failed_rows_df = full_failed_rows_df.cache()
 
-        failed_rows_count = full_failed_rows_df.count() if full_failed_rows_df is not None else 0
-        
+        failed_rows_count = 0
+        if full_failed_rows_df is not None:
+            failed_rows_count = full_failed_rows_df.select("__row_id").distinct().count()
+            
         summary = self._build_summary(results, sql_checks, passed_count, failed_count, total_rows, failed_rows_count)
         overall_execution_time_ms = (time.time() - overall_start_time) * 1000
         summary["validation_summary"]["total_execution_time_ms"] = round(overall_execution_time_ms, 2)
