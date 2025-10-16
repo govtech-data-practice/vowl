@@ -31,44 +31,43 @@ def main():
     """
     print("--- Spark Demo: Data Quality Validation ---")
 
-    # 1. Create a Spark session and load data
+    # 1. Setup
     spark = create_spark_session()
+    spark.sparkContext.setLogLevel("ERROR")
+    
     test_data_path = os.path.join(os.path.dirname(__file__), 'HDBResale.csv')
     contract_path = "/Users/dinesh/dqmk/src/dataquality/contracts/hdb_resale_spark.yaml"
     
-    # Load data via pandas and convert to a Spark DataFrame for the demo
-    pandas_df = pd.read_csv(test_data_path)
-    spark_df = spark.createDataFrame(pandas_df)
-    print(f"Loaded {spark_df.count()} rows into a Spark DataFrame.")
+    # Load data
+    df = spark.createDataFrame(pd.read_csv(test_data_path))
+    print(f"Loaded {df.count():,} rows from HDB Resale dataset\n")
 
-    # 2. Run validation to get the result object
-    print("\nRunning validation on Spark DataFrame...")
-    with validate_data(spark_df, contract_path=contract_path) as result:
-        # --- Use Case 1: The Quick & Complete Report ---
-        result.display_full_report()
-
-        # --- Use Case 2: Programmatic Check in a Pipeline ---
+    # 2. Run validation and get full report
+    with validate_data(df, contract_path=contract_path) as result:
+        
+        # Quick summary
+        result.print_summary()
+        
+        # Check if pipeline should proceed
         if result.passed:
-            print("✅ All checks passed. Pipeline can continue.")
+            print("\n All checks passed - pipeline can continue")
         else:
-            print("❌ Checks failed. Retrieving failed data for remediation...")
-            # Get the actual failed data for programmatic use
-            failed_data = result.get_failed_rows()
-            if failed_data is not None:
-                print(f"   - Found {failed_data.count()} rows to send to a quarantine system.")
-                # In a real pipeline, you would now save or process this `failed_data` Spark DataFrame.
-            else:
-                print("   - Checks failed, but no specific rows were identified. Please review contract queries.")
+            print("\n Data quality issues found")
+            
+            # Show sample failures
+            result.show_failed_rows(max_rows=3)
+            
+            # Get metrics for monitoring
+            metrics = result.compute_metrics()
+            print("\n Data Quality Metrics (Top 5 Failures):")
+            metrics.filter(metrics.status == 'FAILED') \
+                   .select('dimension', 'dq_rule', 'failed_row_count', 'pass_rate') \
+                   .show(5, truncate=False)
+            
+            # Save results for further analysis
+            result.save(output_dir="output", prefix="spark_validation")
 
-    # --- Use Case 3: Building a Custom View ---
-    result.print_summary().show_failed_rows(max_rows=6)
-
-    # Show Spark execution plan
-    print(f"Spark UI available at: http://localhost:4040")
-
-    # Clean up
     spark.stop()
-    print("Spark session stopped")
 
 if __name__ == "__main__":
     main()
