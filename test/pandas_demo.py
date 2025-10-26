@@ -10,12 +10,15 @@ def main():
     print("--- Pandas Demo: Data Quality Validation ---")
 
     # 1. Load data
-    test_data_path = os.path.join(os.path.dirname(__file__), 'HDBResale.csv')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    test_data_path = os.path.join(script_dir, 'HDBResale.csv')
+    contract_path = os.path.join(script_dir, '../src/dataquality/contracts/hdb_resale_pandas.yaml')
+    
     df = pd.read_csv(test_data_path)
     print(f"Loaded {len(df)} rows from {os.path.basename(test_data_path)}")
 
     # 2. Run validation to get the full result object
-    with validate_data(df, contract_path="/Users/dinesh/dqmk/src/dataquality/contracts/hdb_resale_pandas.yaml") as result:
+    with validate_data(df, contract_path=contract_path) as result:
         # Quick summary
         result.display_full_report()
 

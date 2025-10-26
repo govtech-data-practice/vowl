@@ -35,8 +35,9 @@ def main():
     spark = create_spark_session()
     spark.sparkContext.setLogLevel("ERROR")
     
-    test_data_path = os.path.join(os.path.dirname(__file__), 'HDBResale.csv')
-    contract_path = "/Users/dinesh/dqmk/src/dataquality/contracts/hdb_resale_spark.yaml"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    test_data_path = os.path.join(script_dir, 'HDBResale.csv')
+    contract_path = os.path.join(script_dir, '../src/dataquality/contracts/hdb_resale_spark.yaml')
     
     # Load data
     df = spark.createDataFrame(pd.read_csv(test_data_path))
