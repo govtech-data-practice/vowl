@@ -114,7 +114,13 @@ class SparkExecutor(BaseExecutor):
         check_name, query, expected_value = check.get("name", "Unnamed Check"), check.get("query"), check.get("mustBe")
 
         if not query:
-            return CheckResult(check_name, "FAILED", "No SQL query provided.", expected_value=expected_value)
+            return CheckResult(
+                check_name=check_name,
+                status="FAILED",
+                details="No SQL query provided.",
+                expected_value=expected_value,
+                execution_time_ms=0.0
+            )
 
         try:
             # Execute the check query and get the result
@@ -135,10 +141,26 @@ class SparkExecutor(BaseExecutor):
 
             execution_time_ms = (time.time() - start_time) * 1000
             details = f"Expected {expected_value}, got {actual_value}"
-            return CheckResult(check_name, status, details, actual_value, expected_value, failed_rows_df, execution_time_ms)
+            
+            return CheckResult(
+                check_name=check_name,
+                status=status,
+                details=details,
+                actual_value=actual_value,
+                expected_value=expected_value,
+                failed_row_indices=failed_rows_df,
+                execution_time_ms=execution_time_ms
+            )
         except Exception as e:
-            return CheckResult(check_name, "FAILED", f"Spark SQL Error: {e}", expected_value=expected_value)
-
+            execution_time_ms = (time.time() - start_time) * 1000
+            return CheckResult(
+                check_name=check_name,
+                status="FAILED",
+                details=f"Spark SQL Error: {e}",
+                expected_value=expected_value,
+                execution_time_ms=execution_time_ms
+            )
+        
     def _get_row_identifier(self) -> str:
         """Returns the column name used for row identification in Spark."""
         return "__row_id"
