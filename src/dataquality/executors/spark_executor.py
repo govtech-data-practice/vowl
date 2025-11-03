@@ -1,6 +1,6 @@
 # File: dataquality/executors/spark_executor.py
 
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Union
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.types import StringType, ArrayType
@@ -164,6 +164,30 @@ class SparkExecutor(BaseExecutor):
     def _get_row_identifier(self) -> str:
         """Returns the column name used for row identification in Spark."""
         return "__row_id"
+
+    def _build_row_selection_query(self, modified_query: str) -> str:
+        """
+        Spark-specific override: Use existing __row_id from temp view.
+        Spark temp views already have __row_id from monotonically_increasing_id()
+
+        Args:
+            modified_query: Query with COUNT(*) replaced by SELECT *
+            
+        Returns:
+            SQL query selecting existing __row_id from CTE
+        """
+        # select existing __row_id and not use ROW_NUMBER
+        row_query = f"""
+            WITH dqmk_failed_rows AS (
+                {modified_query}
+            )
+            SELECT 
+                dqmk_failed_rows.__row_id
+            FROM dqmk_failed_rows
+        """
+        
+        return row_query
+
 
     def _get_failed_rows_count(self, failed_row_indices: DataFrame) -> int:
         """Returns the count of failed rows from a Spark DataFrame."""

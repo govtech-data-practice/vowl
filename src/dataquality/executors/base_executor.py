@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Tuple, Union
+import re
 
 from ..contracts.contract import Contract
 
@@ -76,7 +77,7 @@ class BaseExecutor(ABC):
         Validate a DataFrame against the loaded data quality contract.
         
         Args:
-            dataframe: The DataFrame to validate (pandas or Spark)
+            dataframe: The DataFrame to validate
             
         Returns:
             A tuple containing validation summary report and enhanced DataFrame
@@ -97,30 +98,164 @@ class BaseExecutor(ABC):
         """
         pass
 
+    # def _to_row_query(self, aggregate_query: str, table_name: str) -> Union[str, None]:
+    #     """
+    #     Convert COUNT(*) query to row-level query for failure tracking.
+        
+    #     Args:
+    #         aggregate_query: The original SQL query that returns an aggregate count
+    #         table_name: Name of the table being queried
+            
+    #     Returns:
+    #         A SQL query that returns failing rows, or None if conversion is not possible
+    #     """
+    #     query_lower = aggregate_query.lower().strip()
+        
+    #     if "count(*)" in query_lower and "where" in query_lower:
+    #         where_start = query_lower.find("where") + 5
+    #         where_clause = aggregate_query[where_start:].strip()
+    #         if where_clause.endswith(';'):
+    #             where_clause = where_clause[:-1]
+                
+    #         # For pandas, use __row_index; for Spark, use __row_id
+    #         row_identifier = self._get_row_identifier()
+    #         return f"SELECT {row_identifier} FROM {table_name} WHERE {where_clause}"
+        
+    #     return None
+
     def _to_row_query(self, aggregate_query: str, table_name: str) -> Union[str, None]:
         """
         Convert COUNT(*) query to row-level query for failure tracking.
         
         Args:
-            aggregate_query: The original SQL query that returns an aggregate count
-            table_name: Name of the table being queried
+            aggregate_query: The original SQL query that returns COUNT(*)
+            table_name: Name of the table/view being queried
             
         Returns:
-            A SQL query that returns failing rows, or None if conversion is not possible
+            SQL query that returns rows with row identifiers, or None if conversion fails
         """
         query_lower = aggregate_query.lower().strip()
         
-        if "count(*)" in query_lower and "where" in query_lower:
-            where_start = query_lower.find("where") + 5
-            where_clause = aggregate_query[where_start:].strip()
-            if where_clause.endswith(';'):
-                where_clause = where_clause[:-1]
-                
-            # For pandas, use __row_index; for Spark, use __row_id
-            row_identifier = self._get_row_identifier()
-            return f"SELECT {row_identifier} FROM {table_name} WHERE {where_clause}"
+        if "count(*)" not in query_lower:
+            return None
         
-        return None
+        try:
+            # Replace COUNT(*) with *
+            modified_query = self._replace_count_with_star(aggregate_query)
+            
+            if not modified_query:
+                return None
+            
+            # # Get engine-specific configurations
+            # row_identifier = self._get_row_identifier()
+            # window_clause = self._get_window_clause() 
+            
+            # # Wrap in CTE and add row tracking
+            # row_query = f"""
+            #     WITH dqmk_failed_rows AS (
+            #         {modified_query}
+            #     )
+            #     SELECT 
+            #         ROW_NUMBER() OVER {window_clause} as {row_identifier},
+            #         *
+            #     FROM dqmk_failed_rows
+            # """
+            
+            # return row_query
+            row_query = self._build_row_selection_query(modified_query)
+        
+            return row_query
+            
+        except Exception as e:
+            print(f"    Warning: Could not create row-level query: {e}")
+            return None
+    
+    def _build_row_selection_query(self, modified_query: str) -> str:
+        """
+        Build the final row selection query with CTE wrapper.
+        Uses ROW_NUMBER() to generate sequential IDs.
+        Works for: Pandas (DuckDB), Redshift, PostgreSQL, BigQuery, Snowflake.
+        OVERRIDE: Spark uses existing __row_id from temp view.
+        
+        Template structure:
+            WITH dqmk_failed_rows AS (
+                {modified_query}  ← Input: query with SELECT *
+            )
+            SELECT 
+                ROW_NUMBER() OVER {window_clause} as {row_identifier}
+            FROM dqmk_failed_rows
+        
+        Args:
+            modified_query: Query with COUNT(*) replaced by SELECT *
+            
+        Returns:
+            Complete SQL query for row identification
+        """
+        row_identifier = self._get_row_identifier()
+        window_clause = self._get_window_clause()
+        
+        # Generate new row numbers using ROW_NUMBER()
+        row_query = f"""
+            WITH dqmk_failed_rows AS (
+                {modified_query}
+            )
+            SELECT 
+                ROW_NUMBER() OVER {window_clause} as {row_identifier}
+            FROM dqmk_failed_rows
+        """
+        
+        return row_query
+
+    def _replace_count_with_star(self, query: str) -> Union[str, None]:
+        """
+        Replace SELECT COUNT(*) with SELECT *.
+        
+        Handles:
+        - Simple: SELECT COUNT(*) FROM table
+        - With spacing: SELECT  COUNT(  *  ) FROM table
+        - Multiple SELECTs (CTEs): Only replaces the LAST one
+        - Case insensitive
+        
+        Returns:
+            Modified query or None if COUNT(*) not found
+        """
+        pattern = r'\bselect\s+count\s*\(\s*\*\s*\)'
+        
+        # Find all matches
+        matches = list(re.finditer(pattern, query, re.IGNORECASE))
+        
+        if not matches:
+            return None
+        
+        # Replace only the last occurrence
+        last_match = matches[-1]
+        
+        modified_query = (
+            query[:last_match.start()] +
+            'SELECT *' +
+            query[last_match.end():]
+        )
+        
+        return modified_query
+    
+    def _get_window_clause(self) -> str:
+        """
+        Get the OVER clause for ROW_NUMBER() window function.
+        
+        Different SQL engines have different requirements:
+        - DuckDB/PostgreSQL/Redshift: OVER () is valid (no ORDER BY needed)
+        - Spark SQL/Databricks: Requires ORDER BY clause
+        
+        Returns:
+            String for the OVER clause
+            
+        Examples:
+            Pandas/Redshift: "()"
+            Spark: "(ORDER BY (SELECT NULL))"
+        """
+        # default implementation: works for most SQL engines
+        return "()"
+
 
     @abstractmethod
     def _get_row_identifier(self) -> str:
