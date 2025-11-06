@@ -192,15 +192,14 @@ class BaseExecutor(ABC):
             Complete SQL query for row identification
         """
         row_identifier = self._get_row_identifier()
-        window_clause = self._get_window_clause()
-        
-        # Generate new row numbers using ROW_NUMBER()
+                
+        # Select the existing row identifier column from the CTE
         row_query = f"""
             WITH dqmk_failed_rows AS (
                 {modified_query}
             )
             SELECT 
-                ROW_NUMBER() OVER {window_clause} as {row_identifier}
+                dqmk_failed_rows.{row_identifier}
             FROM dqmk_failed_rows
         """
         

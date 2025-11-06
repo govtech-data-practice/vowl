@@ -156,6 +156,7 @@ class PandasExecutor(BaseExecutor):
     def _add_row_indices(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """
         Add row index column for failure tracking.
+        Resets the DataFrame index to ensure alignment between __row_index values and actual row positions.
         
         Args:
             dataframe: The pandas DataFrame to add indices to
@@ -164,6 +165,7 @@ class PandasExecutor(BaseExecutor):
             DataFrame with row index column added
         """
         df_with_index = dataframe.copy()
+        df_with_index = df_with_index.reset_index(drop=True)
         df_with_index['__row_index'] = range(len(df_with_index))
         return df_with_index
 
