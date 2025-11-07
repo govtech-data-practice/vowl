@@ -116,8 +116,8 @@ class SparkExecutor(BaseExecutor):
         if not query:
             return CheckResult(
                 check_name=check_name,
-                status="FAILED",
-                details="No SQL query provided.",
+                status="ERROR",  # Changed from FAILED to ERROR
+                details="Error: No SQL query provided.",
                 expected_value=expected_value,
                 execution_time_ms=0.0
             )
@@ -155,8 +155,8 @@ class SparkExecutor(BaseExecutor):
             execution_time_ms = (time.time() - start_time) * 1000
             return CheckResult(
                 check_name=check_name,
-                status="FAILED",
-                details=f"Spark SQL Error: {e}",
+                status="ERROR",  # Changed from FAILED to ERROR
+                details=f"Error: Spark SQL execution failed - {str(e)}",
                 expected_value=expected_value,
                 execution_time_ms=execution_time_ms
             )

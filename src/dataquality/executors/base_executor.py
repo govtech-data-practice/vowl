@@ -285,13 +285,22 @@ class BaseExecutor(ABC):
 
         # Calculate total execution time
         total_execution_time_ms = sum(result.execution_time_ms for result in results)
+        
+        # Separate execution errors from validation failures
+        execution_errors = [r for r in results if r.status == "ERROR"]
+        validation_failures = [r for r in results if r.status == "FAILED"]
+        
+        # Rule pass rate only count successfully executed rules
+        successfully_executed_count = len(sql_checks) - len(execution_errors)
+        rule_pass_rate = (passed / successfully_executed_count * 100) if successfully_executed_count > 0 else 0
 
         return {
             "validation_summary": {
                 "total_checks": len(sql_checks),
                 "passed": passed,
-                "failed": failed,
-                "success_rate": (passed / len(sql_checks) * 100) if sql_checks else 100,
+                "failed": len(validation_failures), # Rules that ran but failed
+                "execution_errors": len(execution_errors),  # Rules that couldn't run
+                "rule_pass_rate": round(rule_pass_rate, 2),
                 "total_rows": total_rows,
                 "failed_rows": failed_rows,
                 "total_execution_time_ms": round(total_execution_time_ms, 2),
@@ -300,7 +309,7 @@ class BaseExecutor(ABC):
             "check_results": [
                 {
                     "name": r.check_name,
-                    "status": r.status,
+                    "status": r.status,  # Will be PASSED, FAILED, or ERROR
                     "details": r.details,
                     "failed_rows_count": self._get_failed_rows_count(r.failed_row_indices),
                     "execution_time_ms": round(r.execution_time_ms, 2)

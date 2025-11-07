@@ -118,8 +118,13 @@ class PandasExecutor(BaseExecutor):
 
         if not query:
             execution_time_ms = (time.time() - start_time) * 1000
-            return CheckResult(check_name, "FAILED", "No SQL query provided.", 
-                                  expected_value=expected_value, execution_time_ms=execution_time_ms)
+            return CheckResult(
+                check_name, 
+                "ERROR", 
+                "Error: No SQL query provided.", 
+                expected_value=expected_value, 
+                execution_time_ms=execution_time_ms
+            )
 
         try:
             # DuckDB can query pandas DataFrames directly. We register the DataFrame as a virtual table
@@ -150,8 +155,13 @@ class PandasExecutor(BaseExecutor):
 
         except Exception as e:
             execution_time_ms = (time.time() - start_time) * 1000
-            return CheckResult(check_name, "FAILED", f"SQL Error: {e}", 
-                                  expected_value=expected_value, execution_time_ms=execution_time_ms)
+            return CheckResult(
+                check_name, 
+                "ERROR",
+                f"Error: SQL execution failed - {str(e)}", 
+                expected_value=expected_value, 
+                execution_time_ms=execution_time_ms
+            )
 
     def _add_row_indices(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """

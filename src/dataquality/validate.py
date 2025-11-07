@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Any, Dict, Union, TYPE_CHECKING
+from typing import Any, Dict, Union, TYPE_CHECKING, Optional, List
 import json 
 from pathlib import Path
 
@@ -82,16 +82,32 @@ class ValidationResult:
         
         print("\n=== Data Quality Validation Results ===")
         
-        print(f"\n OVERALL DATA QUALITY")
-        print(f"   Data Quality:     {row_quality_pct:.3f}%")
-        print(f"   Clean Records:         {clean_rows:,} of {total_rows:,} rows")
-        print(f"   Records with Issues:   {failed_rows:,} row(s)")
-        
-        print(f"\n VALIDATION CHECKS")
+        print(f"\n DATA QUALITY SUMMARY")
+        print(f"   Total Records:         {total_rows:,}")
+        print(f"   Clean Records:         {clean_rows:,}")
+        print(f"   Failed Records:        {failed_rows:,}")
+        print(f"   Pass Rate:             {row_quality_pct:.2f}%")
+
+        print(f"\n VALIDATION Overview")
         print(f"   Total Rules Executed:  {vs['total_checks']}")
         print(f"   Rules Passed:          {vs['passed']}")
         print(f"   Rules Failed:          {vs['failed']}")
-        print(f"   Check Pass Rate:       {vs['success_rate']:.1f}%")
+        # print(f"   Check Pass Rate:       {vs['success_rate']:.1f}%")
+        # Check for and display any execution errors
+        execution_errors = [
+            check for check in self.summary['check_results']
+            if check['status'] == 'FAILED' and 'Error:' in check['details']
+        ]
+        
+        if execution_errors:
+            print(f"\n EXECUTION ERRORS")
+            print(f"   [!] {len(execution_errors)} check(s) failed to execute due to errors:")
+            for error_check in execution_errors:
+                # Truncate long error messages for cleaner display
+                error_detail = error_check['details']
+                if len(error_detail) > 350:
+                    error_detail = error_detail[:350] + '...'
+                print(f"     - {error_check['name']}: {error_detail}")
         
         print(f"\n PERFORMANCE")
         print(f"   Total Execution:       {vs['total_execution_time_ms']:.2f} ms")
@@ -143,7 +159,7 @@ class ValidationResult:
             else:
                 print(display_df.head(max_rows).to_string())
         else:
-            print("\n✅ No failed rows found!")
+            print("\n No failed rows found!")
         return self
 
     def get_enhanced_df(self) -> Union[pd.DataFrame, Any]:
@@ -185,7 +201,7 @@ class ValidationResult:
                                      .withColumn("dq_failed_tests", F.lit("")) \
                                      .drop("__row_id")
         else:
-            # Pandas version - FIXED ✅
+            # Pandas version
             enhanced_df = self.source_df.copy()
             
             if self._failed_rows_df is not None:
@@ -385,7 +401,9 @@ class ValidationResult:
         - failed_row_count: Number of unique rows that failed this rule
         - total_row_count: Total number of rows in the dataset
         - pass_rate: Percentage of rows that passed (0-100)
-        - status: PASSED or FAILED
+        - status: PASSED, FAILED, or ERROR
+        - error_message: Error details if status is ERROR, null otherwise
+        
         
         This provides rule-level granularity. Users can aggregate by dimension themselves:
         
@@ -416,13 +434,26 @@ class ValidationResult:
         
         for check_result in self.summary['check_results']:
             check_name = check_result['name']
-            failed_count = check_result['failed_rows_count']
+            status = check_result['status']
+            details = check_result['details']
             
             # Find the corresponding check definition to get dimension
             check_def = next((c for c in sql_checks if c['name'] == check_name), None)
             dimension = check_def.get('dimension', 'UNKNOWN') if check_def else 'UNKNOWN'
             
-            pass_rate = ((total_rows - failed_count) / total_rows * 100) if total_rows > 0 else 100
+            # Handle ERROR status differently
+            if status == 'ERROR':
+                pass_rate = None
+                failed_count = None 
+                error_message = details.replace('Error: ', '').strip()
+                error_message = ' '.join(error_message.split())
+                if len(error_message) > 350:
+                    error_message = error_message[:350].rsplit(' ', 1)[0] + '...'
+            else:
+                # For PASSED/FAILED, calculate metrics normally
+                failed_count = check_result['failed_rows_count']
+                pass_rate = ((total_rows - failed_count) / total_rows * 100) if total_rows > 0 else 100
+                error_message = None
             
             metrics_data.append({
                 'source_table': source_table,
@@ -430,8 +461,9 @@ class ValidationResult:
                 'dq_rule': check_name,
                 'failed_row_count': failed_count,
                 'total_row_count': total_rows,
-                'pass_rate': round(pass_rate, 4),
-                'status': check_result['status']
+                'pass_rate': round(pass_rate, 4) if pass_rate is not None else None,
+                'status': status,
+                'error_message': error_message
             })
         
         # Return as appropriate DataFrame type
@@ -464,14 +496,22 @@ class ValidationContextManager:
 
 def validate_data(
     dataframe: Any,
-    contract_path: str
+    contract_path: str,
+    connection_params: Optional[Dict[str, Any]] = None,
+    primary_key: Optional[Union[str, List[str]]] = None
 ) -> 'ValidationContextManager':
     """
     Acts as a context manager for a data quality validation run.
 
-    Args:
-        dataframe: DataFrame to validate (pandas.DataFrame or pyspark.sql.DataFrame)
-        contract_path: Path to the YAML contract file defining validation rules
+    dataframe: DataFrame to validate
+            - pandas.DataFrame for Pandas
+            - pyspark.sql.DataFrame for Spark  
+            - str (table name) for Redshift
+        contract_path: Path to the YAML contract file
+        connection_params: Connection parameters for Redshift
+        primary_key: Primary key column(s) for Redshift
+            - str: Single column (e.g., 'user_id')
+            - List[str]: Composite key (e.g., ['user_id', 'order_id'])
     
     Returns:
         ValidationContextManager that yields a ValidationResult object when used
@@ -482,6 +522,32 @@ def validate_data(
         FileNotFoundError: If contract_path doesn't exist
         ValueError: If contract YAML is malformed
     """
+    
+    # Handle string input (table name for Redshift)
+    if isinstance(dataframe, str):
+        if connection_params is None:
+            raise ValueError(
+                "connection_params required when validating a Redshift table. "
+                "Provide Redshift connection details."
+            )
+        
+        if primary_key is None:
+            raise ValueError(
+                "primary_key required when validating a Redshift table. "
+                "Specify the primary key column(s):\n"
+                "  - Single key: primary_key='user_id'\n"
+                "  - Composite key: primary_key=['user_id', 'order_id']"
+            )
+        
+        from .executors.redshift_executor import RedshiftExecutor
+        executor = RedshiftExecutor(
+            contract_path=contract_path,
+            connection_params=connection_params,
+            primary_key=primary_key
+        )
+        return ValidationContextManager(executor, dataframe)
+    
+    # Existing pandas/Spark logic
     dataframe_type = type(dataframe).__name__
     dataframe_module = type(dataframe).__module__
 
@@ -490,9 +556,8 @@ def validate_data(
         executor = SparkExecutor(contract_path=contract_path)
         return ValidationContextManager(executor, dataframe)
     elif isinstance(dataframe, pd.DataFrame):
-        # Pandas executor doesn't need a context manager, but we can support it for consistency
         from .executors.pandas_executor import PandasExecutor
         executor = PandasExecutor(contract_path=contract_path)
         return ValidationContextManager(executor, dataframe)
     else:
-        raise TypeError(f"Unsupported DataFrame type: {dataframe_type}")
+        raise TypeError(f"Unsupported type: {dataframe_type}")
