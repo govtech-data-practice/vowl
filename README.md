@@ -49,9 +49,7 @@ pip install -e '.[all]'
 First, build the wheel:
 
 ```bash
-# Clean previous builds
-rm -rf dist/ build/ *.egg-info src/*.egg-info
-
+pip install build 
 # Build the package
 python -m build
 ```
