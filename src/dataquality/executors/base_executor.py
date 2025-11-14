@@ -194,16 +194,14 @@ class BaseExecutor(ABC):
         row_identifier = self._get_row_identifier()
                 
         # Select the existing row identifier column from the CTE
-        row_query = f"""
-            WITH dqmk_failed_rows AS (
-                {modified_query}
-            )
-            SELECT 
-                dqmk_failed_rows.{row_identifier}
-            FROM dqmk_failed_rows
-        """
-        
-        return row_query
+        modified_query = modified_query.rstrip().rstrip(';')
+    
+        return f"""
+                WITH dqmk_failed_rows AS (
+                    {modified_query}
+                )
+                SELECT {row_identifier} FROM dqmk_failed_rows;
+            """
 
     def _replace_count_with_star(self, query: str) -> Union[str, None]:
         """

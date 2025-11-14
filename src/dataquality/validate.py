@@ -96,7 +96,7 @@ class ValidationResult:
         # Check for and display any execution errors
         execution_errors = [
             check for check in self.summary['check_results']
-            if check['status'] == 'FAILED' and 'Error:' in check['details']
+            if check['status'] == 'ERROR'
         ]
         
         if execution_errors:

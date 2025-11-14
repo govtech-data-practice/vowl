@@ -192,13 +192,24 @@ class PandasExecutor(BaseExecutor):
             List of row indices that failed the validation
         """
         row_query = self._to_row_query(query, table_name)
+    
         if row_query:
             try:
-                # Return a list of all '__row_index' values from the failing rows.
-                return [row[0] for row in conn.execute(row_query).fetchall()]
-            except Exception:
-                pass
-        return []
+                print(f"\n[DEBUG] Original query: {query[:100]}")  # ✅ ADD
+                print(f"[DEBUG] Row query: {row_query[:150]}")      # ✅ ADD
+                
+                result = conn.execute(row_query).fetchall()
+                failed_indices = [row[0] for row in result]
+                
+                print(f"[DEBUG] Found {len(failed_indices)} failed rows")  # ✅ ADD
+                return failed_indices
+                
+            except Exception as e:
+                print(f"[ERROR] Row query execution failed: {str(e)}")  # ✅ ADD
+                return []
+        else:
+            print(f"[WARNING] Could not convert to row query: {query[:100]}")  # ✅ ADD
+            return []
 
     def _mark_failed_rows(self, df: pd.DataFrame, failed_indices: List[int], check_name: str):
         """
