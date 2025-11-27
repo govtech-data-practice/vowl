@@ -1,93 +1,259 @@
-# dqmk
+# Data Quality Toolkit (dqmk)
 
+A powerful, SQL-based data quality validation library that works seamlessly with both **pandas** and **Spark** DataFrames. Define your validation rules once in a simple YAML file and get rich, actionable reports on your data's health.
 
+`dqmk` is designed for both interactive analysis by data scientists and robust, automated checks within production data pipelines.
 
-## Getting started
+## 🚀 Key Features
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+*   **SQL-Powered Rules**: Leverage the full power of SQL for your validation logic. If you can write it in a `SELECT` statement, you can make it a data quality check.
+*   **Automatic Engine Detection**: The library intelligently uses **DuckDB** for pandas and **Spark SQL** for Spark, requiring no configuration from you.
+*   **Fluent Interface**: A clean, chainable `ValidationResult` object makes interacting with your results simple and intuitive.
+*   **Rich, Actionable Reporting**: Go beyond simple pass/fail. Get detailed summaries, row-level failure analysis, and saveable reports out of the box.
+*   **Declarative Contracts**: Define all your data quality rules in a clean, version-controllable YAML "Data Contract" following the Open Data Contract Standard (ODCS).
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## 🧑‍💻 Developer Setup
 
-## Add your files
+Follow these instructions to set up the project for local development.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+### 1. Clone the Repository
 
+```bash
+git clone <your-repo-url>
+cd dqmk
 ```
-cd existing_repo
-git remote add origin https://sgts.gitlab-dedicated.com/wog/gvt/gtodp/dp-main/dqmk.git
-git branch -M main
-git push -uf origin main
+
+### 2. Create and Activate a Virtual Environment
+
+It is highly recommended to use a virtual environment to manage project dependencies.
+```bash
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-## Integrate with your tools
+### 3.1 Install in Editable Mode
 
-- [ ] [Set up project integrations](https://sgts.gitlab-dedicated.com/wog/gvt/gtodp/dp-main/dqmk/-/settings/integrations)
+Install the package and its dependencies. The `-e` flag allows you to make changes to the source code and have them immediately reflected.
+```bash
+# For pandas support
+pip install -e '.[pandas]'
 
-## Collaborate with your team
+# For spark support
+pip install -e '.[spark]'
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+# For both pandas and spark
+pip install -e '.[all]'
+```
 
-## Test and Deploy
+### 3.2 Install from Wheel
+First, build the wheel:
 
-Use the built-in continuous integration in GitLab.
+```bash
+pip install build 
+# Build the package
+python -m build
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Then install from the wheel:
 
-***
+```bash
+# For pandas support
+pip install 'dist/dataquality-1.0.0-py3-none-any.whl[pandas]'
 
-# Editing this README
+# For spark support
+pip install 'dist/dataquality-1.0.0-py3-none-any.whl[spark]'
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+# For both
+pip install 'dist/dataquality-1.0.0-py3-none-any.whl[all]'
+```
 
-## Suggestions for a good README
+### 4. Run the Demos
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+The repository includes demo scripts to showcase the library's functionality.
 
-## Name
-Choose a self-explaining name for your project.
+**Pandas Demo:**
+```bash
+python test/pandas_demo.py
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+**Spark Demo:**
+```bash
+python test/spark_demo.py
+```
+You should see a validation summary printed to your console. The scripts will also generate result files in the project's root directory.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## 🎯 The Core Concept: The Data Contract
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Instead of writing validation logic in Python, you declare it in a YAML file. This separates your rules from your code, making them easier to manage, version, and share.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+**Example `hdb_resale.yaml`:**
+```yaml
+kind: DataContract
+apiVersion: v3.0.2
+schema:
+  - name: hdb_resale_prices # This becomes the table name in your SQL queries
+    properties:
+      # --- Column-Level Check ---
+      - name: resale_price
+        quality:
+          - type: sql
+            name: "resale_price_positive"
+            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price <= 0"
+            mustBe: 0
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+\      - name: flat_type
+        quality:
+          - type: sql
+            name: "flat_type_enum"
+            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE flat_type NOT IN ('3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE')"
+            mustBe: 0
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+    # --- Table-Level Check ---
+    quality:
+      - type: sql
+        name: "no_null_resale_prices"
+        query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price IS NULL"
+        mustBe: 0
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## ⚡ Quick Start: Validate in 3 Lines
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+This is the fastest way to see `dqmk` in action.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```python
+import pandas as pd
+from dataquality import validate_data
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+# 1. Load your data
+df = pd.read_csv("test/HDBResale.csv")
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+# 2. Run the validation (context manager handles cleanup automatically)
+with validate_data(df, contract_path="src/dataquality/contracts/hdb_resale.yaml") as result:
+    # 3. Get a complete report
+    result.display_full_report()
+```
 
-## License
-For open source projects, say how it is licensed.
+**Output:**
+```
+=== Data Quality Validation Results ===
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+ OVERALL DATA QUALITY
+   Data Quality:     99.997%
+   Clean Records:         201,873 of 201,879 rows
+   Records with Issues:   6 row(s)
+
+ VALIDATION CHECKS
+   Total Rules Executed:  13
+   Rules Passed:          9
+   Rules Failed:          4
+   Check Pass Rate:       69.2%
+
+ PERFORMANCE
+   Total Execution:       836.67 ms
+
+=== Sample of Failed Rows (5 of 7 total) ===
+      month        town flat_type block       street_name storey_range  floor_area_sqm  ...
+0   2017-01  ANG MO KIO    3 ROOM   219  ANG MO KIO AVE 1     07 TO 09            67.0  ...
+...
+
+Results saved:
+   - Data:    dq_results_enhanced_data.csv
+   - Summary: dq_results_summary.json
+```
+
+---
+
+## 🔧 The `ValidationResult` Object: Your Toolkit
+
+The `validate_data` function returns a powerful `ValidationResult` object that provides multiple ways to interact with your validation results.
+
+### Core Methods
+
+| Method/Property | What It Does | Returns |
+|-----------------|--------------|---------|
+| **`print_summary()`** | Prints high-level statistics (pass/fail counts, success rate, performance) | `self` (chainable) |
+| **`show_failed_rows(max_rows=5)`** | Displays sample of failed rows in console | `self` (chainable) |
+| **`display_full_report()`** | Prints summary + shows failed rows (convenience method) | `self` (chainable) |
+| **`save(output_dir=".", prefix="dq_results")`** | Saves enhanced CSV and summary JSON to disk | `self` (chainable) |
+| **`get_enhanced_df()`** | Returns original DataFrame with `dq_validation_status` and `dq_failed_tests` columns | DataFrame |
+| **`get_failed_rows()`** | Returns DataFrame of only rows that failed, with `description` column | DataFrame or None |
+| **`get_passed_rows()`** | Returns DataFrame of only rows that passed all checks | DataFrame |
+| **`compute_metrics()`** | Returns rule-level metrics (source_table, dimension, dq_rule, pass_rate, etc.) | DataFrame |
+| **`.passed`** (property) | Boolean indicating if all checks passed | `True`/`False` |
+
+---
+
+## 💡 How It Works: Architecture
+
+`dqmk` has a simple but powerful architecture designed for flexibility and scale.
+
+1.  **Entrypoint (`validate_data`)**: When you call `validate_data`, it first inspects your DataFrame to determine its type.
+2.  **Engine Detection**:
+    *   If it's a `pandas.DataFrame`, it uses the **`PandasExecutor`**.
+    *   If it's a `pyspark.sql.DataFrame`, it uses the **`SparkExecutor`**.
+3.  **Execution**:
+    *   The `PandasExecutor` uses the **DuckDB** in-memory database to run your SQL queries against the pandas DataFrame.
+    *   The `SparkExecutor` uses the cluster's native **Spark SQL** engine, allowing for distributed validation on massive datasets.
+4.  **Enrichment & Return**: The executor runs each check, identifies any failing rows, and enhances the original DataFrame with `dq_validation_status` and `dq_failed_tests` columns. It then bundles this enhanced DataFrame and a detailed summary into the `ValidationResult` object and returns it.
+
+## ⚙️ Real-World Use Cases & Patterns
+
+Here’s how you can apply `dqmk` in different scenarios.
+
+### Interactive Analysis
+
+Quickly understand the quality of a new dataset.
+
+```python
+import pandas as pd
+from dataquality import validate_data
+
+df = pd.read_csv("new_dataset.csv")
+
+with validate_data(df, "contract.yaml") as result:
+    result.display_full_report()
+    
+    if not result.passed:
+        failed_df = result.get_failed_rows()
+        print(failed_df['description'].value_counts())
+```
+
+---
+
+### Production Pipeline with Quality checks
+
+Automated data routing based on validation results:
+
+```python
+from dataquality import validate_data
+
+raw_df = spark.read.table("staging.customer_uploads")
+
+with validate_data(raw_df, "contracts/customers.yaml") as result:
+    
+    if result.passed:
+        raw_df.write.mode("overwrite").saveAsTable("production.customers")
+    else:
+        result.get_failed_rows().write.mode("append").saveAsTable("quarantine.failed_customers")
+        result.get_passed_rows().write.mode("overwrite").saveAsTable("production.customers")
+```
+
+---
+
+### Custom Metrics & Monitoring
+
+Track quality trends over time:
+
+```python
+from dataquality import validate_data
+
+with validate_data(df, "contract.yaml") as result:
+    
+    metrics = result.compute_metrics()
+    
+    metrics.groupby('dimension').agg({
+        'failed_row_count': 'sum',
+        'pass_rate': 'mean'
+    }).to_csv(f"metrics_{today}.csv")
+```
+
