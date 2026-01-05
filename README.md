@@ -1,4 +1,4 @@
-# Data Quality Toolkit (dqmk)
+# Data Quality Monitoring Kit (dqmk)
 
 A powerful, SQL-based data quality validation library that works seamlessly with both **pandas** and **Spark** DataFrames. Define your validation rules once in a simple YAML file and get rich, actionable reports on your data's health.
 
@@ -256,4 +256,8 @@ with validate_data(df, "contract.yaml") as result:
         'pass_rate': 'mean'
     }).to_csv(f"metrics_{today}.csv")
 ```
+
+## 📄 License
+
+This project is licensed under the GovTech Public Sector Licence. Usage and modification of the source code are subject to the workflows defined in [CONTRIBUTING.md](CONTRIBUTING.md).
 
