@@ -1,0 +1,3 @@
+month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_id,tables_in_query
+2017-01,ANG MO KIO,3 ROOM,211,ANG MO KIO AVE 3,01 TO 03,67,New Generation,,59 years 03 months,325000,columns_must_be_not_null,hdb_resale_prices
+2017-01,ANG MO KIO,3 ROOM,330,ANG MO KIO AVE 1,07 TO 09,68,New Generation,,63 years,338000,columns_must_be_not_null,hdb_resale_prices
