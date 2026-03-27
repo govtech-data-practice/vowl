@@ -10,7 +10,6 @@ Covers:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import pandas as pd
 import pyarrow as pa
@@ -79,6 +78,7 @@ class TestIbisAdapterExport:
 
     def test_basic_export(self, employee_list_df):
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
 
         con = ibis.duckdb.connect()
@@ -93,6 +93,7 @@ class TestIbisAdapterExport:
 
     def test_export_with_filter_conditions(self, employee_payroll_df):
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
         from vowl.adapters.models import FilterCondition
 
@@ -117,6 +118,7 @@ class TestIbisAdapterExport:
 
     def test_export_with_wildcard_filter(self, employee_payroll_df):
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
         from vowl.adapters.models import FilterCondition
 
@@ -139,6 +141,7 @@ class TestIbisAdapterExport:
 
     def test_export_returns_all_rows_without_filter(self, employee_list_df):
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
 
         con = ibis.duckdb.connect()
@@ -151,6 +154,7 @@ class TestIbisAdapterExport:
 
     def test_export_sqlite_backend(self, employee_list_df, tmp_path):
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
 
         sqlite_path = tmp_path / "test.db"
@@ -176,6 +180,7 @@ class TestMultiSourceMode2ViaExport:
     ):
         """Cross-backend queries materialize via export_table_as_arrow and run in DuckDB."""
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
         from vowl.adapters.multi_source_adapter import MultiSourceAdapter
         from vowl.contracts.contract import Contract
@@ -210,6 +215,7 @@ class TestMultiSourceMode2ViaExport:
     def test_mode2_does_not_double_filter(self, employee_payroll_df, employee_list_df):
         """When mode 2 is used, filters are baked into the exported table, not re-applied at query time."""
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
         from vowl.adapters.models import FilterCondition
         from vowl.adapters.multi_source_adapter import MultiSourceAdapter
@@ -271,7 +277,7 @@ class TestCustomAdapterMode2:
         class ArrowTableAdapter(BaseAdapter):
             """Stores data as in-memory Arrow tables, supports export."""
 
-            def __init__(self, tables: Dict[str, pa.Table]):
+            def __init__(self, tables: dict[str, pa.Table]):
                 super().__init__()
                 self._tables = dict(tables)
 
@@ -280,7 +286,7 @@ class TestCustomAdapterMode2:
                     raise ValueError(f"Table '{schema_name}' not found")
                 return self._tables[schema_name]
 
-            def test_connection(self, table_name: str) -> Optional[str]:
+            def test_connection(self, table_name: str) -> str | None:
                 if table_name in self._tables:
                     return None
                 return f"table '{table_name}' not found"
@@ -305,6 +311,7 @@ class TestCustomAdapterMode2:
         uses a custom adapter, forcing mode 2 materialization.
         """
         import ibis
+
         from vowl.adapters.ibis_adapter import IbisAdapter
         from vowl.adapters.multi_source_adapter import MultiSourceAdapter
         from vowl.contracts.contract import Contract
@@ -345,6 +352,7 @@ class TestCustomAdapterMode2:
     def test_adapter_without_export_raises_in_mode2(self, employee_payroll_df):
         """An adapter that does NOT implement export_table_as_arrow fails cleanly in mode 2."""
         import ibis
+
         from vowl.adapters.base import BaseAdapter
         from vowl.adapters.ibis_adapter import IbisAdapter
         from vowl.adapters.multi_source_adapter import MultiSourceAdapter
@@ -353,7 +361,7 @@ class TestCustomAdapterMode2:
         class NoExportAdapter(BaseAdapter):
             """Adapter with no export_table_as_arrow override."""
 
-            def test_connection(self, table_name: str) -> Optional[str]:
+            def test_connection(self, table_name: str) -> str | None:
                 return None
 
         payroll_con = ibis.duckdb.connect()
@@ -391,6 +399,7 @@ class TestModeSelection:
     def test_mixed_adapters_fall_back_to_mode2(self, employee_payroll_df, employee_list_df):
         """When adapters are mixed (Ibis + custom), mode 1 is skipped and mode 2 runs."""
         import ibis
+
         from vowl.adapters.base import BaseAdapter
         from vowl.adapters.ibis_adapter import IbisAdapter
         from vowl.adapters.multi_source_adapter import MultiSourceAdapter

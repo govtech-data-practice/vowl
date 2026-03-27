@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from .check_reference_base import CheckReference, TableCheckMixin, ColumnCheckMixin
+from .check_reference_base import CheckReference, ColumnCheckMixin, TableCheckMixin
 
 if TYPE_CHECKING:
     from .contract import Contract
@@ -18,7 +18,7 @@ class UnsupportedCheckReference(CheckReference):
     and a descriptive message.
     """
 
-    def __init__(self, contract: "Contract", path: str, error_message: str):
+    def __init__(self, contract: Contract, path: str, error_message: str):
         super().__init__(contract, path)
         self._error_message = error_message
 
@@ -26,7 +26,7 @@ class UnsupportedCheckReference(CheckReference):
     def error_message(self) -> str:
         return self._error_message
 
-    def get_schema_name(self) -> Optional[str]:
+    def get_schema_name(self) -> str | None:
         return None
 
     def get_schema_path(self) -> str:

@@ -30,7 +30,6 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypedDict, Union
 
-
 # =============================================================================
 # Type Aliases (replacing Enums with Literal unions for flexibility)
 # =============================================================================
@@ -431,7 +430,7 @@ class DataContract(TypedDict, total=False):
     kind: Literal["DataContract"]  # Required in schema
     id: str  # Required in schema
     status: str  # Required in schema
-    
+
     # Optional fields
     name: str
     tenant: str

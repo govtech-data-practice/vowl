@@ -1,18 +1,13 @@
-import yaml
-from typing import Dict, Any, List, Optional, TYPE_CHECKING
 import os
 import re
 import warnings
-from urllib.parse import urlparse
-import tempfile
+from typing import TYPE_CHECKING, Any
 
+import yaml
 from jsonpath_ng import parse as jsonpath_parse
-import sqlglot
-from sqlglot import exp
 
-from .models import validate_contract, SUPPORTED_VERSIONS
-
-from .models.ODCS_types import DataContract, DataQuality, Server
+from .models import SUPPORTED_VERSIONS, validate_contract
+from .models.ODCS_types import DataContract, Server
 
 if TYPE_CHECKING:
     from .check_reference import CheckReference
@@ -31,10 +26,10 @@ class Contract:
     Attributes:
         contract_data (Dict[str, Any]): The parsed contract data from YAML or JSON
     """
-     
-    def __init__(self, contract_data: Dict[str, Any]):
+
+    def __init__(self, contract_data: dict[str, Any]):
         self.contract_data: DataContract = contract_data
-        
+
         # Validate on construction using jsonschema
         api_version = contract_data.get("apiVersion")
         if not api_version:
@@ -71,21 +66,21 @@ class Contract:
                 "It is included in base installation; please reinstall vowl "
                 "or verify your Python environment."
             )
-        
+
         # Convert blob URLs to raw URLs
         raw_url = url
         if "github.com" in url and "/blob/" in url:
             raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
         elif "gitlab.com" in url and "/-/blob/" in url:
             raw_url = url.replace("/-/blob/", "/-/raw/")
-        
+
         try:
             response = requests.get(raw_url, timeout=30)
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
-            raise IOError(f"Error fetching contract from URL {url}: {e}")
-    
+            raise OSError(f"Error fetching contract from URL {url}: {e}")
+
     @classmethod
     def _fetch_from_s3_uri(cls, s3_path: str) -> str:
         """
@@ -112,22 +107,22 @@ class Contract:
                 "It is included in base installation; please reinstall vowl "
                 "or verify your Python environment."
             )
-        
+
         # Parse S3 path
         match = re.match(r's3://([^/]+)/(.+)', s3_path)
         if not match:
             raise ValueError(f"Invalid S3 path format: {s3_path}")
-        
+
         bucket_name = match.group(1)
         object_key = match.group(2)
-        
+
         try:
             s3_client = boto3.client('s3')
             response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
             return response['Body'].read().decode('utf-8')
         except Exception as e:
-            raise IOError(f"Error fetching contract from S3 {s3_path}: {e}")
-    
+            raise OSError(f"Error fetching contract from S3 {s3_path}: {e}")
+
     @classmethod
     def load(cls, contract_file_path: str) -> "Contract":
         """
@@ -157,7 +152,7 @@ class Contract:
         """
         # Determine the source type and fetch content
         contract_content = None
-        
+
         # Check if it's an S3 path
         if contract_file_path.startswith("s3://"):
             contract_content = cls._fetch_from_s3_uri(contract_file_path)
@@ -168,13 +163,13 @@ class Contract:
         else:
             if not os.path.exists(contract_file_path):
                 raise FileNotFoundError(f"Contract file not found: {contract_file_path}")
-            
+
             try:
-                with open(contract_file_path, mode="r", encoding="utf-8") as yaml_file:
+                with open(contract_file_path, encoding="utf-8") as yaml_file:
                     contract_content = yaml_file.read()
             except Exception as file_reading_error:
-                raise IOError(f"Error reading {contract_file_path}: {file_reading_error}")
-        
+                raise OSError(f"Error reading {contract_file_path}: {file_reading_error}")
+
         # Parse contract content (YAML parser also accepts JSON)
         try:
             contract_data = yaml.safe_load(contract_content)
@@ -186,8 +181,8 @@ class Contract:
             )
 
         return cls(contract_data)
-    
-    def get_schema_properties(self) -> Dict[str, Any]:
+
+    def get_schema_properties(self) -> dict[str, Any]:
         """
         Returns the entire dictionary of properties for the first schema entry.
         This includes name, data_domain_name, and any other custom properties.
@@ -196,11 +191,11 @@ class Contract:
             return self.contract_data['schema'][0]
         return {}
 
-    def get_version(self) -> Optional[str]:
+    def get_version(self) -> str | None:
         """Returns the version from the contract's metadata."""
         return self.contract_data.get("version")
-    
-    def get_metadata(self) -> Dict[str, Any]:
+
+    def get_metadata(self) -> dict[str, Any]:
         """
         Extract metadata information from the contract.
         
@@ -241,17 +236,17 @@ class Contract:
         try:
             expr = jsonpath_parse(jsonpath)
             matches = expr.find(self.contract_data)
-            
+
             if len(matches) == 0:
                 return None
-            
+
             if len(matches) > 1:
                 warnings.warn(
                     f"JSONPath '{jsonpath}' matched {len(matches)} elements (expected 1)",
                     UserWarning,
                     stacklevel=2,
                 )
-            
+
             # Return first match's value
             return matches[0].value
         except Exception as e:
@@ -282,7 +277,7 @@ class Contract:
         # Simple string-based approach: split by '.' and '[', remove levels
         # $.schema[0].properties[2].quality[0]
         # Split into segments: ['$', 'schema[0]', 'properties[2]', 'quality[0]']
-        
+
         # Handle the path by splitting on '.' but keeping array indices
         parts = []
         current = ""
@@ -294,18 +289,18 @@ class Contract:
                 current += char
         if current:
             parts.append(current)
-        
+
         # Remove 'levels' number of segments from end
         # Each "level" is one segment (e.g., "quality[0]" or "properties[2]")
         if levels >= len(parts):
             return "$"
-        
+
         remaining = parts[:-levels]
         return ".".join(remaining)
 
     def get_check_references_by_schema(
         self,
-    ) -> Dict[str, List["CheckReference"]]:
+    ) -> dict[str, list["CheckReference"]]:
         """
         Extract check references grouped by schema name.
         
@@ -329,28 +324,28 @@ class Contract:
             ...         print(f"{ref.get_check().get('name')}: {ref.get_logical_type()}")
         """
         from .check_reference import (
+            LOGICAL_TYPE_TO_SQL,
             CheckReference,
-            SQLTableCheckReference,
-            SQLColumnCheckReference,
             DeclaredColumnExistsCheckReference,
             LogicalTypeCheckReference,
             LogicalTypeOptionsCheckReference,
-            RequiredCheckReference,
-            UniqueCheckReference,
             PrimaryKeyCheckReference,
-            LOGICAL_TYPE_TO_SQL,
+            RequiredCheckReference,
+            SQLColumnCheckReference,
+            SQLTableCheckReference,
+            UniqueCheckReference,
+        )
+        from .check_reference_custom import (
+            CustomColumnCheckReference,
+            CustomTableCheckReference,
         )
         from .check_reference_library_metrics import (
             LIBRARY_COLUMN_METRICS,
             LIBRARY_TABLE_METRICS,
         )
-        from .check_reference_custom import (
-            CustomTableCheckReference,
-            CustomColumnCheckReference,
-        )
         from .check_reference_unsupported import (
-            UnsupportedTableCheckReference,
             UnsupportedColumnCheckReference,
+            UnsupportedTableCheckReference,
         )
 
         TABLE_CHECK_TYPES = {
@@ -361,17 +356,17 @@ class Contract:
             "sql": SQLColumnCheckReference,
             "custom": CustomColumnCheckReference,
         }
-        
-        refs_by_schema: Dict[str, List[CheckReference]] = {}
-        
+
+        refs_by_schema: dict[str, list[CheckReference]] = {}
+
         schema_list = self.contract_data.get('schema', [])
         for schema_idx, schema_obj in enumerate(schema_list):
             schema_name = schema_obj.get('name')
             if not schema_name:
                 continue
-            
+
             refs_by_schema[schema_name] = []
-            
+
             # Auto-generated checks from property attributes (run first)
             properties = schema_obj.get('properties', [])
             for prop_idx, prop in enumerate(properties):
@@ -383,7 +378,7 @@ class Contract:
                     refs_by_schema[schema_name].append(
                         DeclaredColumnExistsCheckReference(self, prop_path)
                     )
-                
+
                 # Type checks for columns with logicalType
                 logical_type = prop.get('logicalType')
                 if logical_type:
@@ -399,7 +394,7 @@ class Contract:
                             UserWarning,
                             stacklevel=2,
                         )
-                
+
                 # LogicalTypeOptions checks
                 logical_type_options = prop.get('logicalTypeOptions')
                 if logical_type_options:
@@ -414,25 +409,25 @@ class Contract:
                             except ValueError:
                                 # Unsupported option - warning already issued in __init__
                                 pass
-                
+
                 # Required checks for columns with required: true
                 if prop.get('required') is True:
                     refs_by_schema[schema_name].append(
                         RequiredCheckReference(self, prop_path)
                     )
-                
+
                 # Unique checks for columns with unique: true
                 if prop.get('unique') is True:
                     refs_by_schema[schema_name].append(
                         UniqueCheckReference(self, prop_path)
                     )
-                
+
                 # Primary key checks for columns with primaryKey: true
                 if prop.get('primaryKey') is True:
                     refs_by_schema[schema_name].append(
                         PrimaryKeyCheckReference(self, prop_path)
                     )
-            
+
             # Table-level checks
             table_quality = schema_obj.get('quality', [])
             for qual_idx in range(len(table_quality)):
@@ -468,7 +463,7 @@ class Contract:
                         refs_by_schema[schema_name].append(
                             table_cls(self, check_path)
                         )
-            
+
             # Column-level checks
             properties = schema_obj.get('properties', [])
             for prop_idx, prop in enumerate(properties):
@@ -507,10 +502,10 @@ class Contract:
                             refs_by_schema[schema_name].append(
                                 col_cls(self, check_path)
                             )
-        
+
         return refs_by_schema
 
-    def get_servers(self) -> List[Server]:
+    def get_servers(self) -> list[Server]:
         """
         Get all servers defined in the contract.
         
@@ -519,7 +514,7 @@ class Contract:
         """
         return self.contract_data.get('servers', [])
 
-    def get_server(self, server_name: Optional[str] = None) -> Server:
+    def get_server(self, server_name: str | None = None) -> Server:
         """
         Get a server configuration from the contract.
 
@@ -572,7 +567,7 @@ class Contract:
             f"Available servers: {available}"
         )
 
-    def get_schema_names(self) -> List[str]:
+    def get_schema_names(self) -> list[str]:
         """
         Get the names of all schemas defined in the contract.
         

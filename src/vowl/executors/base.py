@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 import pyarrow as pa
 
 from vowl.executors.security import (
-    SQLSecurityError,
     validate_query_security,
 )
 
@@ -33,11 +33,11 @@ class CheckResult:
         details: str,
         actual_value: Any = None,
         expected_value: Any = None,
-        failed_rows: Optional[nw.DataFrame] = None,
-        failed_rows_fetcher: Optional[Callable[[], Optional[nw.DataFrame]]] = None,
+        failed_rows: nw.DataFrame | None = None,
+        failed_rows_fetcher: Callable[[], nw.DataFrame | None] | None = None,
         failed_rows_count: int = 0,
         supports_row_level_output: bool = False,
-        metadata: Dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         execution_time_ms: float = 0.0,
     ):
         """
@@ -68,7 +68,7 @@ class CheckResult:
         self.details = details
         self.actual_value = actual_value
         self.expected_value = expected_value
-        self._failed_rows: Optional[nw.DataFrame] = failed_rows
+        self._failed_rows: nw.DataFrame | None = failed_rows
         self._failed_rows_fetcher = failed_rows_fetcher
         self._failed_rows_count = failed_rows_count
         self._supports_row_level_output = supports_row_level_output
@@ -123,7 +123,7 @@ class BaseExecutor(ABC):
         return self._adapter
 
     @abstractmethod
-    def run_single_check(self, check_ref: "CheckReference") -> CheckResult:
+    def run_single_check(self, check_ref: CheckReference) -> CheckResult:
         """
         Execute a single data quality check.
 
@@ -136,7 +136,7 @@ class BaseExecutor(ABC):
         pass
 
     @abstractmethod
-    def run_batch_checks(self, check_refs: list["CheckReference"]) -> list[CheckResult]:
+    def run_batch_checks(self, check_refs: list[CheckReference]) -> list[CheckResult]:
         """
         Execute multiple data quality checks.
 
@@ -165,7 +165,7 @@ class SQLExecutor(BaseExecutor):
             which is widely compatible with most SQL databases (PostgreSQL, DuckDB,
             Snowflake, etc.). Override in subclasses if a specific dialect is needed.
     """
-    
+
     # SQL dialect for sqlglot parsing/generation of **input** queries.
     # "postgres" is used as the default because all queries are generated
     # in postgres dialect by the check reference layer (via sqlglot).
@@ -186,13 +186,13 @@ class SQLExecutor(BaseExecutor):
     def _deduplicate_arrow_columns(table: pa.Table) -> pa.Table:
         """Return an Arrow table with deterministic unique column names."""
         column_names = table.column_names
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         duplicated_names = {name for name in column_names if column_names.count(name) > 1}
 
         if not duplicated_names:
             return table
 
-        renamed_columns: List[str] = []
+        renamed_columns: list[str] = []
         for name in column_names:
             if name in duplicated_names:
                 index = counts.get(name, 0)
@@ -205,7 +205,7 @@ class SQLExecutor(BaseExecutor):
 
     def __init__(
         self,
-        adapter: "BaseAdapter",
+        adapter: BaseAdapter,
         use_try_cast: bool = True,
     ) -> None:
         """

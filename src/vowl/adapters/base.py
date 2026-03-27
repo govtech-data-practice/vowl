@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import warnings
 from abc import ABC
 from collections import defaultdict
-import warnings
-from typing import TYPE_CHECKING, Dict, List, Optional, Type
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
@@ -24,7 +24,7 @@ class BaseAdapter(ABC):
     expose methods for executors to interact with the data source.
     """
 
-    def __init__(self, executors: Optional[Dict[str, Type["BaseExecutor"]]] = None) -> None:
+    def __init__(self, executors: dict[str, type[BaseExecutor]] | None = None) -> None:
         """
         Initialize the adapter.
         
@@ -32,11 +32,11 @@ class BaseAdapter(ABC):
             executors: Optional mapping of engine names to executor classes.
                        If None, an empty registry is created.
         """
-        self._executors: Dict[str, Type["BaseExecutor"]] = executors.copy() if executors else {}
+        self._executors: dict[str, type[BaseExecutor]] = executors.copy() if executors else {}
         self.max_failed_rows: int = -1
         self.use_try_cast: bool = True
 
-    def get_executors(self) -> Dict[str, Type["BaseExecutor"]]:
+    def get_executors(self) -> dict[str, type[BaseExecutor]]:
         """
         Get the mapping of engine names to executor classes.
         
@@ -46,7 +46,7 @@ class BaseAdapter(ABC):
         """
         return self._executors.copy()
 
-    def set_executors(self, executors: Dict[str, Type["BaseExecutor"]]) -> None:
+    def set_executors(self, executors: dict[str, type[BaseExecutor]]) -> None:
         """
         Replace the entire executor configuration.
         
@@ -55,7 +55,7 @@ class BaseAdapter(ABC):
         """
         self._executors = executors.copy()
 
-    def _get_executor(self, engine: str) -> "BaseExecutor":
+    def _get_executor(self, engine: str) -> BaseExecutor:
         """
         Create an executor instance for an engine.
         
@@ -68,7 +68,7 @@ class BaseAdapter(ABC):
         Raises:
             NotImplementedError: If no executor is registered for the engine.
         """
-        executor_class: Optional[Type["BaseExecutor"]] = self._executors.get(engine)
+        executor_class: type[BaseExecutor] | None = self._executors.get(engine)
         if executor_class is None:
             available = ', '.join(sorted(self._executors.keys())) or 'none'
             raise NotImplementedError(
@@ -86,7 +86,7 @@ class BaseAdapter(ABC):
         )
         return 0
 
-    def test_connection(self, table_name: str) -> Optional[str]:
+    def test_connection(self, table_name: str) -> str | None:
         """
         Test whether the adapter can connect and access a table.
 
@@ -105,7 +105,7 @@ class BaseAdapter(ABC):
         )
         return "not supported: test_connection is not implemented for this adapter"
 
-    def is_compatible_with(self, other: "BaseAdapter") -> bool:
+    def is_compatible_with(self, other: BaseAdapter) -> bool:
         """Whether this adapter can execute queries jointly with *other*.
 
         Two adapters are compatible when a SQL query referencing tables
@@ -150,8 +150,8 @@ class BaseAdapter(ABC):
 
     def run_checks(
         self,
-        check_refs: List["CheckReference"],
-    ) -> List["CheckResult"]:
+        check_refs: list[CheckReference],
+    ) -> list[CheckResult]:
         """
         Execute data quality checks by dispatching to appropriate executors.
         
@@ -168,8 +168,8 @@ class BaseAdapter(ABC):
             ValueError: If a check type has no registered executor.
         """
         # Group check references by type
-        all_results: List["CheckResult"] = []
-        refs_by_type: Dict[str, List["CheckReference"]] = defaultdict(list)
+        all_results: list[CheckResult] = []
+        refs_by_type: dict[str, list[CheckReference]] = defaultdict(list)
         for check_ref in check_refs:
             # Unsupported refs produce ERROR results immediately
             from vowl.contracts.check_reference_unsupported import UnsupportedCheckReference
@@ -187,7 +187,7 @@ class BaseAdapter(ABC):
                 continue
             engine = check_ref.get_execution_engine()
             refs_by_type[engine].append(check_ref)
-        
+
         # Process each engine
         for engine, type_refs in refs_by_type.items():
             try:
@@ -206,6 +206,6 @@ class BaseAdapter(ABC):
                     )
                     for ref in type_refs
                 ])
-        
+
         return all_results
 

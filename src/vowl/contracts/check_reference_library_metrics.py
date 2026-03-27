@@ -7,8 +7,7 @@ executed through the standard SQL executor pipeline.
 
 from __future__ import annotations
 
-import warnings
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import sqlglot
 from sqlglot import exp
@@ -19,10 +18,10 @@ from .check_reference_generated import (
 )
 
 if TYPE_CHECKING:
+    from vowl.adapters.models import FilterCondition
+
     from .contract import Contract
     from .models.ODCS_types import DataQuality
-
-    from vowl.adapters.models import FilterCondition
 
     FilterConditionType = FilterCondition | list[FilterCondition] | dict[str, Any]
 else:
@@ -74,20 +73,20 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
     so the path points at the quality entry itself.
     """
 
-    def __init__(self, contract: "Contract", quality_path: str, property_path: str):
+    def __init__(self, contract: Contract, quality_path: str, property_path: str):
         # Bypass GeneratedColumnCheckReference.__init__ which appends a
         # path_suffix to the property path.  We already have the full path.
         super(GeneratedColumnCheckReference, self).__init__(contract, quality_path)
         self._property_path = property_path
-        self._generated_check: Optional["DataQuality"] = None
-        self._cached_ast: Optional[exp.Expression] = None
+        self._generated_check: DataQuality | None = None
+        self._cached_ast: exp.Expression | None = None
 
     # The check dict is the *original* quality entry from the contract,
     # which already carries metric, operators, unit, etc.
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         return self._contract.resolve(self._path)
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         return self.get_check()
 
     def _is_percent(self) -> bool:
@@ -217,8 +216,8 @@ class InvalidValuesCheckReference(_LibraryColumnMetricBase):
 
         check = self.get_check()
         args = check.get("arguments") or {}
-        valid_values: Optional[list] = args.get("validValues")
-        pattern: Optional[str] = args.get("pattern")
+        valid_values: list | None = args.get("validValues")
+        pattern: str | None = args.get("pattern")
 
         if not valid_values and not pattern:
             raise ValueError(
@@ -323,10 +322,10 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
 class RowCountCheckReference(_LibraryTableMetricBase):
     """``rowCount`` — total number of rows in a table."""
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         return self._contract.resolve(self._path)
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         return self.get_check()
 
     def _build_ast(self) -> exp.Expression:
@@ -348,10 +347,10 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
     Expects ``arguments.properties`` listing the column names to check.
     """
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         return self._contract.resolve(self._path)
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         return self.get_check()
 
     def _is_percent(self) -> bool:
@@ -368,7 +367,7 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
 
         check = self.get_check()
         args = check.get("arguments") or {}
-        prop_names: Optional[List[str]] = args.get("properties")
+        prop_names: list[str] | None = args.get("properties")
         if not prop_names:
             raise ValueError(
                 f"Schema-level duplicateValues metric at {self._path} requires "

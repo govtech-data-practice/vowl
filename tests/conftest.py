@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import narwhals as nw
 import pandas as pd
 import pytest
-import narwhals as nw
 
 import vowl
 from vowl import validate as validate_module

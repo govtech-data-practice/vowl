@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from typing import Any
 
 import narwhals as nw
 
@@ -12,7 +13,7 @@ from .result_models import RowQualitySummary
 
 def get_eligible_schema_names(
     eligible_checks: Iterable[CheckResult],
-    total_rows_by_schema: Dict[str, int],
+    total_rows_by_schema: dict[str, int],
 ) -> set[str]:
     return {
         schema_name
@@ -25,7 +26,7 @@ def get_eligible_schema_names(
 def select_relevant_failed_row_columns(
     schema_name: str,
     failed_rows: nw.DataFrame,
-    schema_columns: Dict[str, list[str]],
+    schema_columns: dict[str, list[str]],
     excluded_columns: Sequence[str],
 ) -> list[str]:
     relevant_columns = [

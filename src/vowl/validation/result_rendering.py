@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
 
 import pyarrow as pa
 
@@ -40,7 +40,7 @@ def get_summary_metric_width() -> int:
     return max(len(label) for label in SUMMARY_LABELS)
 
 
-def get_tables_in_query(check_result: CheckResult) -> List[str]:
+def get_tables_in_query(check_result: CheckResult) -> list[str]:
     tables_in_query = check_result.metadata.get('tables_in_query', [])
     if isinstance(tables_in_query, str):
         return [table_name.strip() for table_name in tables_in_query.split(',') if table_name.strip()]
@@ -62,7 +62,7 @@ def get_field_label(check_result: CheckResult) -> str:
 
 
 def build_check_results_table(
-    check_results: List[CheckResult],
+    check_results: list[CheckResult],
 ) -> pa.Table:
     return pa.table({
         'check_id': [check_result.check_name for check_result in check_results],
@@ -76,7 +76,7 @@ def build_check_results_table(
     })
 
 
-def format_ascii_table(table: pa.Table, divider_before_rows: Optional[Sequence[int]] = None) -> str:
+def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | None = None) -> str:
     column_names = list(table.column_names)
     if not column_names:
         return "(no columns)"
@@ -123,7 +123,7 @@ def format_unique_passed_rows(single_table: SingleTableSummary) -> str:
 def _check_status_lines(
     status_summary: CheckStatusSummary,
     label_width: int,
-) -> List[str]:
+) -> list[str]:
     return [
         format_summary_metric(
             "       ", "Checks Pass Rate:",
@@ -221,7 +221,7 @@ def build_check_results_section(
     if not sorted_check_results:
         return ""
 
-    divider_before_rows: List[int] = []
+    divider_before_rows: list[int] = []
     previous_status = None
     for row_index, check_result in enumerate(sorted_check_results):
         if previous_status is not None and check_result.status != previous_status:

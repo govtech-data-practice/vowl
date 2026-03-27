@@ -11,10 +11,10 @@ import pytest
 
 from vowl.executors.security import (
     SQLSecurityError,
-    validate_read_only_query,
-    validate_query_security,
     detect_sql_injection,
     sanitize_identifier,
+    validate_query_security,
+    validate_read_only_query,
 )
 
 
@@ -396,11 +396,11 @@ class TestEdgeCases:
         # Test uppercase
         with pytest.raises(SQLSecurityError):
             validate_read_only_query("INSERT INTO users VALUES (1)")
-        
+
         # Test lowercase
         with pytest.raises(SQLSecurityError):
             validate_read_only_query("insert into users values (1)")
-        
+
         # Test mixed case
         with pytest.raises(SQLSecurityError):
             validate_read_only_query("InSeRt InTo users VALUES (1)")

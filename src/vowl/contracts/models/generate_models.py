@@ -18,12 +18,12 @@ Usage:
 
 import argparse
 import re
+
 # Bandit B404: This is a trusted, repository-maintained developer utility script
 # that intentionally invokes a local codegen CLI; subprocess is required here.
 import subprocess  # nosec B404
 import sys
 from pathlib import Path
-
 
 # Default paths (script is now in models/ directory)
 DEFAULT_SCHEMAS_DIR = Path(__file__).parent / "schemas"
@@ -71,11 +71,11 @@ def generate_model(schema_path: Path, output_dir: Path) -> Path:
     version = extract_version_from_schema_name(schema_path)
     module_name = version_to_module_name(version, raw=True)
     output_file = output_dir / f"{module_name}.py"
-    
+
     print(f"Generating model for {version}...")
     print(f"  Schema: {schema_path}")
     print(f"  Output: {output_file}")
-    
+
     # Build datamodel-codegen command
     cmd = [
         sys.executable, "-m", "datamodel_code_generator",
@@ -105,7 +105,7 @@ def generate_model(schema_path: Path, output_dir: Path) -> Path:
         "--use-double-quotes",
         "--wrap-string-literal",
     ]
-    
+
     try:
         # Bandit B603: Command is constructed as a fixed argument list (no shell)
         # with trusted local inputs (schema/output paths) in this dev-only workflow.
@@ -115,7 +115,7 @@ def generate_model(schema_path: Path, output_dir: Path) -> Path:
             text=True,
             check=True
         )  # nosec B603
-        print(f"  Success!")
+        print("  Success!")
         if result.stdout:
             print(f"  {result.stdout}")
         return output_file
@@ -134,7 +134,7 @@ def update_models_init(models_dir: Path, versions: list[str]) -> None:
     """
     # Sort versions in descending order (newest first)
     sorted_versions = sorted(versions, key=lambda v: [int(x) for x in v[1:].split(".")], reverse=True)
-    
+
     # Generate imports (use refactored modules, not raw)
     imports = []
     raw_imports = []
@@ -145,7 +145,7 @@ def update_models_init(models_dir: Path, versions: list[str]) -> None:
         imports.append(f"from . import {module_name}")
         raw_imports.append(f"from . import {raw_module_name}")
         version_map_entries.append(f'    "{version}": {module_name},')
-    
+
     init_content = f'''#!/usr/bin/env python3
 """
 ODCS Pydantic Models - Auto-generated from JSON schemas.
@@ -223,7 +223,7 @@ __all__ = [
     "VERSION_MAP",
 ]
 '''
-    
+
     init_file = models_dir / "__init__.py"
     init_file.write_text(init_content)
     print(f"Updated {init_file}")
@@ -267,9 +267,9 @@ def main():
         action="store_true",
         help="Skip updating __init__.py in the models directory."
     )
-    
+
     args = parser.parse_args()
-    
+
     # Determine which schemas to process
     if args.schema:
         if not args.schema.exists():
@@ -284,10 +284,10 @@ def main():
     else:
         parser.print_help()
         sys.exit(1)
-    
+
     # Ensure output directory exists
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate models
     versions = []
     for schema_path in schemas:
@@ -298,11 +298,11 @@ def main():
         except Exception as e:
             print(f"Error processing {schema_path}: {e}", file=sys.stderr)
             sys.exit(1)
-    
+
     # Update __init__.py
     if not args.no_update_init and versions:
         update_models_init(args.output_dir, versions)
-    
+
     print(f"\nGenerated {len(versions)} model(s) successfully!")
 
 

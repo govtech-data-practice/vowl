@@ -198,7 +198,7 @@ class TestMySQLConnection:
 
     def test_mysql_with_filter_conditions(self, mysql_connection, contract_path):
         from vowl import validate_data
-        from vowl.adapters import IbisAdapter, FilterCondition
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         adapter = IbisAdapter(
             mysql_connection,
@@ -401,7 +401,7 @@ class TestMSSQLConnection:
 
     def test_mssql_with_filter_conditions(self, mssql_connection, contract_path):
         from vowl import validate_data
-        from vowl.adapters import IbisAdapter, FilterCondition
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         adapter = IbisAdapter(
             mssql_connection,
@@ -566,7 +566,7 @@ class TestOracleConnection:
 
     def test_oracle_with_filter_conditions(self, oracle_connection, contract_path):
         from vowl import validate_data
-        from vowl.adapters import IbisAdapter, FilterCondition
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         adapter = IbisAdapter(
             oracle_connection,
@@ -660,6 +660,7 @@ class TestCrossBackendIntegration:
     ):
         """Verify adapters can coexist from different backends."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter
 
         # MySQL adapter
@@ -744,6 +745,7 @@ class TestCrossBackendIntegration:
     def test_mysql_and_duckdb_together(self, mysql_container, sample_dataframe):
         """Test using MySQL container alongside in-memory DuckDB."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter
 
         # MySQL

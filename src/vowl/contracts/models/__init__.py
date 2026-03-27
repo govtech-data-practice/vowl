@@ -68,10 +68,10 @@ SCHEMA_FILES = {
 SUPPORTED_VERSIONS = list(SCHEMA_FILES.keys())
 
 # Cache for loaded schemas
-_schema_cache: Dict[str, Any] = {}
+_schema_cache: dict[str, Any] = {}
 
 
-def _load_schema(api_version: str) -> Dict[str, Any]:
+def _load_schema(api_version: str) -> dict[str, Any]:
     """Load and cache a JSON schema for the given API version."""
     if api_version not in _schema_cache:
         if api_version not in SCHEMA_FILES:
@@ -80,18 +80,18 @@ def _load_schema(api_version: str) -> Dict[str, Any]:
                 f"Unsupported API version: {api_version}. "
                 f"Supported versions: {supported}"
             )
-        
+
         schema_path = SCHEMAS_DIR / SCHEMA_FILES[api_version]
         if not schema_path.exists():
             raise FileNotFoundError(f"Schema file not found: {schema_path}")
-        
-        with open(schema_path, "r", encoding="utf-8") as f:
+
+        with open(schema_path, encoding="utf-8") as f:
             _schema_cache[api_version] = json.load(f)
-    
+
     return _schema_cache[api_version]
 
 
-def validate_contract(contract_data: Dict[str, Any], api_version: str | None = None) -> None:
+def validate_contract(contract_data: dict[str, Any], api_version: str | None = None) -> None:
     """
     Validate contract data against the ODCS JSON schema.
     
@@ -116,12 +116,12 @@ def validate_contract(contract_data: Dict[str, Any], api_version: str | None = N
                 "Contract does not specify an apiVersion. "
                 f"Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
-    
+
     schema = _load_schema(api_version)
     jsonschema.validate(instance=contract_data, schema=schema)
 
 
-def get_schema(api_version: str) -> Dict[str, Any]:
+def get_schema(api_version: str) -> dict[str, Any]:
     """
     Get the JSON schema for the specified API version.
     
@@ -148,7 +148,7 @@ __all__ = [
     "get_schema",
     "ValidationError",
     # Version info
-    "get_latest_version", 
+    "get_latest_version",
     "SUPPORTED_VERSIONS",
     # Core types (for type hints)
     "DataContract",

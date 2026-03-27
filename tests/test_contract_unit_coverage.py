@@ -10,11 +10,11 @@ import yaml
 
 from vowl import DataSourceMapper
 from vowl.contracts.check_reference import (
-    SQLColumnCheckReference,
     DeclaredColumnExistsCheckReference,
     LogicalTypeCheckReference,
     PrimaryKeyCheckReference,
     RequiredCheckReference,
+    SQLColumnCheckReference,
     SQLTableCheckReference,
     UniqueCheckReference,
 )

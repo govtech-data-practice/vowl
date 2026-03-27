@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -21,8 +20,8 @@ class SingleTableSummary(CheckStatusSummary):
 
     failed_unique_rows: int
     passed_unique_rows: int
-    total_rows: Optional[int]
-    passed_row_percentage: Optional[float]
+    total_rows: int | None
+    passed_row_percentage: float | None
 
 
 @dataclass(frozen=True)

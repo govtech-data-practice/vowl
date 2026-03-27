@@ -4,12 +4,12 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import conftest as test_conftest
 import narwhals as nw
 import pandas as pd
 import pyarrow as pa
 import pytest
 
-import conftest as test_conftest
 from vowl.adapters.ibis_adapter import IbisAdapter
 from vowl.adapters.multi_source_adapter import MultiSourceAdapter
 from vowl.config import ValidationConfig
@@ -982,7 +982,7 @@ def test_validation_runner_resolve_adapters_warns_on_extra_and_errors_on_missing
     monkeypatch.setattr("vowl.validate.DataSourceMapper.get_adapter", lambda self, adapter_input, schema_name: mapped)
 
     with pytest.warns(UserWarning, match="Adapter provided for 'extra'"):
-        with pytest.raises(ValueError, match="No adapter provided for schema\(s\)"):
+        with pytest.raises(ValueError, match=r"No adapter provided for schema\(s\)"):
             runner._resolve_adapters()
 
 

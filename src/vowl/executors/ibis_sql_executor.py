@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import time
 import warnings
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 import pyarrow as pa
 
-from vowl.executors.base import SQLExecutor, CheckResult
+from vowl.executors.base import CheckResult, SQLExecutor
 from vowl.executors.security import SQLSecurityError
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class IbisSQLExecutor(SQLExecutor):
 
     def __init__(
         self,
-        adapter: "IbisAdapter",
+        adapter: IbisAdapter,
         use_try_cast: bool = True,
     ) -> None:
         """
@@ -38,7 +38,7 @@ class IbisSQLExecutor(SQLExecutor):
                 Default True.
         """
         super().__init__(adapter, use_try_cast)
-        self._adapter: "IbisAdapter" = adapter
+        self._adapter: IbisAdapter = adapter
         # Detect target SQL dialect from the Ibis backend
         self._target_dialect = adapter.get_sql_dialect()
 
@@ -48,9 +48,9 @@ class IbisSQLExecutor(SQLExecutor):
         return self._target_dialect
 
     def _fetch_failed_rows(
-        self, 
-        select_query: Optional[str], 
-    ) -> Optional[nw.DataFrame]:
+        self,
+        select_query: str | None,
+    ) -> nw.DataFrame | None:
         """
         Fetch the actual rows that failed a check.
         
@@ -64,16 +64,16 @@ class IbisSQLExecutor(SQLExecutor):
         """
         if not select_query:
             return None
-        
+
         # Add LIMIT to avoid fetching too many rows (controlled by config.max_failed_rows)
         max_rows = getattr(self._adapter, 'max_failed_rows', 1000)
         if max_rows >= 0 and "LIMIT" not in select_query.upper():
             select_query = f"{select_query} LIMIT {max_rows}"
-        
+
         try:
             # Validate query security before execution
             self.validate_query_security(select_query)
-            
+
             con = self._adapter.get_connection()
             result = con.raw_sql(select_query)
             # Resolve an Arrow table from whatever the backend returns:
@@ -120,7 +120,7 @@ class IbisSQLExecutor(SQLExecutor):
         """
         # Validate query security before execution
         self.validate_query_security(query)
-        
+
         con = self._adapter.get_connection()
         result = con.raw_sql(query)
         # Ibis backends return different types from raw_sql:
@@ -134,7 +134,7 @@ class IbisSQLExecutor(SQLExecutor):
             return rows[0][0] if rows else None
         return None
 
-    def run_single_check(self, check_ref: "SQLCheckReference") -> CheckResult:
+    def run_single_check(self, check_ref: SQLCheckReference) -> CheckResult:
         """
         Execute a single data quality check.
 
@@ -192,7 +192,7 @@ class IbisSQLExecutor(SQLExecutor):
                 execution_time_ms=(time.perf_counter() - start_time) * 1000,
             )
 
-    def run_batch_checks(self, check_refs: list["SQLCheckReference"]) -> list[CheckResult]:
+    def run_batch_checks(self, check_refs: list[SQLCheckReference]) -> list[CheckResult]:
         """
         Execute multiple data quality checks.
 

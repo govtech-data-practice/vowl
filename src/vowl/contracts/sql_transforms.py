@@ -13,7 +13,7 @@ from __future__ import annotations
 import fnmatch
 import re
 import warnings
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import sqlglot
 from sqlglot import exp
@@ -21,14 +21,14 @@ from sqlglot import exp
 if TYPE_CHECKING:
     from vowl.adapters.models import FilterCondition
 
-    FilterConditionType = Union[FilterCondition, List[FilterCondition], Dict[str, Any]]
+    FilterConditionType = Union[FilterCondition, list[FilterCondition], dict[str, Any]]
 
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-LOGICAL_TYPE_TO_SQL: Dict[str, str] = {
+LOGICAL_TYPE_TO_SQL: dict[str, str] = {
     "string": "VARCHAR",
     "integer": "BIGINT",
     "number": "DOUBLE PRECISION",
@@ -147,7 +147,7 @@ def oracle_quote_column_identifiers(ast: exp.Expression) -> exp.Expression:
 # Dialect AST transform registry
 # ---------------------------------------------------------------------------
 
-_DIALECT_AST_TRANSFORMS: Dict[str, list] = {
+_DIALECT_AST_TRANSFORMS: dict[str, list] = {
     "sqlite": [
         lambda ast: ast.transform(
             lambda node: (
@@ -195,7 +195,7 @@ def transpile(query: str, source_dialect: str, target_dialect: str) -> str:
 # Safe / TRY_CAST helpers
 # ---------------------------------------------------------------------------
 
-def infer_type_from_literal(literal_value: Any) -> Optional[str]:
+def infer_type_from_literal(literal_value: Any) -> str | None:
     """Infer the SQL type to cast to based on a literal value."""
     if isinstance(literal_value, bool):
         return "BOOLEAN"
@@ -226,7 +226,7 @@ def make_safe_cast(
     return exp.TryCast(this=node, to=to)
 
 
-def apply_try_cast(query: str, dialect: str) -> Tuple[str, bool]:
+def apply_try_cast(query: str, dialect: str) -> tuple[str, bool]:
     """Transform a query to use TRY_CAST instead of CAST where appropriate."""
     try:
         parsed = sqlglot.parse_one(query, dialect=dialect)
@@ -297,7 +297,7 @@ def apply_try_cast(query: str, dialect: str) -> Tuple[str, bool]:
 def apply_filters(
     query: str,
     dialect: str,
-    filter_conditions: Dict[str, "FilterConditionType"],
+    filter_conditions: dict[str, FilterConditionType],
 ) -> str:
     """Apply filter conditions to table references in a SQL string."""
     from vowl.adapters.models import build_filter_ast
@@ -320,14 +320,14 @@ def apply_filters(
     if not tables:
         return parsed.sql(dialect=dialect)
 
-    table_filter_ast: Dict[str, Optional[exp.Expression]] = {}
+    table_filter_ast: dict[str, exp.Expression | None] = {}
 
     for table in tables:
         tbl_name = table.name
         if tbl_name in table_filter_ast:
             continue
 
-        matching_conditions: List[Any] = []
+        matching_conditions: list[Any] = []
         for pattern, conditions in filter_conditions.items():
             if pattern == tbl_name or fnmatch.fnmatch(tbl_name, pattern):
                 if isinstance(conditions, list):
@@ -407,7 +407,7 @@ def detect_aggregation_type(query: str, dialect: str) -> str:
     return "custom"
 
 
-def extract_table_names(query: str, dialect: str) -> List[str]:
+def extract_table_names(query: str, dialect: str) -> list[str]:
     """Extract sorted unique table names from a SQL query."""
     try:
         parsed = sqlglot.parse_one(query, dialect=dialect)

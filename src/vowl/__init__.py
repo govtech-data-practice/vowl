@@ -21,9 +21,9 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 # Eager imports — always needed on every call
-from .contracts.contract import Contract
 from .config import ValidationConfig
-from .validate import validate_data, ValidationResult, ValidationRunner
+from .contracts.contract import Contract
+from .validate import ValidationResult, ValidationRunner, validate_data
 
 # Lazy imports — loaded on first access via __getattr__ (PEP 562)
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {

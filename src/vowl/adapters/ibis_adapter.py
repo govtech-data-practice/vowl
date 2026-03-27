@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Union
 
-from ibis.backends.sql import SQLBackend
 import pyarrow as pa
 import sqlglot
+from ibis.backends.sql import SQLBackend
 from sqlglot import exp
 
 from vowl.adapters.base import BaseAdapter
@@ -12,7 +12,7 @@ from vowl.adapters.models import FilterCondition
 from vowl.executors.ibis_sql_executor import IbisSQLExecutor
 
 # Type alias for filter conditions - can be a single FilterCondition, list of them, or dict
-FilterConditionType = Union[FilterCondition, List[FilterCondition], Dict[str, Any]]
+FilterConditionType = Union[FilterCondition, list[FilterCondition], dict[str, Any]]
 
 
 class IbisAdapter(BaseAdapter):
@@ -59,7 +59,7 @@ class IbisAdapter(BaseAdapter):
     """
 
     # Map Ibis backend names to sqlglot dialect names
-    _IBIS_TO_SQLGLOT: Dict[str, str] = {
+    _IBIS_TO_SQLGLOT: dict[str, str] = {
         "duckdb": "duckdb",
         "sqlite": "sqlite",
         "postgres": "postgres",
@@ -77,7 +77,7 @@ class IbisAdapter(BaseAdapter):
     def __init__(
         self,
         con: SQLBackend,
-        filter_conditions: Optional[Dict[str, FilterConditionType]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
     ) -> None:
         """
         Initialize the Ibis adapter.
@@ -94,10 +94,10 @@ class IbisAdapter(BaseAdapter):
             "sql": IbisSQLExecutor,
         })
         self._con = con
-        self._filter_conditions: Dict[str, FilterConditionType] = filter_conditions.copy() if filter_conditions else {}
+        self._filter_conditions: dict[str, FilterConditionType] = filter_conditions.copy() if filter_conditions else {}
 
     @property
-    def filter_conditions(self) -> Dict[str, FilterConditionType]:
+    def filter_conditions(self) -> dict[str, FilterConditionType]:
         """Filter conditions to apply to queries, keyed by table name."""
         return self._filter_conditions.copy()
 
@@ -106,7 +106,7 @@ class IbisAdapter(BaseAdapter):
         """Whether this adapter has any active filter conditions."""
         return bool(self._filter_conditions)
 
-    def is_compatible_with(self, other: "BaseAdapter") -> bool:
+    def is_compatible_with(self, other: BaseAdapter) -> bool:
         """Two IbisAdapters are compatible when they share the same
         backend type and connection instance, and neither has filter
         conditions (filters require per-adapter materialization)."""
@@ -131,7 +131,7 @@ class IbisAdapter(BaseAdapter):
             The Ibis SQLBackend connection instance.
         """
         return self._con
-    
+
     def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int:
         """
         Get the total row count for a table, optionally capped.
@@ -144,7 +144,7 @@ class IbisAdapter(BaseAdapter):
             Total row count, or 0 on error.
         """
         from vowl.contracts.check_reference import SQLCheckReference
-        from vowl.executors.security import validate_query_security, to_table_expression
+        from vowl.executors.security import to_table_expression, validate_query_security
 
         try:
             table = to_table_expression(schema_name)
@@ -183,7 +183,7 @@ class IbisAdapter(BaseAdapter):
         except Exception:
             return 0
 
-    def test_connection(self, table_name: str) -> Optional[str]:
+    def test_connection(self, table_name: str) -> str | None:
         """
         Test if the adapter can connect and access a table.
         
@@ -230,7 +230,7 @@ class IbisAdapter(BaseAdapter):
             A PyArrow Table containing the (optionally filtered) data.
         """
         from vowl.contracts.check_reference import SQLCheckReference
-        from vowl.executors.security import validate_query_security, to_table_expression
+        from vowl.executors.security import to_table_expression, validate_query_security
 
         table = to_table_expression(schema_name)
         dialect = self.get_sql_dialect()

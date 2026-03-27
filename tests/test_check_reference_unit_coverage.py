@@ -5,13 +5,13 @@ from types import SimpleNamespace
 import pytest
 
 from vowl.contracts.check_reference import (
-    SQLColumnCheckReference,
     DeclaredColumnExistsCheckReference,
     LogicalTypeCheckReference,
     LogicalTypeOptionsCheckReference,
     PrimaryKeyCheckReference,
     RequiredCheckReference,
     SQLCheckReference,
+    SQLColumnCheckReference,
     SQLTableCheckReference,
     UniqueCheckReference,
 )

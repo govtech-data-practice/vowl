@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
-import pyarrow as pa
 import pytest
 
 from vowl.contracts.check_reference import CheckReference, SQLCheckReference
 from vowl.executors.base import CheckResult
 from vowl.executors.ibis_sql_executor import IbisSQLExecutor
-from vowl.executors.multi_source_sql_executor import MultiSourceSQLExecutor
-
 
 # ─── detect_aggregation_type ─────────────────────────────────────────
 
@@ -86,7 +81,7 @@ class TestDetectAggregationType:
 # ─── compute_failed_rows_count ───────────────────────────────────────
 
 
-def _make_ref(query: str, unit: str | None = None) -> "DummySQLCheckReference":
+def _make_ref(query: str, unit: str | None = None) -> DummySQLCheckReference:
     """Helper to build a DummySQLCheckReference for compute_failed_rows_count tests."""
     check: dict = {"type": "sql", "query": query}
     if unit is not None:
@@ -520,9 +515,6 @@ class TestGetFailedRowsQueryIntegration:
     @pytest.fixture()
     def _make_ref(self):
         """Create a minimal SQLCheckReference-like object for testing get_failed_rows_query."""
-        from vowl.contracts.check_reference import SQLCheckReference
-        import sqlglot
-        from sqlglot import exp as sqlexp
 
         class FakeRef:
             def get_query(self, dialect, filter_conditions, use_try_cast=False):

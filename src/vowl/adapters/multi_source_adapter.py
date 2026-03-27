@@ -9,17 +9,15 @@ from __future__ import annotations
 
 import copy
 import warnings
-from typing import Dict, List, Optional, Set, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import sqlglot
 from sqlglot import exp
 
 from .base import BaseAdapter
-from .ibis_adapter import IbisAdapter
 
 if TYPE_CHECKING:
     from ..contracts.check_reference import CheckReference
-    from ..contracts.models.ODCS_types import DataQuality
     from ..executors.base import CheckResult
 
 
@@ -55,10 +53,10 @@ class MultiSourceAdapter(BaseAdapter):
         >>> refs_by_schema = contract.get_check_references_by_schema()
         >>> results = adapter.run_checks_by_schema(refs_by_schema)
     """
-    
+
     def __init__(
         self,
-        adapters: Dict[str, BaseAdapter],
+        adapters: dict[str, BaseAdapter],
     ) -> None:
         """
         Initialize the multi-source adapter.
@@ -71,17 +69,17 @@ class MultiSourceAdapter(BaseAdapter):
                 queries.
         """
         from ..executors.multi_source_sql_executor import MultiSourceSQLExecutor
-        
+
         # Register multi-source executor for SQL checks
         super().__init__(executors={"sql": MultiSourceSQLExecutor})
         self._adapters = dict(adapters)
-        
+
         # Detect when a single adapter instance is shared across multiple schemas.
         # This happens when the user provides one adapter for a multi-schema contract.
         # Shallow copy shared instances so each schema gets its own state
         # while still sharing the underlying connection.
-        seen_ids: Dict[int, str] = {}  # id(adapter) -> first schema_name
-        shared_schemas: List[str] = []
+        seen_ids: dict[int, str] = {}  # id(adapter) -> first schema_name
+        shared_schemas: list[str] = []
         for schema_name, adapter in list(self._adapters.items()):
             adapter_id = id(adapter)
             if adapter_id in seen_ids:
@@ -89,7 +87,7 @@ class MultiSourceAdapter(BaseAdapter):
                 self._adapters[schema_name] = copy.copy(adapter)
             else:
                 seen_ids[adapter_id] = schema_name
-        
+
         if shared_schemas:
             all_schemas = list(self._adapters.keys())
             warnings.warn(
@@ -98,8 +96,8 @@ class MultiSourceAdapter(BaseAdapter):
                 UserWarning,
                 stacklevel=2,
             )
-    
-    def _detect_tables_in_query(self, query: str) -> Set[str]:
+
+    def _detect_tables_in_query(self, query: str) -> set[str]:
         """
         Detect all table names referenced in a SQL query.
         
@@ -115,8 +113,8 @@ class MultiSourceAdapter(BaseAdapter):
             return {t.name for t in tables if t.name}
         except Exception:
             return set()
-    
-    def _is_multi_table_check(self, check_ref: "CheckReference") -> bool:
+
+    def _is_multi_table_check(self, check_ref: CheckReference) -> bool:
         """
         Determine if a check involves multiple tables.
         
@@ -130,21 +128,21 @@ class MultiSourceAdapter(BaseAdapter):
         query = check.get("query")
         if not query:
             return False
-        
+
         tables = self._detect_tables_in_query(query)
         return len(tables) > 1
-    
+
     @property
-    def adapters(self) -> Dict[str, BaseAdapter]:
+    def adapters(self) -> dict[str, BaseAdapter]:
         """Get the mapping of schema names to adapters."""
         return self._adapters
-    
+
     @property
-    def schema_names(self) -> List[str]:
+    def schema_names(self) -> list[str]:
         """Get the list of schema names this adapter handles."""
         return list(self._adapters.keys())
-    
-    def get_adapter(self, schema_name: str) -> Optional[BaseAdapter]:
+
+    def get_adapter(self, schema_name: str) -> BaseAdapter | None:
         """
         Get the adapter for a specific schema.
         
@@ -155,11 +153,11 @@ class MultiSourceAdapter(BaseAdapter):
             The adapter for that schema, or None if not found.
         """
         return self._adapters.get(schema_name)
-    
+
     def test_connections(
         self,
-        check_refs_by_schema: Optional[Dict[str, List["CheckReference"]]] = None,
-    ) -> Dict[str, Dict[str, str]]:
+        check_refs_by_schema: dict[str, list[CheckReference]] | None = None,
+    ) -> dict[str, dict[str, str]]:
         """
         Test all adapter connections, including tables referenced in checks.
         
@@ -183,11 +181,11 @@ class MultiSourceAdapter(BaseAdapter):
             Status is 'success', 'skipped', or an error message.
         """
         all_registered = set(self._adapters.keys())
-        results: Dict[str, Dict[str, str]] = {}
-        
+        results: dict[str, dict[str, str]] = {}
+
         for schema_name, adapter in self._adapters.items():
-            schema_results: Dict[str, str] = {}
-            
+            schema_results: dict[str, str] = {}
+
             # 1. Test the schema's own table
             error = adapter.test_connection(schema_name)
             schema_results[schema_name] = error or "success"
@@ -197,26 +195,26 @@ class MultiSourceAdapter(BaseAdapter):
                     UserWarning,
                     stacklevel=2,
                 )
-            
+
             # 2. Test tables referenced in this schema's checks
             if check_refs_by_schema and schema_name in check_refs_by_schema:
-                referenced_tables: Set[str] = set()
+                referenced_tables: set[str] = set()
                 for check_ref in check_refs_by_schema[schema_name]:
                     check = check_ref.get_check()
                     query = check.get("query")
                     if query:
                         referenced_tables |= self._detect_tables_in_query(query)
-                
+
                 for table in sorted(referenced_tables):
                     if table == schema_name:
                         # Already tested above
                         continue
-                    
+
                     if table in all_registered:
                         # Belongs to another schema — will be tested there
                         schema_results[table] = f"skipped: table defined in schema '{table}'"
                         continue
-                    
+
                     # Unknown table — test with this schema's adapter
                     table_error = adapter.test_connection(table)
                     if table_error:
@@ -240,15 +238,15 @@ class MultiSourceAdapter(BaseAdapter):
                             UserWarning,
                             stacklevel=2,
                         )
-            
+
             results[schema_name] = schema_results
-        
+
         return results
-    
+
     def run_checks(  # type: ignore[override]
         self,
-        check_refs_by_schema: Dict[str, List["CheckReference"]],
-    ) -> List["CheckResult"]:
+        check_refs_by_schema: dict[str, list[CheckReference]],
+    ) -> list[CheckResult]:
         """
         Run checks, routing each to the appropriate adapter based on schema.
         
@@ -262,27 +260,27 @@ class MultiSourceAdapter(BaseAdapter):
             Combined list of CheckResult objects from all schemas.
         """
         from ..executors.base import CheckResult
-        
-        all_results: List["CheckResult"] = []
-        multi_table_refs: List["CheckReference"] = []
-        
+
+        all_results: list[CheckResult] = []
+        multi_table_refs: list[CheckReference] = []
+
         for schema_name, check_refs in check_refs_by_schema.items():
             if not check_refs:
                 continue
-            
+
             # Separate single-table and multi-table checks
-            single_table_refs: List["CheckReference"] = []
-            
+            single_table_refs: list[CheckReference] = []
+
             for check_ref in check_refs:
                 if self._is_multi_table_check(check_ref):
                     multi_table_refs.append(check_ref)
                 else:
                     single_table_refs.append(check_ref)
-            
+
             # Process single-table checks with the schema's adapter
             if single_table_refs:
                 adapter = self._adapters.get(schema_name)
-                
+
                 if adapter is None:
                     # Return error results for this schema's checks
                     all_results.extend([
@@ -297,7 +295,7 @@ class MultiSourceAdapter(BaseAdapter):
                 else:
                     results = adapter.run_checks(single_table_refs)
                     all_results.extend(results)
-        
+
         # Process multi-table checks with MultiSourceSQLExecutor
         if multi_table_refs:
             executor = self._get_executor("sql")
@@ -305,10 +303,10 @@ class MultiSourceAdapter(BaseAdapter):
             all_results.extend(multi_results)
             # Clean up local DuckDB resources after cross-schema execution
             executor.cleanup()
-        
+
         return all_results
 
-    def get_total_rows_by_schema(self, max_rows: int = -1) -> Dict[str, int]:
+    def get_total_rows_by_schema(self, max_rows: int = -1) -> dict[str, int]:
         """
         Get total row counts for each schema via its adapter.
         

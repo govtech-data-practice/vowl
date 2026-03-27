@@ -8,13 +8,12 @@ import pytest
 
 # Test the jsonschema validation
 from vowl.contracts.models import (
-    validate_contract,
-    ValidationError,
     SUPPORTED_VERSIONS,
-    get_schema,
-    get_latest_version,
-    DataQuality,
     DataContract,
+    DataQuality,
+    ValidationError,
+    get_schema,
+    validate_contract,
 )
 
 # Path to schema files
@@ -26,14 +25,14 @@ def find_latest_schema_file() -> Path:
     schema_files = list(SCHEMAS_DIR.glob("odcs-json-schema-v*.json"))
     # Filter out strict variants
     schema_files = [f for f in schema_files if "-strict" not in f.name]
-    
+
     def parse_version(path: Path) -> tuple:
         """Extract version tuple from filename for sorting."""
         match = re.search(r'v(\d+)\.(\d+)\.(\d+)', path.name)
         if match:
             return tuple(int(x) for x in match.groups())
         return (0, 0, 0)
-    
+
     # Sort by version and return the latest
     schema_files.sort(key=parse_version, reverse=True)
     return schema_files[0] if schema_files else None
@@ -46,7 +45,7 @@ LATEST_VERSION = f"v{'.'.join(str(x) for x in re.search(r'v(\d+)\.(\d+)\.(\d+)',
 @pytest.fixture
 def latest_schema():
     """Load the latest ODCS JSON schema."""
-    with open(LATEST_SCHEMA_FILE, "r", encoding="utf-8") as f:
+    with open(LATEST_SCHEMA_FILE, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -76,7 +75,7 @@ class TestJsonSchemaValidation:
         for field in required_root_fields:
             if field not in contract_data:
                 contract_data[field] = f"test-{field}"
-        
+
         # Should not raise
         validate_contract(contract_data)
 
@@ -138,12 +137,12 @@ class TestJsonSchemaValidation:
         """Test that schema defines expected DataQuality types."""
         defs = latest_schema.get("$defs", {})
         data_quality = defs.get("DataQuality", {})
-        
+
         # Check that type field has expected enum values
         type_prop = data_quality.get("properties", {}).get("type", {})
         expected_types = {"text", "library", "sql", "custom"}
         actual_types = set(type_prop.get("enum", []))
-        
+
         assert expected_types == actual_types, f"Expected {expected_types}, got {actual_types}"
 
     def test_schema_defines_dimension_enum(self, latest_schema):
@@ -151,13 +150,13 @@ class TestJsonSchemaValidation:
         defs = latest_schema.get("$defs", {})
         data_quality = defs.get("DataQuality", {})
         dimension_prop = data_quality.get("properties", {}).get("dimension", {})
-        
+
         expected_dimensions = {
             "accuracy", "completeness", "conformity", "consistency",
             "coverage", "timeliness", "uniqueness"
         }
         actual_dimensions = set(dimension_prop.get("enum", []))
-        
+
         assert expected_dimensions == actual_dimensions
 
     def test_schema_defines_metric_enum(self, latest_schema):
@@ -165,13 +164,13 @@ class TestJsonSchemaValidation:
         defs = latest_schema.get("$defs", {})
         library = defs.get("DataQualityLibrary", {})
         metric_prop = library.get("properties", {}).get("metric", {})
-        
+
         expected_metrics = {
             "nullValues", "missingValues", "invalidValues",
             "duplicateValues", "rowCount"
         }
         actual_metrics = set(metric_prop.get("enum", []))
-        
+
         assert expected_metrics == actual_metrics
 
     def test_validate_contract_with_quality_checks(self):

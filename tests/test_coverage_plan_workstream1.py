@@ -3,7 +3,6 @@ from __future__ import annotations
 import builtins
 import importlib
 import importlib.metadata
-
 from types import SimpleNamespace
 
 import pandas as pd
@@ -43,7 +42,7 @@ class FakeNarwhalsFrame:
     def to_pandas(self) -> pd.DataFrame:
         return pd.DataFrame({"value": [1, None]})
 
-    def with_columns(self, *args, **kwargs) -> "FakeNarwhalsFrame":
+    def with_columns(self, *args, **kwargs) -> FakeNarwhalsFrame:
         for arg in args:
             if hasattr(arg, "__iter__") and not isinstance(arg, (str, bytes)):
                 list(arg)
@@ -341,7 +340,7 @@ def test_create_adapter_convenience_function_uses_mapper(monkeypatch: pytest.Mon
 def test_vowl_dunder_getattr_lazy_loads_and_caches_symbols():
     vowl.__dict__.pop("DataSourceMapper", None)
 
-    loaded = getattr(vowl, "DataSourceMapper")
+    loaded = vowl.DataSourceMapper
 
     assert loaded is DataSourceMapper
     assert vowl.__dict__["DataSourceMapper"] is loaded
@@ -349,7 +348,7 @@ def test_vowl_dunder_getattr_lazy_loads_and_caches_symbols():
 
 def test_vowl_dunder_getattr_raises_for_unknown_symbols():
     with pytest.raises(AttributeError, match="has no attribute"):
-        getattr(vowl, "does_not_exist")
+        vowl.does_not_exist
 
 
 def test_vowl_dunder_dir_exposes_public_api():

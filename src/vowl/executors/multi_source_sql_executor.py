@@ -9,21 +9,19 @@ from __future__ import annotations
 
 import time
 import warnings
-from typing import TYPE_CHECKING, Any, Optional, Set
+from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
-import pyarrow as pa
 import sqlglot
 from sqlglot import exp
 
-from vowl.executors.base import SQLExecutor, CheckResult
+from vowl.executors.base import CheckResult, SQLExecutor
 from vowl.executors.security import SQLSecurityError, sanitize_identifier
 
 if TYPE_CHECKING:
     from vowl.adapters.base import BaseAdapter
     from vowl.adapters.multi_source_adapter import MultiSourceAdapter
     from vowl.contracts.check_reference import SQLCheckReference
-    from vowl.contracts.models import DataQuality, DataQualitySql
 
 class MultiSourceSQLExecutor(SQLExecutor):
     """
@@ -48,7 +46,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
     def __init__(
         self,
-        multi_adapter: "MultiSourceAdapter",
+        multi_adapter: MultiSourceAdapter,
         use_try_cast: bool = True,
     ) -> None:
         """
@@ -67,7 +65,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         # ValidationConfig.use_try_cast propagates consistently.
         self._use_try_cast = getattr(multi_adapter, "use_try_cast", use_try_cast)
         self._local_duckdb_con = None  # Lazily created by _get_local_duckdb()
-        self._attached_sources: Set[str] = set()  # Table names already materialized into local DuckDB
+        self._attached_sources: set[str] = set()  # Table names already materialized into local DuckDB
 
     @property
     def adapter(self):
@@ -76,7 +74,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             "Use self._multi_adapter to access individual adapters per schema."
         )
 
-    def _detect_tables(self, query: str) -> Set[str]:
+    def _detect_tables(self, query: str) -> set[str]:
         """
         Detect all table names referenced in a SQL query.
         
@@ -98,7 +96,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             )
             return set()
 
-    def _are_backends_compatible(self, table_names: Set[str]) -> bool:
+    def _are_backends_compatible(self, table_names: set[str]) -> bool:
         """
         Check if all required adapters can execute queries together directly.
 
@@ -138,9 +136,9 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
     def _fetch_failed_rows(
         self,
-        select_query: Optional[str],
-        table_names: Set[str],
-    ) -> Optional[nw.DataFrame]:
+        select_query: str | None,
+        table_names: set[str],
+    ) -> nw.DataFrame | None:
         """
         Fetch the actual rows that failed a check.
         
@@ -155,11 +153,11 @@ class MultiSourceSQLExecutor(SQLExecutor):
         """
         if not select_query:
             return None
-        
+
         max_rows = getattr(self._multi_adapter, 'max_failed_rows', 1000)
         if max_rows >= 0 and "LIMIT" not in select_query.upper():
             select_query = f"{select_query} LIMIT {max_rows}"
-        
+
         try:
             self.validate_query_security(select_query)
             self._ensure_tables_available(table_names)
@@ -167,7 +165,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             arrow_table = local_con.raw_sql(select_query).fetch_arrow_table()
             arrow_table = self._deduplicate_arrow_columns(arrow_table)
             return nw.from_native(arrow_table, eager_only=True)
-            
+
         except Exception as e:
             warnings.warn(
                 f"Failed to fetch failed rows for cross-schema check: {e}",
@@ -178,7 +176,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
     def _attach_or_materialize(
         self,
-        adapter: "BaseAdapter",
+        adapter: BaseAdapter,
         schema_name: str,
         local_con,
     ) -> None:
@@ -194,13 +192,13 @@ class MultiSourceSQLExecutor(SQLExecutor):
         """
         if schema_name in self._attached_sources:
             return
-        
+
         # TODO: Use DuckDB ATTACH for supported backends (postgres, mysql, sqlite)
         # instead of materializing, to avoid copying data.
         self._materialize_table_to_duckdb(adapter, schema_name, local_con)
         self._attached_sources.add(schema_name)
 
-    def _ensure_tables_available(self, table_names: Set[str]) -> None:
+    def _ensure_tables_available(self, table_names: set[str]) -> None:
         """
         Ensure all required tables are available in local DuckDB.
 
@@ -210,20 +208,20 @@ class MultiSourceSQLExecutor(SQLExecutor):
             ValueError: If no adapter is configured for a table.
         """
         local_con = self._get_local_duckdb()
-        
+
         for table_name in table_names:
             if table_name in self._attached_sources:
                 continue
-            
+
             adapter = self._multi_adapter.get_adapter(table_name)
             if adapter is None:
                 raise ValueError(f"No adapter configured for table '{table_name}'")
-            
+
             self._attach_or_materialize(adapter, table_name, local_con)
 
     def _materialize_table_to_duckdb(
-        self, 
-        adapter: "BaseAdapter", 
+        self,
+        adapter: BaseAdapter,
         schema_name: str,
         local_con,
     ) -> None:
@@ -249,7 +247,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
     def _execute_query(
         self,
         query: str,
-        table_names: Set[str],
+        table_names: set[str],
     ) -> Any:
         """
         Validate and execute a SQL query on local DuckDB.
@@ -269,7 +267,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         local_con = self._get_local_duckdb()
         return local_con.raw_sql(query).fetchone()
 
-    def run_single_check(self, check_ref: "SQLCheckReference") -> CheckResult:
+    def run_single_check(self, check_ref: SQLCheckReference) -> CheckResult:
         """
         Execute a single data quality check that may span multiple schemas.
 
@@ -359,7 +357,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 execution_time_ms=(time.perf_counter() - start_time) * 1000,
             )
 
-    def run_batch_checks(self, check_refs: list["SQLCheckReference"]) -> list[CheckResult]:
+    def run_batch_checks(self, check_refs: list[SQLCheckReference]) -> list[CheckResult]:
         """
         Execute multiple data quality checks.
 

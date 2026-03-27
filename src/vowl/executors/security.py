@@ -10,7 +10,6 @@ Provides security validation for SQL queries to:
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Tuple
 
 import sqlglot
 from sqlglot import exp
@@ -84,7 +83,7 @@ SQL_INJECTION_PATTERNS = [
 ]
 
 # Compiled regex patterns for efficiency
-_COMPILED_INJECTION_PATTERNS: List[Tuple[re.Pattern, str]] = [
+_COMPILED_INJECTION_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(pattern, re.IGNORECASE | re.DOTALL), name)
     for pattern, name in SQL_INJECTION_PATTERNS
 ]
@@ -187,7 +186,7 @@ def _check_for_write_subqueries(ast: exp.Expression, original_query: str) -> Non
             )
 
 
-def detect_sql_injection(query: str) -> Optional[Tuple[str, str]]:
+def detect_sql_injection(query: str) -> tuple[str, str] | None:
     """
     Detect potential SQL injection patterns in a query.
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import functools
 import re
-from typing import Any, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import ibis
 import narwhals as nw
@@ -20,7 +20,8 @@ from vowl.adapters.base import BaseAdapter
 from vowl.adapters.ibis_adapter import IbisAdapter
 
 if TYPE_CHECKING:
-    from pyspark.sql import SparkSession, DataFrame as SparkDataFrame
+    from pyspark.sql import DataFrame as SparkDataFrame
+    from pyspark.sql import SparkSession
 
 
 @functools.cache
@@ -30,7 +31,8 @@ def _spark_types() -> tuple[type, type] | None:
     Cached so the import is attempted at most once per process.
     """
     try:
-        from pyspark.sql import SparkSession, DataFrame as SparkDataFrame
+        from pyspark.sql import DataFrame as SparkDataFrame
+        from pyspark.sql import SparkSession
         return (SparkSession, SparkDataFrame)
     except ImportError:
         return None
@@ -85,11 +87,11 @@ class DataSourceMapper:
         >>> adapter = mapper.get_adapter("postgresql://user:pass@host/db")
         >>> # Returns IbisAdapter with PostgreSQL backend
     """
-    
+
     def __init__(self) -> None:
         """Initialize the DataSourceMapper."""
         pass
-    
+
     def get_adapter(
         self,
         data_source: Any,
@@ -119,34 +121,34 @@ class DataSourceMapper:
         # Already an adapter - return if IbisAdapter, otherwise wrap
         if isinstance(data_source, IbisAdapter):
             return data_source
-        
+
         if isinstance(data_source, BaseAdapter):
             raise TypeError(
                 f"Unsupported adapter type: {type(data_source).__name__}. "
                 "Only IbisAdapter is supported."
             )
-        
+
         # PySpark DataFrame - use ibis pyspark backend (check before narwhals
         # since PySpark DataFrames need special handling via the Spark backend)
         if _is_spark_dataframe(data_source):
             return self._create_adapter_from_spark_df(data_source, table_name)
-        
+
         # SparkSession - use ibis pyspark backend
         if _is_spark_session(data_source):
             return self._create_adapter_from_spark_session(data_source)
-        
+
         # Any DataFrame supported by narwhals (pandas, polars, PyArrow, etc.) - use DuckDB
         if _is_narwhals_dataframe(data_source):
             return self._create_adapter_from_dataframe(data_source, table_name)
-        
+
         # Connection string - parse and create appropriate backend
         if isinstance(data_source, str):
             return self._create_adapter_from_connection_string(data_source)
-        
+
         # Ibis backend - duck typing fallback
         if hasattr(data_source, 'raw_sql'):
             return IbisAdapter(data_source)
-        
+
         # Unknown type
         raise TypeError(
             f"Unsupported data source type: {type(data_source).__name__}. "
@@ -154,7 +156,7 @@ class DataSourceMapper:
             "pyspark.sql.DataFrame, pyspark.sql.SparkSession, "
             "connection string (str), ibis.BaseBackend, or IbisAdapter"
         )
-    
+
     def _create_adapter_from_dataframe(
         self,
         df: Any,
@@ -169,10 +171,10 @@ class DataSourceMapper:
         to strings, and retrying.
         """
         import warnings
-        
+
         con = ibis.duckdb.connect()
         nw_frame = nw.from_native(df, eager_only=True)
-        
+
         try:
             # Convert to Arrow (zero-copy for polars/arrow, cheap for pandas)
             arrow_table = nw_frame.to_arrow()
@@ -183,7 +185,7 @@ class DataSourceMapper:
                 keyword in error_msg
                 for keyword in ['arrow', 'type', 'conversion', 'expected']
             )
-            
+
             if is_type_error:
                 arrow_table, coerced_columns = self._build_arrow_with_column_fallback(
                     nw_frame,
@@ -199,7 +201,7 @@ class DataSourceMapper:
                 con.create_table(table_name, arrow_table)
             else:
                 raise
-        
+
         return IbisAdapter(con)
 
     @staticmethod
@@ -241,10 +243,10 @@ class DataSourceMapper:
                 return pa.Table.from_pandas(pandas_df, preserve_index=False), coerced_columns
             except Exception as retry_error:
                 current_error = retry_error
-    
+
     def _create_adapter_from_spark_df(
         self,
-        df: "SparkDataFrame",
+        df: SparkDataFrame,
         table_name: str,
     ) -> IbisAdapter:
         """Create an IbisAdapter from a PySpark DataFrame."""
@@ -252,15 +254,15 @@ class DataSourceMapper:
         df.createOrReplaceTempView(table_name)
         con = ibis.pyspark.connect(df.sparkSession)
         return IbisAdapter(con)
-    
+
     def _create_adapter_from_spark_session(
         self,
-        session: "SparkSession",
+        session: SparkSession,
     ) -> IbisAdapter:
         """Create an IbisAdapter from a SparkSession."""
         con = ibis.pyspark.connect(session)
         return IbisAdapter(con)
-    
+
     def _create_adapter_from_connection_string(
         self,
         connection_string: str,

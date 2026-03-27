@@ -7,7 +7,7 @@ while the implementation lives under `vowl.validation`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from .adapters.base import BaseAdapter
 from .adapters.ibis_adapter import IbisAdapter
@@ -39,14 +39,14 @@ class ValidationRunner(_ValidationRunner):
 
 
 def validate_data(
-    contract: Union[Contract, str, Path],
+    contract: Contract | str | Path,
     *,
-    adapter: Optional[BaseAdapter] = None,
-    df: Optional[Any] = None,
-    connection_str: Optional[str] = None,
-    spark_session: Optional["SparkSession"] = None,
-    adapters: Optional[Dict[str, BaseAdapter]] = None,
-    config: Optional[ValidationConfig] = None,
+    adapter: BaseAdapter | None = None,
+    df: Any | None = None,
+    connection_str: str | None = None,
+    spark_session: SparkSession | None = None,
+    adapters: dict[str, BaseAdapter] | None = None,
+    config: ValidationConfig | None = None,
 ) -> ValidationResult:
     """Validate data against an ODCS data quality contract."""
     return cast(

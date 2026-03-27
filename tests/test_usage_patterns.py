@@ -16,10 +16,9 @@ Uses real database instances:
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
-import pandas as pd
 import narwhals as nw
+import pandas as pd
 import pytest
 
 # Path constants
@@ -96,7 +95,7 @@ class TestLocalDataFramePandas:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         assert results is not None
         assert hasattr(results, 'display_full_report')
         assert hasattr(results, 'passed')
@@ -110,11 +109,11 @@ class TestLocalDataFramePandas:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         # Method should be callable and return self for chaining
         result = results.display_full_report()
         assert result is results  # Chaining support
-        
+
         # Check output was printed
         captured = capsys.readouterr()
         assert "Data Quality Validation Results" in captured.out or len(captured.out) > 0
@@ -127,9 +126,9 @@ class TestLocalDataFramePandas:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         results_df = results.get_check_results_df()
-        
+
         assert isinstance(results_df, nw.DataFrame)
         assert len(results_df) > 0
         assert 'check_name' in results_df.columns
@@ -144,7 +143,7 @@ class TestLocalDataFramePandas:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         assert 'validation_summary' in results.summary
         vs = results.summary['validation_summary']
         assert 'total_checks' in vs
@@ -177,7 +176,7 @@ class TestLocalDataFramePolars:
             contract=contract_path,
             df=polars_dataframe.to_pandas(),  # Convert for compatibility
         )
-        
+
         assert results is not None
         assert hasattr(results, 'passed')
         assert_no_check_errors(results)
@@ -189,19 +188,20 @@ class TestLocalDataFramePolars:
         Ibis natively supports Polars DataFrames.
         """
         import ibis
+
         from vowl import validate_data
         from vowl.adapters import IbisAdapter
 
         # Ibis can work directly with Polars
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', polars_dataframe.to_pandas())
-        
+
         adapter = IbisAdapter(con)
         results = validate_data(
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         assert hasattr(results, 'passed')
         assert_no_check_errors(results)
@@ -223,16 +223,16 @@ class TestPySparkValidation:
         """Create a real SparkSession for testing."""
         import os
         from pathlib import Path
-        
+
         # Auto-detect Java on macOS (Homebrew)
         if "JAVA_HOME" not in os.environ:
             homebrew_java = Path("/opt/homebrew/opt/openjdk@17")
             if homebrew_java.exists():
                 os.environ["JAVA_HOME"] = str(homebrew_java)
-        
+
         pyspark = pytest.importorskip("pyspark", reason="PySpark not installed")
         from pyspark.sql import SparkSession
-        
+
         try:
             spark = SparkSession.builder \
                 .master("local[1]") \
@@ -242,7 +242,7 @@ class TestPySparkValidation:
                 .getOrCreate()
         except Exception as e:
             pytest.skip(f"PySpark could not start (Java not available?): {e}")
-        
+
         yield spark
         spark.stop()
 
@@ -262,15 +262,15 @@ class TestPySparkValidation:
         >>> results = validate_data(contract_path, df=spark_df.toPandas())
         """
         from vowl import validate_data
-        
+
         # Convert PySpark DataFrame to pandas for validation
         pandas_df = spark_dataframe.toPandas()
-        
+
         results = validate_data(
             contract=contract_path,
             df=pandas_df,
         )
-        
+
         assert results is not None
         assert hasattr(results, 'passed')
         assert_no_check_errors(results)
@@ -283,21 +283,22 @@ class TestPySparkValidation:
         >>> adapter = IbisAdapter(con)
         """
         import ibis
+
         from vowl import validate_data
         from vowl.adapters import IbisAdapter
-        
+
         # Register Spark DataFrame as a temp view
         spark_dataframe.createOrReplaceTempView("hdb_resale_prices")
-        
+
         # Connect ibis to PySpark session
         con = ibis.pyspark.connect(session=spark_session)
-        
+
         adapter = IbisAdapter(con)
         results = validate_data(
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         results_df = results.get_check_results_df()
         assert len(results_df) > 0
@@ -307,11 +308,11 @@ class TestPySparkValidation:
         """Test running SQL queries on Spark DataFrames."""
         # Register as temp view
         spark_dataframe.createOrReplaceTempView("hdb_data")
-        
+
         # Run SQL query
         result = spark_session.sql("SELECT COUNT(*) as cnt FROM hdb_data")
         count = result.collect()[0]['cnt']
-        
+
         assert count > 0  # Verify data exists
 
 
@@ -332,18 +333,19 @@ class TestIbisConnections:
         >>> results = validate_data(con, data_contracts_path)
         """
         import ibis
+
         from vowl import validate_data
         from vowl.adapters import IbisAdapter
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapter = IbisAdapter(con)
         results = validate_data(
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         assert hasattr(results, 'passed')
         assert_no_check_errors(results)
@@ -351,18 +353,19 @@ class TestIbisConnections:
     def test_ibis_connection_with_table(self, clean_dataframe, contract_path):
         """Test Ibis connection with explicit table registration."""
         import ibis
+
         from vowl import validate_data
         from vowl.adapters import IbisAdapter
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapter = IbisAdapter(con)
         results = validate_data(
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         results_df = results.get_check_results_df()
         assert len(results_df) > 0
@@ -376,10 +379,10 @@ class TestSQLiteConnection:
     def sqlite_connection(self, small_clean_dataframe, tmp_path):
         """Create a real SQLite database with test data."""
         import ibis
-        
+
         db_path = tmp_path / "test.db"
         con = ibis.sqlite.connect(str(db_path))
-        
+
         # Create table with explicit schema
         con.raw_sql("""
             CREATE TABLE hdb_resale_prices (
@@ -389,10 +392,10 @@ class TestSQLiteConnection:
                 resale_price TEXT
             )
         """)
-        
+
         # Insert sample data
         con.insert('hdb_resale_prices', small_clean_dataframe.astype(str))
-        
+
         yield con
         # Connection auto-closes when test ends
 
@@ -420,10 +423,10 @@ class TestSQLiteConnection:
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         assert hasattr(results, 'passed')
-        
+
         # Verify checks were executed
         results_df = results.get_check_results_df()
         assert len(results_df) > 0
@@ -437,7 +440,7 @@ class TestSQLiteConnection:
         )
         count = result.fetchone()[0]
         assert isinstance(count, int)
-        
+
         # Test aggregation
         result = sqlite_connection.raw_sql(
             "SELECT town, COUNT(*) as cnt FROM hdb_resale_prices GROUP BY town"
@@ -448,7 +451,7 @@ class TestSQLiteConnection:
     def test_sqlite_with_filter_conditions(self, sqlite_connection, contract_path):
         """Test SQLite adapter with filter conditions."""
         from vowl import validate_data
-        from vowl.adapters import IbisAdapter, FilterCondition
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         adapter = IbisAdapter(
             sqlite_connection,
@@ -460,12 +463,12 @@ class TestSQLiteConnection:
                 )
             }
         )
-        
+
         results = validate_data(
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         assert_no_check_errors(results)
 
@@ -483,47 +486,47 @@ class TestPostgresConnection:
         """Start a PostgreSQL container for testing."""
         import os
         from pathlib import Path
-        
+
         try:
             from testcontainers.postgres import PostgresContainer
         except ImportError:
             pytest.skip("testcontainers not installed")
-        
+
         # Check if Docker is available
         import subprocess
         try:
             subprocess.run(["docker", "info"], capture_output=True, check=True, timeout=5)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             pytest.skip("Docker not available")
-        
+
         # Configure Docker Desktop socket path (macOS)
         docker_sock_path = Path.home() / ".docker" / "run" / "docker.sock"
         if docker_sock_path.exists() and "DOCKER_HOST" not in os.environ:
             os.environ["DOCKER_HOST"] = f"unix://{docker_sock_path}"
-        
+
         # Disable Ryuk (testcontainers reaper) for Docker Desktop compatibility
         if "TESTCONTAINERS_RYUK_DISABLED" not in os.environ:
             os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
-        
+
         postgres = PostgresContainer("postgres:15-alpine")
         postgres.start()
-        
+
         yield postgres
-        
+
         postgres.stop()
 
     @pytest.fixture
     def postgres_connection(self, postgres_container, sample_dataframe):
         """Create an Ibis connection to the PostgreSQL container."""
         import ibis
-        
+
         # Get connection URL from container
         host = postgres_container.get_container_host_ip()
         port = postgres_container.get_exposed_port(5432)
         user = postgres_container.username
         password = postgres_container.password
         database = postgres_container.dbname
-        
+
         con = ibis.postgres.connect(
             host=host,
             port=port,
@@ -531,7 +534,7 @@ class TestPostgresConnection:
             password=password,
             database=database,
         )
-        
+
         # Use proper column types matching the contract's logicalType definitions.
         # PostgreSQL is strictly typed, so the table should reflect actual types
         # rather than storing everything as TEXT.
@@ -543,18 +546,18 @@ class TestPostgresConnection:
                 resale_price INTEGER
             )
         """)
-        
+
         # Clear any existing data
         con.raw_sql("TRUNCATE TABLE hdb_resale_prices")
-        
+
         # Prepare a small slice with proper types for integer columns
         df = sample_dataframe.head(100).copy()
         for col in ("floor_area_sqm", "lease_commence_date", "resale_price"):
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-        
+
         # Insert sample data
         con.insert('hdb_resale_prices', df)
-        
+
         yield con
 
     def test_postgres_connection_setup(self, postgres_connection):
@@ -580,10 +583,10 @@ class TestPostgresConnection:
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         assert hasattr(results, 'passed')
-        
+
         results_df = results.get_check_results_df()
         assert len(results_df) > 0
         assert_no_check_errors(results)
@@ -591,7 +594,7 @@ class TestPostgresConnection:
     def test_postgres_with_filter_conditions(self, postgres_connection, contract_path):
         """Test PostgreSQL adapter with filter conditions."""
         from vowl import validate_data
-        from vowl.adapters import IbisAdapter, FilterCondition
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         adapter = IbisAdapter(
             postgres_connection,
@@ -603,12 +606,12 @@ class TestPostgresConnection:
                 )
             }
         )
-        
+
         results = validate_data(
             contract=contract_path,
             adapter=adapter,
         )
-        
+
         assert results is not None
         assert_no_check_errors(results)
 
@@ -617,7 +620,7 @@ class TestPostgresConnection:
         from vowl.adapters import IbisAdapter
 
         adapter = IbisAdapter(postgres_connection)
-        
+
         # test_connection returns None on success, error message on failure
         result = adapter.test_connection('hdb_resale_prices')
         assert result is None  # Connection successful
@@ -630,7 +633,7 @@ class TestPostgresConnection:
         )
         count = result.fetchone()[0]
         assert isinstance(count, int)
-        
+
         # Test PostgreSQL-specific features
         result = postgres_connection.raw_sql(
             "SELECT version()"
@@ -658,12 +661,12 @@ class TestExplicitAdapterFilterConditions:
         ... )
         """
         import ibis
-        from vowl import validate_data
+
         from vowl.adapters import IbisAdapter
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapter = IbisAdapter(
             con,
             filter_conditions={
@@ -674,7 +677,7 @@ class TestExplicitAdapterFilterConditions:
                 }
             }
         )
-        
+
         assert adapter.filter_conditions is not None
         assert "hdb_resale_prices" in adapter.filter_conditions
 
@@ -691,14 +694,14 @@ class TestExplicitAdapterFilterConditions:
         ... )
         """
         import ibis
-        from vowl import validate_data
-        from vowl.adapters import IbisAdapter, FilterCondition
+
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         date_limit = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-        
+
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapter = IbisAdapter(
             con,
             filter_conditions={
@@ -709,7 +712,7 @@ class TestExplicitAdapterFilterConditions:
                 )
             }
         )
-        
+
         assert adapter.filter_conditions is not None
 
     def test_multiple_filter_conditions_list(self, clean_dataframe, contract_path):
@@ -727,11 +730,12 @@ class TestExplicitAdapterFilterConditions:
         ... )
         """
         import ibis
-        from vowl.adapters import IbisAdapter, FilterCondition
+
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapter = IbisAdapter(
             con,
             filter_conditions={
@@ -741,7 +745,7 @@ class TestExplicitAdapterFilterConditions:
                 ]
             }
         )
-        
+
         conditions = adapter.filter_conditions["hdb_resale_prices"]
         assert isinstance(conditions, list)
         assert len(conditions) == 2
@@ -760,11 +764,12 @@ class TestExplicitAdapterFilterConditions:
         ... )
         """
         import ibis
-        from vowl.adapters import IbisAdapter, FilterCondition
+
+        from vowl.adapters import FilterCondition, IbisAdapter
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapter = IbisAdapter(
             con,
             filter_conditions={
@@ -773,7 +778,7 @@ class TestExplicitAdapterFilterConditions:
                 "*": FilterCondition(field="resale_price", operator=">", value=0),
             }
         )
-        
+
         # Verify wildcard patterns are stored
         assert "hdb_*" in adapter.filter_conditions
         assert "*_prices" in adapter.filter_conditions
@@ -805,62 +810,65 @@ class TestMultiAdapters:
         ... }
         """
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter
 
         df1, df2 = multi_table_dataframes
-        
+
         con_a = ibis.duckdb.connect()
         con_a.create_table('hdb_resale_prices', df1)
-        
+
         con_b = ibis.duckdb.connect()
         con_b.create_table('hdb_resale_prices', df2)
-        
+
         adapters = {
             "hdb_resale_prices": IbisAdapter(con_a),
         }
-        
+
         multi_adapter = MultiSourceAdapter(adapters)
-        
+
         assert multi_adapter is not None
         assert "hdb_resale_prices" in multi_adapter.schema_names
 
     def test_multi_adapter_get_adapter(self, multi_table_dataframes):
         """Test retrieving individual adapter from MultiSourceAdapter."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter
 
         df1, _ = multi_table_dataframes
-        
+
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', df1)
-        
+
         adapter = IbisAdapter(con)
         multi_adapter = MultiSourceAdapter({"hdb_resale_prices": adapter})
-        
+
         retrieved = multi_adapter.get_adapter("hdb_resale_prices")
         assert retrieved is adapter
-        
+
         missing = multi_adapter.get_adapter("nonexistent")
         assert missing is None
 
     def test_multi_adapter_validation(self, clean_dataframe, contract_path):
         """Test validation using multi-adapter."""
         import ibis
+
         from vowl import validate_data
         from vowl.adapters import IbisAdapter
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapters = {
             "hdb_resale_prices": IbisAdapter(con),
         }
-        
+
         results = validate_data(
             contract=contract_path,
             adapters=adapters,
         )
-        
+
         assert results is not None
         assert hasattr(results, 'passed')
         assert_no_check_errors(results)
@@ -875,6 +883,7 @@ class TestMultiAdapters:
         names and run the cross-table checks successfully.
         """
         import ibis
+
         from vowl import validate_data
         from vowl.adapters import IbisAdapter
 
@@ -929,12 +938,13 @@ class TestMultiDatabaseIntegration:
     def test_duckdb_and_sqlite_together(self, small_clean_dataframe, tmp_path):
         """Test using DuckDB and SQLite adapters together."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter
 
         # Setup DuckDB (in-memory)
         duckdb_con = ibis.duckdb.connect()
         duckdb_con.create_table('orders', small_clean_dataframe)
-        
+
         # Setup SQLite (file-based)
         sqlite_path = tmp_path / "products.db"
         sqlite_con = ibis.sqlite.connect(str(sqlite_path))
@@ -947,50 +957,51 @@ class TestMultiDatabaseIntegration:
             )
         """)
         sqlite_con.insert('products', small_clean_dataframe.head(50).astype(str))
-        
+
         # Create adapters
         duckdb_adapter = IbisAdapter(duckdb_con)
         sqlite_adapter = IbisAdapter(sqlite_con)
-        
+
         # Create multi-source adapter
         multi_adapter = MultiSourceAdapter({
             "orders": duckdb_adapter,
             "products": sqlite_adapter,
         })
-        
+
         # Verify both adapters are accessible
         assert multi_adapter.get_adapter("orders") is duckdb_adapter
         assert multi_adapter.get_adapter("products") is sqlite_adapter
-        
+
         # Verify we can query both
         duckdb_count = duckdb_con.raw_sql("SELECT COUNT(*) FROM orders").fetchone()[0]
         sqlite_count = sqlite_con.raw_sql("SELECT COUNT(*) FROM products").fetchone()[0]
-        
+
         assert duckdb_count == 100
         assert sqlite_count == 50
 
     def test_multiple_duckdb_connections(self, small_clean_dataframe):
         """Test using multiple DuckDB connections (different in-memory databases)."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter
 
         # Create two separate DuckDB connections
         con1 = ibis.duckdb.connect()
         con1.create_table('table_a', small_clean_dataframe.head(50))
-        
+
         con2 = ibis.duckdb.connect()
         con2.create_table('table_b', small_clean_dataframe.tail(50))
-        
+
         # Create adapters
         adapter1 = IbisAdapter(con1)
         adapter2 = IbisAdapter(con2)
-        
+
         # Create multi-source adapter
         multi_adapter = MultiSourceAdapter({
             "schema_a": adapter1,
             "schema_b": adapter2,
         })
-        
+
         assert len(multi_adapter.schema_names) == 2
         assert "schema_a" in multi_adapter.schema_names
         assert "schema_b" in multi_adapter.schema_names
@@ -1010,19 +1021,20 @@ class TestCustomAdaptersExecutors:
         >>> adapter = CustomAdapter(xxx, executors={"sql": CustomSQLExecutor})
         """
         import ibis
+
         from vowl.adapters import IbisAdapter
         from vowl.executors import IbisSQLExecutor
 
         con = ibis.duckdb.connect()
         con.create_table('test_table', clean_dataframe)
-        
+
         adapter = IbisAdapter(con)
-        
+
         # Set custom executors
         adapter.set_executors({
             'sql': IbisSQLExecutor,
         })
-        
+
         executors = adapter.get_executors()
         assert 'sql' in executors
         assert executors['sql'] == IbisSQLExecutor
@@ -1039,35 +1051,34 @@ class TestCustomAdaptersExecutors:
     def test_custom_adapter_subclass(self, clean_dataframe, contract_path):
         """Test creating a custom adapter subclass."""
         import ibis
-        from typing import Optional
+
         from vowl.adapters import BaseAdapter, IbisAdapter
         from vowl.executors import IbisSQLExecutor
-        from vowl import validate_data
 
         class CustomAdapter(BaseAdapter):
             """Custom adapter with logging."""
-            
+
             def __init__(self, con, **kwargs):
                 super().__init__(executors={"sql": IbisSQLExecutor})
                 self._wrapped = IbisAdapter(con, **kwargs)
                 self._log: list = []
-            
+
             def get_connection(self):
                 self._log.append("get_connection called")
                 return self._wrapped.get_connection()
-            
+
             @property
             def filter_conditions(self):
                 return self._wrapped.filter_conditions
-            
-            def test_connection(self, table_name: str) -> Optional[str]:
+
+            def test_connection(self, table_name: str) -> str | None:
                 return self._wrapped.test_connection(table_name)
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
-        
+
         adapter = CustomAdapter(con)
-        
+
         # Verify custom adapter works
         assert adapter.get_executors() is not None
 
@@ -1087,7 +1098,7 @@ class TestValidationResultAPI:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         # Should be boolean
         assert isinstance(results.passed, bool)
 
@@ -1099,7 +1110,7 @@ class TestValidationResultAPI:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         assert results.api_version is not None
         assert results.api_version.startswith("v")
 
@@ -1111,7 +1122,7 @@ class TestValidationResultAPI:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         assert results.contract_data is not None
 
     def test_get_output_dfs(self, sample_dataframe, contract_path):
@@ -1122,9 +1133,9 @@ class TestValidationResultAPI:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         output_dfs = results.get_output_dfs()
-        
+
         assert isinstance(output_dfs, dict)
         # All non-ERROR checks should appear (PASSED and FAILED)
         non_error = [cr for cr in results.check_results if cr.status != 'ERROR']
@@ -1142,7 +1153,7 @@ class TestValidationResultAPI:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         # All display methods should return self for chaining
         chained = results.print_summary().show_failed_checks().show_failed_rows()
         assert chained is results
@@ -1155,12 +1166,12 @@ class TestValidationResultAPI:
             contract=contract_path,
             df=sample_dataframe,
         )
-        
+
         original_dir = os.getcwd()
         os.chdir(tmp_path)
         try:
             results.save(prefix="test_results")
-            
+
             # Check files were created
             files = list(tmp_path.iterdir())
             assert len(files) >= 1
@@ -1216,7 +1227,7 @@ class TestContractAPI:
         from vowl import Contract
 
         contract = Contract.load(contract_path)
-        
+
         assert contract is not None
         assert contract.contract_data is not None
 
@@ -1226,7 +1237,7 @@ class TestContractAPI:
 
         contract = Contract.load(contract_path)
         version = contract.get_api_version()
-        
+
         assert version is not None
         assert version.startswith("v")
 
@@ -1236,7 +1247,7 @@ class TestContractAPI:
 
         contract = Contract.load(contract_path)
         schema_names = contract.get_schema_names()
-        
+
         assert isinstance(schema_names, list)
         assert len(schema_names) > 0
 
@@ -1246,10 +1257,10 @@ class TestContractAPI:
 
         contract = Contract.load(contract_path)
         check_refs = contract.get_check_references_by_schema()
-        
+
         assert isinstance(check_refs, dict)
         assert len(check_refs) > 0
-        
+
         # Each schema should have a list of check references
         for schema_name, refs in check_refs.items():
             assert isinstance(refs, list)
@@ -1268,7 +1279,7 @@ class TestDataSourceMapper:
 
         mapper = DataSourceMapper()
         adapter = mapper.get_adapter(sample_dataframe, "test_table")
-        
+
         assert adapter is not None
 
     def test_create_adapter_function(self, sample_dataframe):
@@ -1276,5 +1287,5 @@ class TestDataSourceMapper:
         from vowl import create_adapter
 
         adapter = create_adapter(sample_dataframe, "test_table")
-        
+
         assert adapter is not None

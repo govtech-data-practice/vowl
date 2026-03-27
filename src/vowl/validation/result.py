@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 import pyarrow as pa
@@ -21,12 +22,6 @@ from .result_models import (
     SchemaValidationBreakdown,
     SingleTableSummary,
 )
-from .result_row_quality import (
-    build_row_quality_summary,
-    get_eligible_schema_names,
-    iter_unique_failed_row_keys,
-    select_relevant_failed_row_columns,
-)
 from .result_rendering import (
     STATUS_ORDER,
     build_check_results_section,
@@ -35,6 +30,12 @@ from .result_rendering import (
     get_field_label,
     get_tables_in_query,
     is_cross_table_check,
+)
+from .result_row_quality import (
+    build_row_quality_summary,
+    get_eligible_schema_names,
+    iter_unique_failed_row_keys,
+    select_relevant_failed_row_columns,
 )
 
 if TYPE_CHECKING:
@@ -48,10 +49,10 @@ class ValidationResult:
 
     def __init__(
         self,
-        summary: Dict[str, Any],
-        check_results: List[CheckResult],
+        summary: dict[str, Any],
+        check_results: list[CheckResult],
         contract: Contract,
-        multi_adapter: "MultiSourceAdapter",
+        multi_adapter: MultiSourceAdapter,
         schema_names: Sequence[str],
     ):
         self.summary = summary
@@ -60,9 +61,9 @@ class ValidationResult:
         self._multi_adapter: MultiSourceAdapter = multi_adapter
         self._schema_names = list(schema_names)
         self._vs = summary['validation_summary']
-        self._row_quality_summary_by_schema: Optional[Dict[str, Dict[str, Any]]] = None
-        self._schema_validation_breakdown: Optional[Dict[str, SchemaValidationBreakdown]] = None
-        self._schema_column_names: Dict[str, List[str]] = {}
+        self._row_quality_summary_by_schema: dict[str, dict[str, Any]] | None = None
+        self._schema_validation_breakdown: dict[str, SchemaValidationBreakdown] | None = None
+        self._schema_column_names: dict[str, list[str]] = {}
 
     def __repr__(self) -> str:
         total = self._vs['total_checks']
@@ -75,7 +76,7 @@ class ValidationResult:
         """True when the result can participate in row-level summaries/output."""
         return check_result.supports_row_level_output
 
-    def _get_row_quality_eligible_checks(self) -> List[CheckResult]:
+    def _get_row_quality_eligible_checks(self) -> list[CheckResult]:
         return [
             check_result
             for check_result in self.check_results
@@ -84,15 +85,15 @@ class ValidationResult:
             and self._supports_row_level_output(check_result)
         ]
 
-    def _get_checks_for_schema(self, schema_name: str) -> List[CheckResult]:
+    def _get_checks_for_schema(self, schema_name: str) -> list[CheckResult]:
         return [
             check_result
             for check_result in self.check_results
             if check_result.metadata.get('schema') == schema_name
         ]
 
-    def _get_failed_checks_summary_by_schema(self) -> Dict[str, Dict[str, List[CheckResult]]]:
-        summary: Dict[str, Dict[str, List[CheckResult]]] = {}
+    def _get_failed_checks_summary_by_schema(self) -> dict[str, dict[str, list[CheckResult]]]:
+        summary: dict[str, dict[str, list[CheckResult]]] = {}
         for schema_name in self._schema_names:
             single_checks, multi_checks = self._split_checks_by_scope(
                 check_result
@@ -109,9 +110,9 @@ class ValidationResult:
     @staticmethod
     def _split_checks_by_scope(
         check_results: Iterable[CheckResult],
-    ) -> tuple[List[CheckResult], List[CheckResult]]:
-        single_checks: List[CheckResult] = []
-        multi_checks: List[CheckResult] = []
+    ) -> tuple[list[CheckResult], list[CheckResult]]:
+        single_checks: list[CheckResult] = []
+        multi_checks: list[CheckResult] = []
         for check_result in check_results:
             if is_cross_table_check(check_result):
                 multi_checks.append(check_result)
@@ -119,7 +120,7 @@ class ValidationResult:
                 single_checks.append(check_result)
         return single_checks, multi_checks
 
-    def _get_sorted_check_results(self) -> List[CheckResult]:
+    def _get_sorted_check_results(self) -> list[CheckResult]:
         return sorted(
             self.check_results,
             key=lambda result: (
@@ -132,7 +133,7 @@ class ValidationResult:
             ),
         )
 
-    def _get_schema_column_names(self, schema_name: str) -> List[str]:
+    def _get_schema_column_names(self, schema_name: str) -> list[str]:
         if schema_name in self._schema_column_names:
             return self._schema_column_names[schema_name]
 
@@ -155,7 +156,7 @@ class ValidationResult:
         self._schema_column_names[schema_name] = column_names
         return column_names
 
-    def _get_row_quality_summary_by_schema(self) -> Dict[str, Dict[str, Any]]:
+    def _get_row_quality_summary_by_schema(self) -> dict[str, dict[str, Any]]:
         if self._row_quality_summary_by_schema is not None:
             return self._row_quality_summary_by_schema
 
@@ -193,9 +194,9 @@ class ValidationResult:
         self,
         eligible_checks: Iterable[CheckResult],
         eligible_schemas: set[str],
-        schema_columns: Dict[str, List[str]],
-    ) -> Dict[str, set[tuple[Any, ...]]]:
-        unique_rows_by_schema: Dict[str, set[tuple[Any, ...]]] = {
+        schema_columns: dict[str, list[str]],
+    ) -> dict[str, set[tuple[Any, ...]]]:
+        unique_rows_by_schema: dict[str, set[tuple[Any, ...]]] = {
             schema_name: set() for schema_name in eligible_schemas
         }
         for check_result in eligible_checks:
@@ -224,13 +225,13 @@ class ValidationResult:
             )
         return unique_rows_by_schema
 
-    def _get_schema_validation_breakdown(self) -> Dict[str, SchemaValidationBreakdown]:
+    def _get_schema_validation_breakdown(self) -> dict[str, SchemaValidationBreakdown]:
         if self._schema_validation_breakdown is not None:
             return self._schema_validation_breakdown
 
         total_rows_by_schema = self._vs.get('total_rows_by_schema', {})
         row_quality_summary_by_schema = self._get_row_quality_summary_by_schema()
-        breakdown: Dict[str, SchemaValidationBreakdown] = {}
+        breakdown: dict[str, SchemaValidationBreakdown] = {}
 
         for schema_name in self._schema_names:
             schema_checks = self._get_checks_for_schema(schema_name)
@@ -256,8 +257,8 @@ class ValidationResult:
         self,
         schema_name: str,
         schema_checks: Sequence[CheckResult],
-        total_rows_by_schema: Dict[str, int],
-        row_quality_summary_by_schema: Dict[str, Dict[str, Any]],
+        total_rows_by_schema: dict[str, int],
+        row_quality_summary_by_schema: dict[str, dict[str, Any]],
     ) -> SchemaValidationBreakdown:
         single_table_checks, multi_table_checks = self._split_checks_by_scope(schema_checks)
         single_table_row_summary = row_quality_summary_by_schema.get(schema_name)
@@ -307,7 +308,7 @@ class ValidationResult:
     def contract_data(self) -> DataContract:
         return self.contract.contract_data
 
-    def print_summary(self) -> 'ValidationResult':
+    def print_summary(self) -> ValidationResult:
         summary_section = build_summary_section(
             total_checks=self._vs['total_checks'],
             passed_checks=self._vs['passed'],
@@ -331,7 +332,7 @@ class ValidationResult:
 
         return self
 
-    def show_failed_checks(self) -> 'ValidationResult':
+    def show_failed_checks(self) -> ValidationResult:
         failed_checks = [cr for cr in self.check_results if cr.status == 'FAILED']
 
         if not failed_checks:
@@ -350,7 +351,7 @@ class ValidationResult:
 
         return self
 
-    def show_failed_rows(self, max_rows: int = 5, full: bool = False) -> 'ValidationResult':
+    def show_failed_rows(self, max_rows: int = 5, full: bool = False) -> ValidationResult:
         failed_checks_summary = self._get_failed_checks_summary_by_schema()
         if not failed_checks_summary:
             print("\n No failed rows found!")
@@ -435,8 +436,8 @@ class ValidationResult:
         schema = cr.metadata.get('schema', '')
         return f"{schema}::{cr.check_name}" if schema else cr.check_name
 
-    def get_output_dfs(self, checks: Optional[Sequence[str]] = None) -> Dict[str, nw.DataFrame]:
-        result: Dict[str, nw.DataFrame] = {}
+    def get_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
+        result: dict[str, nw.DataFrame] = {}
         checks_set = set(checks) if checks else None
 
         for cr in self.check_results:
@@ -451,26 +452,26 @@ class ValidationResult:
 
         return dict(sorted(result.items()))
 
-    def get_consolidated_output_dfs(self, checks: Optional[Sequence[str]] = None) -> Dict[str, nw.DataFrame]:
+    def get_consolidated_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
         per_check = self.get_output_dfs(checks=checks)
         per_check = {k: v for k, v in per_check.items() if len(v) > 0}
         if not per_check:
             return {}
 
-        groups: Dict[tuple, List[nw.DataFrame]] = {}
+        groups: dict[tuple, list[nw.DataFrame]] = {}
         for df in per_check.values():
             tables_key = df['tables_in_query'][0] if len(df) > 0 else ''
             cols_key = frozenset(c for c in df.columns if c not in ('check_id', 'tables_in_query'))
             group_key = (tables_key, cols_key)
             groups.setdefault(group_key, []).append(df)
 
-        raw_results: Dict[str, List[nw.DataFrame]] = {}
+        raw_results: dict[str, list[nw.DataFrame]] = {}
         for (tables_key, _cols_key), dfs in groups.items():
             grouped = self._consolidate_grouped_output(nw.concat(dfs))
             key = tables_key or 'unknown'
             raw_results.setdefault(key, []).append(grouped)
 
-        result: Dict[str, nw.DataFrame] = {}
+        result: dict[str, nw.DataFrame] = {}
         for key, dfs_list in sorted(raw_results.items()):
             if len(dfs_list) == 1:
                 result[key] = dfs_list[0]
@@ -501,7 +502,7 @@ class ValidationResult:
         tables_col = arrow_table.column('tables_in_query')
         data_arrow_cols = [arrow_table.column(column) for column in data_cols]
 
-        row_groups: Dict[tuple[Any, ...], Dict[str, Any]] = {}
+        row_groups: dict[tuple[Any, ...], dict[str, Any]] = {}
         for row_index in range(arrow_table.num_rows):
             row_key = tuple(column[row_index].as_py() for column in data_arrow_cols)
             group = row_groups.setdefault(
@@ -513,7 +514,7 @@ class ValidationResult:
             )
             group['check_ids'].add(check_id_col[row_index].as_py())
 
-        result_data: Dict[str, list] = {column: [] for column in data_cols}
+        result_data: dict[str, list] = {column: [] for column in data_cols}
         result_data['check_ids'] = []
         result_data['tables_in_query'] = []
 
@@ -526,7 +527,7 @@ class ValidationResult:
         return nw.from_native(pa.table(result_data), eager_only=True)
 
     # Preferred column order for check results output.
-    _CHECK_RESULTS_COLUMN_ORDER: List[str] = [
+    _CHECK_RESULTS_COLUMN_ORDER: list[str] = [
         'check_name',
         'target',
         'schema',
@@ -558,7 +559,7 @@ class ValidationResult:
     def get_check_results_df(self) -> nw.DataFrame:
         _safe = self._arrow_safe
         data = []
-        extra_keys: List[str] = []
+        extra_keys: list[str] = []
         for cr in self.check_results:
             flat_meta = {
                 k: _safe(v)
@@ -587,7 +588,7 @@ class ValidationResult:
             eager_only=True,
         )
 
-    def save(self, output_dir: str = ".", prefix: str = "vowl_results") -> 'ValidationResult':
+    def save(self, output_dir: str = ".", prefix: str = "vowl_results") -> ValidationResult:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -606,7 +607,7 @@ class ValidationResult:
         with open(json_path, 'w') as f:
             json.dump(self.summary, f, indent=2, default=str)
 
-        print(f"\nResults saved:")
+        print("\nResults saved:")
         for fp in saved_files:
             print(f"   - {fp}")
         print(f"   - {json_path}")
@@ -641,6 +642,6 @@ class ValidationResult:
 
         print(f"Saved to: {filepath}")
 
-    def display_full_report(self, full: bool = False, max_rows: int = 5) -> 'ValidationResult':
+    def display_full_report(self, full: bool = False, max_rows: int = 5) -> ValidationResult:
         self.print_summary().show_failed_rows(max_rows=max_rows, full=full)
         return self

@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypedDict
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypedDict
 
 if TYPE_CHECKING:
-    from .contract import Contract
-    from .models.ODCS_types import DataQuality
-
     import narwhals as nw
 
     from vowl.executors.base import CheckResult
+
+    from .contract import Contract
+    from .models.ODCS_types import DataQuality
 
 
 class CheckResultMetadata(TypedDict, total=False):
@@ -46,7 +47,7 @@ class CheckReference(ABC):
     elements like schema name, column info, etc.
     """
 
-    def __init__(self, contract: "Contract", path: str):
+    def __init__(self, contract: Contract, path: str):
         """
         Initialize a check reference.
 
@@ -77,11 +78,11 @@ class CheckReference(ABC):
         return self._path
 
     @property
-    def contract(self) -> "Contract":
+    def contract(self) -> Contract:
         """Get the parent Contract."""
         return self._contract
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         """
         Get the check data dict.
 
@@ -131,7 +132,7 @@ class CheckReference(ABC):
         return metadata
 
     @abstractmethod
-    def get_schema_name(self) -> Optional[str]:
+    def get_schema_name(self) -> str | None:
         """Get the schema name this check belongs to."""
         ...
 
@@ -140,7 +141,7 @@ class CheckReference(ABC):
         """Get the JSONPath to the parent schema."""
         ...
 
-    def get_logical_type(self) -> Optional[str]:
+    def get_logical_type(self) -> str | None:
         """
         Get the logical type for the column this check applies to.
 
@@ -149,7 +150,7 @@ class CheckReference(ABC):
         """
         return None
 
-    def get_logical_type_options(self) -> Optional[Dict[str, Any]]:
+    def get_logical_type_options(self) -> dict[str, Any] | None:
         """
         Get the logical type options for the column this check applies to.
 
@@ -158,7 +159,7 @@ class CheckReference(ABC):
         """
         return None
 
-    def get_column_name(self) -> Optional[str]:
+    def get_column_name(self) -> str | None:
         """
         Get the column name this check applies to.
 
@@ -192,7 +193,7 @@ class CheckReference(ABC):
         parts.append(check_type)
         return "_".join(parts)
 
-    def get_expected_value(self) -> Tuple[str, Any]:
+    def get_expected_value(self) -> tuple[str, Any]:
         """Extract (operator, expected_value) from the check dict."""
         check = self.get_check()
         for key in (
@@ -236,8 +237,8 @@ class CheckReference(ABC):
         *,
         actual_value: Any,
         execution_time_ms: float,
-        failed_rows_fetcher: Optional[Callable[[], Optional["nw.DataFrame"]]] = None,
-    ) -> "CheckResult":
+        failed_rows_fetcher: Callable[[], nw.DataFrame | None] | None = None,
+    ) -> CheckResult:
         """Build a PASSED or FAILED CheckResult from the actual value."""
         from vowl.executors.base import CheckResult
 
@@ -274,7 +275,7 @@ class CheckReference(ABC):
         error_message: str,
         execution_time_ms: float,
         **extra_metadata: Any,
-    ) -> "CheckResult":
+    ) -> CheckResult:
         """Build an ERROR CheckResult."""
         from vowl.executors.base import CheckResult
 
@@ -292,7 +293,7 @@ class CheckReference(ABC):
 class TableCheckMixin:
     """Mixin for table-level check references (navigate 1 level up for schema)."""
 
-    def get_schema_name(self) -> Optional[str]:
+    def get_schema_name(self) -> str | None:
         schema_path = self.get_schema_path()
         return self._contract.resolve(f"{schema_path}.name")
 
@@ -303,7 +304,7 @@ class TableCheckMixin:
 class ColumnCheckMixin:
     """Mixin for column-level check references (navigate 2 levels up for schema)."""
 
-    def get_schema_name(self) -> Optional[str]:
+    def get_schema_name(self) -> str | None:
         schema_path = self.get_schema_path()
         return self._contract.resolve(f"{schema_path}.name")
 
@@ -313,15 +314,15 @@ class ColumnCheckMixin:
     def get_column_path(self) -> str:
         return self._contract.resolve_parent(self._path, levels=1)
 
-    def get_column_name(self) -> Optional[str]:
+    def get_column_name(self) -> str | None:
         col_path = self.get_column_path()
         return self._contract.resolve(f"{col_path}.name")
 
-    def get_logical_type(self) -> Optional[str]:
+    def get_logical_type(self) -> str | None:
         col_path = self.get_column_path()
         return self._contract.resolve(f"{col_path}.logicalType")
 
-    def get_logical_type_options(self) -> Optional[Dict[str, Any]]:
+    def get_logical_type_options(self) -> dict[str, Any] | None:
         col_path = self.get_column_path()
         return self._contract.resolve(f"{col_path}.logicalTypeOptions")
 

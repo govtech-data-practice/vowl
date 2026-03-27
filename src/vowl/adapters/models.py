@@ -5,16 +5,15 @@ Models for adapter configuration.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Literal, Optional, Union, cast
+from typing import Any, Literal, cast
 
 from sqlglot import exp
-
 
 # Supported filter operators
 FilterOperator = Literal["=", "!=", ">", ">=", "<", "<=", "IN", "NOT IN", "LIKE", "NOT LIKE", "IS NULL", "IS NOT NULL"]
 
 # Type for dict-based filter condition
-FilterConditionDict = Dict[str, Any]  # {"field": str, "operator": str, "value": Any}
+FilterConditionDict = dict[str, Any]  # {"field": str, "operator": str, "value": Any}
 
 
 @dataclass
@@ -37,8 +36,8 @@ class FilterCondition:
     """
     field: str
     operator: FilterOperator
-    value: Optional[Any] = None
-    
+    value: Any | None = None
+
     def to_ast(self) -> exp.Expression:
         """
         Convert the filter condition to a sqlglot AST expression.
@@ -74,7 +73,7 @@ class FilterCondition:
             return like_expr
 
         # Standard comparison operators
-        op_map: Dict[str, type] = {
+        op_map: dict[str, type] = {
             "=": exp.EQ,
             "!=": exp.NEQ,
             ">": exp.GT,
@@ -102,7 +101,7 @@ class FilterCondition:
             return exp.Literal.string(str(value))
 
 def build_filter_ast(
-    conditions: Union[FilterCondition, List[FilterCondition], FilterConditionDict, List[FilterConditionDict]],
+    conditions: FilterCondition | list[FilterCondition] | FilterConditionDict | list[FilterConditionDict],
 ) -> exp.Expression:
     """
     Build a sqlglot AST expression from filter condition(s).
@@ -114,7 +113,7 @@ def build_filter_ast(
     Returns:
         A sqlglot Expression node. Multiple conditions are combined with AND.
     """
-    def _to_filter_condition(cond: Union[FilterCondition, FilterConditionDict]) -> FilterCondition:
+    def _to_filter_condition(cond: FilterCondition | FilterConditionDict) -> FilterCondition:
         if isinstance(cond, dict):
             cond_dict = cast(FilterConditionDict, cond)
             return FilterCondition(

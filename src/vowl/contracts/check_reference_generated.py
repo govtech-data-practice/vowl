@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 import sqlglot
 from sqlglot import exp
@@ -12,10 +12,10 @@ from sqlglot import exp
 from .check_reference_sql import LOGICAL_TYPE_TO_SQL, SQLCheckReference
 
 if TYPE_CHECKING:
+    from vowl.adapters.models import FilterCondition
+
     from .contract import Contract
     from .models.ODCS_types import DataQuality
-
-    from vowl.adapters.models import FilterCondition
 
     FilterConditionType = FilterCondition | list[FilterCondition] | dict[str, Any]
 else:
@@ -25,11 +25,11 @@ else:
 class GeneratedColumnCheckReference(SQLCheckReference, ABC):
     """Base class for auto-generated column-level checks."""
 
-    def __init__(self, contract: "Contract", property_path: str, path_suffix: str):
+    def __init__(self, contract: Contract, property_path: str, path_suffix: str):
         super().__init__(contract, f"{property_path}.{path_suffix}")
         self._property_path = property_path
-        self._generated_check: Optional["DataQuality"] = None
-        self._cached_ast: Optional[exp.Expression] = None
+        self._generated_check: DataQuality | None = None
+        self._cached_ast: exp.Expression | None = None
 
     @abstractmethod
     def _build_ast(self) -> exp.Expression:
@@ -37,14 +37,14 @@ class GeneratedColumnCheckReference(SQLCheckReference, ABC):
         ...
 
     @abstractmethod
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         """Generate and return the synthetic DataQuality check definition."""
         ...
 
     def get_query(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
     ) -> str:
         ast = self._build_ast()
@@ -55,7 +55,7 @@ class GeneratedColumnCheckReference(SQLCheckReference, ABC):
             query, _ = self.apply_try_cast(query, dialect)
         return query
 
-    def get_schema_name(self) -> Optional[str]:
+    def get_schema_name(self) -> str | None:
         schema_path = self.get_schema_path()
         return self._contract.resolve(f"{schema_path}.name")
 
@@ -65,13 +65,13 @@ class GeneratedColumnCheckReference(SQLCheckReference, ABC):
     def get_column_path(self) -> str:
         return self._property_path
 
-    def get_column_name(self) -> Optional[str]:
+    def get_column_name(self) -> str | None:
         return self._contract.resolve(f"{self._property_path}.name")
 
-    def get_logical_type(self) -> Optional[str]:
+    def get_logical_type(self) -> str | None:
         return self._contract.resolve(f"{self._property_path}.logicalType")
 
-    def get_logical_type_options(self) -> Optional[Dict[str, Any]]:
+    def get_logical_type_options(self) -> dict[str, Any] | None:
         return self._contract.resolve(f"{self._property_path}.logicalTypeOptions")
 
     def is_generated(self) -> bool:
@@ -81,10 +81,10 @@ class GeneratedColumnCheckReference(SQLCheckReference, ABC):
 class GeneratedTableCheckReference(SQLCheckReference, ABC):
     """Base class for auto-generated table-level checks."""
 
-    def __init__(self, contract: "Contract", quality_path: str):
+    def __init__(self, contract: Contract, quality_path: str):
         super().__init__(contract, quality_path)
-        self._generated_check: Optional["DataQuality"] = None
-        self._cached_ast: Optional[exp.Expression] = None
+        self._generated_check: DataQuality | None = None
+        self._cached_ast: exp.Expression | None = None
 
     @abstractmethod
     def _build_ast(self) -> exp.Expression:
@@ -92,14 +92,14 @@ class GeneratedTableCheckReference(SQLCheckReference, ABC):
         ...
 
     @abstractmethod
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         """Generate and return the synthetic DataQuality check definition."""
         ...
 
     def get_query(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
     ) -> str:
         ast = self._build_ast()
@@ -110,7 +110,7 @@ class GeneratedTableCheckReference(SQLCheckReference, ABC):
             query, _ = self.apply_try_cast(query, dialect)
         return query
 
-    def get_schema_name(self) -> Optional[str]:
+    def get_schema_name(self) -> str | None:
         schema_path = self.get_schema_path()
         return self._contract.resolve(f"{schema_path}.name")
 
@@ -124,10 +124,10 @@ class GeneratedTableCheckReference(SQLCheckReference, ABC):
 class DeclaredColumnExistsCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated column existence check."""
 
-    def __init__(self, contract: "Contract", property_path: str):
+    def __init__(self, contract: Contract, property_path: str):
         super().__init__(contract, property_path, "name")
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         if self._generated_check is None:
             self._generated_check = self._generate_check()
         return self._generated_check
@@ -157,7 +157,7 @@ class DeclaredColumnExistsCheckReference(GeneratedColumnCheckReference):
         )
         return self._cached_ast
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         col_name = self.get_column_name()
         schema_name = self.get_schema_name()
         ast = self._build_ast()
@@ -171,17 +171,17 @@ class DeclaredColumnExistsCheckReference(GeneratedColumnCheckReference):
             "mustBe": 0,
         }
 
-    def get_column_name(self) -> Optional[str]:
+    def get_column_name(self) -> str | None:
         return self._contract.resolve(self._path)
 
 
 class LogicalTypeCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated logical type check."""
 
-    def __init__(self, contract: "Contract", property_path: str):
+    def __init__(self, contract: Contract, property_path: str):
         super().__init__(contract, property_path, "logicalType")
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         if self._generated_check is None:
             self._generated_check = self._generate_check()
         return self._generated_check
@@ -228,7 +228,7 @@ class LogicalTypeCheckReference(GeneratedColumnCheckReference):
         )
         return self._cached_ast
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         col_name = self.get_column_name()
         logical_type = self.get_logical_type()
         ast = self._build_ast()
@@ -242,7 +242,7 @@ class LogicalTypeCheckReference(GeneratedColumnCheckReference):
             "mustBe": 0,
         }
 
-    def get_logical_type(self) -> Optional[str]:
+    def get_logical_type(self) -> str | None:
         return self._contract.resolve(self._path)
 
 
@@ -260,7 +260,7 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         "multipleOf",
     }
 
-    def __init__(self, contract: "Contract", property_path: str, option_key: str, option_value: Any):
+    def __init__(self, contract: Contract, property_path: str, option_key: str, option_value: Any):
         if option_key not in self.SUPPORTED_OPTIONS:
             warnings.warn(
                 f"Unsupported logicalTypeOptions key '{option_key}' at {property_path}. "
@@ -274,12 +274,12 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         self._option_key = option_key
         self._option_value = option_value
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         if self._generated_check is None:
             self._generated_check = self._generate_check()
         return self._generated_check
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         col_name = self.get_column_name() or ""
         ast = self._build_ast()
         description = self._build_description(col_name)
@@ -375,10 +375,10 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 class RequiredCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated required (not null) check."""
 
-    def __init__(self, contract: "Contract", property_path: str):
+    def __init__(self, contract: Contract, property_path: str):
         super().__init__(contract, property_path, "required")
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         if self._generated_check is None:
             self._generated_check = self._generate_check()
         return self._generated_check
@@ -405,7 +405,7 @@ class RequiredCheckReference(GeneratedColumnCheckReference):
         self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(col.is_(exp.Null()))
         return self._cached_ast
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         col_name = self.get_column_name()
         ast = self._build_ast()
 
@@ -422,10 +422,10 @@ class RequiredCheckReference(GeneratedColumnCheckReference):
 class UniqueCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated uniqueness check."""
 
-    def __init__(self, contract: "Contract", property_path: str):
+    def __init__(self, contract: Contract, property_path: str):
         super().__init__(contract, property_path, "unique")
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         if self._generated_check is None:
             self._generated_check = self._generate_check()
         return self._generated_check
@@ -460,7 +460,7 @@ class UniqueCheckReference(GeneratedColumnCheckReference):
         self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(subquery.subquery())
         return self._cached_ast
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         col_name = self.get_column_name()
         ast = self._build_ast()
 
@@ -477,10 +477,10 @@ class UniqueCheckReference(GeneratedColumnCheckReference):
 class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated primary key check."""
 
-    def __init__(self, contract: "Contract", property_path: str):
+    def __init__(self, contract: Contract, property_path: str):
         super().__init__(contract, property_path, "primaryKey")
 
-    def get_check(self) -> "DataQuality":
+    def get_check(self) -> DataQuality:
         if self._generated_check is None:
             self._generated_check = self._generate_check()
         return self._generated_check
@@ -522,7 +522,7 @@ class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
         )
         return self._cached_ast
 
-    def _generate_check(self) -> "DataQuality":
+    def _generate_check(self) -> DataQuality:
         col_name = self.get_column_name()
         ast = self._build_ast()
 

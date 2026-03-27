@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Type, Union
+from typing import TYPE_CHECKING, Any
 
 from ..adapters.base import BaseAdapter
 from ..adapters.multi_source_adapter import MultiSourceAdapter
@@ -17,17 +17,17 @@ if TYPE_CHECKING:
 
 
 def validate_data(
-    contract: Union[Contract, str, Path],
+    contract: Contract | str | Path,
     *,
-    adapter: Optional[BaseAdapter] = None,
-    df: Optional[Any] = None,
-    connection_str: Optional[str] = None,
-    spark_session: Optional["SparkSession"] = None,
-    adapters: Optional[Dict[str, BaseAdapter]] = None,
-    config: Optional[ValidationConfig] = None,
-    runner_cls: Type[ValidationRunner] = ValidationRunner,
-    contract_cls: Type[Contract] = Contract,
-    multi_adapter_cls: Type[MultiSourceAdapter] = MultiSourceAdapter,
+    adapter: BaseAdapter | None = None,
+    df: Any | None = None,
+    connection_str: str | None = None,
+    spark_session: SparkSession | None = None,
+    adapters: dict[str, BaseAdapter] | None = None,
+    config: ValidationConfig | None = None,
+    runner_cls: type[ValidationRunner] = ValidationRunner,
+    contract_cls: type[Contract] = Contract,
+    multi_adapter_cls: type[MultiSourceAdapter] = MultiSourceAdapter,
 ) -> ValidationResult:
     sources = {
         'adapter': adapter,
@@ -80,7 +80,7 @@ def validate_data(
 
     runner = runner_cls(
         contract=resolved_contract,
-        adapters={schema_name: data_source for schema_name in schema_names},
+        adapters=dict.fromkeys(schema_names, data_source),
         config=config,
     )
     return runner.run()

@@ -7,22 +7,23 @@ TRY_CAST rewriting, etc.) live in :mod:`vowl.contracts.sql_transforms`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import sqlglot
 from sqlglot import exp
 
-from .check_reference_base import CheckReference, CheckResultMetadata, TableCheckMixin, ColumnCheckMixin
 from . import sql_transforms as _sql
+from .check_reference_base import CheckReference, CheckResultMetadata, ColumnCheckMixin, TableCheckMixin
 
 if TYPE_CHECKING:
+    import narwhals as nw
+
     from vowl.adapters.models import FilterCondition
     from vowl.executors.base import CheckResult
 
-    import narwhals as nw
-
-    FilterConditionType = Union[FilterCondition, List[FilterCondition], Dict[str, Any]]
+    FilterConditionType = Union[FilterCondition, list[FilterCondition], dict[str, Any]]
 
 # Re-export so existing ``from .check_reference_sql import LOGICAL_TYPE_TO_SQL``
 # continues to work.
@@ -48,7 +49,7 @@ class SQLCheckReference(CheckReference, ABC):
     def get_query(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
     ) -> str:
         """
@@ -81,9 +82,9 @@ class SQLCheckReference(CheckReference, ABC):
     def get_failed_rows_query(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Return a SELECT query for fetching the rows that failed a check."""
         query = self.get_query(dialect, filter_conditions, use_try_cast=use_try_cast)
         if not query:
@@ -111,9 +112,9 @@ class SQLCheckReference(CheckReference, ABC):
     def get_scalar_query(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Return the query that produces the scalar value for comparison."""
         query = self.get_query(dialect, filter_conditions, use_try_cast=use_try_cast)
         if not query:
@@ -135,7 +136,7 @@ class SQLCheckReference(CheckReference, ABC):
     def _build_full_metadata(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
         **extra: Any,
     ) -> dict[str, Any]:
@@ -153,11 +154,11 @@ class SQLCheckReference(CheckReference, ABC):
         *,
         actual_value: Any,
         execution_time_ms: float,
-        failed_rows_fetcher: Optional[Callable[[], Optional["nw.DataFrame"]]] = None,
+        failed_rows_fetcher: Callable[[], nw.DataFrame | None] | None = None,
         dialect: str = "",
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
-    ) -> "CheckResult":
+    ) -> CheckResult:
         """Build a PASSED or FAILED result with SQL-specific fields."""
         from vowl.executors.base import CheckResult
 
@@ -197,10 +198,10 @@ class SQLCheckReference(CheckReference, ABC):
         error_message: str,
         execution_time_ms: float,
         dialect: str = "",
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
         **extra_metadata: Any,
-    ) -> "CheckResult":
+    ) -> CheckResult:
         """Build an ERROR result with SQL metadata."""
         from vowl.executors.base import CheckResult
 
@@ -242,7 +243,7 @@ class SQLTableCheckReference(TableCheckMixin, SQLCheckReference):
     def get_query(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
     ) -> str:
         check = self.get_check()
@@ -261,7 +262,7 @@ class SQLColumnCheckReference(ColumnCheckMixin, SQLCheckReference):
     def get_query(
         self,
         dialect: str,
-        filter_conditions: Optional[Dict[str, "FilterConditionType"]] = None,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
         use_try_cast: bool = False,
     ) -> str:
         check = self.get_check()

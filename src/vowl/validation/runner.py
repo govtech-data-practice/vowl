@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 from ..adapters.ibis_adapter import IbisAdapter
 from ..adapters.multi_source_adapter import MultiSourceAdapter
@@ -16,27 +16,27 @@ from .result import ValidationResult
 
 
 class ValidationRunner:
-    contract_cls: Type[Contract] = Contract
-    mapper_cls: Type[DataSourceMapper] = DataSourceMapper
-    adapter_cls: Type[IbisAdapter] = IbisAdapter
-    multi_adapter_cls: Type[MultiSourceAdapter] = MultiSourceAdapter
-    result_cls: Type[ValidationResult] = ValidationResult
-    config_cls: Type[ValidationConfig] = ValidationConfig
+    contract_cls: type[Contract] = Contract
+    mapper_cls: type[DataSourceMapper] = DataSourceMapper
+    adapter_cls: type[IbisAdapter] = IbisAdapter
+    multi_adapter_cls: type[MultiSourceAdapter] = MultiSourceAdapter
+    result_cls: type[ValidationResult] = ValidationResult
+    config_cls: type[ValidationConfig] = ValidationConfig
 
     def __init__(
         self,
-        contract: Union[Contract, str, Path],
-        adapters: Union[MultiSourceAdapter, Dict[str, Any]],
-        config: Optional[ValidationConfig] = None,
+        contract: Contract | str | Path,
+        adapters: MultiSourceAdapter | dict[str, Any],
+        config: ValidationConfig | None = None,
     ) -> None:
         if isinstance(contract, self.contract_cls):
-            self._contract: Optional[Contract] = contract
+            self._contract: Contract | None = contract
         else:
             self._contract = self.contract_cls.load(str(contract))
         self._adapters_input = adapters
         self._config = config or self.config_cls()
-        self._multi_adapter: Optional[MultiSourceAdapter] = None
-        self._schema_names: List[str] = []
+        self._multi_adapter: MultiSourceAdapter | None = None
+        self._schema_names: list[str] = []
 
     def _resolve_adapters(self) -> MultiSourceAdapter:
         if isinstance(self._adapters_input, self.multi_adapter_cls):
@@ -54,7 +54,7 @@ class ValidationRunner:
             raise ValueError("Contract has no schemas with names defined")
 
         mapper = self.mapper_cls()
-        resolved: Dict[str, IbisAdapter] = {}
+        resolved: dict[str, IbisAdapter] = {}
 
         for key, adapter_input in self._adapters_input.items():
             schema_name = str(key)
@@ -82,10 +82,10 @@ class ValidationRunner:
 
     def _build_summary(
         self,
-        check_results: List[CheckResult],
-        total_rows_by_schema: Dict[str, int],
-        connection_results: Optional[Dict[str, Dict[str, str]]] = None,
-    ) -> Dict[str, Any]:
+        check_results: list[CheckResult],
+        total_rows_by_schema: dict[str, int],
+        connection_results: dict[str, dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         passed = sum(1 for cr in check_results if cr.status == 'PASSED')
         failed = sum(1 for cr in check_results if cr.status == 'FAILED')
         errors = sum(1 for cr in check_results if cr.status == 'ERROR')
@@ -140,7 +140,7 @@ class ValidationRunner:
         connection_results = self._multi_adapter.test_connections(check_refs_by_schema)
         check_results = self._multi_adapter.run_checks(check_refs_by_schema)
 
-        total_rows_by_schema: Dict[str, int] = {}
+        total_rows_by_schema: dict[str, int] = {}
         if self._config.enable_additional_schema_statistics:
             total_rows_by_schema = self._multi_adapter.get_total_rows_by_schema(
                 self._config.max_rows_for_statistics,
