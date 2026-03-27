@@ -143,8 +143,8 @@ security-audit:
 # Release validation
 release-check: clean
 	$(UV) pip install --python .venv/bin/python --upgrade build twine
-	python -m build
-	python -m twine check dist/*
+	$(UV) run python -m build
+	$(UV) run python -m twine check dist/*
 
 release-upload-testpypi: release-check
 	python -m twine upload --repository testpypi dist/* --config-file .pypirc 
