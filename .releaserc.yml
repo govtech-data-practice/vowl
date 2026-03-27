@@ -1,0 +1,26 @@
+# Semantic-release configuration
+# Uses conventional commits to determine version bumps automatically
+
+branches:
+  - main
+  - "+([0-9])?(.{+([0-9]),x}).x"
+  - master
+  - next
+  - name: beta
+    prerelease: true
+  - name: alpha
+    prerelease: true
+  - name: feat/*
+    prerelease: '${name.replace(/^feat\//g, "feat-")}'
+
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - "@semantic-release/release-notes-generator"
+  - "@semantic-release/gitlab"
+  - - "@semantic-release/exec"
+    - prepareCmd: "sed -i 's/^version = .*/version = \"${nextRelease.version}\"/' pyproject.toml"
+      publishCmd: "uv run python -m build && uv run twine upload --repository gitlab dist/*"
+  - - "@semantic-release/git"
+    - assets:
+        - pyproject.toml
+      message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"

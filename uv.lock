@@ -2608,7 +2608,6 @@ wheels = [
 name = "vowl"
 source = { editable = "." }
 dependencies = [
-    { name = "boto3" },
     { name = "ibis-framework", extra = ["duckdb"] },
     { name = "jsonpath-ng" },
     { name = "jsonschema" },
@@ -2621,6 +2620,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "boto3" },
     { name = "ibis-framework", extra = ["pyspark"] },
     { name = "pyspark" },
 ]
@@ -2644,6 +2644,7 @@ dev = [
     { name = "testcontainers" },
 ]
 lean-ci-test = [
+    { name = "boto3" },
     { name = "ibis-framework", extra = ["postgres"] },
     { name = "pyspark" },
     { name = "pytest" },
@@ -2653,7 +2654,7 @@ lean-ci-test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "boto3", specifier = ">=1.42.38" },
+    { name = "boto3", marker = "extra == 'all'", specifier = ">=1.42.38" },
     { name = "ibis-framework", extras = ["duckdb"], specifier = ">=11.0.0" },
     { name = "ibis-framework", extras = ["pyspark"], marker = "extra == 'all'", specifier = ">=11.0.0" },
     { name = "ibis-framework", extras = ["pyspark"], marker = "extra == 'spark'", specifier = ">=11.0.0" },
@@ -2684,6 +2685,7 @@ dev = [
     { name = "testcontainers", specifier = ">=4.14.1" },
 ]
 lean-ci-test = [
+    { name = "boto3", specifier = ">=1.42.38" },
     { name = "ibis-framework", extras = ["postgres"], specifier = ">=11.0.0" },
     { name = "pyspark", specifier = ">=3.0.0" },
     { name = "pytest", specifier = ">=9.0.2" },

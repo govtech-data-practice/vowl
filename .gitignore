@@ -14,6 +14,6 @@ env/
 .vscode/
 .idea/
 .DS_Store
-test/expected_outputs/*
-test/failed_outputs/*
+# tests/expected_outputs/*
+tests/failed_outputs/*
 docs/doxygen/*

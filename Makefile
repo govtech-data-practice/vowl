@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint security-scan security-scan-json security-audit release-check release-upload-testpypi release-upload-nexus release-upload-gitlab release-tag
+.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-scan-json security-audit release-check release-upload-testpypi release-upload-nexus release-upload-gitlab release-tag
 
 UV ?= uv
 
@@ -9,13 +9,19 @@ help:
 	@echo "  install-dev      Install with development dependencies"
 	@echo "  install-lean-ci-test Install the lean CI test dependency set"
 	@echo "  install-all      Install with all optional dependencies"
+	@echo "  format           Format code with ruff"
+	@echo "  format-check     Check code formatting with ruff"
+	@echo "  lint             Run linting checks"
+	@echo "  lint-fix         Lint and auto-fix with ruff"
+	@echo "  typecheck        Type check with ty"
+	@echo "  check            Run all code quality checks (format, lint, typecheck)"
 	@echo "  generate-models  Generate Pydantic models from ODCS JSON schemas"
 	@echo "  doxygen          Regenerate Doxygen code structure documentation"
 	@echo "  doxygen-open     Open generated Doxygen documentation in browser"
 	@echo "  doxygen-clean    Remove generated Doxygen documentation"
 	@echo "  clean            Remove build artifacts and cache files"
 	@echo "  test             Run tests"
-	@echo "  lint             Run linting checks"
+	@echo "  verify           Run all checks and tests"
 	@echo "  security-scan    Run Bandit security scan"
 	@echo "  security-scan-json Run Bandit security scan and write JSON report"
 	@echo "  security-audit   Run dependency vulnerability audit (pip-audit)"
@@ -102,12 +108,25 @@ clean:
 
 # Testing
 test:
-	$(UV) run pytest test/
+	$(UV) run pytest tests/
 
-# Linting
+# Code quality
+format:
+	$(UV) run ruff format src/ tests/
+
+format-check:
+	$(UV) run ruff format --check src/ tests/
+
 lint:
-	$(UV) run ruff check src/
-	$(UV) run ruff format --check src/
+	$(UV) run ruff check src/ tests/
+
+lint-fix:
+	$(UV) run ruff check --fix src/ tests/
+
+typecheck:
+	$(UV) run ty check src/
+
+check: format-check lint typecheck
 
 # Security scanning
 security-scan:
@@ -147,3 +166,7 @@ release-tag:
 	fi; \
 	git tag -a "v$(VERSION)" -m "Release v$(VERSION)"; \
 	echo "Created tag v$(VERSION) — setuptools-scm will use this as the package version"
+
+# Verify (all checks + tests)
+verify: check test
+	@echo "All checks passed!"

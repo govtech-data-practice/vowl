@@ -1,3 +1,8 @@
+include:
+  - template: Jobs/Secret-Detection.latest.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.latest.gitlab-ci.yml
+  - template: Jobs/SAST.latest.gitlab-ci.yml
+
 stages:
   - test
   - deploy
@@ -22,7 +27,7 @@ test:
     - export UV="python -m uv"
     - ${UV} sync --group lean-ci-test
   script:
-    - .venv/bin/python -m pytest -m "not docker_integration" test/
+    - .venv/bin/python -m pytest -m "not docker_integration" tests/
 
 publish_package:
   stage: deploy

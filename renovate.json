@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":automergeStableNonMajor",
+    ":automergeBranch"
+  ],
+  "pip_requirements": {
+    "fileMatch": ["(^|/)([\\w-]*)requirements\\.txt$", "(^|/)pyproject\\.toml$"]
+  },
+  "packageRules": [
+    {
+      "matchDatasources": ["pypi"],
+      "minimumReleaseAge": "3 days"
+    }
+  ],
+  "labels": ["dependencies", "renovate"]
+}
