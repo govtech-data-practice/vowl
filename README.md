@@ -41,7 +41,9 @@ result = validate_data("contract.yaml", df=df)
 result.display_full_report()
 ```
 
-**Output:**
+<details>
+<summary><strong>Output</strong> (click to expand)</summary>
+
 ```
 === Data Quality Validation Results ===
    Contract Version:      v3.1.0
@@ -130,6 +132,8 @@ Total Execution:       110.94 ms
 | 2017-01 | ANG MO KIO | 3 ROOM    | 330   | ANG MO KIO AVE 1 | 07 TO 09     | 68.0           | New Generation | nan                 | 63 years           | 338000.0     |
 +---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
 ```
+
+</details>
 
 See [Usage Patterns](#️-usage-patterns) for PySpark, Ibis connections, multi-source validation, and more.
 
