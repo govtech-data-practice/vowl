@@ -1,0 +1,396 @@
+kind: DataContract
+apiVersion: v3.1.0
+version: 1.0.0
+id: b6376e57-aa90-41eb-90d0-c72dca7567e6
+status: draft
+name: Employee Payroll Records
+domain: hr
+description:
+  purpose: >-
+    This employee payroll dataset captures monthly compensation and contribution
+    details for workforce financial management. It serves HR, Finance, and
+    Payroll departments by providing a complete record of employee earnings, CPF
+    (Central Provident Fund) contributions from both employer and employee
+    sides, enabling accurate payroll processing and statutory compliance
+    reporting.
+  usage: >-
+    Use this data to reconcile monthly payroll runs, generate CPF submission
+    reports, and analyze total compensation costs per employee. Query by
+    employee_id and month to retrieve individual payroll records, or aggregate
+    by payroll period (payroll_start_dt to payroll_end_dt) for period-based
+    financial reporting and budgeting analysis.
+  limitations: >-
+    This is a demonstration dataset with only 3 sample records and should not be
+    used for production reporting. The data appears to be Singapore-specific
+    given the CPF contribution fields, so it may not be applicable to employees
+    in other jurisdictions without CPF requirements.
+schema:
+  - name: PSD_demo_employee_payroll
+    description: >-
+      Employee payroll records containing monthly compensation details including
+      gross amounts, CPF contributions (both employer and employee portions),
+      and contact information
+    physicalType: table
+    businessName: Employee Payroll
+    dataGranularityDescription: One record per employee per payroll period (monthly)
+    properties:
+      - name: employee_id
+        description: >-
+          Unique identifier for an employee in the payroll system, prefixed with
+          'e' followed by a numeric code
+        logicalType: string
+        logicalTypeOptions:
+          minLength: 7
+          maxLength: 7
+          pattern: ^e[0-9]{6}$
+        physicalType: VARCHAR(7)
+        required: true
+        unique: true
+        primaryKey: true
+        examples:
+          - e123213
+          - e128903
+          - e939123
+        quality:
+          - type: library
+            metric: nullValues
+            mustBe: 0
+            dimension: completeness
+      - name: payroll_id
+        description: >-
+          Unique identifier for the payroll record, stored as a UUID
+          (Universally Unique Identifier)
+        logicalType: string
+        logicalTypeOptions:
+          minLength: 36
+          maxLength: 36
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        physicalType: VARCHAR(36)
+        required: true
+        unique: true
+        primaryKey: true
+        examples:
+          - 4020c09c-3d57-4401-b98b-f4670635c3a2
+          - cb04c5bb-9386-44cf-a565-2276744c9cc0
+          - e52e556f-79b0-471f-ad08-e27b2c524ace
+      - name: month
+        description: The month and year of the payroll period in YYYY-MM format
+        logicalType: string
+        logicalTypeOptions:
+          pattern: ^\d{4}-\d{2}$
+        physicalType: VARCHAR(7)
+        required: true
+        examples:
+          - 2025-12
+        quality:
+          - type: sql
+            name: Month
+            description: Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
+            mustBe: 0
+            query: |-
+              SELECT COUNT(*)
+              FROM PSD_demo_employee_payroll
+              WHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';
+            tags:
+              - SG-DRM v5.0
+            dimension: conformity
+          - type: library
+            metric: invalidValues
+            mustBe: 0
+            dimension: conformity
+            arguments:
+              pattern: ^\d{4}-(0[1-9]|1[0-2])$
+      - name: payroll_start_dt
+        description: The start date and time of the payroll period for the employee
+        logicalType: string
+        physicalType: TIMESTAMP WITH TIME ZONE
+        required: false
+        examples:
+          - '2024-12-24T03:12:23+00:00'
+        quality:
+          - type: sql
+            name: Date With Timezone
+            description: >-
+              If not in UTC +8 | YYYY-MM-DD[T]hh:mm+hh:mm e.g.
+              2015-01-01T12:00+02:00 for UTC +2
+            mustBe: 0
+            query: >-
+              SELECT COUNT(*)
+
+              FROM PSD_demo_employee_payroll
+
+              WHERE CAST(payroll_start_dt AS TEXT) !~
+              '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9][+-]([01][0-9]|2[0-3]):[0-5][0-9]$'
+                OR LENGTH(CAST(payroll_start_dt AS TEXT)) > 22;
+            tags:
+              - SG-DRM v5.0
+            dimension: conformity
+      - name: payroll_end_dt
+        description: The end date and time of the payroll period for the employee
+        logicalType: date
+        physicalType: TIMESTAMP WITH TIME ZONE
+        required: false
+        examples:
+          - '2025-12-24T03:12:23+00:00'
+        quality:
+          - type: sql
+            name: Date With Timezone
+            description: >-
+              If not in UTC +8 | YYYY-MM-DD[T]hh:mm+hh:mm e.g.
+              2015-01-01T12:00+02:00 for UTC +2
+            mustBe: 0
+            query: >-
+              SELECT COUNT(*)
+
+              FROM PSD_demo_employee_payroll
+
+              WHERE CAST(payroll_end_dt AS TEXT) !~
+              '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9][+-]([01][0-9]|2[0-3]):[0-5][0-9]$'
+                OR LENGTH(CAST(payroll_end_dt AS TEXT)) > 22;
+            tags:
+              - SG-DRM v5.0
+            dimension: conformity
+      - name: total_amt
+        description: >-
+          Total amount representing the employee's total payroll compensation,
+          likely annual salary or total earnings
+        logicalType: integer
+        physicalType: INT
+        required: false
+        examples:
+          - '93600'
+          - '117000'
+          - '234000'
+        quality:
+          - name: total_amt_equals_employer_cpf_plus_total_amt_employee
+            description: >-
+              Validates that total_amt equals the sum of employer_cpf_amt and
+              total_amt_employee for consistency
+            type: sql
+            dimension: consistency
+            severity: error
+            query: >-
+              SELECT COUNT(*) FROM PSD_demo_employee_payroll WHERE total_amt !=
+              (employer_cpf_amt + total_amt_employee) OR (total_amt IS NOT NULL
+              AND (employer_cpf_amt IS NULL OR total_amt_employee IS NULL))
+            mustBe: 0
+            tags:
+              - User-Defined Quality Rule
+          - type: library
+            metric: missingValues
+            mustBe: 0
+            dimension: completeness
+            arguments:
+              missingValues:
+                - null
+                - ''
+      - name: employer_cpf_amt
+        description: >-
+          Employer's CPF (Central Provident Fund) contribution amount for the
+          employee, representing the employer's mandatory contribution to the
+          employee's retirement savings
+        logicalType: number
+        physicalName: employer_cpf_amt
+        required: false
+        examples:
+          - '13600'
+          - '17000'
+          - '34000'
+      - name: total_amt_employee
+        description: >-
+          Total monetary amount associated with the employee, representing their
+          total compensation or salary
+        logicalType: number
+        required: true
+        examples:
+          - '80000'
+          - '100000'
+          - '200000'
+      - name: employee_cpf_amt
+        description: >-
+          Employee CPF (Central Provident Fund) contribution amount,
+          representing the monetary value of CPF contributions for the employee
+        logicalType: number
+        physicalName: employee_cpf_amt
+        required: true
+        classification: confidential
+        examples:
+          - '16000'
+          - '20000'
+          - '40000'
+      - name: employee_gross_amt
+        description: >-
+          The gross amount of employee compensation, representing total earnings
+          before deductions
+        logicalType: number
+        physicalType: DECIMAL(10,2)
+        physicalName: employee_gross_amt
+        required: true
+        unique: false
+        primaryKey: false
+        classification: confidential
+        examples:
+          - '64000'
+          - '80000'
+          - '160000'
+      - name: phone_number
+        description: >-
+          Contact phone number for the employee, formatted with international
+          country code for Singapore (+65)
+        logicalType: string
+        logicalTypeOptions:
+          minLength: 8
+          maxLength: 11
+          pattern: ^\+65[0-9]{8}$
+        physicalType: VARCHAR(15)
+        required: false
+        unique: false
+        primaryKey: false
+        classification: confidential
+        examples:
+          - '+6591820021'
+          - '+6581234567'
+          - '+6594327654'
+    quality:
+      - name: total_amt_employee_equals_gross_plus_cpf
+        description: >-
+          Validates that total_amt_employee equals the sum of employee_gross_amt
+          and employee_cpf_amt for consistency
+        type: sql
+        dimension: consistency
+        severity: error
+        query: >-
+          SELECT COUNT(*) FROM PSD_demo_employee_payroll WHERE
+          total_amt_employee != (employee_gross_amt + employee_cpf_amt)
+        mustBe: 0
+        tags:
+          - User-Defined Quality Rule
+      - name: employee_id_exists_in_master_list
+        description: >-
+          Referential integrity check: Ensures all employee IDs in the payroll 
+          table exist in the reference employee list.
+        type: sql
+        dimension: consistency
+        query: >-
+          SELECT COUNT(*) 
+          FROM PSD_demo_employee_payroll payroll
+          LEFT JOIN PSD_demo_employee_list ref 
+            ON payroll.employee_id = ref.employee_id
+          WHERE ref.employee_id IS NULL
+        mustBe: 0
+        tags:
+          - Cross-Table Validation
+      - name: phone_number_exists_in_master_list
+        description: >-
+          Ensures the phone numbers recorded in payroll matches an entry in 
+          the master employee list.
+        type: sql
+        dimension: consistency
+        query: >-
+          SELECT COUNT(*) 
+          FROM PSD_demo_employee_payroll payroll
+          LEFT JOIN PSD_demo_employee_list ref 
+            ON payroll.phone_number = ref.phone_number
+          WHERE payroll.phone_number IS NOT NULL 
+            AND ref.phone_number IS NULL
+        mustBe: 0
+        tags:
+          - Cross-Table Validation
+      - type: library
+        metric: rowCount
+        mustBeGreaterThan: 0
+        dimension: completeness
+  - name: PSD_demo_employee_list
+    description: Employee directory containing basic employee information including identification, names, job titles, and contact details
+    businessName: Employee List
+    dataGranularityDescription: One record per employee
+    properties:
+      - name: employee_id
+        description: Unique identifier for an employee, consisting of a prefix 'e' followed by a numeric code
+        logicalType: string
+        logicalTypeOptions:
+          pattern: ^e[0-9]+$
+          minLength: 7
+          maxLength: 7
+        physicalType: VARCHAR(10)
+        required: true
+        unique: true
+        primaryKey: true
+        examples:
+          - e123213
+          - e128903
+      - name: employee_last_name
+        description: The last name (surname/family name) of the employee
+        logicalType: string
+        physicalType: VARCHAR(100)
+        required: true
+        examples:
+          - Teo
+          - Ng
+        quality:
+          - type: sql
+            name: PersonName
+            description: PersonName may include various name types for UIN/FIN holders including legal names, abbreviated names, Hanyu Pinyin names, alias names, married names, and changed names | X(66)
+            mustBe: 0
+            query: |-
+              SELECT COUNT(*)
+              FROM PSD_demo_employee_list
+              WHERE employee_last_name IS NOT NULL
+                AND LENGTH(CAST(employee_last_name AS TEXT)) > 66;
+            tags:
+              - SG-DRM v5.0
+            dimension: conformity
+      - name: employee_first_name
+        description: The first name of the employee
+        logicalType: string
+        physicalType: VARCHAR(100)
+        required: true
+        examples:
+          - James
+          - Janice
+        quality:
+          - type: sql
+            name: PersonName
+            description: PersonName may include various name types for UIN/FIN holders including legal names, abbreviated names, Hanyu Pinyin names, alias names, married names, and changed names | X(66)
+            mustBe: 0
+            query: |-
+              SELECT COUNT(*)
+              FROM PSD_demo_employee_list
+              WHERE employee_first_name IS NOT NULL
+                AND LENGTH(CAST(employee_first_name AS TEXT)) > 66;
+            tags:
+              - SG-DRM v5.0
+            dimension: conformity
+      - name: current_title
+        description: The current job title or position held by the employee within the organization
+        logicalType: string
+        physicalType: VARCHAR(100)
+        required: false
+        examples:
+          - Data Engineer
+          - Staff Data Engineer
+      - name: phone_number
+        description: Contact phone number for the employee, stored in international format with country code
+        logicalType: string
+        logicalTypeOptions:
+          pattern: ^\+[0-9]+$
+        physicalType: VARCHAR(20)
+        required: false
+        unique: true
+        examples:
+          - '+6591820021'
+          - '+6589234567'
+        quality:
+        - type: sql
+          name: TelephoneNumber
+          description: Based on ITU T E.164 | e.g. 095236
+          mustBe: 0
+          query: |-
+            SELECT COUNT(*)
+            FROM PSD_demo_employee_list
+            WHERE CAST(phone_number AS TEXT) !~ '^[0-9]{1,12}$';
+          tags:
+          - SG-DRM v5.0
+          dimension: conformity
+
+

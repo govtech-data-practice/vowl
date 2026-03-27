@@ -1,36 +1,100 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dataquality"
-version = "1.0.0"
+name = "vowl"
+dynamic = ["version"]
 description = "A SQL-powered data quality validation library for pandas and spark DataFrames."
-
+readme = "README.md"
+requires-python = ">=3.10"
+license = "LicenseRef-GovTech-Public-Sector-Licence"
+license-files = ["LICENSE"]
+keywords = ["data-quality", "data-validation", "odcs", "ibis", "sql"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Database",
+]
 
 # Core dependencies (always installed)
 dependencies = [
-    "PyYAML>=5.4.0",
+    "ibis-framework[duckdb]>=11.0.0",
+    "jsonpath-ng>=1.7.0",
+    "jsonschema>=4.26.0",
+    "narwhals>=2.17.0",
+    "pyarrow>=14.0.0",
+    "pyyaml>=5.4.0",
+    "requests>=2.32.5",
+    "sqlglot[rs]>=28.6.0",
 ]
 
 [project.optional-dependencies]
-# Pandas
-pandas = [
-    "pandas>=1.3.0",
-    "duckdb>=0.8.0",
-]
-
 # Spark  
 spark = [
+    "ibis-framework[pyspark]>=11.0.0",
     "pyspark>=3.0.0",
 ]
 
-# Everything (pandas + spark)
+# Everything (base + spark + aws)
 all = [
-    "pandas>=1.3.0",
-    "duckdb>=0.8.0",
+    "boto3>=1.42.38",
+    "ibis-framework[pyspark]>=11.0.0",
     "pyspark>=3.0.0",
 ]
+
+[project.urls]
+Documentation = "https://pypi.org/project/vowl/"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"vowl.contracts.models" = ["README.md", "schemas/*.json"]
+
+[tool.setuptools_scm]
+# Version is derived from the latest Git tag (e.g. v1.0.0 -> 1.0.0)
+# Untagged commits get dev versions like 1.0.1.dev3+gabcdef
+version_scheme = "guess-next-dev"
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.3",
+    "datamodel-code-generator>=0.53.0",
+    "ibis-framework[mssql,mysql,oracle,postgres]>=11.0.0",
+    "ipykernel>=7.1.0",
+    "polars>=1.39.2",
+    "pyspark>=3.0.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.8.0",
+    "setuptools>=80.10.2",
+    "testcontainers>=4.14.1",
+]
+lean-ci-test = [
+    "boto3>=1.42.38",
+    "ibis-framework[postgres]>=11.0.0",
+    "pyspark>=3.0.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "setuptools>=80.10.2",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "docker_integration: tests that require Docker or testcontainers",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

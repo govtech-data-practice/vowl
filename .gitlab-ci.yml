@@ -1,31 +1,53 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure
-# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
-# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 stages:
-- build
-- test
-- deploy
-- review
-- dast
-- staging
-- canary
-- production
-- incremental rollout 10%
-- incremental rollout 25%
-- incremental rollout 50%
-- incremental rollout 100%
-- performance
-- cleanup
-- secret-detection
-sast:
-  stage: test
-include:
-- template: Auto-DevOps.gitlab-ci.yml
+  - test
+  - deploy
+
+default:
+  image: python:3.12
+
 variables:
-  SECRET_DETECTION_ENABLED: 'true'
-secret_detection:
-  stage: secret-detection
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_CACHE_DIR: "1"
+
+cache:
+  key: "${CI_JOB_IMAGE}"
+  paths:
+    - .cache/uv/
+    - .venv/
+
+test:
+  stage: test
+  before_script:
+    - python -m pip install --upgrade pip uv
+    - export UV="python -m uv"
+    - ${UV} sync --group lean-ci-test
+  script:
+    - .venv/bin/python -m pytest -m "not docker_integration" test/
+
+publish_package:
+  stage: deploy
+  variables:
+    GIT_DEPTH: "0"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - when: never
+  before_script:
+    - python -m pip install --upgrade pip uv
+    - export UV="python -m uv"
+    - ${UV} sync
+  script:
+    - |
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        git fetch origin "${CI_DEFAULT_BRANCH}"
+        git merge-base --is-ancestor "${CI_COMMIT_SHA}" "origin/${CI_DEFAULT_BRANCH}" || {
+          echo "Refusing to publish tag ${CI_COMMIT_TAG}: commit is not on ${CI_DEFAULT_BRANCH}."
+          exit 1
+        }
+      fi
+    - make release-check
+    - |
+      export TWINE_USERNAME="gitlab-ci-token"
+      export TWINE_PASSWORD="${CI_JOB_TOKEN}"
+      export TWINE_REPOSITORY_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
+      .venv/bin/python -m twine upload --skip-existing dist/*

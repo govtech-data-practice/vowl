@@ -1,0 +1,4 @@
+"employee_id","payroll_id","month","payroll_start_dt","payroll_end_dt","total_amt","employer_cpf_amt","total_amt_employee","employee_cpf_amt","employee_gross_amt","phone_number","check_ids","tables_in_query"
+"e123213","4020c09c-3d57-4401-b98b-f4670635c3a2","2025-12","2024-12-24T03:12:23+00:00","2025-12-24T03:12:23+00:00",93600,13600,80000,16000,64000,6591820021,"Date With Timezone, phone_number_logical_type_options_pattern_check","PSD_demo_employee_payroll"
+"e128903","cb04c5bb-9386-44cf-a565-2276744c9cc0","2025-12","2024-12-24T03:12:23+00:00","2025-12-24T03:12:23+00:00",117000,17000,100000,20000,80000,6581234567,"Date With Timezone, phone_number_logical_type_options_pattern_check","PSD_demo_employee_payroll"
+"e939123","e52e556f-79b0-471f-ad08-e27b2c524ace","2025-12","2024-12-24T03:12:23+00:00","2025-12-24T03:12:23+00:00",234000,34000,200000,40000,160000,6594327654,"Date With Timezone, phone_number_logical_type_options_pattern_check","PSD_demo_employee_payroll"
