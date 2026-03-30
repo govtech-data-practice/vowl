@@ -423,8 +423,11 @@ def wrap_count_subquery(inner_query: str, dialect: str) -> str:
     Handles dialect-specific alias quoting (e.g. Oracle requires
     underscore-prefixed aliases to be quoted).
     """
-    alias = '"_sub"' if dialect == "oracle" else "_sub"
-    return f"SELECT COUNT(*) FROM ({inner_query}) AS {alias}"
+    subquery = exp.Subquery(
+        this=sqlglot.parse_one(inner_query, dialect=dialect),
+        alias=exp.TableAlias(this=exp.Identifier(this="_sub", quoted=dialect == "oracle")),
+    )
+    return exp.Select(expressions=[exp.Count(this=exp.Star())]).from_(subquery).sql(dialect=dialect)
 
 
 __all__ = [
