@@ -1,12 +1,26 @@
-"""Basic usage examples for vowl."""
+"""Basic usage example for vowl.
+
+Validates the bundled HDB Resale sample data against a simple ODCS contract.
+Run from the project root:
+
+    uv run python examples/basic_usage.py
+"""
+
+from pathlib import Path
+
+import pandas as pd
 
 from vowl import validate_data
 
-# Example: validate a pandas DataFrame against a data contract
-# contract_path = "path/to/your/contract.yaml"
-# df = pd.read_csv("your_data.csv")
-# result = validate_data(df, contract_path)
-# print(result)
+# Resolve paths relative to the repo root
+REPO_ROOT = Path(__file__).resolve().parent.parent
+HDB_DIR = REPO_ROOT / "tests" / "hdb_resale"
+HDB_CSV = HDB_DIR / "HDBResale.csv"
+HDB_CONTRACT = HDB_DIR / "hdb_resale_simple.yaml"
 
 if __name__ == "__main__":
-    print("See docs/demo/ for full working examples with sample data.")
+    df = pd.read_csv(HDB_CSV)
+    print(f"Loaded {len(df)} rows, {len(df.columns)} columns\n")
+
+    result = validate_data(contract=str(HDB_CONTRACT), df=df)
+    result.display_full_report()

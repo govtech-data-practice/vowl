@@ -387,7 +387,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 ## ⚙️ Usage Patterns
 
-> **Interactive demo:** Try the [usage patterns notebook](docs/demo/test_ibis_validation.ipynb) for a hands-on walkthrough of the examples below.
+> **Interactive demo:** Try the [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
 
 ### Local DataFrame (Pandas/Polars)
 ```python
