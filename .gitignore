@@ -14,6 +14,9 @@ env/
 .vscode/
 .idea/
 .DS_Store
+.coverage
+coverage.json
+coverage-rescan.json
 # tests/expected_outputs/*
 tests/failed_outputs/*
 docs/doxygen/*
