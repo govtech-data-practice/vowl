@@ -85,16 +85,46 @@ Run tests:
 make test
 ```
 
+Format code:
+
+```bash
+make format
+```
+
 Run lint checks:
 
 ```bash
 make lint
 ```
 
+Run type checking:
+
+```bash
+make typecheck
+```
+
+Run all code quality checks (format + lint + typecheck):
+
+```bash
+make check
+```
+
 Run security scan:
 
 ```bash
 make security-scan
+```
+
+Run dependency vulnerability audit:
+
+```bash
+make security-audit
+```
+
+Run all checks and tests:
+
+```bash
+make verify
 ```
 
 Clean build artifacts:
@@ -187,7 +217,7 @@ make test
 The underlying command is:
 
 ```bash
-uv run pytest test/
+uv run pytest tests/
 ```
 
 ### CI Test Scope
@@ -232,11 +262,11 @@ Use `make install-all` if your change also depends on optional extras outside th
 You can still run targeted scripts or tests manually when needed:
 
 ```bash
-# Run pandas demo
-python test/pandas_demo.py
+# Run the basic usage example
+python examples/basic_usage.py
 
-# Run spark demo (requires PySpark)
-python test/spark_demo.py
+# Run a specific test file
+uv run pytest tests/test_usage_patterns.py
 ```
 
 ### Writing Tests
@@ -249,7 +279,7 @@ When adding new features:
 
 ### Test Data
 
-- Use the existing `test/HDBResale.csv` for testing when possible
+- Use the existing `tests/hdb_resale/HDBResale.csv` for testing when possible
 - For new test data, keep files small and representative
 - Document any new test data files
 
@@ -259,7 +289,7 @@ This section is intended for maintainers publishing `vowl` to the GitLab PyPI re
 
 ### Configure Upload Credentials
 
-Create `~/.pypirc` with the GitLab registry configuration:
+Create a `.pypirc` file in the project root with the GitLab registry configuration:
 
 ```ini
 [gitlab]
@@ -273,8 +303,10 @@ password = <your-gitlab-token>
 Restrict the file permissions:
 
 ```bash
-chmod 600 ~/.pypirc
+chmod 600 .pypirc
 ```
+
+> **Note:** The Makefile targets pass `--config-file .pypirc` (project-local), not `~/.pypirc`.
 
 ### Build and Validate the Package
 
@@ -293,7 +325,7 @@ make release-upload-gitlab
 This target runs:
 
 ```bash
-python -m twine upload --repository gitlab dist/*
+python -m twine upload --repository gitlab dist/* --config-file .pypirc
 ```
 
 ### GitLab CI Publishing
