@@ -25,8 +25,8 @@ pytestmark = pytest.mark.docker_integration
 # Path constants
 TEST_DIR = Path(__file__).parent
 HDB_DIR = TEST_DIR / "hdb_resale"
-DATA_FILE = HDB_DIR / "HDBResale.csv"
-CONTRACT_PATH = HDB_DIR / "hdb_resale_generated.yaml"
+DATA_FILE = HDB_DIR / "HDBResaleWithErrors.csv"
+CONTRACT_PATH = HDB_DIR / "hdb_resale.yaml"
 
 
 # ---------------------------------------------------------------------------

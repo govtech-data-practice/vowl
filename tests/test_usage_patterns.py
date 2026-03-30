@@ -23,8 +23,8 @@ import pytest
 # Path constants
 TEST_DIR = Path(__file__).parent
 HDB_DIR = TEST_DIR / "hdb_resale"
-DATA_FILE = HDB_DIR / "HDBResale.csv"
-CONTRACT_PATH = HDB_DIR / "hdb_resale_generated.yaml"
+DATA_FILE = HDB_DIR / "HDBResaleWithErrors.csv"
+CONTRACT_PATH = HDB_DIR / "hdb_resale.yaml"
 PSD_DIR = TEST_DIR / "psd_employee"
 PSD_EMPLOYEE_LIST_FILE = PSD_DIR / "PSD_demo_employee_list.csv"
 PSD_EMPLOYEE_PAYROLL_FILE = PSD_DIR / "PSD_demo_employee_payroll.csv"

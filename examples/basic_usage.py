@@ -15,8 +15,8 @@ from vowl import validate_data
 # Resolve paths relative to the repo root
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HDB_DIR = REPO_ROOT / "tests" / "hdb_resale"
-HDB_CSV = HDB_DIR / "HDBResale.csv"
-HDB_CONTRACT = HDB_DIR / "hdb_resale_simple.yaml"
+HDB_CSV = HDB_DIR / "HDBResaleWithErrors.csv"
+HDB_CONTRACT = HDB_DIR / "hdb_resale.yaml"
 
 if __name__ == "__main__":
     df = pd.read_csv(HDB_CSV)
