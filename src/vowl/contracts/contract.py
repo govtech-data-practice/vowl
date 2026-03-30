@@ -16,13 +16,13 @@ if TYPE_CHECKING:
 class Contract:
     """
     Represents a data quality contract that defines validation rules and schema expectations.
-    
+
     A Contract encapsulates the validation logic defined in a contract file and provides
     methods to extract SQL checks, table names, and metadata for data quality validation.
-    
+
     Contracts are always validated against their ODCS apiVersion schema on creation
     using jsonschema validation.
-    
+
     Attributes:
         contract_data (Dict[str, Any]): The parsed contract data from YAML or JSON
     """
@@ -43,17 +43,17 @@ class Contract:
     def _fetch_from_http_url(cls, url: str) -> str:
         """
         Fetch a contract file from an HTTP(S) URL.
-        
+
         Supports formats:
         - github.com/user/repo/blob/branch/path/file.yaml
         - raw.githubusercontent.com/user/repo/branch/path/file.yaml
-        
+
         Args:
             url: HTTP(S) URL to the file
-            
+
         Returns:
             File content as string
-            
+
         Raises:
             ImportError: If requests is not installed
             IOError: If there's an error fetching the file
@@ -65,7 +65,7 @@ class Contract:
                 "The 'requests' package is required to load contracts from HTTP URLs. "
                 "It is included in base installation; please reinstall vowl "
                 "or verify your Python environment."
-            )
+            ) from None
 
         # Convert blob URLs to raw URLs
         raw_url = url
@@ -79,22 +79,22 @@ class Contract:
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
-            raise OSError(f"Error fetching contract from URL {url}: {e}")
+            raise OSError(f"Error fetching contract from URL {url}: {e}") from e
 
     @classmethod
     def _fetch_from_s3_uri(cls, s3_path: str) -> str:
         """
         Fetch a file from S3.
-        
+
         Supports formats:
         - s3://bucket-name/path/to/file.yaml
-        
+
         Args:
             s3_path: S3 URI to the file
-            
+
         Returns:
             File content as string
-            
+
         Raises:
             ImportError: If boto3 is not installed
             IOError: If there's an error fetching the file
@@ -106,7 +106,7 @@ class Contract:
                 "The 'boto3' package is required to load contracts from S3. "
                 "It is included in base installation; please reinstall vowl "
                 "or verify your Python environment."
-            )
+            ) from None
 
         # Parse S3 path
         match = re.match(r's3://([^/]+)/(.+)', s3_path)
@@ -121,27 +121,27 @@ class Contract:
             response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
             return response['Body'].read().decode('utf-8')
         except Exception as e:
-            raise OSError(f"Error fetching contract from S3 {s3_path}: {e}")
+            raise OSError(f"Error fetching contract from S3 {s3_path}: {e}") from e
 
     @classmethod
     def load(cls, contract_file_path: str) -> "Contract":
         """
         Create a Contract instance from a local path or remote URI.
-        
+
         The contract is automatically validated against its ODCS apiVersion schema
         using jsonschema validation.
-        
+
         Supports loading from:
         - Local file paths
         - HTTP(S) URLs (e.g., https://github.com/user/repo/blob/main/contract.yaml)
         - S3 URIs (e.g., s3://bucket-name/path/to/contract.yaml)
-        
+
         Args:
             contract_file_path: Path/URL/URI to the contract file (YAML or JSON)
-            
+
         Returns:
             Contract instance with validated data
-            
+
         Raises:
             FileNotFoundError: If the local contract file doesn't exist
             yaml.YAMLError: If the contract YAML/JSON content is malformed
@@ -168,7 +168,7 @@ class Contract:
                 with open(contract_file_path, encoding="utf-8") as yaml_file:
                     contract_content = yaml_file.read()
             except Exception as file_reading_error:
-                raise OSError(f"Error reading {contract_file_path}: {file_reading_error}")
+                raise OSError(f"Error reading {contract_file_path}: {file_reading_error}") from file_reading_error
 
         # Parse contract content (YAML parser also accepts JSON)
         try:
@@ -178,7 +178,7 @@ class Contract:
         except yaml.YAMLError as yaml_parsing_error:
             raise yaml.YAMLError(
                 f"Invalid contract YAML/JSON in {contract_file_path}: {yaml_parsing_error}"
-            )
+            ) from yaml_parsing_error
 
         return cls(contract_data)
 
@@ -198,7 +198,7 @@ class Contract:
     def get_metadata(self) -> dict[str, Any]:
         """
         Extract metadata information from the contract.
-        
+
         Returns:
             Dictionary containing contract metadata (kind, version, etc.)
         """
@@ -211,7 +211,7 @@ class Contract:
     def get_api_version(self) -> str:
         """
         Returns the ODCS API version from the contract.
-        
+
         Returns:
             The API version string (e.g., "v3.1.0")
         """
@@ -220,13 +220,13 @@ class Contract:
     def resolve(self, jsonpath: str) -> Any:
         """
         Resolve a JSONPath expression against the contract data.
-        
+
         Args:
             jsonpath: A JSONPath expression (e.g., "$.schema[0].name")
-        
+
         Returns:
             The resolved value, or None if not found.
-            
+
         Example:
             >>> contract.resolve("$.schema[0].name")
             "hdb_resale_prices"
@@ -260,14 +260,14 @@ class Contract:
     def resolve_parent(self, jsonpath: str, levels: int = 1) -> str:
         """
         Get parent path by removing N segments from the end.
-        
+
         Args:
             jsonpath: The JSONPath to get parent of.
             levels: Number of path segments to remove (default 1).
-            
+
         Returns:
             Parent JSONPath string.
-            
+
         Example:
             >>> contract.resolve_parent("$.schema[0].properties[2].quality[0]", 1)
             "$.schema[0].properties[2]"
@@ -303,19 +303,19 @@ class Contract:
     ) -> dict[str, list["CheckReference"]]:
         """
         Extract check references grouped by schema name.
-        
+
         Returns CheckReference objects that maintain context for navigating
         back to related contract elements.
-        
+
         Auto-generated checks are always included and run first:
         - Type checks: for columns with logicalType (integer, number, boolean, date, timestamp, time)
         - Required checks: for columns with required: true (validates no NULLs)
         - Unique checks: for columns with unique: true (validates uniqueness)
         - Primary key checks: for columns with primaryKey: true (validates unique + not null)
-        
+
         Returns:
             Dict mapping schema names to lists of CheckReference objects.
-            
+
         Example:
             >>> contract = Contract.load("my_contract.yaml")
             >>> refs_by_schema = contract.get_check_references_by_schema()
@@ -508,7 +508,7 @@ class Contract:
     def get_servers(self) -> list[Server]:
         """
         Get all servers defined in the contract.
-        
+
         Returns:
             List of Server dicts.
         """
@@ -570,10 +570,10 @@ class Contract:
     def get_schema_names(self) -> list[str]:
         """
         Get the names of all schemas defined in the contract.
-        
+
         Returns:
             List of schema names
-            
+
         Example:
             >>> contract.get_schema_names()
             ['orders', 'products', 'customers']

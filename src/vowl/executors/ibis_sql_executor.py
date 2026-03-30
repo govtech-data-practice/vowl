@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class IbisSQLExecutor(SQLExecutor):
     """
     SQL Executor implementation using Ibis framework.
-    
+
     Uses an IbisAdapter to execute SQL-based data quality checks
     against various database backends supported by Ibis.
     """
@@ -53,12 +53,12 @@ class IbisSQLExecutor(SQLExecutor):
     ) -> nw.DataFrame | None:
         """
         Fetch the actual rows that failed a check.
-        
+
         Args:
             select_query: A SELECT query for the failing rows (from
                 CheckReference.get_failed_rows_query). None if the
                 transformation was not possible.
-            
+
         Returns:
             DataFrame of failed rows, or None if query is None or execution fails.
         """
@@ -108,13 +108,13 @@ class IbisSQLExecutor(SQLExecutor):
     def _execute_query(self, query: str) -> Any:
         """
         Execute a SQL query and return the first result value.
-        
+
         Args:
             query: The SQL query to execute.
-            
+
         Returns:
             The first value from the result, or None.
-            
+
         Raises:
             SQLSecurityError: If the query fails security validation.
         """
@@ -175,7 +175,8 @@ class IbisSQLExecutor(SQLExecutor):
             failed_query = check_ref.get_failed_rows_query(
                 dialect, filters, use_try_cast=use_try_cast,
             )
-            fetcher = lambda q=failed_query: self._fetch_failed_rows(q)
+            def fetcher(q=failed_query):
+                return self._fetch_failed_rows(q)
 
             return check_ref.build_result(
                 actual_value=actual_value,

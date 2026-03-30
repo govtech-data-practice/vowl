@@ -26,15 +26,15 @@ if TYPE_CHECKING:
 class MultiSourceSQLExecutor(SQLExecutor):
     """
     SQL Executor for handling cross-schema queries in multi-source scenarios.
-    
+
     This executor handles queries that reference multiple tables/schemas:
     - For DuckDB-compatible backends (postgres, mysql, sqlite), uses ATTACH
       to connect directly without copying data
     - For other backends, materializes required data into a local DuckDB instance
-    
+
     Filter conditions from each adapter are applied to their respective tables
     using the same subquery pattern as IbisSQLExecutor.
-    
+
     Example:
         >>> # Query joining orders and products from different sources
         >>> query = "SELECT COUNT(*) FROM orders o JOIN products p ON o.product_id = p.id"
@@ -77,10 +77,10 @@ class MultiSourceSQLExecutor(SQLExecutor):
     def _detect_tables(self, query: str) -> set[str]:
         """
         Detect all table names referenced in a SQL query.
-        
+
         Args:
             query: The SQL query to analyze
-            
+
         Returns:
             Set of table names found in the query
         """
@@ -102,10 +102,10 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
         Delegates the compatibility decision to the adapters themselves
         via ``BaseAdapter.is_compatible_with``.
-        
+
         Args:
             table_names: Set of table names that need to be queried
-            
+
         Returns:
             True if every pair of adapters reports mutual compatibility.
         """
@@ -125,7 +125,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
     def _get_local_duckdb(self):
         """
         Get or create a local DuckDB connection for cross-backend queries.
-        
+
         Returns:
             An Ibis DuckDB connection
         """
@@ -141,13 +141,13 @@ class MultiSourceSQLExecutor(SQLExecutor):
     ) -> nw.DataFrame | None:
         """
         Fetch the actual rows that failed a check.
-        
+
         Args:
             select_query: A SELECT query for the failing rows (from
                 CheckReference.get_failed_rows_query). None if the
                 transformation was not possible.
             table_names: Tables referenced in the query
-            
+
         Returns:
             DataFrame of failed rows, or None if query is None or execution fails.
         """
@@ -182,9 +182,9 @@ class MultiSourceSQLExecutor(SQLExecutor):
     ) -> None:
         """
         Attach a database or materialize a table into local DuckDB.
-        
+
         Prefers ATTACH for supported backends, falls back to materialization.
-        
+
         Args:
             adapter: The source adapter.
             schema_name: The schema/table name to make available.
@@ -232,7 +232,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         to the adapter via ``export_table_as_arrow``.  The executor is
         only responsible for registering the resulting Arrow table in
         local DuckDB.
-        
+
         Args:
             adapter: The source adapter for the table.
             schema_name: Name to register the table as in DuckDB.
@@ -340,7 +340,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 output_dialect, query_filters,
                 use_try_cast=use_try_cast,
             )
-            fetcher = lambda q=failed_query, t=table_names: self._fetch_failed_rows(q, t)
+            def fetcher(q=failed_query, t=table_names):
+                return self._fetch_failed_rows(q, t)
 
             return check_ref.build_result(
                 actual_value=actual_value,

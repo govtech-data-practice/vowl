@@ -12,14 +12,14 @@ if TYPE_CHECKING:
     from vowl.executors.base import BaseExecutor, CheckResult
 
 
-class BaseAdapter(ABC):
+class BaseAdapter(ABC):  # noqa: B024
     """
     Abstract base class for Adapters.
-    
+
     Adapters provide connectivity and context for accessing data sources.
     They encapsulate connection details and can be shared across multiple
     Executors (1:N relationship from Adapter to Executors).
-    
+
     Subclasses should implement adapter-specific connection logic and
     expose methods for executors to interact with the data source.
     """
@@ -27,7 +27,7 @@ class BaseAdapter(ABC):
     def __init__(self, executors: dict[str, type[BaseExecutor]] | None = None) -> None:
         """
         Initialize the adapter.
-        
+
         Args:
             executors: Optional mapping of engine names to executor classes.
                        If None, an empty registry is created.
@@ -39,9 +39,9 @@ class BaseAdapter(ABC):
     def get_executors(self) -> dict[str, type[BaseExecutor]]:
         """
         Get the mapping of engine names to executor classes.
-        
+
         Returns:
-            Dict mapping engine name strings (e.g., "sql", "dbt") 
+            Dict mapping engine name strings (e.g., "sql", "dbt")
             to executor classes that can handle those engines.
         """
         return self._executors.copy()
@@ -49,7 +49,7 @@ class BaseAdapter(ABC):
     def set_executors(self, executors: dict[str, type[BaseExecutor]]) -> None:
         """
         Replace the entire executor configuration.
-        
+
         Args:
             executors: Dict mapping engine name strings to executor classes.
         """
@@ -58,13 +58,13 @@ class BaseAdapter(ABC):
     def _get_executor(self, engine: str) -> BaseExecutor:
         """
         Create an executor instance for an engine.
-        
+
         Args:
             engine: The execution engine name (e.g., "sql", "dbt").
-            
+
         Returns:
             A new executor instance.
-            
+
         Raises:
             NotImplementedError: If no executor is registered for the engine.
         """
@@ -154,16 +154,16 @@ class BaseAdapter(ABC):
     ) -> list[CheckResult]:
         """
         Execute data quality checks by dispatching to appropriate executors.
-        
+
         Groups checks by their type, initializes the corresponding executor
         for each type, runs the checks, and aggregates all results.
-        
+
         Args:
             check_refs: List of CheckReference objects to execute.
-            
+
         Returns:
             List of CheckResult objects from all executed checks.
-            
+
         Raises:
             ValueError: If a check type has no registered executor.
         """

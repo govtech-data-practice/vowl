@@ -822,7 +822,7 @@ def test_validation_result_get_check_results_df():
     result = _sample_validation_result()
 
     checks_df = result.get_check_results_df().to_pandas()
-    assert set(["check_name", "status", "message", "execution_time_ms", "failed_rows_count"]).issubset(checks_df.columns)
+    assert {"check_name", "status", "message", "execution_time_ms", "failed_rows_count"}.issubset(checks_df.columns)
     assert checks_df.columns.tolist()[:7] == [
         "check_name",
         "target",

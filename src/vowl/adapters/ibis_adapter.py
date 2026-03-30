@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 import pyarrow as pa
 import sqlglot
@@ -12,30 +12,30 @@ from vowl.adapters.models import FilterCondition
 from vowl.executors.ibis_sql_executor import IbisSQLExecutor
 
 # Type alias for filter conditions - can be a single FilterCondition, list of them, or dict
-FilterConditionType = Union[FilterCondition, list[FilterCondition], dict[str, Any]]
+FilterConditionType = FilterCondition | list[FilterCondition] | dict[str, Any]
 
 
 class IbisAdapter(BaseAdapter):
     """
     Adapter for connecting to various databases using Ibis framework.
-    
+
     Wraps an Ibis connection (SQLBackend) and provides it to executors
     for running data quality checks against database backends supported
     by Ibis (DuckDB, PostgreSQL, Snowflake, etc.).
 
-    
+
     Supports filter conditions for scoping data quality checks to specific
     subsets of data (e.g., recent records only).
-    
+
     Filter conditions support glob-style wildcard patterns:
     - "*" matches any sequence of characters
-    - "?" matches any single character  
+    - "?" matches any single character
     - "[seq]" matches any character in seq
-    
+
     Example:
         >>> # Simple usage - query table as named in contract
         >>> adapter = IbisAdapter(ibis.duckdb.connect())
-        
+
         >>> # With filter conditions - only validate recent data
         >>> adapter = IbisAdapter(
         ...     con=ibis.postgres.connect(...),
@@ -47,7 +47,7 @@ class IbisAdapter(BaseAdapter):
         ...         }
         ...     },
         ... )
-        
+
         >>> # With wildcard filter - apply to all tables matching pattern
         >>> adapter = IbisAdapter(
         ...     con=ibis.postgres.connect(...),
@@ -135,11 +135,11 @@ class IbisAdapter(BaseAdapter):
     def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int:
         """
         Get the total row count for a table, optionally capped.
-        
+
         Args:
             schema_name: The table/schema name to count rows for.
             max_rows: If >= 0, cap the count at this value.
-            
+
         Returns:
             Total row count, or 0 on error.
         """
@@ -186,10 +186,10 @@ class IbisAdapter(BaseAdapter):
     def test_connection(self, table_name: str) -> str | None:
         """
         Test if the adapter can connect and access a table.
-        
+
         Args:
             table_name: The table name to test access for.
-        
+
         Returns:
             None on success, error message string on failure.
         """

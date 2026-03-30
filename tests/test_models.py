@@ -39,7 +39,8 @@ def find_latest_schema_file() -> Path:
 
 
 LATEST_SCHEMA_FILE = find_latest_schema_file()
-LATEST_VERSION = f"v{'.'.join(str(x) for x in re.search(r'v(\d+)\.(\d+)\.(\d+)', LATEST_SCHEMA_FILE.name).groups())}"
+_match = re.search(r'v(\d+)\.(\d+)\.(\d+)', LATEST_SCHEMA_FILE.name)
+LATEST_VERSION = "v" + ".".join(str(x) for x in _match.groups())
 
 
 @pytest.fixture

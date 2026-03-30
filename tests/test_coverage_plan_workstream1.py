@@ -348,7 +348,7 @@ def test_vowl_dunder_getattr_lazy_loads_and_caches_symbols():
 
 def test_vowl_dunder_getattr_raises_for_unknown_symbols():
     with pytest.raises(AttributeError, match="has no attribute"):
-        vowl.does_not_exist
+        _ = vowl.does_not_exist
 
 
 def test_vowl_dunder_dir_exposes_public_api():

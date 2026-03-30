@@ -8,10 +8,10 @@ from ODCS JSON schemas. Generated models support full validation of data contrac
 Usage:
     # Generate models for a specific schema (run from models/ directory)
     python generate_models.py --schema schemas/odcs-json-schema-v3.1.0.json
-    
+
     # Generate models for all schemas in the schemas directory
     python generate_models.py --all
-    
+
     # Or run from project root via Makefile
     make generate-models
 """
@@ -33,7 +33,7 @@ DEFAULT_MODELS_DIR = Path(__file__).parent
 def extract_version_from_schema_name(schema_path: Path) -> str:
     """
     Extract version string from schema filename.
-    
+
     Examples:
         odcs-json-schema-v3.1.0.json -> v3.1.0
         odcs-json-schema-v3.0.2.json -> v3.0.2
@@ -48,7 +48,7 @@ def extract_version_from_schema_name(schema_path: Path) -> str:
 def version_to_module_name(version: str, raw: bool = False) -> str:
     """
     Convert version string to Python module name.
-    
+
     Examples:
         v3.1.0 -> v3_1_0 (or v3_1_0_raw if raw=True)
         v3.0.2 -> v3_0_2 (or v3_0_2_raw if raw=True)
@@ -60,11 +60,11 @@ def version_to_module_name(version: str, raw: bool = False) -> str:
 def generate_model(schema_path: Path, output_dir: Path) -> Path:
     """
     Generate a Pydantic model file from a JSON schema.
-    
+
     Args:
         schema_path: Path to the JSON schema file
         output_dir: Directory to write the generated model
-        
+
     Returns:
         Path to the generated Python file
     """
@@ -127,7 +127,7 @@ def generate_model(schema_path: Path, output_dir: Path) -> Path:
 def update_models_init(models_dir: Path, versions: list[str]) -> None:
     """
     Update the __init__.py in models directory to expose all versions.
-    
+
     Args:
         models_dir: Path to the models directory
         versions: List of version strings (e.g., ["v3.1.0", "v3.0.2"])
@@ -156,12 +156,12 @@ and validation.
 
 Usage:
     from vowl.contracts.models import get_contract_model
-    
+
     # Load model for specific version
     DataContract = get_contract_model("v3.1.0")
     contract = DataContract.model_validate(yaml_data)
-    
-    # Or use the typed model directly  
+
+    # Or use the typed model directly
     from vowl.contracts.models.v3_1_0 import OpenDataContractStandardOdcs
 
 Supported Versions:
@@ -184,16 +184,16 @@ SUPPORTED_VERSIONS = list(VERSION_MAP.keys())
 
 def get_contract_model(api_version: str) -> Type:
     """Get the DataContract Pydantic model for the specified API version.
-    
+
     Args:
         api_version: The ODCS API version (e.g., "v3.1.0", "v3.0.2")
-        
+
     Returns:
         The DataContract Pydantic model class for the specified version
-        
+
     Raises:
         ValueError: If the API version is not supported
-        
+
     Example:
         >>> DataContract = get_contract_model("v3.1.0")
         >>> contract = DataContract.model_validate(yaml_data)
@@ -204,7 +204,7 @@ def get_contract_model(api_version: str) -> Type:
             f"Unsupported API version: {{api_version}}. "
             f"Supported versions: {{supported}}"
         )
-    
+
     module = VERSION_MAP[api_version]
     # datamodel-code-generator names the root model based on schema title
     # For ODCS it will be "OpenDataContractStandardOdcs"
@@ -218,7 +218,7 @@ def get_latest_version() -> str:
 
 __all__ = [
     "get_contract_model",
-    "get_latest_version", 
+    "get_latest_version",
     "SUPPORTED_VERSIONS",
     "VERSION_MAP",
 ]

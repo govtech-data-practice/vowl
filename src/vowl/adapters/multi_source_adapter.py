@@ -24,31 +24,31 @@ if TYPE_CHECKING:
 class MultiSourceAdapter(BaseAdapter):
     """
     Adapter for validating contracts with multiple schemas/tables.
-    
+
     Routes checks to the appropriate single-source adapter based on which
     schema they belong to. Each schema in the contract can be backed by
     a different data source.
-    
+
     For cross-table queries (joins), uses a MultiSourceExecutor that can
     coordinate queries across multiple sources.
-    
+
     Example:
         >>> from vowl.adapters import IbisAdapter, MultiSourceAdapter
         >>> import ibis
-        >>> 
+        >>>
         >>> # Create adapters for each schema
         >>> orders_adapter = IbisAdapter(
         ...     con=ibis.postgres.connect(...),
         ...     filter_conditions={"raw_orders": {"field": "created_at", "operator": ">=", "value": "2024-01-01"}},
         ... )
         >>> products_adapter = IbisAdapter(ibis.duckdb.connect())
-        >>> 
+        >>>
         >>> # Create multi-source adapter
         >>> adapter = MultiSourceAdapter({
         ...     "orders": orders_adapter,
         ...     "products": products_adapter,
         ... })
-        >>> 
+        >>>
         >>> # Run checks - automatically routes to correct adapter
         >>> refs_by_schema = contract.get_check_references_by_schema()
         >>> results = adapter.run_checks_by_schema(refs_by_schema)
@@ -60,7 +60,7 @@ class MultiSourceAdapter(BaseAdapter):
     ) -> None:
         """
         Initialize the multi-source adapter.
-        
+
         Args:
             adapters: Dict mapping schema names to their adapter instances.
                 Keys should match schema names defined in the contract.
@@ -100,10 +100,10 @@ class MultiSourceAdapter(BaseAdapter):
     def _detect_tables_in_query(self, query: str) -> set[str]:
         """
         Detect all table names referenced in a SQL query.
-        
+
         Args:
             query: The SQL query to analyze
-            
+
         Returns:
             Set of table names found in the query
         """
@@ -117,10 +117,10 @@ class MultiSourceAdapter(BaseAdapter):
     def _is_multi_table_check(self, check_ref: CheckReference) -> bool:
         """
         Determine if a check involves multiple tables.
-        
+
         Args:
             check_ref: A CheckReference to analyze
-            
+
         Returns:
             True if the check's query references multiple tables
         """
@@ -145,10 +145,10 @@ class MultiSourceAdapter(BaseAdapter):
     def get_adapter(self, schema_name: str) -> BaseAdapter | None:
         """
         Get the adapter for a specific schema.
-        
+
         Args:
             schema_name: The schema name to look up.
-            
+
         Returns:
             The adapter for that schema, or None if not found.
         """
@@ -160,7 +160,7 @@ class MultiSourceAdapter(BaseAdapter):
     ) -> dict[str, dict[str, str]]:
         """
         Test all adapter connections, including tables referenced in checks.
-        
+
         For each schema:
         1. Tests the schema's own table via its adapter.
         2. If check_refs_by_schema is provided, detects all tables referenced
@@ -170,12 +170,12 @@ class MultiSourceAdapter(BaseAdapter):
            - Unknown table: tested with this schema's adapter; warns if it
              succeeds (table exists but is not a defined schema) or errors
              if inaccessible.
-        
+
         Args:
             check_refs_by_schema: Optional dict mapping schema names to their
                 CheckReference objects. When provided, referenced tables in
                 queries are also tested.
-        
+
         Returns:
             Dict mapping schema names to a dict of {table_name: status_string}.
             Status is 'success', 'skipped', or an error message.
@@ -249,13 +249,13 @@ class MultiSourceAdapter(BaseAdapter):
     ) -> list[CheckResult]:
         """
         Run checks, routing each to the appropriate adapter based on schema.
-        
+
         Single-table checks are routed to the corresponding adapter.
         Multi-table checks (joins) are handled by MultiSourceSQLExecutor.
-        
+
         Args:
             check_refs_by_schema: Dict mapping schema names to their CheckReference objects.
-            
+
         Returns:
             Combined list of CheckResult objects from all schemas.
         """
@@ -309,10 +309,10 @@ class MultiSourceAdapter(BaseAdapter):
     def get_total_rows_by_schema(self, max_rows: int = -1) -> dict[str, int]:
         """
         Get total row counts for each schema via its adapter.
-        
+
         Args:
             max_rows: If >= 0, cap the count at this value per schema.
-            
+
         Returns:
             Dict mapping schema name to row count.
         """

@@ -1,7 +1,7 @@
 """
 vowl
 
-A data quality validation framework that validates data against 
+A data quality validation framework that validates data against
 ODCS (Open Data Contract Standard) data contracts.
 
 Supports:

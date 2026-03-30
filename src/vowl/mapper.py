@@ -66,7 +66,7 @@ def _is_narwhals_dataframe(obj: Any) -> bool:
 class DataSourceMapper:
     """
     Maps user input to the appropriate adapter for data quality validation.
-    
+
     Supports the following input types:
     - Any DataFrame supported by narwhals (pandas, polars, PyArrow, cuDF,
       Modin, etc.): Creates an Ibis DuckDB in-memory connection
@@ -75,15 +75,15 @@ class DataSourceMapper:
     - str (connection string): Creates an Ibis connection from the URI
     - BaseAdapter: Uses the adapter directly
     - ibis.BaseBackend: Wraps in an IbisAdapter
-    
+
     Example:
         >>> mapper = DataSourceMapper()
         >>> adapter = mapper.get_adapter(pandas_df)
         >>> # Returns IbisAdapter with DuckDB backend
-        
+
         >>> adapter = mapper.get_adapter(polars_df)
         >>> # Returns IbisAdapter with DuckDB backend
-        
+
         >>> adapter = mapper.get_adapter("postgresql://user:pass@host/db")
         >>> # Returns IbisAdapter with PostgreSQL backend
     """
@@ -99,7 +99,7 @@ class DataSourceMapper:
     ) -> IbisAdapter:
         """
         Create an appropriate adapter for the given data source.
-        
+
         Args:
             data_source: The data source to create an adapter for. Can be:
                 - Any DataFrame supported by narwhals (pandas, polars,
@@ -111,10 +111,10 @@ class DataSourceMapper:
                 - ibis.BaseBackend
             table_name: Name to register the table as (for DataFrame inputs).
                 Defaults to "source_data".
-        
+
         Returns:
             IbisAdapter configured for the data source
-            
+
         Raises:
             TypeError: If the data source type is not supported
         """
@@ -164,7 +164,7 @@ class DataSourceMapper:
     ) -> IbisAdapter:
         """
         Create an IbisAdapter from any narwhals-supported DataFrame using DuckDB.
-        
+
         Converts the input to a PyArrow Table via narwhals and loads it into an
         in-memory DuckDB connection.  If Arrow conversion fails (e.g. due to
         mixed types), falls back to converting to pandas, coercing all columns
@@ -284,17 +284,17 @@ def create_adapter(
 ) -> IbisAdapter:
     """
     Create an IbisAdapter for the given data source.
-    
+
     This is a convenience function that creates a DataSourceMapper
     and returns the appropriate adapter.
-    
+
     Args:
         data_source: The data source (DataFrame, connection string, etc.)
         table_name: Name to register the table as (for DataFrame inputs)
-        
+
     Returns:
         IbisAdapter configured for the data source
-        
+
     Example:
         >>> adapter = create_adapter(pandas_df, table_name="my_table")
         >>> adapter = create_adapter("postgresql://localhost/mydb")

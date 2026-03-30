@@ -519,7 +519,7 @@ class ValidationResult:
         result_data['tables_in_query'] = []
 
         for row_key, group in row_groups.items():
-            for column, value in zip(data_cols, row_key):
+            for column, value in zip(data_cols, row_key, strict=False):
                 result_data[column].append(value)
             result_data['check_ids'].append(', '.join(sorted(group['check_ids'])))
             result_data['tables_in_query'].append(group['tables_in_query'])

@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import sqlglot
 from sqlglot import exp
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from vowl.adapters.models import FilterCondition
     from vowl.executors.base import CheckResult
 
-    FilterConditionType = Union[FilterCondition, list[FilterCondition], dict[str, Any]]
+    FilterConditionType = FilterCondition | list[FilterCondition] | dict[str, Any]
 
 # Re-export so existing ``from .check_reference_sql import LOGICAL_TYPE_TO_SQL``
 # continues to work.

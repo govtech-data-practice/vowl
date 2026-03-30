@@ -13,7 +13,7 @@ from __future__ import annotations
 import fnmatch
 import re
 import warnings
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import sqlglot
 from sqlglot import exp
@@ -21,7 +21,7 @@ from sqlglot import exp
 if TYPE_CHECKING:
     from vowl.adapters.models import FilterCondition
 
-    FilterConditionType = Union[FilterCondition, list[FilterCondition], dict[str, Any]]
+    FilterConditionType = FilterCondition | list[FilterCondition] | dict[str, Any]
 
 
 # ---------------------------------------------------------------------------

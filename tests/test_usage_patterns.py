@@ -14,7 +14,6 @@ Uses real database instances:
 - PostgreSQL: Via testcontainers (requires Docker)
 """
 import os
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import narwhals as nw
@@ -62,7 +61,7 @@ def small_clean_dataframe(sample_dataframe) -> pd.DataFrame:
 
 def assert_no_check_errors(results):
     """Assert that no checks have 'ERROR' status in validation results.
-    
+
     This helper ensures tests fail if any data quality check encountered
     an error during execution (as opposed to PASSED/FAILED status).
     """
@@ -83,7 +82,7 @@ class TestLocalDataFramePandas:
     def test_basic_pandas_validation(self, sample_dataframe, contract_path):
         """
         Test basic validation pattern:
-        
+
         >>> import pandas as pd
         >>> from vowl import validate_data
         >>> df = pd.read_csv(data_file_path)
@@ -164,7 +163,7 @@ class TestLocalDataFramePolars:
     def test_polars_validation(self, polars_dataframe, contract_path):
         """
         Test Polars DataFrame validation (works via IbisAdapter):
-        
+
         >>> import polars as pl
         >>> from vowl import validate_data
         >>> df = pl.read_csv(data_file_path)
@@ -184,7 +183,7 @@ class TestLocalDataFramePolars:
     def test_polars_direct_ibis_validation(self, polars_dataframe, contract_path):
         """
         Test Polars DataFrame validation using Ibis directly.
-        
+
         Ibis natively supports Polars DataFrames.
         """
         import ibis
@@ -213,7 +212,7 @@ class TestLocalDataFramePolars:
 
 class TestPySparkValidation:
     """Test validate_data with PySpark DataFrame and SparkSession.
-    
+
     These tests require PySpark to be installed. They are skipped if PySpark
     is not available, but will run in CI environments where PySpark is configured.
     """
@@ -230,7 +229,7 @@ class TestPySparkValidation:
             if homebrew_java.exists():
                 os.environ["JAVA_HOME"] = str(homebrew_java)
 
-        pyspark = pytest.importorskip("pyspark", reason="PySpark not installed")
+        pytest.importorskip("pyspark", reason="PySpark not installed")
         from pyspark.sql import SparkSession
 
         try:
@@ -256,7 +255,7 @@ class TestPySparkValidation:
     def test_pyspark_dataframe_to_pandas(self, spark_dataframe, contract_path):
         """
         Test PySpark DataFrame validation by converting to pandas.
-        
+
         >>> from vowl import validate_data
         >>> spark_df = spark.read.csv(...)
         >>> results = validate_data(contract_path, df=spark_df.toPandas())
@@ -278,7 +277,7 @@ class TestPySparkValidation:
     def test_pyspark_with_ibis_adapter(self, spark_session, spark_dataframe, contract_path):
         """
         Test PySpark integration via IbisAdapter using ibis.pyspark connector.
-        
+
         >>> con = ibis.pyspark.connect(session=spark)
         >>> adapter = IbisAdapter(con)
         """
@@ -326,7 +325,7 @@ class TestIbisConnections:
     def test_ibis_duckdb_connection(self, clean_dataframe, contract_path):
         """
         Test Ibis DuckDB connection pattern:
-        
+
         >>> import ibis
         >>> from vowl import validate_data
         >>> con = ibis.duckdb.connect()
@@ -409,7 +408,7 @@ class TestSQLiteConnection:
     def test_sqlite_with_ibis_adapter(self, sqlite_connection, contract_path):
         """
         Test SQLite connection using Ibis:
-        
+
         >>> import ibis
         >>> con = ibis.sqlite.connect("database.db")
         >>> adapter = IbisAdapter(con)
@@ -476,7 +475,7 @@ class TestSQLiteConnection:
 @pytest.mark.docker_integration
 class TestPostgresConnection:
     """Test validate_data with real PostgreSQL connections via testcontainers.
-    
+
     These tests require Docker to be running. They spin up a real PostgreSQL
     container for integration testing.
     """
@@ -569,7 +568,7 @@ class TestPostgresConnection:
     def test_postgres_with_ibis_adapter(self, postgres_connection, contract_path):
         """
         Test PostgreSQL connection using Ibis:
-        
+
         >>> import ibis
         >>> con = ibis.postgres.connect(host=..., port=..., user=..., password=..., database=...)
         >>> adapter = IbisAdapter(con)
@@ -652,7 +651,7 @@ class TestExplicitAdapterFilterConditions:
     def test_filter_condition_dict_style(self, clean_dataframe, contract_path):
         """
         Test filter conditions using dict format:
-        
+
         >>> adapter = IbisAdapter(
         ...     con,
         ...     filter_conditions={
@@ -684,7 +683,7 @@ class TestExplicitAdapterFilterConditions:
     def test_filter_condition_class_style(self, clean_dataframe, contract_path):
         """
         Test filter conditions using FilterCondition class:
-        
+
         >>> from vowl.adapters import IbisAdapter, FilterCondition
         >>> adapter = IbisAdapter(
         ...     con,
@@ -696,8 +695,6 @@ class TestExplicitAdapterFilterConditions:
         import ibis
 
         from vowl.adapters import FilterCondition, IbisAdapter
-
-        date_limit = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
 
         con = ibis.duckdb.connect()
         con.create_table('hdb_resale_prices', clean_dataframe)
@@ -718,7 +715,7 @@ class TestExplicitAdapterFilterConditions:
     def test_multiple_filter_conditions_list(self, clean_dataframe, contract_path):
         """
         Test multiple filter conditions combined with AND:
-        
+
         >>> adapter = IbisAdapter(
         ...     con,
         ...     filter_conditions={
@@ -753,7 +750,7 @@ class TestExplicitAdapterFilterConditions:
     def test_wildcard_filter_conditions(self, clean_dataframe, contract_path):
         """
         Test wildcard pattern matching in filter conditions:
-        
+
         >>> adapter = IbisAdapter(
         ...     con,
         ...     filter_conditions={
@@ -803,7 +800,7 @@ class TestMultiAdapters:
     def test_multi_adapter_creation(self, multi_table_dataframes):
         """
         Test multi-adapter pattern:
-        
+
         >>> adapters = {
         ...     "table_a": IbisAdapter(con_a),
         ...     "table_b": IbisAdapter(con_b)
@@ -930,7 +927,7 @@ class TestMultiAdapters:
 
 class TestMultiDatabaseIntegration:
     """Test multi-database scenarios with real database connections.
-    
+
     These tests demonstrate using different database backends together,
     which is a common pattern when data is spread across systems.
     """
@@ -1017,7 +1014,7 @@ class TestCustomAdaptersExecutors:
     def test_custom_executor_registration(self, clean_dataframe):
         """
         Test setting custom executors on adapter:
-        
+
         >>> adapter = CustomAdapter(xxx, executors={"sql": CustomSQLExecutor})
         """
         import ibis
@@ -1140,7 +1137,7 @@ class TestValidationResultAPI:
         # All non-ERROR checks should appear (PASSED and FAILED)
         non_error = [cr for cr in results.check_results if cr.status != 'ERROR']
         assert len(output_dfs) == len(non_error)
-        for check_id, df in output_dfs.items():
+        for _check_id, df in output_dfs.items():
             assert isinstance(df, nw.DataFrame)
             assert 'check_id' in df.columns
             assert 'tables_in_query' in df.columns
@@ -1262,7 +1259,7 @@ class TestContractAPI:
         assert len(check_refs) > 0
 
         # Each schema should have a list of check references
-        for schema_name, refs in check_refs.items():
+        for _schema_name, refs in check_refs.items():
             assert isinstance(refs, list)
 
 

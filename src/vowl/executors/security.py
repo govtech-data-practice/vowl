@@ -129,7 +129,7 @@ def validate_read_only_query(query: str, dialect: str = "postgres") -> None:
         )
 
     # Check each statement
-    for i, stmt in enumerate(statements):
+    for _i, stmt in enumerate(statements):
         if stmt is None:
             continue
 

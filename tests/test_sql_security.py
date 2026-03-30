@@ -34,8 +34,8 @@ class TestValidateReadOnlyQuery:
     def test_select_with_join_allowed(self):
         """SELECT with JOIN should be allowed."""
         query = """
-            SELECT u.id, o.amount 
-            FROM users u 
+            SELECT u.id, o.amount
+            FROM users u
             JOIN orders o ON u.id = o.user_id
         """
         validate_read_only_query(query)  # Should not raise
@@ -43,7 +43,7 @@ class TestValidateReadOnlyQuery:
     def test_select_with_subquery_allowed(self):
         """SELECT with subquery should be allowed."""
         query = """
-            SELECT * FROM users 
+            SELECT * FROM users
             WHERE id IN (SELECT user_id FROM orders WHERE amount > 100)
         """
         validate_read_only_query(query)  # Should not raise
@@ -66,8 +66,8 @@ class TestValidateReadOnlyQuery:
     def test_select_aggregate_allowed(self):
         """SELECT with aggregate functions should be allowed."""
         query = """
-            SELECT department, AVG(salary), MAX(salary) 
-            FROM employees 
+            SELECT department, AVG(salary), MAX(salary)
+            FROM employees
             GROUP BY department
         """
         validate_read_only_query(query)  # Should not raise
@@ -125,8 +125,8 @@ class TestValidateReadOnlyQuery:
     def test_merge_blocked(self):
         """MERGE statements should be blocked."""
         query = """
-            MERGE INTO target USING source 
-            ON target.id = source.id 
+            MERGE INTO target USING source
+            ON target.id = source.id
             WHEN MATCHED THEN UPDATE SET name = source.name
         """
         with pytest.raises(SQLSecurityError) as exc_info:
@@ -228,8 +228,8 @@ class TestDetectSqlInjection:
     def test_legitimate_union_allowed(self):
         """Legitimate UNION queries should not be flagged."""
         query = """
-            SELECT id, name FROM employees 
-            UNION 
+            SELECT id, name FROM employees
+            UNION
             SELECT id, name FROM contractors
         """
         result = detect_sql_injection(query)
@@ -268,7 +268,7 @@ class TestValidateQuerySecurity:
         """Complex but valid queries should pass."""
         query = """
             WITH monthly_sales AS (
-                SELECT 
+                SELECT
                     DATE_TRUNC('month', order_date) AS month,
                     SUM(amount) AS total
                 FROM orders
@@ -416,13 +416,13 @@ class TestEdgeCases:
     def test_multiline_query(self):
         """Multiline queries should be handled correctly."""
         query = """
-            SELECT 
+            SELECT
                 id,
                 name,
                 email
-            FROM 
+            FROM
                 users
-            WHERE 
+            WHERE
                 status = 'active'
         """
         validate_read_only_query(query)  # Should not raise

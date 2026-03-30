@@ -148,7 +148,7 @@ class BaseExecutor(ABC):
         """
         pass
 
-    def cleanup(self) -> None:
+    def cleanup(self) -> None:  # noqa: B027
         """Release any resources held by this executor. No-op by default."""
         pass
 
@@ -156,10 +156,10 @@ class BaseExecutor(ABC):
 class SQLExecutor(BaseExecutor):
     """
     Base class for SQL-based executors.
-    
+
     Provides common functionality for executors that run SQL queries
     against data sources.
-    
+
     Attributes:
         dialect: SQL dialect for sqlglot parsing/generation. Defaults to "postgres"
             which is widely compatible with most SQL databases (PostgreSQL, DuckDB,
@@ -241,7 +241,7 @@ class SQLExecutor(BaseExecutor):
 class GXExecutor(BaseExecutor):
     """
     Base class for Great Expectations (GX) executors.
-    
+
     Provides common functionality for executors that use Great Expectations
     for data validation.
     """

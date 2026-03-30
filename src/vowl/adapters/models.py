@@ -20,17 +20,17 @@ FilterConditionDict = dict[str, Any]  # {"field": str, "operator": str, "value":
 class FilterCondition:
     """
     Structured filter condition for table queries.
-    
+
     Represents a single filter condition that can be applied to a table.
     Multiple conditions can be combined using AND logic when applied to the same table.
-    
+
     Example:
         >>> # Simple comparison
         >>> FilterCondition(field="date_dt", operator=">=", value="2024-01-01")
-        
+
         >>> # IN clause
         >>> FilterCondition(field="status", operator="IN", value=["active", "pending"])
-        
+
         >>> # NULL check (value is ignored)
         >>> FilterCondition(field="deleted_at", operator="IS NULL")
     """

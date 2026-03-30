@@ -13,11 +13,11 @@ src/vowl/contracts/models/schemas/.
 
 Usage:
     from vowl.contracts.models import validate_contract, ValidationError
-    
+
     # Validate contract data against schema
     contract_data = yaml.safe_load(open("contract.yaml"))
     validate_contract(contract_data)  # Raises ValidationError if invalid
-    
+
     # Or use type hints for IDE support
     from vowl.contracts.models.ODCS_types import DataContract, DataQuality
 
@@ -27,7 +27,7 @@ Supported Versions:
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import jsonschema
 from jsonschema import ValidationError  # Re-export for convenience
@@ -94,16 +94,16 @@ def _load_schema(api_version: str) -> dict[str, Any]:
 def validate_contract(contract_data: dict[str, Any], api_version: str | None = None) -> None:
     """
     Validate contract data against the ODCS JSON schema.
-    
+
     Args:
         contract_data: The contract data dictionary to validate
         api_version: The ODCS API version to validate against.
                     If None, uses the apiVersion from contract_data.
-        
+
     Raises:
         ValidationError: If the contract data doesn't match the schema
         ValueError: If the API version is not supported or not specified
-        
+
     Example:
         >>> contract_data = yaml.safe_load(open("contract.yaml"))
         >>> validate_contract(contract_data)  # Uses apiVersion from data
@@ -124,13 +124,13 @@ def validate_contract(contract_data: dict[str, Any], api_version: str | None = N
 def get_schema(api_version: str) -> dict[str, Any]:
     """
     Get the JSON schema for the specified API version.
-    
+
     Args:
         api_version: The ODCS API version (e.g., "v3.1.0")
-        
+
     Returns:
         The JSON schema dictionary
-        
+
     Raises:
         ValueError: If the API version is not supported
     """
