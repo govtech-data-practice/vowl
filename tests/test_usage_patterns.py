@@ -26,9 +26,9 @@ HDB_DIR = TEST_DIR / "hdb_resale"
 DATA_FILE = HDB_DIR / "HDBResaleWithErrors.csv"
 CONTRACT_PATH = HDB_DIR / "hdb_resale.yaml"
 PSD_DIR = TEST_DIR / "psd_employee"
-PSD_EMPLOYEE_LIST_FILE = PSD_DIR / "PSD_demo_employee_list.csv"
-PSD_EMPLOYEE_PAYROLL_FILE = PSD_DIR / "PSD_demo_employee_payroll.csv"
-PSD_CONTRACT_PATH = PSD_DIR / "PSD_employee_payroll_datacontract.yaml"
+PSD_EMPLOYEE_LIST_FILE = PSD_DIR / "demo_employee_list.csv"
+PSD_EMPLOYEE_PAYROLL_FILE = PSD_DIR / "demo_employee_payroll.csv"
+PSD_CONTRACT_PATH = PSD_DIR / "employee_payroll_datacontract.yaml"
 
 
 # ============================================================================

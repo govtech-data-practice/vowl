@@ -17,9 +17,9 @@ import pytest
 
 TEST_DIR = Path(__file__).parent
 PSD_DIR = TEST_DIR / "psd_employee"
-EMPLOYEE_LIST_FILE = PSD_DIR / "PSD_demo_employee_list.csv"
-EMPLOYEE_PAYROLL_FILE = PSD_DIR / "PSD_demo_employee_payroll.csv"
-CONTRACT_PATH = PSD_DIR / "PSD_employee_payroll_datacontract.yaml"
+EMPLOYEE_LIST_FILE = PSD_DIR / "demo_employee_list.csv"
+EMPLOYEE_PAYROLL_FILE = PSD_DIR / "demo_employee_payroll.csv"
+CONTRACT_PATH = PSD_DIR / "employee_payroll_datacontract.yaml"
 
 
 # ---------------------------------------------------------------------------
