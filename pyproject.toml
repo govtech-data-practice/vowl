@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "A SQL-powered data quality validation library for pandas and spark DataFrames."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "LicenseRef-GovTech-Public-Sector-Licence"
+license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["data-quality", "data-validation", "odcs", "ibis", "sql"]
 classifiers = [

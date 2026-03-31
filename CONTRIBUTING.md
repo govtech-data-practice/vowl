@@ -17,11 +17,12 @@ Thank you for your interest in contributing to `vowl`! We welcome contributions 
 
 ## 🔀 Branching & Workflow Strategy
 
-To maintain version consistency across the Singapore Public Sector, this repository follows a "Single Source of Truth" architecture.
+To maintain quality and consistency, this repository follows an issue-first, fork-and-PR workflow.
 
-1.  **Forks:** Users are encouraged to fork this repository for local deployment.
-2.  **Modifications:** In accordance with Clause 3 of the project licence, any functional modifications or patches applied to a fork are part of the upstream lifecycle and are to be submitted via Merge Request to this repository prior to production deployment.
-3.  **Syncing:** Please sync your fork weekly to ensure you have the latest security patches.
+1.  **Open an issue first** — describe the bug, feature, or improvement before writing code. This allows maintainers to triage, discuss scope, and avoid duplicate work.
+2.  **Fork & branch** — fork the repository, then create a feature branch (e.g. `feature/your-feature-name` or `fix/issue-description`) from `main`.
+3.  **Submit a Pull Request** — open a PR against `main` that references the issue (e.g. `Closes #42`). CI must pass and at least one maintainer must approve before merge.
+4.  **Keep your fork in sync** — pull from `upstream main` regularly to stay current with the latest changes and security patches.
 
 ## 📜 Code of Conduct
 
@@ -36,7 +37,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 Before contributing, please:
 
-1. **Clone the repository** (or fork it if you prefer)
+1. **Fork the repository** and clone your fork
 2. **Set up the development environment** using the instructions in this document
 3. **Create a new branch** for your changes
 
@@ -48,13 +49,14 @@ The Makefile is the canonical source for local development commands. If a README
 
 - Install `uv`
 - Install Python 3.10 or newer
-- Clone or fork this repository
+- Fork and clone this repository
 
 ### Clone the Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/<your-username>/vowl.git
 cd vowl
+git remote add upstream https://github.com/<owner>/vowl.git
 ```
 
 ### Install Development Dependencies
@@ -222,7 +224,7 @@ uv run pytest tests/
 
 ### CI Test Scope
 
-The GitLab test job uses the `lean-ci-test` dependency group instead of the full `dev` environment:
+The GitHub Actions CI workflow uses the `lean-ci-test` dependency group instead of the full `dev` environment:
 
 ```bash
 uv sync --group lean-ci-test
@@ -230,25 +232,9 @@ uv sync --group lean-ci-test
 
 This is intentional. CI is meant to catch core regressions quickly, but it does **not** represent the full backend matrix. In particular:
 
-- Optional Ibis backends such as MySQL, MSSQL, and Oracle are not installed in the default CI test job
+- Optional Ibis backends such as MySQL, MSSQL, and Oracle are not installed in the default CI job
 - Backend integration tests that require missing connectors are skipped rather than provisioned in CI
 - Some integrations also need host-level tools or drivers beyond Python packages (for example Docker, database client libraries, or ODBC drivers)
-
-This does **not** mean those backends are fundamentally impossible to install on GitLab CI. The main constraint is the current runner setup:
-
-- The default job runs in `python:3.12-slim` and only installs the `lean-ci-test` group, so backend-specific Python drivers are intentionally omitted
-- The backend integration tests in this repository use `testcontainers`, which means the runner also needs a usable Docker daemon or Docker-in-Docker setup
-- MySQL support is backed by `mysqlclient`, which on Linux commonly needs native build prerequisites and MySQL or MariaDB client development headers
-- MSSQL support is backed by `pyodbc`, but usable connections also require a registered ODBC driver; this repository's MSSQL tests currently expect FreeTDS/ODBC to be present
-- Oracle support is backed by `oracledb`, which is generally installable on Linux via wheels in thin mode, but the integration tests still need Docker to start the `gvenzl/oracle-free:slim` container
-
-If you want broader backend coverage in GitLab CI, there are workable options:
-
-- Add a separate backend job or job matrix instead of broadening the default fast test job
-- Use `uv sync --group dev` in that job so the backend extras are resolved
-- Provision system dependencies in the CI image before sync, especially for MySQL and MSSQL
-- Provide Docker access, either via a shell runner with Docker available or a Docker executor configured for Docker-in-Docker
-- Keep Oracle and MSSQL in dedicated jobs if runtime, image size, or infrastructure setup makes them too expensive for every pipeline
 
 If your change affects backend-specific behavior, connector-specific SQL generation, or cross-database execution paths, validate it locally with the fuller dependency set:
 
@@ -279,34 +265,13 @@ When adding new features:
 
 ### Test Data
 
-- Use the existing `tests/hdb_resale/HDBResale.csv` for testing when possible
+- Use the existing `tests/hdb_resale/HDBResaleWithErrors.csv` for testing when possible
 - For new test data, keep files small and representative
 - Document any new test data files
 
 ## 🚢 Release Workflow
 
-This section is intended for maintainers publishing `vowl` to the GitLab PyPI registry.
-
-### Configure Upload Credentials
-
-Create a `.pypirc` file in the project root with the GitLab registry configuration:
-
-```ini
-[gitlab]
-repository = https://sgts.gitlab-dedicated.com/api/v4/projects/64873/packages/pypi
-username = __token__
-password = <your-gitlab-token>
-```
-
-`__token__` is the literal username required by the GitLab PyPI registry and should not be changed.
-
-Restrict the file permissions:
-
-```bash
-chmod 600 .pypirc
-```
-
-> **Note:** The Makefile targets pass `--config-file .pypirc` (project-local), not `~/.pypirc`.
+This section is intended for maintainers publishing `vowl` to PyPI.
 
 ### Build and Validate the Package
 
@@ -316,28 +281,14 @@ make release-check
 
 This target installs packaging tools, builds the distribution, and runs Twine validation.
 
-### Upload to GitLab Package Registry
+### CI Publishing
 
-```bash
-make release-upload-gitlab
-```
+The GitHub Actions workflow publishes package artifacts in two cases:
 
-This target runs:
-
-```bash
-python -m twine upload --repository gitlab dist/* --config-file .pypirc
-```
-
-### GitLab CI Publishing
-
-The default GitLab test pipeline is intentionally narrower than a full local development environment. It uses the `lean-ci-test` dependency group for fast regression coverage, while packaging and backend-specific validation are expected to be verified separately when a change touches those areas.
-
-The GitLab pipeline publishes package artifacts in two cases:
-
-- A push to `main` after a merge request is merged. Because the commit is untagged, `setuptools-scm` produces a snapshot version such as `1.2.4.dev3+gabcdef`.
+- A push to `main` after a pull request is merged. Because the commit is untagged, `setuptools-scm` produces a snapshot version such as `1.2.4.dev3+gabcdef`.
 - A tag such as `v1.2.3` whose commit is reachable from `main`. In that case the published package version is the clean release version `1.2.3`.
 
-The pipeline uploads with the built-in `CI_JOB_TOKEN`; no `~/.pypirc` file is required in CI.
+Publishing uses a GitHub Actions trusted publisher workflow; no manual API tokens are required.
 
 ### Tag a Release Version
 
@@ -352,12 +303,12 @@ Consumers should install clean releases by pinning an exact version such as `vow
 
 ## 📤 Submitting Changes
 
-### Merge Request Process
+### Pull Request Process
 
-1. **Update your local repository** with the latest changes:
+1. **Sync your fork** with the latest upstream changes:
    ```bash
-   git fetch origin
-   git rebase origin/main
+   git fetch upstream
+   git rebase upstream/main
    ```
 
 2. **Create a feature branch:**
@@ -367,30 +318,30 @@ Consumers should install clean releases by pinning an exact version such as `vow
 
 3. **Make your changes** and commit them with clear messages
 
-4. **Push your branch:**
+4. **Push your branch** to your fork:
    ```bash
    git push origin feature/your-feature-name
    ```
 
-5. **Open a Merge Request** against the `main` branch in GitLab
+5. **Open a Pull Request** against the `main` branch, referencing the related issue (e.g. `Closes #42`)
 
-### MR Guidelines
+### PR Guidelines
 
 - **Title**: Use a clear, descriptive title
-- **Description**: Explain what changes you made and why
+- **Description**: Explain what changes you made and why, and link the related issue
 - **Testing**: Describe how you tested your changes
 - **Screenshots**: Include output examples if applicable
 - **Breaking Changes**: Clearly note any breaking changes
 
-### MR Checklist
+### PR Checklist
 
 Before submitting, ensure:
 
 - [ ] Code follows the project's style guidelines
 - [ ] Documentation is updated (if applicable)
-- [ ] All demos/tests pass
+- [ ] All CI checks pass
 - [ ] Commit messages are clear and descriptive
-- [ ] MR description explains the changes
+- [ ] PR description links to the related issue
 
 ## 🐛 Reporting Issues
 

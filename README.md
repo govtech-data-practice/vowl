@@ -667,5 +667,5 @@ result.display_full_report()
 
 ## 📄 License
 
-This project is licensed under the GovTech Public Sector Licence. Usage and modification of the source code are subject to the workflows defined in [CONTRIBUTING.md](CONTRIBUTING.md).
+This project is licensed under the [MIT License](LICENSE).
 
