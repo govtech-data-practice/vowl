@@ -56,7 +56,7 @@ The Makefile is the canonical source for local development commands. If a README
 ```bash
 git clone https://github.com/<your-username>/vowl.git
 cd vowl
-git remote add upstream https://github.com/<owner>/vowl.git
+git remote add upstream https://github.com/govtech-data-practice/Vowl.git
 ```
 
 ### Install Development Dependencies
