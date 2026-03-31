@@ -4,7 +4,7 @@
 
 # Vowl
 
-A validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
+Vowl (vee-owl 🦉) — a validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
 
 ## 🚀 Key Features
 
@@ -16,6 +16,7 @@ A validation engine for [Open Data Contract Standard (ODCS)](https://github.com/
 *   **Declarative ODCS Contracts**: Define validation rules in YAML following the [Open Data Contract Standard](https://github.com/bitol-io/open-data-contract-standard).
 *   **Flexible Filtering**: Filter conditions with wildcard pattern matching, ideal for incremental validation of new data.
 *   **Rich Reporting**: Detailed summaries, row-level failure analysis, saveable reports, and a chainable `ValidationResult` API.
+*   **No Silent Gaps**: Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
 
 ## 📦 Getting Started
 
@@ -439,6 +440,25 @@ the existing connection. If you need to avoid relying on the connection's
 default database, use qualified table names such as `my_db.my_table` in your
 contract queries.
 
+### Compatibility Mode (DuckDB ATTACH)
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter
+
+# ATTACH lets DuckDB query your remote database directly.
+# Data is streamed on demand, not materialised locally.
+# All SQL is evaluated by DuckDB, so dialect differences are eliminated.
+con = ibis.duckdb.connect()
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")
+con.raw_sql("USE pg")  # Allows querying tables without the pg. alias
+
+result = validate_data("contract.yaml", adapter=IbisAdapter(con))
+result.display_full_report()
+```
+
+> **When to use this:** Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+
 ### Explicit Adapter with Filter Conditions
 ```python
 from vowl import validate_data
@@ -447,7 +467,7 @@ from datetime import datetime, timedelta
 import ibis
 
 date_limit = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-con = ibis.postgres.connect()
+con = ibis.postgres.connect(...)
 
 # Using dict for filter conditions with wildcard patterns
 # Wildcards use glob-style matching: * (any chars), ? (single char), [seq] (char in seq)
@@ -497,27 +517,55 @@ result = validate_data("contract.yaml", adapter=adapter)
 result.display_full_report()
 ```
 
-### Multi-Source Adapters
+### Multi-Source Validation
+
+There are two ways to validate across tables in different databases.
+
+#### Option A: Multi-Source Adapters (materialises data locally)
 ```python
 from vowl import validate_data
 from vowl.adapters import IbisAdapter
 import ibis
 
-con_a = ibis.postgres.connect()
-con_b = ibis.sqlite.connect()
+con_a = ibis.postgres.connect(...)
+con_b = ibis.sqlite.connect(...)
 
 adapters = {
     "table_a": IbisAdapter(con_a),
     "table_b": IbisAdapter(con_b)
 }
 
-# Multi Adapter usage will cause data to be loaded into local DuckDB before quality 
-# checks are evaluated. Ensure that local compute instance is capable of handling 
-# all the loaded data.
-
 result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
+
+> **Note:** Multi-source adapters **materialise** each table into a local DuckDB instance before running checks. Ensure your local machine can handle the data volume.
+
+#### Option B: DuckDB ATTACH (streams data, no materialisation)
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter
+
+con = ibis.duckdb.connect()
+
+# Attach multiple remote databases
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'sqlite:///path/to/users.db' AS sqlite_users (TYPE sqlite, READ_ONLY)")
+
+# Switch back to local DuckDB so views live in memory
+con.raw_sql("USE memory")
+
+# Create views as prefix-free shortcuts to the attached tables
+con.raw_sql("CREATE VIEW transactions AS SELECT * FROM pg_sales.transactions")
+con.raw_sql("CREATE VIEW users AS SELECT * FROM sqlite_users.users")
+
+# Now vowl (and your contract queries) can reference tables without alias prefixes
+result = validate_data("contract.yaml", adapter=IbisAdapter(con))
+result.display_full_report()
+```
+
+> **Note:** DuckDB evaluates views dynamically at query time, so this does **not** materialise or copy data. It streams live from your attached databases; you just get cleaner, prefix-free table names in your contracts. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
 
 ### Custom Adapters and Executors
 
