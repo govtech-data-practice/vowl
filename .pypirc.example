@@ -2,7 +2,6 @@
 index-servers =
     pypi
     testpypi
-    nexus
 
 [pypi]
 repository = https://upload.pypi.org/legacy/
@@ -14,15 +13,9 @@ repository = https://test.pypi.org/legacy/
 username = __token__
 password = pypi-<your-testpypi-token>
 
-[nexus]
-repository = https://<your-nexus-host>/repository/<your-pypi-repo>/
-username = <your-username-or-service-account>
-password = <your-password-or-token>
-
 # Usage:
 # 1) Copy this file to ~/.pypirc
 # 2) Replace placeholders with real values
 # 3) Restrict permissions: chmod 600 ~/.pypirc
 # 4) Upload via Make targets:
 #    make release-upload-testpypi
-#    make release-upload-nexus

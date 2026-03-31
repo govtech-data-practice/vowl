@@ -351,13 +351,13 @@ class ValidationResult:
 
         return self
 
-    def show_failed_rows(self, max_rows: int = 5, full: bool = False) -> ValidationResult:
+    def show_failed_rows(self, max_rows: int = 5) -> ValidationResult:
         failed_checks_summary = self._get_failed_checks_summary_by_schema()
         if not failed_checks_summary:
             print("\n No failed rows found!")
             return self
 
-        mode_label = "full" if full else f"up to {max_rows} row(s) per failed check"
+        mode_label = "all" if max_rows == -1 else f"up to {max_rows} row(s) per failed check"
         print(f"\n=== Failed Checks and Rows ({mode_label}) ===")
 
         for schema_name in self._schema_names:
@@ -377,7 +377,6 @@ class ValidationResult:
                     self._print_failed_check_rows(
                         check_result,
                         max_rows=max_rows,
-                        full=full,
                     )
 
         return self
@@ -387,7 +386,6 @@ class ValidationResult:
         check_result: CheckResult,
         *,
         max_rows: int,
-        full: bool,
     ) -> None:
         target_label = get_field_label(check_result)
         rule = check_result.metadata.get('rule')
@@ -411,7 +409,7 @@ class ValidationResult:
             print("        No failed rows returned.")
             return
 
-        sample_size = len(df) if full else min(len(df), max_rows)
+        sample_size = len(df) if max_rows == -1 else min(len(df), max_rows)
         sample = df.head(sample_size).to_arrow()
         print(f"        Rows shown: {sample_size} of {len(df)}")
         print(format_ascii_table(sample))
@@ -642,6 +640,6 @@ class ValidationResult:
 
         print(f"Saved to: {filepath}")
 
-    def display_full_report(self, full: bool = False, max_rows: int = 5) -> ValidationResult:
-        self.print_summary().show_failed_rows(max_rows=max_rows, full=full)
+    def display_full_report(self, max_rows: int = 5) -> ValidationResult:
+        self.print_summary().show_failed_rows(max_rows=max_rows)
         return self

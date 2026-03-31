@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-scan-json security-audit release-check release-upload-testpypi release-upload-nexus release-tag
+.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-scan-json security-audit release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean
 
 UV ?= uv
 
@@ -27,8 +27,10 @@ help:
 	@echo "  security-audit   Run dependency vulnerability audit (pip-audit)"
 	@echo "  release-check    Build package artifacts and run Twine validation"
 	@echo "  release-upload-testpypi Upload dist artifacts to TestPyPI"
-	@echo "  release-upload-nexus    Upload dist artifacts to Nexus (repository=nexus)"
 	@echo "  release-tag       Create annotated tag after version consistency check"
+	@echo "  docs-serve       Start local documentation preview server"
+	@echo "  docs-build       Build documentation site"
+	@echo "  docs-clean       Remove generated documentation site"
 
 # Installation targets
 install:
@@ -148,9 +150,6 @@ release-check: clean
 release-upload-testpypi: release-check
 	python -m twine upload --repository testpypi dist/* --config-file .pypirc 
 
-release-upload-nexus: release-check
-	python -m twine upload --repository nexus dist/* --config-file .pypirc 
-
 release-tag:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Error: VERSION is required. Usage: make release-tag VERSION=1.0.1"; \
@@ -166,3 +165,13 @@ release-tag:
 # Verify (all checks + tests)
 verify: check test
 	@echo "All checks passed!"
+
+# Documentation (Zensical)
+docs-serve:
+	$(UV) run zensical serve
+
+docs-build:
+	$(UV) run zensical build --clean
+
+docs-clean:
+	rm -rf site/

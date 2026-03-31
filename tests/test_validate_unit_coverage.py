@@ -338,16 +338,16 @@ def test_validation_result_show_failed_rows_supports_full_mode(capsys: pytest.Ca
         ["users"],
     )
 
-    result.show_failed_rows(max_rows=1, full=False)
+    result.show_failed_rows(max_rows=1)
     truncated_output = capsys.readouterr().out
     assert "=== Failed Checks and Rows (up to 1 row(s) per failed check) ===" in truncated_output
     assert "  users" in truncated_output
     assert "    Single checks" in truncated_output
     assert "Rows shown: 1 of 3" in truncated_output
 
-    result.show_failed_rows(full=True)
+    result.show_failed_rows(max_rows=-1)
     full_output = capsys.readouterr().out
-    assert "=== Failed Checks and Rows (full) ===" in full_output
+    assert "=== Failed Checks and Rows (all) ===" in full_output
     assert "  users" in full_output
     assert "    Single checks" in full_output
     assert "Rows shown: 3 of 3" in full_output

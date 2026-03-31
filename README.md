@@ -309,8 +309,8 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | Method/Property | What It Does | Returns |
 |-----------------|--------------|---------|
 | **`print_summary()`** | Prints high-level statistics (pass/fail counts, success rate, performance) | `self` (chainable) |
-| **`show_failed_rows(max_rows=5)`** | Displays sample of failed rows in console | `self` (chainable) |
-| **`display_full_report()`** | Prints summary + shows failed rows (convenience method) | `self` (chainable) |
+| **`show_failed_rows(max_rows=5)`** | Displays sample of failed rows in console. Use `max_rows=-1` for all rows. | `self` (chainable) |
+| **`display_full_report(max_rows=5)`** | Prints summary + shows failed rows (convenience method) | `self` (chainable) |
 | **`save(output_dir=".", prefix="vowl_results")`** | Saves enhanced CSV and summary JSON to disk | `self` (chainable) |
 | **`get_output_dfs(checks=None)`** | Returns per-check failed rows as `{check_id: DataFrame}` | Dict[str, DataFrame] |
 | **`get_consolidated_output_dfs(checks=None)`** | Deduplicates failed rows across checks, grouped by table | Dict[str, DataFrame] |
