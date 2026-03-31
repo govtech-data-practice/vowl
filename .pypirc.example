@@ -3,7 +3,6 @@ index-servers =
     pypi
     testpypi
     nexus
-    gitlab
 
 [pypi]
 repository = https://upload.pypi.org/legacy/
@@ -20,12 +19,6 @@ repository = https://<your-nexus-host>/repository/<your-pypi-repo>/
 username = <your-username-or-service-account>
 password = <your-password-or-token>
 
-[gitlab]
-# GitLab project ID = 64873
-repository = https://sgts.gitlab-dedicated.com/api/v4/projects/64873/packages/pypi
-username = __token__
-password = <your-gitlab-pat-deploy-token-or-ci-job-token>
-
 # Usage:
 # 1) Copy this file to ~/.pypirc
 # 2) Replace placeholders with real values
@@ -33,4 +26,3 @@ password = <your-gitlab-pat-deploy-token-or-ci-job-token>
 # 4) Upload via Make targets:
 #    make release-upload-testpypi
 #    make release-upload-nexus
-#    make release-upload-gitlab

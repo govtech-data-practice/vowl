@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-scan-json security-audit release-check release-upload-testpypi release-upload-nexus release-upload-gitlab release-tag
+.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-scan-json security-audit release-check release-upload-testpypi release-upload-nexus release-tag
 
 UV ?= uv
 
@@ -28,7 +28,6 @@ help:
 	@echo "  release-check    Build package artifacts and run Twine validation"
 	@echo "  release-upload-testpypi Upload dist artifacts to TestPyPI"
 	@echo "  release-upload-nexus    Upload dist artifacts to Nexus (repository=nexus)"
-	@echo "  release-upload-gitlab   Upload dist artifacts to GitLab Package Registry (repository=gitlab)"
 	@echo "  release-tag       Create annotated tag after version consistency check"
 
 # Installation targets
@@ -151,9 +150,6 @@ release-upload-testpypi: release-check
 
 release-upload-nexus: release-check
 	python -m twine upload --repository nexus dist/* --config-file .pypirc 
-
-release-upload-gitlab: release-check
-	python -m twine upload --repository gitlab dist/* --config-file .pypirc 
 
 release-tag:
 	@if [ -z "$(VERSION)" ]; then \

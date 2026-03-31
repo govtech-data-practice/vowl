@@ -16,10 +16,10 @@ branches:
 plugins:
   - "@semantic-release/commit-analyzer"
   - "@semantic-release/release-notes-generator"
-  - "@semantic-release/gitlab"
+  - "@semantic-release/github"
   - - "@semantic-release/exec"
     - prepareCmd: "sed -i 's/^version = .*/version = \"${nextRelease.version}\"/' pyproject.toml"
-      publishCmd: "uv run python -m build && uv run twine upload --repository gitlab dist/*"
+      publishCmd: "uv run python -m build"
   - - "@semantic-release/git"
     - assets:
         - pyproject.toml

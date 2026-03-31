@@ -51,6 +51,9 @@ all = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/govtech-data-practice/Vowl"
+Repository = "https://github.com/govtech-data-practice/Vowl"
+Issues = "https://github.com/govtech-data-practice/Vowl/issues"
 Documentation = "https://pypi.org/project/vowl/"
 
 [tool.setuptools.packages.find]

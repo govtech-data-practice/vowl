@@ -19,13 +19,9 @@ A validation engine for [Open Data Contract Standard (ODCS)](https://github.com/
 
 ## 📦 Getting Started
 
-Install from the GitLab Package Registry (keep PyPI as the primary index so public dependencies resolve normally):
-
 ### Installation
 ```bash
-pip install vowl \
-    --index-url https://pypi.org/simple \
-    --extra-index-url https://sgts.gitlab-dedicated.com/api/v4/projects/64873/packages/pypi/simple
+pip install vowl
 ```
 
 Optional extras are available: `vowl[spark]`, `vowl[all]`.
@@ -295,11 +291,11 @@ In practice, a property like this:
 
 produces three generated check references pointing at:
 
-```text
-$.schema[0].properties[...]
-$.schema[0].properties[...].logicalTypeOptions.maxLength
-$.schema[0].properties[...].required
-```
+| Check path | Check type |
+|---|---|
+| `$.schema[0].properties[...]` | `DeclaredColumnExistsCheckReference` |
+| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference` |
+| `$.schema[0].properties[...].required` | `RequiredCheckReference` |
 
 Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, `vowl` also generates a `logicalType` SQL check automatically. You only need to define extra `quality` entries when you want custom business rules beyond the contract metadata.
 
@@ -634,7 +630,8 @@ from vowl import validate_data
 result = validate_data("s3://my-bucket/contracts/my_contract.yaml", df=df)
 result.display_full_report()
 
-# Note: `boto3` is included in base install.
+# Note: `boto3` is not included in the base install.
+# Install it with: pip install vowl[all]  or  pip install boto3
 # Uses default AWS credentials (environment variables, ~/.aws/credentials, IAM role, etc.)
 ```
 
@@ -660,7 +657,7 @@ result.display_full_report()
 
 | Capability | Description | Status |
 |------------|-------------|--------|
-| 🔄 **PyPI/Nexus Distribution** | Currently available on the GitLab Package Registry. Publishing to PyPI/Nexus for easier installation is in progress. | In Progress |
+| 🔄 **PyPI Distribution** | Published to PyPI. Nexus distribution support is in progress. | In Progress |
 | 📅 **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
 
 ---
