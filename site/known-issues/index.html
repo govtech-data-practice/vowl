@@ -620,6 +620,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Multi-Source Adapters: Data Materialisation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-not-use-duckdb-attach-internally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Not Use DuckDB ATTACH Internally?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -706,6 +723,25 @@
 <li>Large tables may cause out-of-memory errors.</li>
 </ul>
 <p>For large datasets, prefer the <strong>DuckDB ATTACH</strong> approach which streams data on demand without materialisation. See <a href="../usage-patterns/#option-b-duckdb-attach">Usage Patterns</a> for details.</p>
+<h3 id="why-not-use-duckdb-attach-internally">Why Not Use DuckDB ATTACH Internally?<a class="headerlink" href="#why-not-use-duckdb-attach-internally" title="Permanent link">&para;</a></h3>
+<p>The <code>MultiSourceSQLExecutor</code> materialises tables via Arrow instead of using DuckDB's <code>ATTACH</code> statement for several technical reasons:</p>
+<ol>
+<li>
+<p><strong>Table namespace mismatch.</strong> DuckDB ATTACH places tables under a qualified namespace (e.g. <code>pg_db.public.my_table</code>). User-authored contract queries use bare table names (<code>my_table</code>). <code>USE</code> or <code>SET search_path</code> resolves this for a single attached database, but cross-database joins — the core multi-source use case — require every table reference to be fully qualified. Rewriting arbitrary user SQL to inject per-table namespace prefixes is fragile and error-prone.</p>
+</li>
+<li>
+<p><strong>No access to connection credentials.</strong> DuckDB ATTACH requires a connection string (<code>host=... port=... dbname=... user=... password=...</code>), not a live connection object. Vowl receives an Ibis connection from the user. Reconstructing credentials would require accessing private Ibis internals (<code>_con_kwargs</code>), would not work for connections created via <code>from_connection()</code> or environment-based auth, and would surface passwords in SQL strings.</p>
+</li>
+<li>
+<p><strong>Limited backend coverage.</strong> DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. Vowl supports 12+ Ibis backends (Snowflake, Spark, BigQuery, Trino, ClickHouse, Oracle, MSSQL, DataFusion, etc.). The materialisation path would still be needed for every unsupported backend, so ATTACH would only serve as a partial optimisation.</p>
+</li>
+<li>
+<p><strong>Filter conditions cannot be pushed through ATTACH.</strong> When an adapter has filter conditions, <code>export_table_as_arrow()</code> applies them at the source before export. With ATTACH, the remote table is exposed raw — pushing per-adapter filters into cross-database joins would require deep query rewriting.</p>
+</li>
+<li>
+<p><strong>ATTACH opens a separate connection.</strong> DuckDB ATTACH creates a new, independent connection to the remote database. This misses any session-level state on the user's Ibis connection (transactions, temp tables, session variables, <code>search_path</code>).</p>
+</li>
+</ol>
 <hr />
 <h2 id="dark-patterns">Dark Patterns<a class="headerlink" href="#dark-patterns" title="Permanent link">&para;</a></h2>
 <h3 id="queries-accessing-tables-outside-the-contract">Queries Accessing Tables Outside the Contract<a class="headerlink" href="#queries-accessing-tables-outside-the-contract" title="Permanent link">&para;</a></h3>
