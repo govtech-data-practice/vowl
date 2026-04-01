@@ -33,7 +33,7 @@ dependencies = [
     "pyarrow>=14.0.0",
     "pyyaml>=5.4.0",
     "requests>=2.32.5",
-    "sqlglot[rs]>=28.6.0",
+    "sqlglot[c]>=28.6.0",
 ]
 
 [project.optional-dependencies]
@@ -71,6 +71,7 @@ local_scheme = "no-local-version"
 [dependency-groups]
 dev = [
     "bandit>=1.9.3",
+    "boto3>=1.42.80",
     "datamodel-code-generator>=0.53.0",
     "ibis-framework[mssql,mysql,oracle,postgres]>=11.0.0",
     "ipykernel>=7.1.0",
