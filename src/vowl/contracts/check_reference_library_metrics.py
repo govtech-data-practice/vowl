@@ -7,7 +7,7 @@ executed through the standard SQL executor pipeline.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import sqlglot
 from sqlglot import exp
@@ -18,14 +18,8 @@ from .check_reference_generated import (
 )
 
 if TYPE_CHECKING:
-    from vowl.adapters.models import FilterCondition
-
     from .contract import Contract
     from .models.ODCS_types import DataQuality
-
-    FilterConditionType = FilterCondition | list[FilterCondition] | dict[str, Any]
-else:
-    FilterConditionType = Any
 
 
 # ---------------------------------------------------------------------------
