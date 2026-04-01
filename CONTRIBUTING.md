@@ -294,10 +294,13 @@ Publishing uses a GitHub Actions trusted publisher workflow; no manual API token
 
 Package versions are derived from Git tags via `setuptools-scm`. For a clean release version:
 
-```bash
-make release-tag VERSION=1.2.3
-git push origin v1.2.3
-```
+1. **Update `CHANGELOG.md`** — rename the `[Unreleased]` section to `[X.Y.Z] - YYYY-MM-DD`, add a fresh empty `[Unreleased]` section above it, and update the comparison links at the bottom of the file.
+2. **Commit the changelog** — `git add CHANGELOG.md && git commit -m "Release X.Y.Z"`
+3. **Tag and push**:
+   ```bash
+   make release-tag VERSION=1.2.3
+   git push origin v1.2.3
+   ```
 
 Consumers should install clean releases by pinning an exact version such as `vowl==1.2.3`. Snapshot builds from `main` remain available for internal validation, but they should be treated as pre-release artifacts rather than the default install target.
 
