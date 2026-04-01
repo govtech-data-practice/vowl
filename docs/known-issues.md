@@ -47,6 +47,20 @@ When using `MultiSourceAdapter` (passing `adapters={}` to `validate_data`), each
 
 For large datasets, prefer the **DuckDB ATTACH** approach which streams data on demand without materialisation. See [Usage Patterns](usage-patterns.md#option-b-duckdb-attach) for details.
 
+### Why Not Use DuckDB ATTACH Internally?
+
+The `MultiSourceSQLExecutor` materialises tables via Arrow instead of using DuckDB's `ATTACH` statement for several technical reasons:
+
+1. **Table namespace mismatch.** DuckDB ATTACH places tables under a qualified namespace (e.g. `pg_db.public.my_table`). User-authored contract queries use bare table names (`my_table`). `USE` or `SET search_path` resolves this for a single attached database, but cross-database joins — the core multi-source use case — require every table reference to be fully qualified. Rewriting arbitrary user SQL to inject per-table namespace prefixes is fragile and error-prone.
+
+2. **No access to connection credentials.** DuckDB ATTACH requires a connection string (`host=... port=... dbname=... user=... password=...`), not a live connection object. Vowl receives an Ibis connection from the user. Reconstructing credentials would require accessing private Ibis internals (`_con_kwargs`), would not work for connections created via `from_connection()` or environment-based auth, and would surface passwords in SQL strings.
+
+3. **Limited backend coverage.** DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. Vowl supports 12+ Ibis backends (Snowflake, Spark, BigQuery, Trino, ClickHouse, Oracle, MSSQL, DataFusion, etc.). The materialisation path would still be needed for every unsupported backend, so ATTACH would only serve as a partial optimisation.
+
+4. **Filter conditions cannot be pushed through ATTACH.** When an adapter has filter conditions, `export_table_as_arrow()` applies them at the source before export. With ATTACH, the remote table is exposed raw — pushing per-adapter filters into cross-database joins would require deep query rewriting.
+
+5. **ATTACH opens a separate connection.** DuckDB ATTACH creates a new, independent connection to the remote database. This misses any session-level state on the user's Ibis connection (transactions, temp tables, session variables, `search_path`).
+
 ---
 
 ## Dark Patterns

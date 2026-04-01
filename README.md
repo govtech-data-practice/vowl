@@ -521,27 +521,7 @@ result.display_full_report()
 
 There are two ways to validate across tables in different databases.
 
-#### Option A: Multi-Source Adapters (materialises data locally)
-```python
-from vowl import validate_data
-from vowl.adapters import IbisAdapter
-import ibis
-
-con_a = ibis.postgres.connect(...)
-con_b = ibis.sqlite.connect(...)
-
-adapters = {
-    "table_a": IbisAdapter(con_a),
-    "table_b": IbisAdapter(con_b)
-}
-
-result = validate_data("contract.yaml", adapters=adapters)
-result.display_full_report()
-```
-
-> **Note:** Multi-source adapters **materialise** each table into a local DuckDB instance before running checks. Ensure your local machine can handle the data volume.
-
-#### Option B: DuckDB ATTACH (streams data, no materialisation)
+#### Option A: DuckDB ATTACH (recommended — streams data, no materialisation)
 ```python
 import ibis
 from vowl import validate_data
@@ -566,6 +546,26 @@ result.display_full_report()
 ```
 
 > **Note:** DuckDB evaluates views dynamically at query time, so this does **not** materialise or copy data. It streams live from your attached databases; you just get cleaner, prefix-free table names in your contracts. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+
+#### Option B: Multi-Source Adapters (materialises data locally)
+```python
+from vowl import validate_data
+from vowl.adapters import IbisAdapter
+import ibis
+
+con_a = ibis.postgres.connect(...)
+con_b = ibis.sqlite.connect(...)
+
+adapters = {
+    "table_a": IbisAdapter(con_a),
+    "table_b": IbisAdapter(con_b)
+}
+
+result = validate_data("contract.yaml", adapters=adapters)
+result.display_full_report()
+```
+
+> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). The `MultiSourceAdapter` **materialises entire tables on the client** via Arrow into a local DuckDB instance, so prefer ATTACH whenever possible. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite — it cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). It also preserves a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block — those queries succeed with `MultiSourceAdapter` (everything is materialised locally) but fail with DuckDB ATTACH (only explicitly attached tables are visible).
 
 ### Custom Adapters and Executors
 
