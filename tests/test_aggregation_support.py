@@ -131,9 +131,9 @@ class TestComputeFailedRowsCount:
 
 class DummySQLCheckReference(SQLCheckReference):
     def __init__(self, check: dict, rendered_query: str):
+        super().__init__(contract=None, path="$.checks[0]")
         self._check = check
         self._rendered_query = rendered_query
-        self._path = "$.checks[0]"
 
     def get_check(self):
         return self._check

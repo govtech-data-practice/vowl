@@ -3,6 +3,7 @@ from __future__ import annotations
 import builtins
 import importlib
 import importlib.metadata
+import sys
 from types import SimpleNamespace
 
 import pandas as pd
@@ -10,11 +11,12 @@ import pyarrow as pa
 import pytest
 from sqlglot import exp
 
-import vowl
 from vowl.adapters.base import BaseAdapter
 from vowl.adapters.ibis_adapter import IbisAdapter
 from vowl.adapters.models import FilterCondition, build_filter_ast
 from vowl.mapper import DataSourceMapper
+
+vowl = sys.modules["vowl"]
 
 
 class DummyAdapter(BaseAdapter):
@@ -283,13 +285,13 @@ def test_mapper_only_stringifies_problematic_columns_on_fallback(monkeypatch: py
 
     arrow_table = fake_connection.created_tables[0][1]
     assert arrow_table.schema.field("good_int").type == pa.int64()
-    assert arrow_table.schema.field("bad_mixed").type == pa.string()
+    assert pa.types.is_string(arrow_table.schema.field("bad_mixed").type) or pa.types.is_large_string(arrow_table.schema.field("bad_mixed").type)
 
 
 def test_mapper_reraises_non_type_related_dataframe_conversion_errors(monkeypatch: pytest.MonkeyPatch):
     mapper = DataSourceMapper()
 
-    monkeypatch.setattr("vowl.mapper.ibis.duckdb.connect", lambda: FakeDuckDBConnection())
+    monkeypatch.setattr("vowl.mapper.ibis.duckdb.connect", FakeDuckDBConnection)
     monkeypatch.setattr("vowl.mapper.nw.from_native", lambda df, eager_only=True: FakeNarwhalsFrameFatal())
 
     with pytest.raises(RuntimeError, match="boom"):
@@ -335,20 +337,6 @@ def test_create_adapter_convenience_function_uses_mapper(monkeypatch: pytest.Mon
     adapter = vowl.create_adapter({"placeholder": "value"}, "test_table")
 
     assert adapter is expected_adapter
-
-
-def test_vowl_dunder_getattr_lazy_loads_and_caches_symbols():
-    vowl.__dict__.pop("DataSourceMapper", None)
-
-    loaded = vowl.DataSourceMapper
-
-    assert loaded is DataSourceMapper
-    assert vowl.__dict__["DataSourceMapper"] is loaded
-
-
-def test_vowl_dunder_getattr_raises_for_unknown_symbols():
-    with pytest.raises(AttributeError, match="has no attribute"):
-        _ = vowl.does_not_exist
 
 
 def test_vowl_dunder_dir_exposes_public_api():

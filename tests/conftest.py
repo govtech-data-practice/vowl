@@ -13,8 +13,9 @@ import narwhals as nw
 import pandas as pd
 import pytest
 
-import vowl
 from vowl import validate as validate_module
+
+_vowl = sys.modules["vowl"]
 
 # Ensure PySpark workers use the same Python as the test driver
 os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
@@ -233,7 +234,7 @@ def _golden_validate_data(monkeypatch: pytest.MonkeyPatch, request: pytest.Fixtu
     token_index = _CURRENT_CALL_INDEX.set(0)
 
     monkeypatch.setattr(validate_module, "validate_data", _wrapped_validate_data)
-    monkeypatch.setattr(vowl, "validate_data", _wrapped_validate_data)
+    monkeypatch.setattr(_vowl, "validate_data", _wrapped_validate_data)
 
     # Ensure module-level references in test modules use the wrapped function
     if hasattr(request.module, "validate_data"):

@@ -58,8 +58,12 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 column-vs-literal comparisons in TRY_CAST before execution.
                 Default True.
         """
-        # Skip super().__init__() — MultiSourceSQLExecutor has no single adapter;
-        # it delegates to per-schema adapters via self._multi_adapter instead.
+        # MultiSourceSQLExecutor has no single adapter; it delegates to
+        # per-schema adapters via self._multi_adapter instead.  We still call
+        # the grandparent (BaseExecutor) init so the object is properly
+        # initialized, storing a sentinel that the overridden `adapter`
+        # property will intercept.
+        super(SQLExecutor, self).__init__(adapter=None)
         self._multi_adapter = multi_adapter
         # Mirror SQLExecutor behavior: prefer adapter-level configuration so
         # ValidationConfig.use_try_cast propagates consistently.

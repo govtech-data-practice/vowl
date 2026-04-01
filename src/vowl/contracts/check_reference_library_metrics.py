@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import sqlglot
 from sqlglot import exp
 
+from .check_reference_base import CheckReference
 from .check_reference_generated import (
     GeneratedColumnCheckReference,
     GeneratedTableCheckReference,
@@ -70,7 +71,7 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
     def __init__(self, contract: Contract, quality_path: str, property_path: str):
         # Bypass GeneratedColumnCheckReference.__init__ which appends a
         # path_suffix to the property path.  We already have the full path.
-        super(GeneratedColumnCheckReference, self).__init__(contract, quality_path)
+        CheckReference.__init__(self, contract, quality_path)
         self._property_path = property_path
         self._generated_check: DataQuality | None = None
         self._cached_ast: exp.Expression | None = None

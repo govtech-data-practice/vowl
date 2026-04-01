@@ -497,7 +497,7 @@ class TestOracleConnection:
         try:
             con.raw_sql('DROP TABLE "hdb_resale_prices"')
         except Exception:
-            pass
+            pass  # Table may not exist yet; ignore drop failure
 
         con.raw_sql("""
             CREATE TABLE "hdb_resale_prices" (

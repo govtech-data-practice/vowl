@@ -204,6 +204,9 @@ class StubFetchArrowResult:
     def __init__(self, table: pa.Table):
         self._table = table
 
+    def to_arrow_table(self):
+        return self._table
+
     def fetch_arrow_table(self):
         return self._table
 
