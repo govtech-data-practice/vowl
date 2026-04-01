@@ -66,6 +66,7 @@ where = ["src"]
 # Version is derived from the latest Git tag (e.g. v1.0.0 -> 1.0.0)
 # Untagged commits get dev versions like 1.0.1.dev3+gabcdef
 version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
 
 [dependency-groups]
 dev = [
