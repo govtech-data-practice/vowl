@@ -4,114 +4,1196 @@ Third-Party Software Notices and Information
 This project incorporates components from the projects listed below.
 The original copyright notices and license terms are set forth below.
 
+This file was generated on 2026-03-31 using pip-licenses and manual review
+of bundled/vendored license files. All runtime dependencies (core and optional)
+and their transitive dependencies are covered.
 
+For packages that bundle third-party code (e.g. pyarrow, pyspark, duckdb),
+the bundled component licenses are listed under the parent package entry.
+
+========================================================================
+TABLE OF CONTENTS
+========================================================================
+
+  SECTION A — Core Runtime Dependencies
+    1.  ibis-framework
+    2.  duckdb (via ibis-framework[duckdb])
+    3.  jsonpath-ng
+    4.  jsonschema
+    5.  narwhals
+    6.  pyarrow
+    7.  PyYAML
+    8.  requests
+    9.  sqlglot / sqlglotrs
+
+  SECTION B — Optional Dependencies
+    10. pyspark [optional: spark]
+    11. boto3 [optional: all]
+
+  SECTION C — Transitive Dependencies
+    12. atpublic
+    13. attrs
+    14. botocore
+    15. certifi
+    16. charset-normalizer
+    17. idna
+    18. jmespath
+    19. jsonschema-specifications
+    20. packaging
+    21. parsy
+    22. ply
+    23. py4j
+    24. pyarrow-hotfix
+    25. python-dateutil
+    26. pytz
+    27. referencing
+    28. rpds-py
+    29. s3transfer
+    30. six
+    31. toolz
+    32. typing_extensions
+    33. tzdata
+    34. urllib3
+
+  SECTION D — Full License Texts
+    D-1. Apache License, Version 2.0
+    D-2. Mozilla Public License, Version 2.0 (reference)
+    D-3. Python Software Foundation License Version 2
+
+========================================================================
+SECTION A — CORE RUNTIME DEPENDENCIES
+========================================================================
+
+----------------------------------------------------------------------
 1. ibis-framework (https://ibis-project.org)
+----------------------------------------------------------------------
 
    Copyright Ibis Maintainers
    Licensed under the Apache License, Version 2.0
 
+   See Section D-1 for the full Apache 2.0 license text.
 
-2. jsonpath-ng (https://github.com/h2non/jsonpath-ng)
+----------------------------------------------------------------------
+2. duckdb (https://github.com/duckdb/duckdb)
+----------------------------------------------------------------------
+
+   Copyright 2018-2025 Stichting DuckDB Foundation
+
+   MIT License
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject
+   to the following conditions:
+
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   DuckDB bundles the following third-party components:
+     - fmt (MIT)
+     - re2 (BSD-3-Clause, Copyright Google Inc.)
+     - hyperloglog (MIT)
+     - miniz (MIT)
+     - utf8proc (MIT + Unicode data license)
+     - yyjson (MIT)
+
+----------------------------------------------------------------------
+3. jsonpath-ng (https://github.com/h2non/jsonpath-ng)
+----------------------------------------------------------------------
 
    Copyright Tomas Aparicio
    Licensed under the Apache License, Version 2.0
 
+   See Section D-1 for the full Apache 2.0 license text.
 
-3. pyarrow (https://arrow.apache.org/)
+----------------------------------------------------------------------
+4. jsonschema (https://github.com/python-jsonschema/jsonschema)
+----------------------------------------------------------------------
+
+   Copyright (c) 2013 Julian Berman
+
+   MIT License
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+5. narwhals (https://github.com/narwhals-dev/narwhals)
+----------------------------------------------------------------------
+
+   Copyright (c) 2024, Marco Gorelli
+
+   MIT License
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+6. pyarrow (https://arrow.apache.org/)
+----------------------------------------------------------------------
 
    Copyright The Apache Software Foundation
    Licensed under the Apache License, Version 2.0
 
+   See Section D-1 for the full Apache 2.0 license text.
 
-4. requests (https://requests.readthedocs.io)
+   IMPORTANT: PyArrow binary wheels statically link many third-party
+   C/C++ libraries. The full upstream license file is available at:
+   https://github.com/apache/arrow/blob/main/LICENSE.txt
+
+   The following third-party components are bundled in pyarrow binary
+   distributions:
+
+   6a. LZ4
+       Copyright (c) 2011-2016, Yann Collet. All rights reserved.
+       BSD 2-Clause License
+
+       Redistribution and use in source and binary forms, with or
+       without modification, are permitted provided that the following
+       conditions are met:
+
+       * Redistributions of source code must retain the above copyright
+         notice, this list of conditions and the following disclaimer.
+       * Redistributions in binary form must reproduce the above
+         copyright notice, this list of conditions and the following
+         disclaimer in the documentation and/or other materials provided
+         with the distribution.
+
+       THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+       CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+       INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+       MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+       DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+       CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+       SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+       NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+       LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+       CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+       STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+       ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+       ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+   6b. Brotli
+       Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
+       MIT License
+
+       Permission is hereby granted, free of charge, to any person
+       obtaining a copy of this software and associated documentation
+       files (the "Software"), to deal in the Software without
+       restriction, including without limitation the rights to use,
+       copy, modify, merge, publish, distribute, sublicense, and/or
+       sell copies of the Software, and to permit persons to whom the
+       Software is furnished to do so, subject to the following
+       conditions:
+
+       The above copyright notice and this permission notice shall be
+       included in all copies or substantial portions of the Software.
+
+       THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+       EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+       OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+       NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+       HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+       WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+       FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+       OTHER DEALINGS IN THE SOFTWARE.
+
+   6c. RapidJSON
+       Copyright (C) 2015 THL A29 Limited, a Tencent company, and
+       Milo Yip. All rights reserved.
+       MIT License (main code)
+       The msinttypes dependency is BSD-licensed:
+       Copyright (c) 2006-2013 Alexander Chemeris. All rights reserved.
+
+   6d. Snappy
+       Copyright 2011, Google Inc. All rights reserved.
+       BSD 3-Clause License
+
+       Redistribution and use in source and binary forms, with or
+       without modification, are permitted provided that the following
+       conditions are met:
+
+       * Redistributions of source code must retain the above copyright
+         notice, this list of conditions and the following disclaimer.
+       * Redistributions in binary form must reproduce the above
+         copyright notice, this list of conditions and the following
+         disclaimer in the documentation and/or other materials provided
+         with the distribution.
+       * Neither the name of Google Inc. nor the names of its
+         contributors may be used to endorse or promote products derived
+         from this software without specific prior written permission.
+
+       THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+       CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+       INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+       MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+       DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+       BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+       EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+       TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+       DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+       ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+       OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+       OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+       POSSIBILITY OF SUCH DAMAGE.
+
+   6e. gflags
+       Copyright (c) 2006, Google Inc. All rights reserved.
+       BSD 3-Clause License (same form as 6d above)
+
+   6f. glog
+       Copyright (c) 2008, Google Inc. All rights reserved.
+       BSD 3-Clause License (same form as 6d above)
+
+   6g. RE2
+       Copyright (c) 2009 The RE2 Authors. All rights reserved.
+       BSD 3-Clause License (same form as 6d above)
+
+   6h. c-ares
+       Copyright (c) 2007-2018, Daniel Stenberg with many contributors.
+       Copyright 1998 by the Massachusetts Institute of Technology.
+       MIT-style License
+
+   6i. zlib
+       Copyright (C) 1995-2017 Jean-loup Gailly and Mark Adler
+       zlib License
+
+       This software is provided 'as-is', without any express or
+       implied warranty. In no event will the authors be held liable
+       for any damages arising from the use of this software.
+
+       Permission is granted to anyone to use this software for any
+       purpose, including commercial applications, and to alter it and
+       redistribute it freely, subject to the following restrictions:
+
+       1. The origin of this software must not be misrepresented; you
+          must not claim that you wrote the original software. If you
+          use this software in a product, an acknowledgment in the
+          product documentation would be appreciated but is not required.
+       2. Altered source versions must be plainly marked as such, and
+          must not be misrepresented as being the original software.
+       3. This notice may not be removed or altered from any source
+          distribution.
+
+   6j. OpenSSL
+       Copyright (c) 1998-2019 The OpenSSL Project. All rights reserved.
+       Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
+
+       OpenSSL is dual-licensed under the OpenSSL License and the
+       original SSLeay license. OpenSSL 3.x is licensed under Apache-2.0.
+       See https://www.openssl.org/source/license.html for full terms.
+
+   6k. gRPC
+       Copyright 2014 gRPC authors.
+       Licensed under the Apache License, Version 2.0
+
+   6l. Apache Thrift
+       Copyright (C) 2006-2019, The Apache Software Foundation
+       Licensed under the Apache License, Version 2.0
+
+   6m. Apache ORC
+       Copyright 2013-2019 The Apache Software Foundation
+       Licensed under the Apache License, Version 2.0
+
+   6n. Zstandard (zstd)
+       Copyright (c) 2016-present, Facebook, Inc. All rights reserved.
+       BSD 3-Clause License
+
+   6o. LLVM
+       Copyright The LLVM Project.
+       Apache License, Version 2.0 with LLVM Exceptions
+
+   6p. FlatBuffers
+       Copyright 2014 Google Inc.
+       Licensed under the Apache License, Version 2.0
+
+   6q. Google Protobuf
+       Copyright 2008 Google Inc. All rights reserved.
+       BSD 3-Clause License
+
+   6r. jemalloc
+       Copyright (C) 2002-2017 Jason Evans. All rights reserved.
+       Copyright (C) 2007-2012 Mozilla Foundation. All rights reserved.
+       Copyright (C) 2009-2017 Facebook, Inc. All rights reserved.
+       BSD 2-Clause License
+
+   6s. xxHash
+       Copyright (c) 2012-2014, Yann Collet. All rights reserved.
+       BSD 2-Clause License
+
+   6t. double-conversion
+       Copyright 2006-2011, the V8 project authors. All rights reserved.
+       BSD 3-Clause License
+
+   6u. uriparser
+       Copyright (C) 2007, Weijia Song
+       Copyright (C) 2007, Sebastian Pipping
+       BSD 3-Clause License
+
+   6v. utfcpp
+       Copyright 2006-2018 Nemanja Trifunovic
+       Boost Software License 1.0
+
+   6w. Boost
+       Boost Software License - Version 1.0 - August 17th, 2003
+
+       Permission is hereby granted, free of charge, to any person or
+       organization obtaining a copy of the software and accompanying
+       documentation covered by this license (the "Software") to use,
+       reproduce, display, distribute, execute, and transmit the
+       Software, and to prepare derivative works of the Software, and
+       to permit third-parties to whom the Software is furnished to do
+       so, all subject to the following:
+
+       The copyright notices in the Software and this entire statement,
+       including the above license grant, this restriction and the
+       following disclaimer, must be included in all copies of the
+       Software, in whole or in part, and all derivative works of the
+       Software, unless such copies or derivative works are solely in
+       the form of machine-executable object code generated by a source
+       language processor.
+
+       THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+       EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+       OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND
+       NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR
+       ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE FOR ANY DAMAGES OR
+       OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING
+       FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+       OTHER DEALINGS IN THE SOFTWARE.
+
+   6x. fast_float
+       Licensed under the Apache License, Version 2.0
+
+   6y. portable-snippets
+       CC0 1.0 Universal (Public Domain Dedication)
+
+   6z. pcg-cpp
+       Copyright 2014-2019 Melissa O'Neill and the PCG Project
+       contributors.
+       SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+   6aa. SafeInt
+        Copyright (c) 2018 Microsoft
+        MIT License
+
+   6ab. musl strptime
+        Copyright (c) 2005-2020 Rich Felker, et al.
+        MIT License
+
+   6ac. base64.cpp
+        Copyright (C) 2004-2017 René Nyffenegger
+        zlib License
+
+   6ad. Folly (ProducerConsumerQueue)
+        Copyright (c) Facebook, Inc. and its affiliates.
+        Licensed under the Apache License, Version 2.0
+
+   6ae. Howard Hinnant's date library
+        Copyright (c) 2015-2018 Howard Hinnant et al.
+        MIT License
+
+   6af. UTF-8 decoder
+        Copyright (c) 2008-2009 Bjoern Hoehrmann
+        MIT License
+
+   6ag. whereami
+        Copyright Gregory Pakosz
+        MIT License (also available under WTFPLv2)
+
+   6ah. OpenTelemetry C++
+        Copyright The OpenTelemetry Authors
+        Licensed under the Apache License, Version 2.0
+
+   6ai. Go runtime code (adapted)
+        Copyright (c) 2009 The Go Authors. All rights reserved.
+        BSD 3-Clause License
+
+   6aj. Chromium (adapted code in arrow/util)
+        Copyright (c) 2013 The Chromium Authors. All rights reserved.
+        BSD 3-Clause License
+
+   6ak. pandas (adapted code)
+        Copyright (c) 2011-2012, Lambda Foundry, Inc. and PyData
+        Development Team. All rights reserved.
+        BSD 3-Clause License
+
+   6al. NumPy (adapted code)
+        Copyright (c) 2005-2017, NumPy Developers. All rights reserved.
+        BSD 3-Clause License
+
+   6am. TensorFlow (adapted code)
+        Copyright 2015 The TensorFlow Authors. All Rights Reserved.
+        Licensed under the Apache License, Version 2.0
+
+   6an. DyND (adapted build system)
+        Copyright (C) 2011-12, Dynamic NDArray Developers
+        BSD 2-Clause License
+
+   6ao. Daniel Lemire's FrameOfReference
+        Copyright 2013 Daniel Lemire
+        Licensed under the Apache License, Version 2.0
+
+   6ap. UCX
+        Copyright (c) 2014-2020 various contributors (UT-Battelle,
+        Mellanox, University of Houston, ARM, AMD, NVIDIA, et al.)
+        BSD 3-Clause License
+
+   6aq. cymove
+        Copyright (c) 2019 Omer Ozarslan
+        MIT License
+
+   6ar. numpydoc docscrape
+        BSD 2-Clause License
+
+----------------------------------------------------------------------
+7. PyYAML (https://pyyaml.org/)
+----------------------------------------------------------------------
+
+   Copyright (c) 2017-2021 Ingy döt Net
+   Copyright (c) 2006-2016 Kirill Simonov
+
+   MIT License
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+8. requests (https://requests.readthedocs.io)
+----------------------------------------------------------------------
 
    Copyright Kenneth Reitz
    Licensed under the Apache License, Version 2.0
 
+   See Section D-1 for the full Apache 2.0 license text.
 
-5. pyarrow-hotfix (https://github.com/pitrou/pyarrow-hotfix)
+----------------------------------------------------------------------
+9. sqlglot / sqlglotrs (https://sqlglot.com/)
+----------------------------------------------------------------------
 
-   Copyright Antoine Pitrou
-   Licensed under the Apache License, Version 2.0
+   Copyright (c) 2025 Toby Mao
 
+   MIT License
 
-6. pyspark [optional] (https://github.com/apache/spark/tree/master/python)
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
 
-   Copyright The Apache Software Foundation
-   Licensed under the Apache License, Version 2.0
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
 
-
-7. boto3 [optional] (https://github.com/boto/boto3)
-
-   Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-   Licensed under the Apache License, Version 2.0
-
-
-8. botocore (https://github.com/boto/botocore)
-
-   Copyright 2012-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-   Licensed under the Apache License, Version 2.0
-
-   Botocore includes vendorized parts of the requests python library for
-   backwards compatibility.
-
-   Requests License
-   ----------------
-   Copyright 2013 Kenneth Reitz
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-   Botocore includes vendorized parts of the urllib3 library for backwards
-   compatibility.
-
-   Urllib3 License
-   ---------------
-   MIT License: http://www.opensource.org/licenses/mit-license.php
-
-   Copyright 2008-2011 Andrey Petrov and contributors (see CONTRIBUTORS.txt),
-   Modifications copyright 2012 Kenneth Reitz.
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to
-   deal in the Software without restriction, including without limitation the
-   rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-   sell copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-   IN THE SOFTWARE.
-
-   Bundle of CA Root Certificates
-   ------------------------------
-   This Source Code Form is subject to the terms of the Mozilla Public License,
-   v. 2.0. If a copy of the MPL was not distributed with this file, You can
-   obtain one at http://mozilla.org/MPL/2.0/.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-9. s3transfer (https://github.com/boto/s3transfer)
+========================================================================
+SECTION B — OPTIONAL DEPENDENCIES
+========================================================================
 
-   Copyright 2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-   Licensed under the Apache License, Version 2.0
+----------------------------------------------------------------------
+10. pyspark [optional: spark] (https://github.com/apache/spark)
+----------------------------------------------------------------------
+
+    Copyright The Apache Software Foundation
+    Licensed under the Apache License, Version 2.0
+
+    See Section D-1 for the full Apache 2.0 license text.
+
+    PySpark bundles the following third-party components in its
+    distribution (pyspark/licenses/):
+
+    10a. AnchorJS — MIT License
+    10b. Bootstrap — MIT License
+    10c. cloudpickle — BSD 3-Clause License
+    10d. D3.js — BSD 3-Clause License
+    10e. dagre-d3 — MIT License
+    10f. DataTables — MIT License
+    10g. graphlib-dot — MIT License
+    10h. JDOM — Apache-style License
+    10i. join — MIT License
+    10j. jQuery — MIT License
+    10k. JSON Formatter — Apache License 2.0
+    10l. matchMedia polyfill — MIT License
+    10m. Modernizr — MIT License
+    10n. Mustache — MIT License
+    10o. Py4J — BSD 3-Clause License (see entry #23 below)
+    10p. Respond.js — MIT License
+    10q. sbt-launch-lib — BSD 3-Clause License
+    10r. sorttable.js — MIT License
+    10s. vis-timeline — Apache-2.0 / MIT dual license
+    10t. CC0 assets — CC0 1.0 Universal (Public Domain)
+
+----------------------------------------------------------------------
+11. boto3 [optional: all] (https://github.com/boto/boto3)
+----------------------------------------------------------------------
+
+    Copyright 2013-2017 Amazon.com, Inc. or its affiliates.
+    All Rights Reserved.
+    Licensed under the Apache License, Version 2.0
+
+    See Section D-1 for the full Apache 2.0 license text.
 
 
+========================================================================
+SECTION C — TRANSITIVE DEPENDENCIES
+========================================================================
+
+----------------------------------------------------------------------
+12. atpublic (https://gitlab.com/warsaw/public.git)
+----------------------------------------------------------------------
+
+    Copyright 2016-2025 Barry Warsaw
+    Licensed under the Apache License, Version 2.0
+
+    See Section D-1 for the full Apache 2.0 license text.
+
+----------------------------------------------------------------------
+13. attrs (https://www.attrs.org/)
+----------------------------------------------------------------------
+
+    Copyright (c) 2015 Hynek Schlawack and the attrs contributors
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+14. botocore (https://github.com/boto/botocore)
+----------------------------------------------------------------------
+
+    Copyright 2012-2022 Amazon.com, Inc. or its affiliates.
+    All Rights Reserved.
+    Licensed under the Apache License, Version 2.0
+
+    See Section D-1 for the full Apache 2.0 license text.
+
+    Botocore includes vendorized parts of the requests python library
+    for backwards compatibility.
+
+    Requests License
+    ----------------
+    Copyright 2013 Kenneth Reitz
+    Licensed under the Apache License, Version 2.0
+
+    Botocore includes vendorized parts of the urllib3 library for
+    backwards compatibility.
+
+    Urllib3 License
+    ---------------
+    Copyright 2008-2011 Andrey Petrov and contributors,
+    Modifications copyright 2012 Kenneth Reitz.
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+    Bundle of CA Root Certificates
+    ------------------------------
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+----------------------------------------------------------------------
+15. certifi (https://github.com/certifi/python-certifi)
+----------------------------------------------------------------------
+
+    Copyright Kenneth Reitz
+
+    This package contains a modified version of ca-bundle.crt:
+
+    ca-bundle.crt -- Bundle of CA Root Certificates
+
+    This is a bundle of X.509 certificates of public Certificate
+    Authorities (CA). These were automatically extracted from Mozilla's
+    root certificates file (certdata.txt). This file can be found in
+    the mozilla source tree:
+    https://hg.mozilla.org/mozilla-central/file/tip/security/nss/lib/ckfw/builtins/certdata.txt
+
+    ***** BEGIN LICENSE BLOCK *****
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    ***** END LICENSE BLOCK *****
+
+    See Section D-2 for a reference to the full MPL 2.0 text.
+
+----------------------------------------------------------------------
+16. charset-normalizer (https://github.com/jawah/charset_normalizer)
+----------------------------------------------------------------------
+
+    Copyright (c) 2025 TAHRI Ahmed R.
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+17. idna (https://github.com/kjd/idna)
+----------------------------------------------------------------------
+
+    Copyright (c) 2013-2025, Kim Davies and contributors.
+    All rights reserved.
+
+    BSD 3-Clause License
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    1. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
+
+    3. Neither the name of the copyright holder nor the names of its
+       contributors may be used to endorse or promote products derived
+       from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+    WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+----------------------------------------------------------------------
+18. jmespath (https://github.com/jmespath/jmespath.py)
+----------------------------------------------------------------------
+
+    Copyright (c) 2013 Amazon.com, Inc. or its affiliates.
+    All Rights Reserved.
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+19. jsonschema-specifications
+    (https://github.com/python-jsonschema/jsonschema-specifications)
+----------------------------------------------------------------------
+
+    Copyright (c) 2022 Julian Berman
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+20. packaging (https://github.com/pypa/packaging)
+----------------------------------------------------------------------
+
+    Copyright Donald Stufft and individual contributors.
+
+    Licensed under the Apache License, Version 2.0 OR the
+    BSD 2-Clause License, at your option.
+
+    This software is made available under the terms of *either* of the
+    licenses found in LICENSE.APACHE or LICENSE.BSD. Contributions to
+    this software is made under the terms of *both* these licenses.
+
+    See Section D-1 for the full Apache 2.0 license text.
+
+----------------------------------------------------------------------
+21. parsy (https://github.com/python-parsy/parsy)
+----------------------------------------------------------------------
+
+    Copyright (c) 2013 Jeanine Adkisson
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+22. ply (http://www.dabeaz.com/ply/)
+----------------------------------------------------------------------
+
+    Copyright David Beazley
+    BSD License
+
+----------------------------------------------------------------------
+23. py4j (https://www.py4j.org/)
+----------------------------------------------------------------------
+
+    Copyright (c) 2009-2022, Barthelemy Dagenais and individual
+    contributors. All rights reserved.
+
+    BSD 3-Clause License
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    - Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    - Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in
+      the documentation and/or other materials provided with the
+      distribution.
+    - The name of the author may not be used to endorse or promote
+      products derived from this software without specific prior written
+      permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+    WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+----------------------------------------------------------------------
+24. pyarrow-hotfix (https://github.com/pitrou/pyarrow-hotfix)
+----------------------------------------------------------------------
+
+    Copyright Antoine Pitrou
+    Licensed under the Apache License, Version 2.0
+
+    See Section D-1 for the full Apache 2.0 license text.
+
+----------------------------------------------------------------------
+25. python-dateutil (https://github.com/dateutil/dateutil)
+----------------------------------------------------------------------
+
+    Copyright 2017- Paul Ganssle
+    Copyright 2017- dateutil contributors
+    Copyright (c) 2003-2011 Gustavo Niemeyer
+    Copyright (c) 2012-2014 Tomi Pieviläinen
+    Copyright (c) 2014-2016 Yaron de Leeuw
+
+    Dual-licensed under the Apache License 2.0 (for contributions after
+    2017-12-01) and the BSD 3-Clause License (for all code):
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    The above license applies to all contributions after 2017-12-01,
+    as well as all contributions that have been re-licensed.
+
+    BSD 3-Clause License (applies to all code):
+
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in
+      the documentation and/or other materials provided with the
+      distribution.
+    * Neither the name of the copyright holder nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+    ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+    DAMAGE.
+
+----------------------------------------------------------------------
+26. pytz (http://pythonhosted.org/pytz)
+----------------------------------------------------------------------
+
+    Copyright (c) 2003-2019 Stuart Bishop
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+27. referencing (https://github.com/python-jsonschema/referencing)
+----------------------------------------------------------------------
+
+    Copyright (c) 2022 Julian Berman
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+28. rpds-py (https://github.com/crate-py/rpds)
+----------------------------------------------------------------------
+
+    Copyright (c) 2023 Julian Berman
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+29. s3transfer (https://github.com/boto/s3transfer)
+----------------------------------------------------------------------
+
+    Copyright 2016 Amazon.com, Inc. or its affiliates.
+    All Rights Reserved.
+    Licensed under the Apache License, Version 2.0
+
+    See Section D-1 for the full Apache 2.0 license text.
+
+----------------------------------------------------------------------
+30. six (https://github.com/benjaminp/six)
+----------------------------------------------------------------------
+
+    Copyright (c) 2010-2024 Benjamin Peterson
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+31. toolz (https://github.com/pytoolz/toolz)
+----------------------------------------------------------------------
+
+    Copyright (c) 2013 Matthew Rocklin
+    All rights reserved.
+
+    BSD 3-Clause License
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    a. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+    b. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
+    c. Neither the name of toolz nor the names of its contributors may
+       be used to endorse or promote products derived from this software
+       without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+    OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+    USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+    DAMAGE.
+
+----------------------------------------------------------------------
+32. typing_extensions
+    (https://github.com/python/typing_extensions)
+----------------------------------------------------------------------
+
+    Copyright Python Software Foundation
+
+    Python Software Foundation License Version 2
+
+    See Section D-3 for the full PSF License text.
+
+----------------------------------------------------------------------
+33. tzdata (https://github.com/python/tzdata)
+----------------------------------------------------------------------
+
+    Copyright Python Software Foundation
+    Licensed under the Apache License, Version 2.0
+
+    See Section D-1 for the full Apache 2.0 license text.
+
+----------------------------------------------------------------------
+34. urllib3 (https://github.com/urllib3/urllib3)
+----------------------------------------------------------------------
+
+    Copyright (c) 2008-2020 Andrey Petrov and contributors.
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+========================================================================
+SECTION D — FULL LICENSE TEXTS
+========================================================================
+
+----------------------------------------------------------------------
+D-1. Apache License, Version 2.0
 ----------------------------------------------------------------------
 
                               Apache License
@@ -290,3 +1372,86 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
    of your accepting any such warranty or additional liability.
 
 END OF TERMS AND CONDITIONS
+
+APPENDIX: How to apply the Apache License to your work.
+
+   To apply the Apache License to your work, attach the following
+   boilerplate notice, with the fields enclosed by brackets "[]"
+   replaced with your own identifying information. (Don't include
+   the brackets!) The text should be enclosed in the appropriate
+   comment syntax for the file format. We also recommend that a
+   file or class name and description of purpose be included on the
+   same "printed page" as the copyright notice for easier
+   identification within third-party archives.
+
+Copyright [yyyy] [name of copyright owner]
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+----------------------------------------------------------------------
+D-2. Mozilla Public License, Version 2.0 (reference)
+----------------------------------------------------------------------
+
+The full text of the Mozilla Public License, Version 2.0 is available at:
+https://mozilla.org/MPL/2.0/
+
+This license applies to the certifi CA certificate bundle (entry #15)
+and to the CA root certificates bundled within botocore (entry #14).
+
+----------------------------------------------------------------------
+D-3. Python Software Foundation License Version 2
+----------------------------------------------------------------------
+
+1. This LICENSE AGREEMENT is between the Python Software Foundation
+("PSF"), and the Individual or Organization ("Licensee") accessing and
+otherwise using this software ("Python") in source or binary form and
+its associated documentation.
+
+2. Subject to the terms and conditions of this License Agreement, PSF
+hereby grants Licensee a nonexclusive, royalty-free, world-wide license
+to reproduce, analyze, test, perform and/or display publicly, prepare
+derivative works, distribute, and otherwise use Python alone or in any
+derivative version, provided, however, that PSF's License Agreement and
+PSF's notice of copyright, i.e., "Copyright (c) 2001-2023 Python
+Software Foundation; All Rights Reserved" are retained in Python alone
+or in any derivative version prepared by Licensee.
+
+3. In the event Licensee prepares a derivative work that is based on
+or incorporates Python or any part thereof, and wants to make the
+derivative work available to others as provided herein, then Licensee
+hereby agrees to include in any such work a brief summary of the
+changes made to Python.
+
+4. PSF is making Python available to Licensee on an "AS IS" basis.
+PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED. BY WAY
+OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND DISCLAIMS ANY
+REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS FOR ANY
+PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT INFRINGE ANY
+THIRD PARTY RIGHTS.
+
+5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS A
+RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON, OR ANY
+DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+6. This License Agreement will automatically terminate upon a material
+breach of its terms and conditions.
+
+7. Nothing in this License Agreement shall be deemed to create any
+relationship of agency, partnership, or joint venture between PSF and
+Licensee. This License Agreement does not grant permission to use PSF
+trademarks or trade name in a trademark sense to endorse or promote
+products or services of Licensee, or any third party.
+
+8. By copying, installing or otherwise using Python, Licensee agrees
+to be bound by the terms and conditions of this License Agreement.
