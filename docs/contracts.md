@@ -4,46 +4,82 @@
 
 Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
 
-**Example `hdb_resale.yaml`:**
+**Example `hdb_resale_simple.yaml`** (trimmed for readability):
 
 ```yaml
 kind: DataContract
 apiVersion: v3.1.0
+name: HDB Resale Flat Prices
 schema:
   - name: hdb_resale_prices
     properties:
-      # Column-level SQL check
-      - name: resale_price
+      # SQL check: regex-based format validation
+      - name: month
+        logicalType: string
         quality:
           - type: sql
-            name: "resale_price_positive"
-            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price <= 0"
+            name: Month
+            description: Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
             mustBe: 0
+            query: |-
+              SELECT COUNT(*)
+              FROM "hdb_resale_prices"
+              WHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';
+            dimension: conformity
 
+      # Library metric: null-value check
+      - name: town
+        quality:
+          - type: library
+            metric: nullValues
+            mustBe: 0
+            dimension: completeness
+
+      # Library metric: valid-value list
       - name: flat_type
         quality:
-          # Library metric check (SQL auto-generated)
           - type: library
             metric: invalidValues
             mustBe: 0
             dimension: conformity
             arguments:
               validValues:
+                - 1 ROOM
+                - 2 ROOM
                 - 3 ROOM
                 - 4 ROOM
                 - 5 ROOM
                 - EXECUTIVE
+                - MULTI-GENERATION
 
-    # Table-level checks
+      # SQL check: business rule
+      - name: floor_area_sqm
+        quality:
+          - name: floor_area_must_be_less_than_200
+            description: Validates that floor area must be less than 200
+            type: sql
+            dimension: consistency
+            query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE floor_area_sqm >= 200
+            mustBe: 0
+
+      # SQL check: resale price cap
+      - name: resale_price
+        quality:
+          - name: resale_price_must_not_exceed_2m
+            description: Resale price must not be more than 2 million SGD
+            type: sql
+            dimension: conformity
+            query: >-
+              SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price > 2000000
+            mustBe: 0
+
+    # Table-level library metric
     quality:
-      - type: sql
-        name: "no_null_resale_prices"
-        query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price IS NULL"
-        mustBe: 0
-
       - type: library
         metric: rowCount
-        mustBeGreaterThan: 0
+        mustBeBetween:
+          - 0
+          - 30000000
         dimension: completeness
 ```
 

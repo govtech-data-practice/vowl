@@ -155,47 +155,81 @@ See [Usage Patterns](#️-usage-patterns) for PySpark, Ibis connections, multi-s
 
 Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
 
-**Example `hdb_resale.yaml`:**
+**Example `hdb_resale_simple.yaml`** (trimmed for readability):
 ```yaml
 kind: DataContract
 apiVersion: v3.1.0
+name: HDB Resale Flat Prices
 schema:
-  - name: hdb_resale_prices # This becomes the table name in your SQL queries
+  - name: hdb_resale_prices  # This becomes the table name in your SQL queries
     properties:
-      # --- Column-Level Check ---
-      - name: resale_price
+      # --- SQL Check: regex-based format validation ---
+      - name: month
+        logicalType: string
         quality:
           - type: sql
-            name: "resale_price_positive"
-            query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price <= 0"
+            name: Month
+            description: Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
             mustBe: 0
+            query: |-
+              SELECT COUNT(*)
+              FROM "hdb_resale_prices"
+              WHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';
+            dimension: conformity
 
+      # --- Library Metric: null-value check ---
+      - name: town
+        quality:
+          - type: library
+            metric: nullValues
+            mustBe: 0
+            dimension: completeness
+
+      # --- Library Metric: valid-value list ---
       - name: flat_type
         quality:
-          # --- Library Metric Check (SQL auto-generated) ---
           - type: library
             metric: invalidValues
             mustBe: 0
             dimension: conformity
             arguments:
               validValues:
+                - 1 ROOM
+                - 2 ROOM
                 - 3 ROOM
                 - 4 ROOM
                 - 5 ROOM
                 - EXECUTIVE
+                - MULTI-GENERATION
 
-    # --- Table-Level Check ---
+      # --- SQL Check: business rule ---
+      - name: floor_area_sqm
+        quality:
+          - name: floor_area_must_be_less_than_200
+            description: Validates that floor area must be less than 200
+            type: sql
+            dimension: consistency
+            query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE floor_area_sqm >= 200
+            mustBe: 0
+
+      # --- SQL Check: resale price cap ---
+      - name: resale_price
+        quality:
+          - name: resale_price_must_not_exceed_2m
+            description: Resale price must not be more than 2 million SGD
+            type: sql
+            dimension: conformity
+            query: >-
+              SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price > 2000000
+            mustBe: 0
+
+    # --- Table-Level Library Metric ---
     quality:
-      - type: sql
-        name: "no_null_resale_prices"
-        query: "SELECT COUNT(*) FROM hdb_resale_prices WHERE resale_price IS NULL"
-        mustBe: 0
-
-      # --- Table-Level Library Metric ---
       - type: library
         metric: rowCount
-        mustBeGreaterThan: 0
-        dimension: completeness
+        mustBeBetween:
+          - 0
+          - 30000000
 ```
 
 ### Automatic `check_references`
@@ -372,9 +406,10 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 │  ┌─────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐     │
 │  │  IbisSQLExecutor│  │MultiSourceSQLExecutor│  │  Custom Executor   │     │
 │  │                 │  │                     │  │                     │     │
-│  │ Runs SQL checks │  │ Cross-source SQL    │  │ Extend BaseExecutor │     │
-│  │ via Ibis        │  │ via DuckDB          │  │ or SQLExecutor      │     │
-│  │ (server-side)   │  │ (client-side)       │  │                     │     │
+│  │ Runs SQL checks │  │ Mode 1: delegate to │  │ Extend BaseExecutor │     │
+│  │ via Ibis        │  │ backend (same conn) │  │ or SQLExecutor      │     │
+│  │ (server-side)   │  │ Mode 2: materialise │  │                     │     │
+│  │                 │  │ to DuckDB via Arrow │  │                     │     │
 │  └─────────────────┘  └─────────────────────┘  └─────────────────────┘     │
 └─────────────────────────────────────────────────────────────────────────────┘
                                      │
@@ -394,8 +429,9 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 |-----------|-------------|
 | **DataSourceMapper** | Auto-detects a single input source (DataFrame, Spark object, Ibis backend, or connection string) and creates the appropriate adapter |
 | **IbisAdapter** | Universal adapter supporting 20+ backends via Ibis (pandas, Polars, PySpark, PostgreSQL, Snowflake, BigQuery, etc.) |
-| **MultiSourceAdapter** | Enables validation across multiple data sources with data federation |
-| **IbisSQLExecutor** | Executes SQL-based quality checks through the Ibis query layer |
+| **MultiSourceAdapter** | Routes checks across multiple data sources, separating single-table checks (delegated to per-schema adapters) from multi-table checks (sent to `MultiSourceSQLExecutor`) |
+| **IbisSQLExecutor** | Executes SQL-based quality checks through the Ibis query layer (server-side) |
+| **MultiSourceSQLExecutor** | Executes cross-source SQL with two modes: **direct delegation** when all tables share the same compatible backend, or **DuckDB materialisation** when backends differ — tables are exported as Arrow and loaded into a local DuckDB for cross-database joins |
 | **Contract** | Parses ODCS YAML contracts into executable validation rules |
 | **ValidationResult** | Rich result object with enhanced DataFrames, metrics, and export capabilities |
 
