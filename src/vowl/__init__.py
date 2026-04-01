@@ -12,7 +12,6 @@ Supports:
 
 from __future__ import annotations
 
-import importlib
 from importlib.metadata import PackageNotFoundError, version
 
 try:
@@ -20,40 +19,12 @@ try:
 except PackageNotFoundError:
     __version__ = "0.0.0"
 
-# Eager imports — always needed on every call
+from .adapters import BaseAdapter, IbisAdapter, MultiSourceAdapter
 from .config import ValidationConfig
 from .contracts.contract import Contract
+from .executors import BaseExecutor, CheckResult, IbisSQLExecutor, SQLExecutor
+from .mapper import DataSourceMapper, create_adapter
 from .validate import ValidationResult, ValidationRunner, validate_data
-
-# Lazy imports — loaded on first access via __getattr__ (PEP 562)
-_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    # Mapper
-    "DataSourceMapper": (".mapper", "DataSourceMapper"),
-    "create_adapter": (".mapper", "create_adapter"),
-    # Adapters
-    "BaseAdapter": (".adapters", "BaseAdapter"),
-    "IbisAdapter": (".adapters", "IbisAdapter"),
-    "MultiSourceAdapter": (".adapters", "MultiSourceAdapter"),
-    # Executors
-    "BaseExecutor": (".executors", "BaseExecutor"),
-    "SQLExecutor": (".executors", "SQLExecutor"),
-    "CheckResult": (".executors", "CheckResult"),
-    "IbisSQLExecutor": (".executors", "IbisSQLExecutor"),
-}
-
-
-def __getattr__(name: str):
-    if name in _LAZY_IMPORTS:
-        module_path, attr = _LAZY_IMPORTS[name]
-        mod = importlib.import_module(module_path, __name__)
-        val = getattr(mod, attr)
-        globals()[name] = val  # cache so __getattr__ isn't called again
-        return val
-    raise AttributeError(f"module 'vowl' has no attribute {name!r}")
-
-
-def __dir__():
-    return list(__all__)
 
 
 __all__ = [
