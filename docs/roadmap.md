@@ -20,5 +20,5 @@
 
 | Capability | Description | Status |
 |------------|-------------|--------|
-| **PyPI Distribution** | Published to PyPI. Nexus distribution support is in progress. | In Progress |
 | **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
+| **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned |
