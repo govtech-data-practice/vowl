@@ -144,11 +144,11 @@ security-audit:
 # Release validation
 release-check: clean
 	$(UV) pip install --python .venv/bin/python --upgrade build twine
-	$(UV) run python -m build
+	SETUPTOOLS_SCM_LOCAL_SCHEME=no-local-version $(UV) run python -m build
 	$(UV) run python -m twine check dist/*
 
 release-upload-testpypi: release-check
-	python -m twine upload --repository testpypi dist/* --config-file .pypirc 
+	python -m twine upload --repository testpypi dist/* --config-file .pypirc
 
 release-tag:
 	@if [ -z "$(VERSION)" ]; then \
