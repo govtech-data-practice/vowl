@@ -162,7 +162,11 @@ class MultiSourceSQLExecutor(SQLExecutor):
             self.validate_query_security(select_query)
             self._ensure_tables_available(table_names)
             local_con = self._get_local_duckdb()
-            arrow_table = local_con.raw_sql(select_query).fetch_arrow_table()
+            result = local_con.raw_sql(select_query)
+            if hasattr(result, 'to_arrow_table'):
+                arrow_table = result.to_arrow_table()
+            else:
+                arrow_table = result.fetch_arrow_table()
             arrow_table = self._deduplicate_arrow_columns(arrow_table)
             return nw.from_native(arrow_table, eager_only=True)
 

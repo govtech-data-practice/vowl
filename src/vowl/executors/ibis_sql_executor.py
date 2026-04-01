@@ -78,10 +78,13 @@ class IbisSQLExecutor(SQLExecutor):
             result = con.raw_sql(select_query)
             # Resolve an Arrow table from whatever the backend returns:
             #   - DuckDB/Postgres/SQLite: cursor-like with .fetch_arrow_table()
+            #     (DuckDB >= 1.3 renamed to .to_arrow_table())
             #   - PySpark 4.0+: DataFrame with .toArrow()
             #   - PySpark 3.x: internal Arrow export via ._collect_as_arrow()
             #   - MySQL/MSSQL/Oracle: standard DB-API cursor with fetchall()
-            if hasattr(result, 'fetch_arrow_table'):
+            if hasattr(result, 'to_arrow_table'):
+                arrow_table = result.to_arrow_table()
+            elif hasattr(result, 'fetch_arrow_table'):
                 arrow_table = result.fetch_arrow_table()
             elif hasattr(result, 'toArrow'):
                 arrow_table = result.toArrow()
