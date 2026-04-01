@@ -20,3 +20,4 @@ coverage-rescan.json
 # tests/expected_outputs/*
 tests/failed_outputs/*
 docs/doxygen/*
+site/*
