@@ -34,5 +34,5 @@ Initial public release of **vowl**.
 - `THIRD_PARTY_NOTICES` and `LICENSE_AUDIT_REPORT.md`.
 - `CONTRIBUTING.md` with development setup and release workflow.
 
-[Unreleased]: https://github.com/govtech-data-practice/Vowl/compare/v0.0.1...HEAD
-[0.0.1]: https://github.com/govtech-data-practice/Vowl/releases/tag/v0.0.1
+[Unreleased]: https://github.com/govtech-data-practice/vowl/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/govtech-data-practice/vowl/releases/tag/v0.0.1

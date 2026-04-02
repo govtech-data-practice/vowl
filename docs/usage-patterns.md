@@ -1,7 +1,7 @@
 # Usage Patterns
 
 !!! tip "Interactive Demo"
-    Try the [usage patterns notebook](https://github.com/govtech-data-practice/Vowl/blob/main/examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
+    Try the [usage patterns notebook](https://github.com/govtech-data-practice/vowl/blob/main/examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
 
 ## Local DataFrame (Pandas/Polars)
 
@@ -49,7 +49,7 @@ result.display_full_report()
 Ibis supports: Amazon Athena, BigQuery, ClickHouse, Dask, Databricks, DataFusion, Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, pandas, Polars, PostgreSQL, PySpark, RisingWave, SingleStoreDB, Snowflake, SQLite, Trino, and more. See [ibis-project/ibis](https://github.com/ibis-project/ibis).
 
 !!! info "MySQL"
-    Select the database when you create the connection, for example via `ibis.mysql.connect(..., database="my_db")` or a connection URI that already includes the database name. Vowl does not issue `USE database` during validation; it runs read-only `SELECT` queries against the active database on the existing connection.
+    Select the database when you create the connection, for example via `ibis.mysql.connect(..., database="my_db")` or a connection URI that already includes the database name. vowl does not issue `USE database` during validation; it runs read-only `SELECT` queries against the active database on the existing connection.
 
 ## Compatibility Mode (DuckDB ATTACH)
 
