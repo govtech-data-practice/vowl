@@ -25,10 +25,10 @@ TEST_DIR = Path(__file__).parent
 HDB_DIR = TEST_DIR / "hdb_resale"
 DATA_FILE = HDB_DIR / "HDBResaleWithErrors.csv"
 CONTRACT_PATH = HDB_DIR / "hdb_resale.yaml"
-PSD_DIR = TEST_DIR / "psd_employee"
-PSD_EMPLOYEE_LIST_FILE = PSD_DIR / "demo_employee_list.csv"
-PSD_EMPLOYEE_PAYROLL_FILE = PSD_DIR / "demo_employee_payroll.csv"
-PSD_CONTRACT_PATH = PSD_DIR / "employee_payroll_datacontract.yaml"
+EMPLOYEE_DIR = TEST_DIR / "employee"
+EMPLOYEE_LIST_FILE = EMPLOYEE_DIR / "demo_employee_list.csv"
+EMPLOYEE_PAYROLL_FILE = EMPLOYEE_DIR / "demo_employee_payroll.csv"
+EMPLOYEE_CONTRACT_PATH = EMPLOYEE_DIR / "employee_payroll_datacontract.yaml"
 
 
 # ============================================================================
@@ -38,7 +38,8 @@ PSD_CONTRACT_PATH = PSD_DIR / "employee_payroll_datacontract.yaml"
 @pytest.fixture
 def sample_dataframe() -> pd.DataFrame:
     """Create a sample DataFrame for testing."""
-    return pd.read_csv(DATA_FILE)
+    # Assume blank string for null values
+    return pd.read_csv(DATA_FILE).fillna("")
 
 
 @pytest.fixture
@@ -875,7 +876,7 @@ class TestMultiAdapters:
         Test convenience loading: a single adapter or df auto-expands to all
         schemas defined in the contract.
 
-        Uses the PSD contract, which has two schemas backed by one DuckDB
+        Uses the Employee contract, which has two schemas backed by one DuckDB
         connection. validate_data should reuse the adapter across both schema
         names and run the cross-table checks successfully.
         """
@@ -884,18 +885,19 @@ class TestMultiAdapters:
         from vowl import validate_data
         from vowl.adapters import IbisAdapter
 
-        employee_list_df = pd.read_csv(PSD_EMPLOYEE_LIST_FILE)
-        employee_payroll_df = pd.read_csv(PSD_EMPLOYEE_PAYROLL_FILE)
+        # Assume blank string for null values
+        employee_list_df = pd.read_csv(EMPLOYEE_LIST_FILE).fillna("")
+        employee_payroll_df = pd.read_csv(EMPLOYEE_PAYROLL_FILE).fillna("")
 
         con = ibis.duckdb.connect()
-        con.create_table("PSD_demo_employee_payroll", employee_payroll_df)
-        con.create_table("PSD_demo_employee_list", employee_list_df)
+        con.create_table("demo_employee_payroll", employee_payroll_df)
+        con.create_table("demo_employee_list", employee_list_df)
 
         adapter = IbisAdapter(con)
 
         with pytest.warns(UserWarning, match="only 1 input adapter provided"):
             results = validate_data(
-                contract=str(PSD_CONTRACT_PATH),
+                contract=str(EMPLOYEE_CONTRACT_PATH),
                 adapter=adapter,
             )
 
@@ -909,17 +911,17 @@ class TestMultiAdapters:
         assert results is not None
         assert_no_check_errors(results)
         assert set(results_df["schema"].dropna().unique()) == {
-            "PSD_demo_employee_payroll",
-            "PSD_demo_employee_list",
+            "demo_employee_payroll",
+            "demo_employee_list",
         }
         assert set(cross_checks_df["check_name"]) == cross_check_names
         assert set(cross_checks_df["status"]) == {"FAILED"}
-        assert set(cross_checks_df["schema"]) == {"PSD_demo_employee_payroll"}
-        assert cross_checks_df["tables_in_query"].astype(str).str.contains("PSD_demo_employee_payroll").all()
-        assert cross_checks_df["tables_in_query"].astype(str).str.contains("PSD_demo_employee_list").all()
+        assert set(cross_checks_df["schema"]) == {"demo_employee_payroll"}
+        assert cross_checks_df["tables_in_query"].astype(str).str.contains("demo_employee_payroll").all()
+        assert cross_checks_df["tables_in_query"].astype(str).str.contains("demo_employee_list").all()
 
         output_dfs = results.get_output_dfs()
-        phone_output = output_dfs["PSD_demo_employee_payroll::phone_number_exists_in_master_list"].to_pandas()
+        phone_output = output_dfs["demo_employee_payroll::phone_number_exists_in_master_list"].to_pandas()
 
         assert "employee_id.1" in phone_output.columns
         assert "phone_number.1" in phone_output.columns

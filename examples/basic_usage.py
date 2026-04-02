@@ -19,7 +19,8 @@ HDB_CSV = HDB_DIR / "HDBResaleWithErrors.csv"
 HDB_CONTRACT = HDB_DIR / "hdb_resale_simple.yaml"
 
 if __name__ == "__main__":
-    df = pd.read_csv(HDB_CSV)
+    # Assume blank string for null values
+    df = pd.read_csv(HDB_CSV).fillna("")
     print(f"Loaded {len(df)} rows, {len(df.columns)} columns\n")
 
     result = validate_data(contract=str(HDB_CONTRACT), df=df)

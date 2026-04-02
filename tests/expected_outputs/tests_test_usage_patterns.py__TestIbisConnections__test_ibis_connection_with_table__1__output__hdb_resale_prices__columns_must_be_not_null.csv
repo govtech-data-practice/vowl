@@ -1,3 +1,0 @@
-month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_id,tables_in_query
-2017-01,ANG MO KIO,3 ROOM,330,ANG MO KIO AVE 1,07 TO 09,68.0,New Generation,,63 years,338000.0,columns_must_be_not_null,hdb_resale_prices
-2017-01,BEDOK,4 ROOM,,BEDOK RESERVOIR RD,07 TO 09,84.0,Simplified,1986,68 years 10 months,395000.0,columns_must_be_not_null,hdb_resale_prices

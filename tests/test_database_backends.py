@@ -87,7 +87,8 @@ def _assert_no_error_checks(result) -> None:
 @pytest.fixture(scope="module")
 def sample_dataframe() -> pd.DataFrame:
     """Load the HDB resale dataset (first 100 rows)."""
-    return pd.read_csv(DATA_FILE, low_memory=False).head(100)
+    # Assume blank string for null values
+    return pd.read_csv(DATA_FILE, low_memory=False).fillna("").head(100)
 
 
 @pytest.fixture(scope="module")

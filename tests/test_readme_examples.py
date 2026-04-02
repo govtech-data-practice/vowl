@@ -45,10 +45,10 @@ CLEAN_DATA_FILE = HDB_DIR / "HDBResale.csv"
 CONTRACT_PATH = HDB_DIR / "hdb_resale.yaml"
 SIMPLE_CONTRACT_PATH = HDB_DIR / "hdb_resale_simple.yaml"
 
-PSD_DIR = TEST_DIR / "psd_employee"
-PSD_EMPLOYEE_LIST_FILE = PSD_DIR / "demo_employee_list.csv"
-PSD_EMPLOYEE_PAYROLL_FILE = PSD_DIR / "demo_employee_payroll.csv"
-PSD_CONTRACT_PATH = PSD_DIR / "employee_payroll_datacontract.yaml"
+EMPLOYEE_DIR = TEST_DIR / "employee"
+EMPLOYEE_LIST_FILE = EMPLOYEE_DIR / "demo_employee_list.csv"
+EMPLOYEE_PAYROLL_FILE = EMPLOYEE_DIR / "demo_employee_payroll.csv"
+EMPLOYEE_CONTRACT_PATH = EMPLOYEE_DIR / "employee_payroll_datacontract.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +86,8 @@ def _assert_no_error_checks(result) -> None:
 
 @pytest.fixture
 def sample_df() -> pd.DataFrame:
-    return pd.read_csv(DATA_FILE, low_memory=False)
+    # Assume blank string for null values
+    return pd.read_csv(DATA_FILE, low_memory=False).fillna("")
 
 
 @pytest.fixture
@@ -110,7 +111,8 @@ class TestBasicUsageExample:
         """Run the same code as examples/basic_usage.py."""
         from vowl import validate_data
 
-        df = pd.read_csv(DATA_FILE)
+        # Assume blank string for null values
+        df = pd.read_csv(DATA_FILE).fillna("")
         result = validate_data(contract=str(CONTRACT_PATH), df=df)
         result.display_full_report()
 
@@ -283,7 +285,8 @@ class TestIbisPostgres:
             database=postgres_container.dbname,
         )
 
-        df = pd.read_csv(DATA_FILE, low_memory=False).head(100)
+        # Assume blank string for null values
+        df = pd.read_csv(DATA_FILE, low_memory=False).fillna("").head(100)
 
         con.raw_sql("""
             CREATE TABLE IF NOT EXISTS hdb_resale_prices (
@@ -386,7 +389,8 @@ class TestDuckDBAttach:
         """)
         con.raw_sql("TRUNCATE TABLE hdb_resale_prices")
 
-        df = pd.read_csv(DATA_FILE, low_memory=False).head(100)
+        # Assume blank string for null values
+        df = pd.read_csv(DATA_FILE, low_memory=False).fillna("").head(100)
         for col in ("floor_area_sqm", "lease_commence_date", "resale_price"):
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
         con.insert("hdb_resale_prices", df)
@@ -532,18 +536,19 @@ class TestMultiSourceValidation:
         from vowl.adapters import IbisAdapter
 
         con = ibis.duckdb.connect()
-        con.create_table("PSD_demo_employee_payroll", pd.read_csv(PSD_EMPLOYEE_PAYROLL_FILE))
-        con.create_table("PSD_demo_employee_list", pd.read_csv(PSD_EMPLOYEE_LIST_FILE))
+        # Assume blank string for null values
+        con.create_table("demo_employee_payroll", pd.read_csv(EMPLOYEE_PAYROLL_FILE).fillna(""))
+        con.create_table("demo_employee_list", pd.read_csv(EMPLOYEE_LIST_FILE).fillna(""))
 
         adapter = IbisAdapter(con)
 
         with pytest.warns(UserWarning, match="only 1 input adapter provided"):
-            result = validate_data(contract=str(PSD_CONTRACT_PATH), adapter=adapter)
+            result = validate_data(contract=str(EMPLOYEE_CONTRACT_PATH), adapter=adapter)
 
         results_df = result.get_check_results_df().to_pandas()
         schemas = set(results_df["schema"].dropna().unique())
-        assert "PSD_demo_employee_payroll" in schemas
-        assert "PSD_demo_employee_list" in schemas
+        assert "demo_employee_payroll" in schemas
+        assert "demo_employee_list" in schemas
         _assert_no_error_checks(result)
 
 
@@ -589,7 +594,8 @@ class TestMultiSourceDuckDBAttach:
             )
         """)
         pg_con.raw_sql("TRUNCATE TABLE hdb_resale_prices")
-        df = pd.read_csv(DATA_FILE, low_memory=False).head(50)
+        # Assume blank string for null values
+        df = pd.read_csv(DATA_FILE, low_memory=False).fillna("").head(50)
         for col in ("floor_area_sqm", "lease_commence_date", "resale_price"):
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
         pg_con.insert("hdb_resale_prices", df)
@@ -887,7 +893,8 @@ class TestMySQL:
         """)
         con.raw_sql("TRUNCATE TABLE hdb_resale_prices")
 
-        df = pd.read_csv(DATA_FILE, low_memory=False).head(100)
+        # Assume blank string for null values
+        df = pd.read_csv(DATA_FILE, low_memory=False).fillna("").head(100)
         for col in ("floor_area_sqm", "lease_commence_date", "resale_price"):
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
@@ -983,7 +990,8 @@ class TestDuckDBAttachMultiSourceValidation:
         """)
         pg_con.raw_sql("TRUNCATE TABLE hdb_resale_prices")
 
-        df = pd.read_csv(DATA_FILE, low_memory=False).head(100)
+        # Assume blank string for null values
+        df = pd.read_csv(DATA_FILE, low_memory=False).fillna("").head(100)
         for col in ("floor_area_sqm", "lease_commence_date", "resale_price"):
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
         pg_con.insert("hdb_resale_prices", df)

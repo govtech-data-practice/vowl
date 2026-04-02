@@ -1,0 +1,2 @@
+month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_id,tables_in_query
+2017-01,BEDOK,4 ROOM,,BEDOK RESERVOIR RD,07 TO 09,84.0,Simplified,1986,68 years 10 months,395000.0,AddressBlockHouseNumber,hdb_resale_prices

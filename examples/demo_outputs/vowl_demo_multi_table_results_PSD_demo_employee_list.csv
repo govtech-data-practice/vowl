@@ -1,3 +1,0 @@
-"employee_id","employee_last_name","employee_first_name","current_title","phone_number","check_ids","tables_in_query"
-"e123213","Teo","James","Data Engineer",6591820021,"phone_number_logical_type_options_pattern_check","PSD_demo_employee_list"
-"e128903","Ng","Janice","Staff Data Engineer",6589234567,"phone_number_logical_type_options_pattern_check","PSD_demo_employee_list"

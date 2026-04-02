@@ -16,10 +16,10 @@ import pyarrow as pa
 import pytest
 
 TEST_DIR = Path(__file__).parent
-PSD_DIR = TEST_DIR / "psd_employee"
-EMPLOYEE_LIST_FILE = PSD_DIR / "demo_employee_list.csv"
-EMPLOYEE_PAYROLL_FILE = PSD_DIR / "demo_employee_payroll.csv"
-CONTRACT_PATH = PSD_DIR / "employee_payroll_datacontract.yaml"
+EMPLOYEE_DIR = TEST_DIR / "employee"
+EMPLOYEE_LIST_FILE = EMPLOYEE_DIR / "demo_employee_list.csv"
+EMPLOYEE_PAYROLL_FILE = EMPLOYEE_DIR / "demo_employee_payroll.csv"
+CONTRACT_PATH = EMPLOYEE_DIR / "employee_payroll_datacontract.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -28,12 +28,14 @@ CONTRACT_PATH = PSD_DIR / "employee_payroll_datacontract.yaml"
 
 @pytest.fixture
 def employee_list_df():
-    return pd.read_csv(EMPLOYEE_LIST_FILE)
+    # Assume blank string for null values
+    return pd.read_csv(EMPLOYEE_LIST_FILE).fillna("")
 
 
 @pytest.fixture
 def employee_payroll_df():
-    return pd.read_csv(EMPLOYEE_PAYROLL_FILE)
+    # Assume blank string for null values
+    return pd.read_csv(EMPLOYEE_PAYROLL_FILE).fillna("")
 
 
 @pytest.fixture
@@ -187,14 +189,14 @@ class TestMultiSourceMode2ViaExport:
 
         # Different DuckDB instances → mode 2
         payroll_con = ibis.duckdb.connect()
-        payroll_con.create_table("PSD_demo_employee_payroll", employee_payroll_df)
+        payroll_con.create_table("demo_employee_payroll", employee_payroll_df)
 
         ref_con = ibis.duckdb.connect()
-        ref_con.create_table("PSD_demo_employee_list", employee_list_df)
+        ref_con.create_table("demo_employee_list", employee_list_df)
 
         multi = MultiSourceAdapter({
-            "PSD_demo_employee_payroll": IbisAdapter(payroll_con),
-            "PSD_demo_employee_list": IbisAdapter(ref_con),
+            "demo_employee_payroll": IbisAdapter(payroll_con),
+            "demo_employee_list": IbisAdapter(ref_con),
         })
 
         contract = Contract.load(contract_path)
@@ -224,19 +226,19 @@ class TestMultiSourceMode2ViaExport:
         target_id = employee_payroll_df["employee_id"].iloc[0]
 
         payroll_con = ibis.duckdb.connect()
-        payroll_con.create_table("PSD_demo_employee_payroll", employee_payroll_df)
+        payroll_con.create_table("demo_employee_payroll", employee_payroll_df)
 
         ref_con = ibis.duckdb.connect()
-        ref_con.create_table("PSD_demo_employee_list", employee_list_df)
+        ref_con.create_table("demo_employee_list", employee_list_df)
 
         multi = MultiSourceAdapter({
-            "PSD_demo_employee_payroll": IbisAdapter(
+            "demo_employee_payroll": IbisAdapter(
                 payroll_con,
                 filter_conditions={
-                    "PSD_demo_employee_payroll": FilterCondition("employee_id", "=", target_id),
+                    "demo_employee_payroll": FilterCondition("employee_id", "=", target_id),
                 },
             ),
-            "PSD_demo_employee_list": IbisAdapter(ref_con),
+            "demo_employee_list": IbisAdapter(ref_con),
         })
 
         contract = Contract.load(str(CONTRACT_PATH))
@@ -320,16 +322,16 @@ class TestCustomAdapterMode2:
 
         # Payroll via IbisAdapter (DuckDB)
         payroll_con = ibis.duckdb.connect()
-        payroll_con.create_table("PSD_demo_employee_payroll", employee_payroll_df)
+        payroll_con.create_table("demo_employee_payroll", employee_payroll_df)
         payroll_adapter = IbisAdapter(payroll_con)
 
         # Ref list via custom Arrow adapter
         ref_arrow = pa.Table.from_pandas(employee_list_df)
-        ref_adapter = ArrowTableAdapter({"PSD_demo_employee_list": ref_arrow})
+        ref_adapter = ArrowTableAdapter({"demo_employee_list": ref_arrow})
 
         multi = MultiSourceAdapter({
-            "PSD_demo_employee_payroll": payroll_adapter,
-            "PSD_demo_employee_list": ref_adapter,
+            "demo_employee_payroll": payroll_adapter,
+            "demo_employee_list": ref_adapter,
         })
 
         contract = Contract.load(contract_path)
@@ -365,11 +367,11 @@ class TestCustomAdapterMode2:
                 return None
 
         payroll_con = ibis.duckdb.connect()
-        payroll_con.create_table("PSD_demo_employee_payroll", employee_payroll_df)
+        payroll_con.create_table("demo_employee_payroll", employee_payroll_df)
 
         multi = MultiSourceAdapter({
-            "PSD_demo_employee_payroll": IbisAdapter(payroll_con),
-            "PSD_demo_employee_list": NoExportAdapter(),
+            "demo_employee_payroll": IbisAdapter(payroll_con),
+            "demo_employee_list": NoExportAdapter(),
         })
 
         contract = Contract.load(str(CONTRACT_PATH))
@@ -414,19 +416,19 @@ class TestModeSelection:
                 return self._table
 
         payroll_con = ibis.duckdb.connect()
-        payroll_con.create_table("PSD_demo_employee_payroll", employee_payroll_df)
+        payroll_con.create_table("demo_employee_payroll", employee_payroll_df)
         ibis_adapter = IbisAdapter(payroll_con)
 
         ref_arrow = pa.Table.from_pandas(employee_list_df)
         custom_adapter = ArrowAdapter(ref_arrow)
 
         multi = MultiSourceAdapter({
-            "PSD_demo_employee_payroll": ibis_adapter,
-            "PSD_demo_employee_list": custom_adapter,
+            "demo_employee_payroll": ibis_adapter,
+            "demo_employee_list": custom_adapter,
         })
 
         executor = MultiSourceSQLExecutor(multi)
 
         # Mixed adapters → not compatible for mode 1
-        tables = {"PSD_demo_employee_payroll", "PSD_demo_employee_list"}
+        tables = {"demo_employee_payroll", "demo_employee_list"}
         assert executor._are_backends_compatible(tables) is False
