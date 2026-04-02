@@ -19,10 +19,10 @@ Thank you for your interest in contributing to `vowl`! We welcome contributions 
 
 To maintain quality and consistency, this repository follows an issue-first, fork-and-PR workflow.
 
-1.  **Open an issue first** — describe the bug, feature, or improvement before writing code. This allows maintainers to triage, discuss scope, and avoid duplicate work.
-2.  **Fork & branch** — fork the repository, then create a feature branch (e.g. `feature/your-feature-name` or `fix/issue-description`) from `main`.
-3.  **Submit a Pull Request** — open a PR against `main` that references the issue (e.g. `Closes #42`). CI must pass and at least one maintainer must approve before merge.
-4.  **Keep your fork in sync** — pull from `upstream main` regularly to stay current with the latest changes and security patches.
+1.  **Open an issue first:** describe the bug, feature, or improvement before writing code. This allows maintainers to triage, discuss scope, and avoid duplicate work.
+2.  **Fork & branch:** fork the repository, then create a feature branch (e.g. `feature/your-feature-name` or `fix/issue-description`) from `main`.
+3.  **Submit a Pull Request:** open a PR against `main` that references the issue (e.g. `Closes #42`). CI must pass and at least one maintainer must approve before merge.
+4.  **Keep your fork in sync:** pull from `upstream main` regularly to stay current with the latest changes and security patches.
 
 ## 📜 Code of Conduct
 
@@ -294,8 +294,8 @@ Publishing uses a GitHub Actions trusted publisher workflow; no manual API token
 
 Package versions are derived from Git tags via `setuptools-scm`. For a clean release version:
 
-1. **Update `CHANGELOG.md`** — rename the `[Unreleased]` section to `[X.Y.Z] - YYYY-MM-DD`, add a fresh empty `[Unreleased]` section above it, and update the comparison links at the bottom of the file.
-2. **Commit the changelog** — `git add CHANGELOG.md && git commit -m "Release X.Y.Z"`
+1. **Update `CHANGELOG.md`:** rename the `[Unreleased]` section to `[X.Y.Z] - YYYY-MM-DD`, add a fresh empty `[Unreleased]` section above it, and update the comparison links at the bottom of the file.
+2. **Commit the changelog:** `git add CHANGELOG.md && git commit -m "Release X.Y.Z"`
 3. **Tag and push**:
    ```bash
    make release-tag VERSION=1.2.3

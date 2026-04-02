@@ -160,7 +160,7 @@ release-tag:
 		exit 1; \
 	fi; \
 	git tag -a "v$(VERSION)" -m "Release v$(VERSION)"; \
-	echo "Created tag v$(VERSION) — setuptools-scm will use this as the package version"
+	echo "Created tag v$(VERSION). setuptools-scm will use this as the package version"
 
 # Verify (all checks + tests)
 verify: check test

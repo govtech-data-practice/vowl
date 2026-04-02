@@ -151,10 +151,10 @@ Under a property's `quality`:
 
 | `metric` | What it checks | Arguments |
 |----------|---------------|-----------|
-| `nullValues` | Count of `NULL` values in the column | — |
+| `nullValues` | Count of `NULL` values in the column | - |
 | `missingValues` | Count of values matching a configurable missing-values list | `arguments.missingValues`: list of sentinel values (use `null` for SQL NULL) |
 | `invalidValues` | Count of values that fail valid-value or pattern criteria | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
-| `duplicateValues` | Count of duplicate non-NULL values in the column | — |
+| `duplicateValues` | Count of duplicate non-NULL values in the column | - |
 
 ### Table-Level Metrics
 
@@ -162,7 +162,7 @@ Under a schema's `quality`:
 
 | `metric` | What it checks | Arguments |
 |----------|---------------|-----------|
-| `rowCount` | Total number of rows in the table | — |
+| `rowCount` | Total number of rows in the table | - |
 | `duplicateValues` | Count of duplicate rows across specified columns | `arguments.properties`: list of column names to check |
 
 All library metrics support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).

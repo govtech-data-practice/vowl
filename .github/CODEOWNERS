@@ -3,5 +3,5 @@
 #
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Global owners — applied to all files unless overridden below
+# Global owners: applied to all files unless overridden below
 * @govtech-data-practice/data-contracts

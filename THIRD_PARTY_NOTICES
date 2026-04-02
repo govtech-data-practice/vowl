@@ -15,7 +15,7 @@ the bundled component licenses are listed under the parent package entry.
 TABLE OF CONTENTS
 ========================================================================
 
-  SECTION A — Core Runtime Dependencies
+  SECTION A - Core Runtime Dependencies
     1.  ibis-framework
     2.  duckdb (via ibis-framework[duckdb])
     3.  jsonpath-ng
@@ -26,11 +26,11 @@ TABLE OF CONTENTS
     8.  requests
     9.  sqlglot / sqlglotrs
 
-  SECTION B — Optional Dependencies
+  SECTION B - Optional Dependencies
     10. pyspark [optional: spark]
     11. boto3 [optional: all]
 
-  SECTION C — Transitive Dependencies
+  SECTION C - Transitive Dependencies
     12. atpublic
     13. attrs
     14. botocore
@@ -55,13 +55,13 @@ TABLE OF CONTENTS
     33. tzdata
     34. urllib3
 
-  SECTION D — Full License Texts
+  SECTION D - Full License Texts
     D-1. Apache License, Version 2.0
     D-2. Mozilla Public License, Version 2.0 (reference)
     D-3. Python Software Foundation License Version 2
 
 ========================================================================
-SECTION A — CORE RUNTIME DEPENDENCIES
+SECTION A - CORE RUNTIME DEPENDENCIES
 ========================================================================
 
 ----------------------------------------------------------------------
@@ -555,7 +555,7 @@ SECTION A — CORE RUNTIME DEPENDENCIES
 
 
 ========================================================================
-SECTION B — OPTIONAL DEPENDENCIES
+SECTION B - OPTIONAL DEPENDENCIES
 ========================================================================
 
 ----------------------------------------------------------------------
@@ -570,26 +570,26 @@ SECTION B — OPTIONAL DEPENDENCIES
     PySpark bundles the following third-party components in its
     distribution (pyspark/licenses/):
 
-    10a. AnchorJS — MIT License
-    10b. Bootstrap — MIT License
-    10c. cloudpickle — BSD 3-Clause License
-    10d. D3.js — BSD 3-Clause License
-    10e. dagre-d3 — MIT License
-    10f. DataTables — MIT License
-    10g. graphlib-dot — MIT License
-    10h. JDOM — Apache-style License
-    10i. join — MIT License
-    10j. jQuery — MIT License
-    10k. JSON Formatter — Apache License 2.0
-    10l. matchMedia polyfill — MIT License
-    10m. Modernizr — MIT License
-    10n. Mustache — MIT License
-    10o. Py4J — BSD 3-Clause License (see entry #23 below)
-    10p. Respond.js — MIT License
-    10q. sbt-launch-lib — BSD 3-Clause License
-    10r. sorttable.js — MIT License
-    10s. vis-timeline — Apache-2.0 / MIT dual license
-    10t. CC0 assets — CC0 1.0 Universal (Public Domain)
+    10a. AnchorJS - MIT License
+    10b. Bootstrap - MIT License
+    10c. cloudpickle - BSD 3-Clause License
+    10d. D3.js - BSD 3-Clause License
+    10e. dagre-d3 - MIT License
+    10f. DataTables - MIT License
+    10g. graphlib-dot - MIT License
+    10h. JDOM - Apache-style License
+    10i. join - MIT License
+    10j. jQuery - MIT License
+    10k. JSON Formatter - Apache License 2.0
+    10l. matchMedia polyfill - MIT License
+    10m. Modernizr - MIT License
+    10n. Mustache - MIT License
+    10o. Py4J - BSD 3-Clause License (see entry #23 below)
+    10p. Respond.js - MIT License
+    10q. sbt-launch-lib - BSD 3-Clause License
+    10r. sorttable.js - MIT License
+    10s. vis-timeline - Apache-2.0 / MIT dual license
+    10t. CC0 assets - CC0 1.0 Universal (Public Domain)
 
 ----------------------------------------------------------------------
 11. boto3 [optional: all] (https://github.com/boto/boto3)
@@ -603,7 +603,7 @@ SECTION B — OPTIONAL DEPENDENCIES
 
 
 ========================================================================
-SECTION C — TRANSITIVE DEPENDENCIES
+SECTION C - TRANSITIVE DEPENDENCIES
 ========================================================================
 
 ----------------------------------------------------------------------
@@ -1189,7 +1189,7 @@ SECTION C — TRANSITIVE DEPENDENCIES
 
 
 ========================================================================
-SECTION D — FULL LICENSE TEXTS
+SECTION D - FULL LICENSE TEXTS
 ========================================================================
 
 ----------------------------------------------------------------------

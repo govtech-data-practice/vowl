@@ -31,7 +31,7 @@ finally:
 ```
 
 !!! note
-    The library does **not** manage the SparkSession lifecycle. You must create and stop it yourself. This is by design — SparkSession is a heavy, application-owned resource with specific configuration requirements.
+    The library does **not** manage the SparkSession lifecycle. You must create and stop it yourself. This is by design. SparkSession is a heavy, application-owned resource with specific configuration requirements.
 
 ## Ibis Connections (20+ Backends)
 
@@ -159,7 +159,7 @@ result.display_full_report()
 ```
 
 !!! note
-    DuckDB evaluates views dynamically at query time — this does **not** materialise or copy data. It streams live from your attached databases.
+    DuckDB evaluates views dynamically at query time; this does **not** materialise or copy data. It streams live from your attached databases.
 
 ### Option B: Multi-Source Adapters
 
@@ -245,8 +245,8 @@ import ibis
 
 contract = Contract.load("contract.yaml")
 server = contract.get_server("my-postgres-server")  # Match by server name
-# Or: contract.get_server("uat")        — falls back to matching by environment
-# Or: contract.get_server()             — returns the first server
+# Or: contract.get_server("uat")        # falls back to matching by environment
+# Or: contract.get_server()             # returns the first server
 
 con = ibis.postgres.connect(
     host=server["server"],

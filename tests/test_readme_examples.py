@@ -101,7 +101,7 @@ def contract_path() -> str:
 
 
 # ============================================================================
-# 1. examples/basic_usage.py  — "Validate in 3 lines"
+# 1. examples/basic_usage.py: "Validate in 3 lines"
 # ============================================================================
 
 class TestBasicUsageExample:
@@ -123,11 +123,11 @@ class TestBasicUsageExample:
 
 
 # ============================================================================
-# 2. Local DataFrame — Pandas & Polars
+# 2. Local DataFrame: Pandas & Polars
 # ============================================================================
 
 class TestLocalDataFramePandas:
-    """README: Local DataFrame (Pandas/Polars) — pandas path."""
+    """README: Local DataFrame (Pandas/Polars): pandas path."""
 
     def test_pandas_validate_data(self, sample_df, contract_path):
         from vowl import validate_data
@@ -150,7 +150,7 @@ class TestLocalDataFramePandas:
 
 
 class TestLocalDataFramePolars:
-    """README: Local DataFrame (Pandas/Polars) — Polars path."""
+    """README: Local DataFrame (Pandas/Polars): Polars path."""
 
     def test_polars_validate_data(self, sample_df, contract_path):
         import polars as pl
@@ -226,11 +226,11 @@ class TestPySparkExample:
 
 
 # ============================================================================
-# 4. Ibis Connections — DuckDB
+# 4. Ibis Connections: DuckDB
 # ============================================================================
 
 class TestIbisDuckDB:
-    """README: Ibis Connections (20+ Backends) — DuckDB in-memory."""
+    """README: Ibis Connections (20+ Backends): DuckDB in-memory."""
 
     def test_ibis_duckdb_validate(self, small_df, contract_path):
         import ibis
@@ -250,7 +250,7 @@ class TestIbisDuckDB:
 
 
 # ============================================================================
-# 5. Ibis Connections — PostgreSQL via testcontainers
+# 5. Ibis Connections: PostgreSQL via testcontainers
 # ============================================================================
 
 @pytest.mark.docker_integration
@@ -334,7 +334,7 @@ class TestIbisPostgres:
 
 
 # ============================================================================
-# 6. DuckDB ATTACH — Compatibility Mode (PostgreSQL via testcontainers)
+# 6. DuckDB ATTACH: Compatibility Mode (PostgreSQL via testcontainers)
 # ============================================================================
 
 @pytest.mark.docker_integration
@@ -510,7 +510,7 @@ class TestFilterConditions:
 # ============================================================================
 
 class TestMultiSourceValidation:
-    """README: Multi-Source Validation (Option B — multi-adapter)."""
+    """README: Multi-Source Validation (Option B: multi-adapter)."""
 
     def test_multi_adapter_dict(self, small_df, contract_path):
         """Pass ``adapters={...}`` to validate_data."""
@@ -554,7 +554,7 @@ class TestMultiSourceValidation:
 
 @pytest.mark.docker_integration
 class TestMultiSourceDuckDBAttach:
-    """README: Multi-Source Validation — Option A (DuckDB ATTACH)."""
+    """README: Multi-Source Validation, Option A (DuckDB ATTACH)."""
 
     @pytest.fixture(scope="class")
     def postgres_container(self):
@@ -853,7 +853,7 @@ class TestMySQL:
 
         try:
             import ibis
-            ibis.mysql.connect  # noqa: B018 — just check it exists
+            ibis.mysql.connect  # noqa: B018  # just check it exists
         except (ImportError, AttributeError):
             pytest.skip("Ibis MySQL backend not installed")
 
@@ -944,7 +944,7 @@ class TestMySQL:
 
 
 # ============================================================================
-# 15. DuckDB ATTACH with PostgreSQL — multi-source views
+# 15. DuckDB ATTACH with PostgreSQL: multi-source views
 # ============================================================================
 
 @pytest.mark.docker_integration

@@ -4,7 +4,7 @@
 
 # Vowl
 
-Vowl (vee-owl 🦉) — a validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
+Vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
 
 ## Table of Contents
 
@@ -305,16 +305,16 @@ Instead of writing SQL by hand, you can declare common data quality metrics usin
 
 | `metric` | What it checks | Arguments |
 |----------|---------------|-----------|
-| `nullValues` | Count of `NULL` values in the column | — |
+| `nullValues` | Count of `NULL` values in the column | - |
 | `missingValues` | Count of values matching a configurable missing-values list | `arguments.missingValues`: list of sentinel values (use `null` for SQL NULL) |
 | `invalidValues` | Count of values that fail valid-value or pattern criteria | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
-| `duplicateValues` | Count of duplicate non-NULL values in the column | — |
+| `duplicateValues` | Count of duplicate non-NULL values in the column | - |
 
 **Table-level metrics** (under a schema's `quality`):
 
 | `metric` | What it checks | Arguments |
 |----------|---------------|-----------|
-| `rowCount` | Total number of rows in the table | — |
+| `rowCount` | Total number of rows in the table | - |
 | `duplicateValues` | Count of duplicate rows across specified columns | `arguments.properties`: list of column names to check |
 
 All library metrics support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
@@ -459,7 +459,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **IbisAdapter** | Universal adapter supporting 20+ backends via Ibis (pandas, Polars, PySpark, PostgreSQL, Snowflake, BigQuery, etc.) |
 | **MultiSourceAdapter** | Routes checks across multiple data sources, separating single-table checks (delegated to per-schema adapters) from multi-table checks (sent to `MultiSourceSQLExecutor`) |
 | **IbisSQLExecutor** | Executes SQL-based quality checks through the Ibis query layer (server-side) |
-| **MultiSourceSQLExecutor** | Executes cross-source SQL with two modes: **direct delegation** when all tables share the same compatible backend, or **DuckDB materialisation** when backends differ — tables are exported as Arrow and loaded into a local DuckDB for cross-database joins |
+| **MultiSourceSQLExecutor** | Executes cross-source SQL with two modes: **direct delegation** when all tables share the same compatible backend, or **DuckDB materialisation** when backends differ. Tables are exported as Arrow and loaded into a local DuckDB for cross-database joins |
 | **Contract** | Parses ODCS YAML contracts into executable validation rules |
 | **ValidationResult** | Rich result object with enhanced DataFrames, metrics, and export capabilities |
 
@@ -602,7 +602,7 @@ result.display_full_report()
 
 There are two ways to validate across tables in different databases.
 
-#### Option A: DuckDB ATTACH (recommended — streams data, no materialisation)
+#### Option A: DuckDB ATTACH (recommended: streams data, no materialisation)
 ```python
 import ibis
 from vowl import validate_data
@@ -646,7 +646,7 @@ result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
 
-> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). The `MultiSourceAdapter` **materialises entire tables on the client** via Arrow into a local DuckDB instance, so prefer ATTACH whenever possible. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite — it cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). It also preserves a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block — those queries succeed with `MultiSourceAdapter` (everything is materialised locally) but fail with DuckDB ATTACH (only explicitly attached tables are visible).
+> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). The `MultiSourceAdapter` **materialises entire tables on the client** via Arrow into a local DuckDB instance, so prefer ATTACH whenever possible. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). It also preserves a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block, and those queries succeed with `MultiSourceAdapter` (everything is materialised locally) but fail with DuckDB ATTACH (only explicitly attached tables are visible).
 
 ### Custom Adapters and Executors
 
@@ -707,8 +707,8 @@ import ibis
 # Load the contract and get server configuration
 contract = Contract.load("contract.yaml")
 server = contract.get_server("my-postgres-server")  # Match by server name
-# Or: contract.get_server("uat")        — falls back to matching by environment
-# Or: contract.get_server()             — returns the first server
+# Or: contract.get_server("uat")        # falls back to matching by environment
+# Or: contract.get_server()             # returns the first server
 
 # Create connection based on server config
 con = ibis.postgres.connect(
@@ -774,7 +774,7 @@ result.display_full_report()
 | ✅ **Remote Contract Loading** | Load contracts from S3 (`s3://`) and Git (GitHub/GitLab URLs) |
 | ✅ **JSONPath Navigation** | Navigate contract elements using JSONPath expressions (`contract.resolve("$.schema[0].name")`) |
 | ✅ **Static Checks** | Auto-generated checks from contract elements: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey` |
-| ✅ **Library Metrics** | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library` — SQL auto-generated at runtime |
+| ✅ **Library Metrics** | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. SQL auto-generated at runtime |
 | ✅ **ODCS Schema Validation** | Contracts validated against ODCS JSON Schema before execution |
 | ✅ **Filter Conditions** | Incremental quality testing with wildcard pattern matching - optimised for append-only data sources |
 | ✅ **Multi-Schema Checks** | Cross-table referential checks within a single contract |

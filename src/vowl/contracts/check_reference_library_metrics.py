@@ -119,7 +119,7 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
 # ---------------------------------------------------------------------------
 
 class NullValuesCheckReference(_LibraryColumnMetricBase):
-    """``nullValues`` — count of NULL values in a column."""
+    """``nullValues``: count of NULL values in a column."""
 
     def _build_ast(self) -> exp.Expression:
         if self._cached_ast is not None:
@@ -139,7 +139,7 @@ class NullValuesCheckReference(_LibraryColumnMetricBase):
 
 
 class MissingValuesCheckReference(_LibraryColumnMetricBase):
-    """``missingValues`` — count of values considered missing.
+    """``missingValues``: count of values considered missing.
 
     Expects ``arguments.missingValues`` as a list of values to treat as
     missing.  ``null`` entries in that list match SQL NULL.  If the
@@ -190,7 +190,7 @@ class MissingValuesCheckReference(_LibraryColumnMetricBase):
 
 
 class InvalidValuesCheckReference(_LibraryColumnMetricBase):
-    """``invalidValues`` — count of values that don't match valid criteria.
+    """``invalidValues``: count of values that don't match valid criteria.
 
     Supports two argument modes (can be combined with OR):
     - ``arguments.validValues``: list of acceptable values
@@ -221,7 +221,7 @@ class InvalidValuesCheckReference(_LibraryColumnMetricBase):
         table = _table_ref(schema_name)
         not_null = col.is_(exp.Null()).not_()
 
-        # Build invalid conditions — a value is invalid if it fails ALL criteria
+        # Build invalid conditions. A value is invalid if it fails ALL criteria
         invalid_conditions: list[exp.Expression] = []
 
         if valid_values is not None:
@@ -250,7 +250,7 @@ class InvalidValuesCheckReference(_LibraryColumnMetricBase):
 
 
 class DuplicateValuesColumnCheckReference(_LibraryColumnMetricBase):
-    """``duplicateValues`` at property level — count of duplicate values."""
+    """``duplicateValues`` at property level: count of duplicate values."""
 
     def _build_ast(self) -> exp.Expression:
         if self._cached_ast is not None:
@@ -312,7 +312,7 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
 
 
 class RowCountCheckReference(_LibraryTableMetricBase):
-    """``rowCount`` — total number of rows in a table."""
+    """``rowCount``: total number of rows in a table."""
 
     def get_check(self) -> DataQuality:
         return self._contract.resolve(self._path)
@@ -334,7 +334,7 @@ class RowCountCheckReference(_LibraryTableMetricBase):
 
 
 class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
-    """``duplicateValues`` at schema level — duplicates across multiple columns.
+    """``duplicateValues`` at schema level: duplicates across multiple columns.
 
     Expects ``arguments.properties`` listing the column names to check.
     """

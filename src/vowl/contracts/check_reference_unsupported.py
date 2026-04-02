@@ -1,4 +1,4 @@
-"""Unsupported check reference — placeholder for unimplemented check types/metrics."""
+"""Unsupported check reference: placeholder for unimplemented check types/metrics."""
 
 from __future__ import annotations
 

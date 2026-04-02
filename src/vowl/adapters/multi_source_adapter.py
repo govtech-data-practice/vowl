@@ -211,11 +211,11 @@ class MultiSourceAdapter(BaseAdapter):
                         continue
 
                     if table in all_registered:
-                        # Belongs to another schema — will be tested there
+                        # Belongs to another schema; will be tested there
                         schema_results[table] = f"skipped: table defined in schema '{table}'"
                         continue
 
-                    # Unknown table — test with this schema's adapter
+                    # Unknown table; test with this schema's adapter
                     table_error = adapter.test_connection(table)
                     if table_error:
                         schema_results[table] = (

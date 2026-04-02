@@ -50,7 +50,7 @@ class CheckResult:
             actual_value: The actual value returned by the validation query.
             expected_value: The expected value that the check should have returned.
             failed_rows: Eagerly-provided DataFrame of failed rows.  Mutually
-                exclusive with *failed_rows_fetcher* — if both are given the
+                exclusive with *failed_rows_fetcher*. If both are given the
                 eager value wins.
             failed_rows_fetcher: A zero-argument callable that returns the
                 failed-rows DataFrame.  Called at most once, on first access
@@ -86,7 +86,7 @@ class CheckResult:
 
     @property
     def failed_rows_count(self) -> int:
-        """Number of failed rows (from SQL count — no row fetch required)."""
+        """Number of failed rows (from SQL count; no row fetch required)."""
         return self._failed_rows_count
 
     @property
@@ -169,7 +169,7 @@ class SQLExecutor(BaseExecutor):
     # SQL dialect for sqlglot parsing/generation of **input** queries.
     # "postgres" is used as the default because all queries are generated
     # in postgres dialect by the check reference layer (via sqlglot).
-    # This is the "read" dialect — specifying how to parse incoming SQL.
+    # This is the "read" dialect, specifying how to parse incoming SQL.
     dialect: str = "postgres"
 
     @property
@@ -237,7 +237,7 @@ class SQLExecutor(BaseExecutor):
         validate_query_security(query, dialect=self.output_dialect)
 
 
-# TODO: Remove dead class — GXExecutor has no implementation and nothing uses it.
+# TODO: Remove dead class. GXExecutor has no implementation and nothing uses it.
 class GXExecutor(BaseExecutor):
     """
     Base class for Great Expectations (GX) executors.
