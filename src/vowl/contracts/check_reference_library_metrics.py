@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 import sqlglot
 from sqlglot import exp
 
-from .check_reference_base import CheckReference
 from .check_reference_generated import (
     GeneratedColumnCheckReference,
     GeneratedTableCheckReference,
@@ -69,12 +68,10 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
     """
 
     def __init__(self, contract: Contract, quality_path: str, property_path: str):
-        # Bypass GeneratedColumnCheckReference.__init__ which appends a
-        # path_suffix to the property path.  We already have the full path.
-        CheckReference.__init__(self, contract, quality_path)
-        self._property_path = property_path
-        self._generated_check: DataQuality | None = None
-        self._cached_ast: exp.Expression | None = None
+        # Derive the path suffix so we can use the standard init chain.
+        # quality_path is always property_path + ".quality[N]".
+        path_suffix = quality_path[len(property_path) + 1:]
+        super().__init__(contract, property_path, path_suffix)
 
     # The check dict is the *original* quality entry from the contract,
     # which already carries metric, operators, unit, etc.
@@ -175,7 +172,7 @@ class MissingValuesCheckReference(_LibraryColumnMetricBase):
                 non_null_values.append(val)
 
         if non_null_values:
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
             in_vals = [exp.Literal.string(str(v)) for v in non_null_values]
             conditions.append(exp.In(this=cast_col, expressions=in_vals))
 
@@ -228,13 +225,13 @@ class InvalidValuesCheckReference(_LibraryColumnMetricBase):
         invalid_conditions: list[exp.Expression] = []
 
         if valid_values is not None:
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
             in_vals = [exp.Literal.string(str(v)) for v in valid_values]
             not_in_valid = exp.Not(this=exp.In(this=cast_col, expressions=in_vals))
             invalid_conditions.append(not_in_valid)
 
         if pattern is not None:
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
             not_matching = exp.Not(
                 this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern))
             )

@@ -59,13 +59,12 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 Default True.
         """
         # MultiSourceSQLExecutor has no single adapter; it delegates to
-        # per-schema adapters via self._multi_adapter instead.  We still call
-        # the grandparent (BaseExecutor) init so the object is properly
-        # initialized, storing a sentinel that the overridden `adapter`
-        # property will intercept.
-        super(SQLExecutor, self).__init__(adapter=None)
+        # per-schema adapters via self._multi_adapter instead.  We pass
+        # adapter=None here; the overridden `adapter` property will raise
+        # if anyone tries to access it directly.
+        super().__init__(adapter=None, use_try_cast=use_try_cast)
         self._multi_adapter = multi_adapter
-        # Mirror SQLExecutor behavior: prefer adapter-level configuration so
+        # Override: prefer adapter-level configuration so
         # ValidationConfig.use_try_cast propagates consistently.
         self._use_try_cast = getattr(multi_adapter, "use_try_cast", use_try_cast)
         self._local_duckdb_con = None  # Lazily created by _get_local_duckdb()

@@ -208,8 +208,8 @@ class LogicalTypeCheckReference(GeneratedColumnCheckReference):
         table = exp.Table(this=exp.to_identifier(schema_name, quoted=True))
 
         if logical_type == "integer":
-            as_double = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"))
-            as_integer = exp.TryCast(this=col, to=exp.DataType.build("BIGINT"))
+            as_double = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+            as_integer = exp.TryCast(this=col, to=exp.DataType.build("BIGINT"), safe=True)
             invalid_integer = as_double.is_(exp.Null()).or_(as_double.neq(as_integer))
 
             self._cached_ast = (
@@ -224,7 +224,7 @@ class LogicalTypeCheckReference(GeneratedColumnCheckReference):
             sqlglot.select(exp.Count(this=exp.Star()))
             .from_(table)
             .where(col.is_(exp.Null()).not_())
-            .where(exp.TryCast(this=col, to=exp.DataType.build(sql_type)).is_(exp.Null()))
+            .where(exp.TryCast(this=col, to=exp.DataType.build(sql_type), safe=True).is_(exp.Null()))
         )
         return self._cached_ast
 
@@ -323,29 +323,29 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
             return query
 
         if key == "minLength":
-            length_check = exp.Length(this=exp.TryCast(this=col, to=exp.DataType.build("VARCHAR")))
+            length_check = exp.Length(this=exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True))
             return count_where(not_null, length_check < exp.Literal.number(val))
         elif key == "maxLength":
-            length_check = exp.Length(this=exp.TryCast(this=col, to=exp.DataType.build("VARCHAR")))
+            length_check = exp.Length(this=exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True))
             return count_where(not_null, length_check > exp.Literal.number(val))
         elif key == "pattern":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
             pattern_check = exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(val)))
             return count_where(not_null, pattern_check)
         elif key == "minimum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
             return count_where(not_null, cast_col < exp.Literal.number(val))
         elif key == "maximum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
             return count_where(not_null, cast_col > exp.Literal.number(val))
         elif key == "exclusiveMinimum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
             return count_where(not_null, cast_col <= exp.Literal.number(val))
         elif key == "exclusiveMaximum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
             return count_where(not_null, cast_col >= exp.Literal.number(val))
         elif key == "multipleOf":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"))
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
             mod_check = exp.Mod(this=cast_col, expression=exp.Literal.number(val))
             return count_where(not_null, mod_check.neq(exp.Literal.number(0)))
 

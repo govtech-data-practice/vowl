@@ -223,7 +223,7 @@ def make_safe_cast(
         if target_type in _ORACLE_STRING_TYPES:
             return exp.Cast(this=node, to=to)
         return exp.Cast(this=node, to=to, default=exp.Null())
-    return exp.TryCast(this=node, to=to)
+    return exp.TryCast(this=node, to=to, safe=True)
 
 
 def apply_try_cast(query: str, dialect: str) -> tuple[str, bool]:

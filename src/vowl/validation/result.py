@@ -465,7 +465,9 @@ class ValidationResult:
 
         raw_results: dict[str, list[nw.DataFrame]] = {}
         for (tables_key, _cols_key), dfs in groups.items():
-            grouped = self._consolidate_grouped_output(nw.concat(dfs))
+            arrow_tables = [df.to_arrow() for df in dfs]
+            combined = pa.concat_tables(arrow_tables, promote_options='default')
+            grouped = self._consolidate_grouped_output(nw.from_native(combined, eager_only=True))
             key = tables_key or 'unknown'
             raw_results.setdefault(key, []).append(grouped)
 

@@ -1,7 +1,7 @@
 month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_ids,tables_in_query
 2017-01,ANG MO KIO,3 ROOM,211,ANG MO KIO AVE 3,01 TO 03,67.0,New Generation,abc,59 years 03 months,325000.0,"Year, lease_commence_date_logical_type_check",hdb_resale_prices
 2017-01,ANG MO KIO,3 ROOM,219,ANG MO KIO AVE 1,07 TO 09,67.0,New Generation,1977.0,59 years 06 months,297000.0,Year,hdb_resale_prices
-2017-01,ANG MO KIO,3 ROOM,330,ANG MO KIO AVE 1,07 TO 09,68.0,New Generation,nan,63 years,338000.0,Year,hdb_resale_prices
+2017-01,ANG MO KIO,3 ROOM,330,ANG MO KIO AVE 1,07 TO 09,68.0,New Generation,NaN,63 years,338000.0,Year,hdb_resale_prices
 2017-06,KALLANG/WHAMPOA,3 ROOM,38,JLN BAHAGIA,01 TO 03,215.0,Terrace,1972,54 years 01 month,830000.0,floor_area_must_be_less_than_200,hdb_resale_prices
 2017-09,CHOA CHU KANG,EXECUTIVE,641,CHOA CHU KANG ST 64,16 TO 18,215.0,Premium Maisonette,1998,79 years 04 months,888000.0,floor_area_must_be_less_than_200,hdb_resale_prices
 2017-10,BUKIT PANJANG,3 ROOM,150,PETIR RD,03,73.0,Model A,1988,69 years 11 months,250000.0,storey_range_logical_type_options_pattern_check,hdb_resale_prices
