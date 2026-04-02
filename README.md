@@ -34,6 +34,7 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
   - [Loading Contracts from Git (GitHub/GitLab)](#loading-contracts-from-git-githubgitlab)
   - [Loading Contracts from S3](#loading-contracts-from-s3)
 - [Roadmap](#roadmap)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Features
@@ -792,6 +793,12 @@ result.display_full_report()
 |------------|-------------|--------|
 | � **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
 | 📅 **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned |
+
+---
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
 
 ---
 
