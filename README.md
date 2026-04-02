@@ -6,7 +6,33 @@
 
 Vowl (vee-owl 🦉) — a validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
 
-## 🚀 Key Features
+## Table of Contents
+
+- [Features](#features)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Validate in 3 lines](#validate-in-3-lines)
+- [Concepts](#concepts)
+  - [Data Contracts](#data-contracts)
+  - [Automatic `check_references`](#automatic-check_references)
+  - [Library Metrics (`type: library`)](#library-metrics-type-library)
+  - [Validation Results](#validation-results)
+  - [Architecture](#architecture)
+- [Usage Patterns](#usage-patterns)
+  - [Local DataFrame (Pandas/Polars)](#local-dataframe-pandaspolars)
+  - [PySpark](#pyspark)
+  - [Ibis Connections (20+ Backends)](#ibis-connections-20-backends)
+  - [Compatibility Mode (DuckDB ATTACH)](#compatibility-mode-duckdb-attach)
+  - [Explicit Adapter with Filter Conditions](#explicit-adapter-with-filter-conditions)
+  - [Multi-Source Validation](#multi-source-validation)
+  - [Custom Adapters and Executors](#custom-adapters-and-executors)
+  - [Using Servers Defined in Data Contract](#using-servers-defined-in-data-contract)
+  - [Loading Contracts from Git (GitHub/GitLab)](#loading-contracts-from-git-githubgitlab)
+  - [Loading Contracts from S3](#loading-contracts-from-s3)
+- [Roadmap](#roadmap)
+- [License](#license)
+
+## Features
 
 *   **Extensible Check Engine**: Ships with a SQL check engine out of the box, with the architecture designed to support custom check types beyond SQL.
 *   **Auto-Generated Rules**: Checks are automatically derived from contract metadata (`logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`) and library metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
@@ -18,7 +44,7 @@ Vowl (vee-owl 🦉) — a validation engine for [Open Data Contract Standard (OD
 *   **Rich Reporting**: Detailed summaries, row-level failure analysis, saveable reports, and a chainable `ValidationResult` API.
 *   **No Silent Gaps**: Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
 
-## 📦 Getting Started
+## Getting Started
 
 ### Installation
 ```bash
@@ -149,9 +175,11 @@ Total Execution:       210.88 ms
 
 </details>
 
-See [Usage Patterns](#️-usage-patterns) for PySpark, Ibis connections, multi-source validation, and more.
+See [Usage Patterns](#usage-patterns) for PySpark, Ibis connections, multi-source validation, and more.
 
-## 🎯 The Core Concept: The Data Contract
+## Concepts
+
+### Data Contracts
 
 Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
 
@@ -351,11 +379,11 @@ produces three generated check references pointing at:
 
 Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, `vowl` also generates a `logicalType` SQL check automatically. You only need to define extra `quality` entries when you want custom business rules beyond the contract metadata.
 
-## 🔧 The `ValidationResult` Object: Your Toolkit
+### Validation Results
 
 The `validate_data` function returns a powerful `ValidationResult` object that provides multiple ways to interact with your validation results.
 
-### Core Methods
+#### Core Methods
 
 | Method/Property | What It Does | Returns |
 |-----------------|--------------|---------|
@@ -369,7 +397,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 ---
 
-## 💡 How It Works: Architecture
+### Architecture
 
 `vowl` has a modular architecture built around **Ibis** as the universal query layer.
 
@@ -423,7 +451,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Key Components
+#### Key Components
 
 | Component | Description |
 |-----------|-------------|
@@ -435,7 +463,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **Contract** | Parses ODCS YAML contracts into executable validation rules |
 | **ValidationResult** | Rich result object with enhanced DataFrames, metrics, and export capabilities |
 
-## ⚙️ Usage Patterns
+## Usage Patterns
 
 > **Interactive demo:** Try the [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
 
@@ -736,7 +764,7 @@ result.display_full_report()
 # Uses default AWS credentials (environment variables, ~/.aws/credentials, IAM role, etc.)
 ```
 
-## 📋 Capabilities Roadmap
+## Roadmap
 
 ### Completed
 
@@ -763,7 +791,7 @@ result.display_full_report()
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
 
