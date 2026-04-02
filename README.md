@@ -1,5 +1,9 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/govtech-data-practice/Vowl/main/docs/img/vowl_logo.png" alt="vowl logo" width="400">
+
+  <br/>
+
+  [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://govtech-data-practice.github.io/Vowl/)
 </div>
 
 # Vowl
