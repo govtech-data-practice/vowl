@@ -63,6 +63,26 @@ The `MultiSourceSQLExecutor` materialises tables via Arrow instead of using Duck
 
 ---
 
+## Null Handling Varies Across Database Backends
+
+Different database backends handle `NULL` values differently in generic checks such as `minimum`, `maximum`, and `mean`. Some backends silently skip `NULL` rows when computing aggregates, while others may include them or produce unexpected results. This means a column containing `NULL` values might still pass a `minimum` or `maximum` check because the nulls are ignored during evaluation.
+
+If you need to guarantee that a column contains **no null values**, add an explicit `nullValues` library check rather than relying on aggregate checks to catch them:
+
+```yaml
+properties:
+  - name: my_column
+    quality:
+      - id: my_column_no_nulls
+        metric: nullValues
+        mustBe: 0
+        description: "There must be no null values in the column."
+```
+
+This ensures nulls are caught directly, regardless of which database backend is running the validation.
+
+---
+
 ## Dark Patterns
 
 ### Queries Accessing Tables Outside the Contract
