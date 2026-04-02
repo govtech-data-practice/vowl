@@ -13,7 +13,7 @@ Optional extras are available:
 | `vowl[spark]` | PySpark support |
 | `vowl[all]` | Everything (Spark + AWS) |
 
-For local development, testing, and release workflow, see [CONTRIBUTING.md](https://github.com/govtech-data-practice/Vowl/blob/main/CONTRIBUTING.md).
+For local development, testing, and release workflow, see [CONTRIBUTING.md](https://github.com/govtech-data-practice/vowl/blob/main/CONTRIBUTING.md).
 
 ## Validate in 3 Lines
 

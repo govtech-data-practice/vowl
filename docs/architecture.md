@@ -1,6 +1,6 @@
 # Architecture
 
-Vowl has a modular architecture built around **Ibis** as the universal query layer.
+vowl has a modular architecture built around **Ibis** as the universal query layer.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐

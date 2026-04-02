@@ -1,8 +1,8 @@
-site_name: Vowl
+site_name: vowl
 site_description: A SQL-powered data quality validation library for pandas and spark DataFrames.
-site_url: https://govtech-data-practice.github.io/Vowl/
-repo_url: https://github.com/govtech-data-practice/Vowl
-repo_name: govtech-data-practice/Vowl
+site_url: https://govtech-data-practice.github.io/vowl/
+repo_url: https://github.com/govtech-data-practice/vowl
+repo_name: govtech-data-practice/vowl
 
 theme:
   name: material

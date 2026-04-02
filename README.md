@@ -1,10 +1,14 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/govtech-data-practice/Vowl/main/docs/img/vowl_logo.png" alt="vowl logo" width="400">
+  <img src="https://raw.githubusercontent.com/govtech-data-practice/vowl/main/docs/img/vowl_logo.png" alt="vowl logo" width="400">
+
+  <br/>
+
+  [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://govtech-data-practice.github.io/vowl/)
 </div>
 
-# Vowl
+# vowl
 
-Vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
+vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
 
 ## Table of Contents
 
@@ -30,6 +34,7 @@ Vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
   - [Loading Contracts from Git (GitHub/GitLab)](#loading-contracts-from-git-githubgitlab)
   - [Loading Contracts from S3](#loading-contracts-from-s3)
 - [Roadmap](#roadmap)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Features
@@ -788,6 +793,12 @@ result.display_full_report()
 |------------|-------------|--------|
 | � **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
 | 📅 **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned |
+
+---
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
 
 ---
 

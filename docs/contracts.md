@@ -85,7 +85,7 @@ schema:
 
 ## Automatic Check References
 
-When a contract is loaded, Vowl automatically builds `CheckReference` objects for every executable check in the contract via `Contract.get_check_references_by_schema()`.
+When a contract is loaded, vowl automatically builds `CheckReference` objects for every executable check in the contract via `Contract.get_check_references_by_schema()`.
 
 This includes both user-authored checks in `quality` blocks and synthetic checks derived from column metadata. The generated references are grouped by schema, and the auto-generated ones run before explicit `quality` checks.
 
@@ -104,7 +104,7 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 
 ## Auto-Generated Checks
 
-| Generated from | What Vowl validates |
+| Generated from | What vowl validates |
 |----------------|----------------------|
 | `name` | Column declared in the contract exists in the source table |
 | `logicalType` | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
@@ -139,11 +139,11 @@ produces three generated check references:
 | `$.schema[0].properties[...].required` | `RequiredCheckReference` |
 
 !!! note
-    Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, Vowl also generates a `logicalType` SQL check automatically.
+    Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
 
 ## Library Metrics (`type: library`)
 
-Instead of writing SQL by hand, you can declare common data quality metrics using `type: library` in your `quality` blocks. Vowl auto-generates the appropriate SQL at runtime.
+Instead of writing SQL by hand, you can declare common data quality metrics using `type: library` in your `quality` blocks. vowl auto-generates the appropriate SQL at runtime.
 
 ### Column-Level Metrics
 
