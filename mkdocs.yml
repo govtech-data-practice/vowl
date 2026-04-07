@@ -6,6 +6,7 @@ repo_name: govtech-data-practice/vowl
 
 theme:
   name: material
+  custom_dir: docs/overrides
   logo: img/vowl_logo.png
   favicon: img/vowl_logo.png
   palette:
