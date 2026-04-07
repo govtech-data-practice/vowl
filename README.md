@@ -4,6 +4,7 @@
   <br/>
 
   [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://govtech-data-practice.github.io/vowl/)
+  [![PyPI](https://img.shields.io/pypi/v/vowl)](https://pypi.org/project/vowl/)
 </div>
 
 # vowl
@@ -529,7 +530,7 @@ the existing connection. If you need to avoid relying on the connection's
 default database, use qualified table names such as `my_db.my_table` in your
 contract queries.
 
-### Compatibility Mode (DuckDB ATTACH)
+### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
 ```python
 import ibis
 from vowl import validate_data

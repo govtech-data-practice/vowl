@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["data-quality", "data-validation", "odcs", "ibis", "sql"]
+keywords = ["data-quality", "data-validation", "data-contract", "odcs", "ibis", "sql", "pandas", "polars", "pyspark", "duckdb", "schema-validation"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

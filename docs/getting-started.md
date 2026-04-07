@@ -1,3 +1,7 @@
+---
+description: Install vowl and validate your first dataset in three lines of Python. Supports pandas, Polars, PySpark, and 20+ Ibis backends.
+---
+
 # Getting Started
 
 ## Installation
