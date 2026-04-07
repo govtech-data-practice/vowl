@@ -188,10 +188,13 @@ See [Usage Patterns](#usage-patterns) for PySpark, Ibis connections, multi-sourc
 
 Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
 
-**Example `hdb_resale_simple.yaml`** (trimmed for readability):
+**Example [`hdb_resale_simple.yaml`](tests/hdb_resale/hdb_resale_simple.yaml)** (trimmed for readability):
 ```yaml
 kind: DataContract
 apiVersion: v3.1.0
+version: 1.0.0
+id: c11443ee-542f-4442-b28d-2d224342be37
+status: draft
 name: HDB Resale Flat Prices
 schema:
   - name: hdb_resale_prices  # This becomes the table name in your SQL queries
