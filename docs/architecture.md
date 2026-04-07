@@ -1,3 +1,7 @@
+---
+description: vowl's modular architecture — adapters, executors, and the Ibis universal query layer for server-side SQL validation.
+---
+
 # Architecture
 
 vowl has a modular architecture built around **Ibis** as the universal query layer.

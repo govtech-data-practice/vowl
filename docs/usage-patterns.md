@@ -1,3 +1,7 @@
+---
+description: Usage patterns for vowl — local DataFrames, PySpark, Ibis connections, multi-source validation, custom adapters, and loading contracts from Git or S3.
+---
+
 # Usage Patterns
 
 !!! tip "Interactive Demo"

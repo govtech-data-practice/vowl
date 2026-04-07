@@ -1,3 +1,7 @@
+---
+description: Learn how to define data quality rules in declarative YAML using the Open Data Contract Standard (ODCS) with vowl.
+---
+
 # Data Contracts
 
 ## The Core Concept

@@ -1,4 +1,52 @@
 {% extends "base.html" %}
 {% block extrahead %}
 <meta name="google-site-verification" content="2QRlz1eUNlhik9aI7V_12cB051zaFq26uov4IBcViSc" />
+
+{% set og_description = page.meta.description if page.meta and page.meta.description else config.site_description %}
+{% if page.meta and page.meta.hide %}
+{% set og_title = config.site_name %}
+{% else %}
+{% set og_title = page.title ~ " — " ~ config.site_name %}
+{% endif %}
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="{{ og_title }}" />
+<meta property="og:description" content="{{ og_description }}" />
+<meta property="og:url" content="{{ page.canonical_url }}" />
+<meta property="og:image" content="{{ config.site_url }}img/vowl_logo.png" />
+<meta property="og:site_name" content="{{ config.site_name }}" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="{{ og_title }}" />
+<meta name="twitter:description" content="{{ og_description }}" />
+<meta name="twitter:image" content="{{ config.site_url }}img/vowl_logo.png" />
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "{{ config.site_name }}",
+  "url": "{{ config.site_url }}",
+  "description": "{{ config.site_description }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "vowl",
+  "description": "{{ config.site_description }}",
+  "url": "https://github.com/govtech-data-practice/vowl",
+  "codeRepository": "https://github.com/govtech-data-practice/vowl",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/MIT",
+  "author": {
+    "@type": "Organization",
+    "name": "GovTech Data Practice"
+  }
+}
+</script>
 {% endblock %}

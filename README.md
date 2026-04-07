@@ -529,7 +529,7 @@ the existing connection. If you need to avoid relying on the connection's
 default database, use qualified table names such as `my_db.my_table` in your
 contract queries.
 
-### Compatibility Mode (DuckDB ATTACH)
+### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
 ```python
 import ibis
 from vowl import validate_data

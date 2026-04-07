@@ -1,8 +1,16 @@
-site_name: vowl
-site_description: A SQL-powered data quality validation library for pandas and spark DataFrames.
+site_name: ODCS Data Contract Validation Engine
+site_description: >-
+  vowl is a validation engine for Open Data Contract Standard (ODCS) data contracts.
+  Define validation rules once in declarative YAML and get rich, actionable reports
+  on data quality across pandas, Polars, PySpark, and 20+ Ibis backends.
 site_url: https://govtech-data-practice.github.io/vowl/
 repo_url: https://github.com/govtech-data-practice/vowl
 repo_name: govtech-data-practice/vowl
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/govtech-data-practice/vowl
 
 theme:
   name: material
@@ -60,3 +68,7 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+
+plugins:
+  - search
+  - meta

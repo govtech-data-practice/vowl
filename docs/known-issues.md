@@ -1,3 +1,9 @@
+---
+description: >-
+  Known issues and workarounds for vowl, including MSSQL regex limitations
+  and backend-specific behaviours.
+---
+
 # Known Issues
 
 ## MSSQL: No Regex Support

@@ -1,6 +1,10 @@
 ---
 hide:
   - navigation
+description: >-
+  vowl is a validation engine for Open Data Contract Standard (ODCS) data contracts.
+  Define rules in declarative YAML and validate pandas, Polars, PySpark DataFrames
+  and 20+ Ibis backends with rich, actionable reports.
 ---
 
 <div align="center">
