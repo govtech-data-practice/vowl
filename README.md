@@ -4,6 +4,7 @@
   <br/>
 
   [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://govtech-data-practice.github.io/vowl/)
+  [![PyPI](https://img.shields.io/pypi/v/vowl)](https://pypi.org/project/vowl/)
 </div>
 
 # vowl
