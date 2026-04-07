@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://govtech-data-practice.github.io/vowl/sitemap.xml
