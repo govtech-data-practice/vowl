@@ -2,6 +2,7 @@ import os
 import re
 import warnings
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 import yaml
 from jsonpath_ng import parse as jsonpath_parse
@@ -69,9 +70,11 @@ class Contract:
 
         # Convert blob URLs to raw URLs
         raw_url = url
-        if "github.com" in url and "/blob/" in url:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        if (hostname == "github.com" or hostname.endswith(".github.com")) and "/blob/" in parsed.path:
             raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
-        elif "gitlab.com" in url and "/-/blob/" in url:
+        elif (hostname == "gitlab.com" or hostname.endswith(".gitlab.com")) and "/-/blob/" in parsed.path:
             raw_url = url.replace("/-/blob/", "/-/raw/")
 
         try:
