@@ -16,14 +16,16 @@ if TYPE_CHECKING:
 
 
 class CheckResultMetadata(TypedDict, total=False):
-    """Stable metadata derived from a check reference and its contract."""
+    """Stable metadata derived from a check reference and its contract.
+
+    Computed fields are derived by the check reference; ``contract_definition``
+    carries the raw ODCS quality entry so that every contract field (tags,
+    customProperties, authoritativeDefinitions, …) is available to consumers
+    without manual forwarding.
+    """
 
     check_path: str
     check_ref_type: str
-    dimension: str | None
-    type: str | None
-    description: str | None
-    severity: str | None
     schema: str | None
     target: str
     logical_type: str
@@ -34,8 +36,8 @@ class CheckResultMetadata(TypedDict, total=False):
     operator: str
     multi_source: bool
     aggregation_type: str
-    unit: str
     engine: str
+    contract_definition: dict[str, Any]
 
 
 class CheckReference(ABC):
@@ -98,22 +100,24 @@ class CheckReference(ABC):
         return unit if isinstance(unit, str) else None
 
     def get_result_metadata(self) -> CheckResultMetadata:
-        """Build stable CheckResult metadata from the contract context."""
+        """Build stable CheckResult metadata from the contract context.
+
+        Computed fields (``check_path``, ``target``, ``operator``, …) are
+        derived by the check reference.  The raw ODCS quality entry is
+        attached as ``contract_definition`` so that every contract field
+        automatically flows through without manual forwarding.
+        """
         check = self.get_check()
-        dimension = check.get("dimension")
         schema_name = self.get_schema_name()
         operator, _expected = self.get_expected_value()
         metadata: CheckResultMetadata = {
             "check_path": self.path,
             "check_ref_type": type(self).__name__,
-            "dimension": dimension.value if hasattr(dimension, "value") else dimension,
-            "type": check.get("type"),
-            "description": check.get("description"),
-            "severity": check.get("severity"),
             "schema": schema_name,
             "operator": operator,
             "is_generated": self.is_generated(),
             "engine": self.get_execution_engine(),
+            "contract_definition": dict(check),
         }
 
         column_name = self.get_column_name()
@@ -125,9 +129,6 @@ class CheckReference(ABC):
         logical_type = self.get_logical_type()
         if logical_type:
             metadata["logical_type"] = logical_type
-
-        if self.unit:
-            metadata["unit"] = self.unit
 
         return metadata
 

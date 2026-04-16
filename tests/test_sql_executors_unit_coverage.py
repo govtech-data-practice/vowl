@@ -62,17 +62,11 @@ class StubCheckReference:
         metadata = {
             "check_path": self.path,
             "check_ref_type": type(self).__name__,
-            "type": self._check.get("type"),
-            "description": self._check.get("description"),
-            "severity": self._check.get("severity"),
             "schema": self._schema_name,
             "is_generated": self.is_generated(),
             "engine": "sql",
+            "contract_definition": dict(self._check),
         }
-
-        dimension = self._check.get("dimension")
-        if dimension is not None:
-            metadata["dimension"] = getattr(dimension, "value", dimension)
 
         if self._column_name:
             metadata["target"] = f"{self._schema_name}.{self._column_name}" if self._schema_name else self._column_name
@@ -81,8 +75,6 @@ class StubCheckReference:
             metadata["logical_type"] = self._logical_type
 
         metadata["aggregation_type"] = self.aggregation_type
-        if self.unit:
-            metadata["unit"] = self.unit
 
         return metadata
 

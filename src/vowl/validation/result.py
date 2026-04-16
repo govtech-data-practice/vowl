@@ -553,18 +553,21 @@ class ValidationResult:
 
     @staticmethod
     def _arrow_safe(value):
-        """Coerce lists to strings so Arrow columns stay scalar-typed."""
-        return str(value) if isinstance(value, list) else value
+        """Coerce non-scalar types to strings so Arrow columns stay scalar-typed."""
+        return str(value) if isinstance(value, (list, dict)) else value
 
     def get_check_results_df(self) -> nw.DataFrame:
         _safe = self._arrow_safe
         data = []
         extra_keys: list[str] = []
         for cr in self.check_results:
-            flat_meta = {
-                k: _safe(v)
-                for k, v in cr.metadata.items()
-            }
+            # Flatten contract_definition into top-level columns so every
+            # contract field gets its own column in the output.  Computed
+            # metadata fields are overlaid last so they take precedence.
+            raw_meta = dict(cr.metadata)
+            contract_def = raw_meta.pop("contract_definition", {})
+            flat_meta = {k: _safe(v) for k, v in contract_def.items()}
+            flat_meta.update({k: _safe(v) for k, v in raw_meta.items()})
             row = {
                 'check_name': cr.check_name,
                 'status': cr.status,
