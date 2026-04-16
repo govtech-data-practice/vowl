@@ -89,7 +89,7 @@ class ValidationResult:
         return [
             check_result
             for check_result in self.check_results
-            if check_result.metadata.get('schema') == schema_name
+            if check_result.metadata.get('schema_name') == schema_name
         ]
 
     def _get_failed_checks_summary_by_schema(self) -> dict[str, dict[str, list[CheckResult]]]:
@@ -126,8 +126,8 @@ class ValidationResult:
             key=lambda result: (
                 STATUS_ORDER.index(result.status)
                 if result.status in STATUS_ORDER else len(STATUS_ORDER),
-                self._schema_names.index(result.metadata.get('schema'))
-                if result.metadata.get('schema') in self._schema_names else len(self._schema_names),
+                self._schema_names.index(result.metadata.get('schema_name'))
+                if result.metadata.get('schema_name') in self._schema_names else len(self._schema_names),
                 'Multi' if is_cross_table_check(result) else 'Single',
                 result.check_name,
             ),
@@ -203,7 +203,7 @@ class ValidationResult:
             if check_result.status != 'FAILED':
                 continue
 
-            schema_name = check_result.metadata.get('schema')
+            schema_name = check_result.metadata.get('schema_name')
             if not isinstance(schema_name, str) or schema_name not in unique_rows_by_schema:
                 continue
 
@@ -388,7 +388,7 @@ class ValidationResult:
         max_rows: int,
     ) -> None:
         target_label = get_field_label(check_result)
-        rule = check_result.metadata.get('rule')
+        rule = check_result.metadata.get('rendered_implementation')
 
         operator = check_result.metadata.get('operator', '')
 
@@ -431,7 +431,7 @@ class ValidationResult:
         return nw.from_native(arrow_df, eager_only=True)
 
     def _output_key(self, cr: CheckResult) -> str:
-        schema = cr.metadata.get('schema', '')
+        schema = cr.metadata.get('schema_name', '')
         return f"{schema}::{cr.check_name}" if schema else cr.check_name
 
     def get_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
@@ -530,7 +530,7 @@ class ValidationResult:
     _CHECK_RESULTS_COLUMN_ORDER: list[str] = [
         'check_name',
         'target',
-        'schema',
+        'schema_name',
         'engine',
         'type',
         'dimension',
@@ -543,7 +543,7 @@ class ValidationResult:
         'failed_rows_count',
         'aggregation_type',
         'message',
-        'rule',
+        'rendered_implementation',
         'tables_in_query',
         'check_path',
         'check_ref_type',

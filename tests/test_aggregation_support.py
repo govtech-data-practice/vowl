@@ -262,7 +262,7 @@ class StubCheckReference:
         metadata = {
             "check_path": self.path,
             "check_ref_type": type(self).__name__,
-            "schema": self._schema_name,
+            "schema_name": self._schema_name,
             "is_generated": False,
             "engine": "sql",
             "contract_definition": dict(self._check),
@@ -329,7 +329,7 @@ class StubCheckReference:
         query = self.get_query(dialect, filter_conditions, use_try_cast)
         if query:
             metadata["tables_in_query"] = SQLCheckReference.extract_table_names(query, dialect or "duckdb")
-            metadata["rule"] = query
+            metadata["rendered_implementation"] = query
         metadata.update(extra)
         return metadata
 

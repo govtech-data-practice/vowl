@@ -1,4 +1,4 @@
-check_name,target,schema,engine,type,dimension,description,status,severity,operator,actual_value,expected_value,failed_rows_count,aggregation_type,message,rule,tables_in_query,check_path,check_ref_type,logical_type,is_generated,name,query,mustBe,tags,metric,mustBeGreaterThan,arguments
+check_name,target,schema_name,engine,type,dimension,description,status,severity,operator,actual_value,expected_value,failed_rows_count,aggregation_type,message,rendered_implementation,tables_in_query,check_path,check_ref_type,logical_type,is_generated,name,query,mustBe,tags,metric,mustBeGreaterThan,arguments
 AddressBlockHouseNumber,hdb_resale_prices.block,hdb_resale_prices,sql,sql,conformity,"House number component of a street address | Alphanumeric up to 10 characters (e.g. 12, 535, 358C)",PASSED,,mustBe,0,0,0,count,,"SELECT COUNT(*) FROM ""hdb_resale_prices"" WHERE NOT REGEXP_MATCHES(TRY_CAST(block AS TEXT), '^[A-Za-z0-9]{1,10}$')",['hdb_resale_prices'],$.schema[0].properties[3].quality[0],SQLColumnCheckReference,string,False,AddressBlockHouseNumber,"SELECT COUNT(*)
 FROM ""hdb_resale_prices""
 WHERE CAST(block AS TEXT) !~ '^[A-Za-z0-9]{1,10}$';",0.0,['SG-DRM v5.0'],,,

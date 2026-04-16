@@ -26,12 +26,12 @@ class CheckResultMetadata(TypedDict, total=False):
 
     check_path: str
     check_ref_type: str
-    schema: str | None
+    schema_name: str | None
     target: str
     logical_type: str
     is_generated: bool
     tables_in_query: list[str]
-    rule: str
+    rendered_implementation: str  # The check's executable definition after vowl transforms (dialect rendering, filters, try_cast, etc.). Covers both SQL ``query`` and custom ``implementation``.
     security_violation: str
     operator: str
     multi_source: bool
@@ -113,7 +113,7 @@ class CheckReference(ABC):
         metadata: CheckResultMetadata = {
             "check_path": self.path,
             "check_ref_type": type(self).__name__,
-            "schema": schema_name,
+            "schema_name": schema_name,
             "operator": operator,
             "is_generated": self.is_generated(),
             "engine": self.get_execution_engine(),

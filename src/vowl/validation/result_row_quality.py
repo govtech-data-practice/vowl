@@ -18,7 +18,7 @@ def get_eligible_schema_names(
     return {
         schema_name
         for check_result in eligible_checks
-        for schema_name in [check_result.metadata.get('schema')]
+        for schema_name in [check_result.metadata.get('schema_name')]
         if isinstance(schema_name, str) and schema_name in total_rows_by_schema
     }
 
