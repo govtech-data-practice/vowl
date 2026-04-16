@@ -4,7 +4,10 @@
   <br/>
 
   [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://govtech-data-practice.github.io/vowl/)
-  [![PyPI](https://img.shields.io/pypi/v/vowl)](https://pypi.org/project/vowl/)
+  [![PyPI](https://img.shields.io/pypi/v/vowl?color=green)](https://pypi.org/project/vowl/)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/govtech-data-practice/vowl/blob/main/LICENSE)
+  [![CI](https://github.com/govtech-data-practice/vowl/actions/workflows/ci.yml/badge.svg)](https://github.com/govtech-data-practice/vowl/actions/workflows/ci.yml)
+  [![ODCS Vendor](https://img.shields.io/badge/ODCS-Official%20Vendor-%23FF6B35)](https://github.com/bitol-io/open-data-contract-standard/blob/main/vendors.md)
 </div>
 
 # vowl
