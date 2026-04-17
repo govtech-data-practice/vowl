@@ -910,13 +910,13 @@ class TestMultiAdapters:
 
         assert results is not None
         assert_no_check_errors(results)
-        assert set(results_df["schema"].dropna().unique()) == {
+        assert set(results_df["schema_name"].dropna().unique()) == {
             "demo_employee_payroll",
             "demo_employee_list",
         }
         assert set(cross_checks_df["check_name"]) == cross_check_names
         assert set(cross_checks_df["status"]) == {"FAILED"}
-        assert set(cross_checks_df["schema"]) == {"demo_employee_payroll"}
+        assert set(cross_checks_df["schema_name"]) == {"demo_employee_payroll"}
         assert cross_checks_df["tables_in_query"].astype(str).str.contains("demo_employee_payroll").all()
         assert cross_checks_df["tables_in_query"].astype(str).str.contains("demo_employee_list").all()
 
