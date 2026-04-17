@@ -145,7 +145,7 @@ class SQLCheckReference(CheckReference, ABC):
         logical_query = self.get_query(dialect, filter_conditions, use_try_cast=use_try_cast)
         if logical_query:
             metadata["tables_in_query"] = self.extract_table_names(logical_query, dialect)
-            metadata["rule"] = logical_query
+            metadata["rendered_implementation"] = logical_query
         metadata.update(extra)
         return metadata
 

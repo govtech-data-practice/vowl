@@ -57,7 +57,7 @@ def get_field_label(check_result: CheckResult) -> str:
     target = check_result.metadata.get('target')
     if target:
         return target
-    schema_name = check_result.metadata.get('schema') or 'unknown'
+    schema_name = check_result.metadata.get('schema_name') or 'unknown'
     return str(schema_name)
 
 

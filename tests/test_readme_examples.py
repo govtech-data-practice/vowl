@@ -546,7 +546,7 @@ class TestMultiSourceValidation:
             result = validate_data(contract=str(EMPLOYEE_CONTRACT_PATH), adapter=adapter)
 
         results_df = result.get_check_results_df().to_pandas()
-        schemas = set(results_df["schema"].dropna().unique())
+        schemas = set(results_df["schema_name"].dropna().unique())
         assert "demo_employee_payroll" in schemas
         assert "demo_employee_list" in schemas
         _assert_no_error_checks(result)

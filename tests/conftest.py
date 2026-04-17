@@ -154,7 +154,7 @@ def _compare_or_update_single(df_to_compare: Any, expected_path: Path) -> None:
 
 def _is_expected_error(cr: Any) -> bool:
     """Return True if this ERROR check result is expected and should not fail the test."""
-    if cr.metadata.get("type") == "text":
+    if cr.metadata.get("contract_definition", {}).get("type") == "text":
         return True
     for substring in _ALLOWED_ERROR_SUBSTRINGS.get():
         if substring in (cr.details or ""):
