@@ -51,7 +51,7 @@ When using `MultiSourceAdapter` (passing `adapters={}` to `validate_data`), each
 - **Network transfer:** the full table (or filtered subset) is downloaded to the client.
 - Large tables may cause out-of-memory errors.
 
-For large datasets, prefer the **DuckDB ATTACH** approach which streams data on demand without materialisation. See [Usage Patterns](usage-patterns.md#option-b-duckdb-attach) for details.
+For large datasets, prefer the **DuckDB ATTACH** approach which streams data on demand without materialisation. See [Usage Patterns](usage-patterns.md#option-a-duckdb-attach) for details.
 
 ### Why Not Use DuckDB ATTACH Internally?
 
