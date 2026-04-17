@@ -14,7 +14,7 @@
 
 vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) data contracts. Define your validation rules once in a declarative YAML contract and get rich, actionable reports on your data's quality.
 
-✨ **Official ODCS Vendor**: `vowl` is actively maintained and recognized on the official [Bitol registry](https://github.com/bitol-io/open-data-contract-standard/blob/main/vendors.md) for native ODCS validation logic.
+✨ **Official ODCS Vendor**: `vowl` is actively maintained and listed on the official [ODCS vendors list](https://github.com/bitol-io/open-data-contract-standard/blob/main/vendors.md) as a natively compatible tool.
 
 ## Table of Contents
 
