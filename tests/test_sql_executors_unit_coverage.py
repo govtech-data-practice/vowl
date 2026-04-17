@@ -62,17 +62,11 @@ class StubCheckReference:
         metadata = {
             "check_path": self.path,
             "check_ref_type": type(self).__name__,
-            "type": self._check.get("type"),
-            "description": self._check.get("description"),
-            "severity": self._check.get("severity"),
-            "schema": self._schema_name,
+            "schema_name": self._schema_name,
             "is_generated": self.is_generated(),
             "engine": "sql",
+            "contract_definition": dict(self._check),
         }
-
-        dimension = self._check.get("dimension")
-        if dimension is not None:
-            metadata["dimension"] = getattr(dimension, "value", dimension)
 
         if self._column_name:
             metadata["target"] = f"{self._schema_name}.{self._column_name}" if self._schema_name else self._column_name
@@ -81,8 +75,6 @@ class StubCheckReference:
             metadata["logical_type"] = self._logical_type
 
         metadata["aggregation_type"] = self.aggregation_type
-        if self.unit:
-            metadata["unit"] = self.unit
 
         return metadata
 
@@ -152,7 +144,7 @@ class StubCheckReference:
         query = self.get_query(dialect, filter_conditions, use_try_cast)
         if query:
             metadata["tables_in_query"] = SQLCheckReference.extract_table_names(query, dialect or "duckdb")
-            metadata["rule"] = query
+            metadata["rendered_implementation"] = query
         metadata.update(extra)
         return metadata
 
@@ -408,7 +400,7 @@ def test_multisource_run_single_check_returns_security_error_with_metadata(monke
     result = executor.run_single_check(check_ref)
 
     assert result.status == "ERROR"
-    assert result.metadata["schema"] == "users"
+    assert result.metadata["schema_name"] == "users"
     assert result.metadata["target"] == "users.employee_id"
     assert result.metadata["logical_type"] == "integer"
     assert result.metadata["security_violation"] == "write_operation"
@@ -430,7 +422,7 @@ def test_multisource_run_single_check_failed_result_defaults_row_count_to_zero(m
     result = executor.run_single_check(check_ref)
 
     assert result.status == "FAILED"
-    assert result.metadata["schema"] == "users"
+    assert result.metadata["schema_name"] == "users"
     assert result.failed_rows_count == 0
     assert result.failed_rows.to_pandas().to_dict(orient="records") == [{"id": 1}]
 

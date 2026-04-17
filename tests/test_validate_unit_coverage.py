@@ -113,7 +113,7 @@ def _sample_validation_result() -> ValidationResult:
         failed_rows=_nw_df({"id": [1], "value": ["bad"]}),
         failed_rows_count=1,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["users"], "dimension": "completeness", "schema": "users", "target": "users.value", "rule": "value IS NULL"},
+        metadata={"tables_in_query": ["users"], "dimension": "completeness", "schema_name": "users", "target": "users.value", "rendered_implementation": "value IS NULL"},
         execution_time_ms=1.5,
     )
     failed_b = CheckResult(
@@ -125,7 +125,7 @@ def _sample_validation_result() -> ValidationResult:
         failed_rows=_nw_df({"id": [1], "value": ["bad"]}),
         failed_rows_count=1,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["users"], "dimension": "validity", "schema": "users", "target": "users.value", "rule": "value NOT IN ('bad')"},
+        metadata={"tables_in_query": ["users"], "dimension": "validity", "schema_name": "users", "target": "users.value", "rendered_implementation": "value NOT IN ('bad')"},
         execution_time_ms=2.5,
     )
     passed = CheckResult(
@@ -137,7 +137,7 @@ def _sample_validation_result() -> ValidationResult:
         failed_rows=_nw_df({}),
         failed_rows_count=0,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["users"], "dimension": "conformity", "schema": "users", "tags": ["a", "b"]},
+        metadata={"tables_in_query": ["users"], "dimension": "conformity", "schema_name": "users", "tags": ["a", "b"]},
         execution_time_ms=0.5,
     )
     error = CheckResult(
@@ -145,7 +145,7 @@ def _sample_validation_result() -> ValidationResult:
         "ERROR",
         "x" * 400,
         failed_rows_count=0,
-        metadata={"dimension": "accuracy", "schema": "users"},
+        metadata={"dimension": "accuracy", "schema_name": "users"},
         execution_time_ms=3.0,
     )
     summary = {
@@ -330,7 +330,7 @@ def test_validation_result_show_failed_rows_supports_full_mode(capsys: pytest.Ca
                 expected_value=0,
                 failed_rows=_nw_df({"id": [1, 2, 3]}),
                 failed_rows_count=3,
-                metadata={"tables_in_query": ["users"], "schema": "users"},
+                metadata={"tables_in_query": ["users"], "schema_name": "users"},
             )
         ],
         contract,
@@ -430,7 +430,7 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
                 failed_rows=_nw_df({"id": [1]}),
                 failed_rows_count=1,
                 supports_row_level_output=True,
-                metadata={"tables_in_query": ["users"], "schema": "users"},
+                metadata={"tables_in_query": ["users"], "schema_name": "users"},
             ),
             CheckResult(
                 "cross_rule",
@@ -440,7 +440,7 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
                 expected_value=0,
                 failed_rows=_nw_df({"id": [1, 1, 2], "order_id": [10, 11, 12]}),
                 failed_rows_count=3,
-                metadata={"tables_in_query": ["users", "orders"], "schema": "users"},
+                metadata={"tables_in_query": ["users", "orders"], "schema_name": "users"},
             ),
         ],
         contract,
@@ -499,7 +499,7 @@ def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails
                 failed_rows=_nw_df({"employee_id": [1001, 1001], "payroll_id": [5001, 5002]}),
                 failed_rows_count=2,
                 supports_row_level_output=True,
-                metadata={"tables_in_query": ["payroll"], "schema": "payroll"},
+                metadata={"tables_in_query": ["payroll"], "schema_name": "payroll"},
             )
         ],
         contract,
@@ -559,7 +559,7 @@ def test_validation_result_summary_does_not_use_adapter_export_for_schema_column
                 failed_rows=_nw_df({"id": [1]}),
                 failed_rows_count=1,
                 supports_row_level_output=True,
-                metadata={"tables_in_query": ["users"], "schema": "users"},
+                metadata={"tables_in_query": ["users"], "schema_name": "users"},
             )
         ],
         contract,
@@ -584,7 +584,7 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
         failed_rows=_nw_df({"employee_id": ["e1", "e2"], "payroll_id": ["p1", "p2"]}),
         failed_rows_count=2,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["payroll"], "schema": "payroll"},
+        metadata={"tables_in_query": ["payroll"], "schema_name": "payroll"},
     )
     cross_schema_failure = CheckResult(
         "cross_rule",
@@ -602,7 +602,7 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
         ),
         failed_rows_count=2,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["employee_list", "payroll"], "schema": "payroll"},
+        metadata={"tables_in_query": ["employee_list", "payroll"], "schema_name": "payroll"},
     )
     employee_list_failure = CheckResult(
         "employee_list_rule",
@@ -613,7 +613,7 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
         failed_rows=_nw_df({"employee_id": ["e10", "e11"], "phone_number": ["1", "2"]}),
         failed_rows_count=2,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["employee_list"], "schema": "employee_list"},
+        metadata={"tables_in_query": ["employee_list"], "schema_name": "employee_list"},
     )
     cross_schema_pass = CheckResult(
         "cross_pass_rule",
@@ -624,7 +624,7 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
         failed_rows=_nw_df({}),
         failed_rows_count=0,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["employee_list", "payroll"], "schema": "employee_list"},
+        metadata={"tables_in_query": ["employee_list", "payroll"], "schema_name": "employee_list"},
     )
     payroll_error = CheckResult(
         "payroll_error_rule",
@@ -632,7 +632,7 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
         "query failed",
         failed_rows=_nw_df({}),
         failed_rows_count=0,
-        metadata={"tables_in_query": ["payroll"], "schema": "payroll"},
+        metadata={"tables_in_query": ["payroll"], "schema_name": "payroll"},
     )
     summary = {
         "validation_summary": {
@@ -722,7 +722,7 @@ def test_validation_result_print_summary_omits_row_quality_when_only_cross_table
                 failed_rows=_nw_df({"id": [1, 2], "order_id": [10, 20]}),
                 failed_rows_count=2,
                 supports_row_level_output=True,
-                metadata={"tables_in_query": ["users", "orders"], "schema": "users"},
+                metadata={"tables_in_query": ["users", "orders"], "schema_name": "users"},
             )
         ],
         contract,
@@ -826,7 +826,7 @@ def test_validation_result_get_check_results_df():
     assert checks_df.columns.tolist()[:7] == [
         "check_name",
         "target",
-        "schema",
+        "schema_name",
         "dimension",
         "status",
         "actual_value",
@@ -867,7 +867,7 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
                 "bad",
                 failed_rows=_nw_df({"id": [1]}),
                 failed_rows_count=1,
-                metadata={"tables_in_query": "users, orders", "schema": "users"},
+                metadata={"tables_in_query": "users, orders", "schema_name": "users"},
             )
         ],
         contract,
