@@ -409,9 +409,14 @@ class Contract:
                                         self, prop_path, option_key, option_value
                                     )
                                 )
-                            except ValueError:
-                                # Unsupported option - warning already issued in __init__
-                                pass
+                            except ValueError as exc:
+                                refs_by_schema[schema_name].append(
+                                    UnsupportedColumnCheckReference(
+                                        self,
+                                        f"{prop_path}.logicalTypeOptions.{option_key}",
+                                        str(exc),
+                                    )
+                                )
 
                 # Required checks for columns with required: true
                 if prop.get('required') is True:

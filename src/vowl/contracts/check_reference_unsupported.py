@@ -26,6 +26,13 @@ class UnsupportedCheckReference(CheckReference):
     def error_message(self) -> str:
         return self._error_message
 
+    def get_check(self) -> dict:
+        """Return a synthetic check dict so base-class methods work."""
+        raw = self._contract.resolve(self._path)
+        if isinstance(raw, dict):
+            return raw
+        return {"name": None, "type": "unsupported", "description": self._error_message}
+
     def get_schema_name(self) -> str | None:
         return None
 

@@ -459,12 +459,15 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
         elif logical_type == "string":
             if val not in _STRING_FORMAT_PATTERNS:
-                warnings.warn(
-                    f"Unknown string format '{val}' at {self._path}",
-                    UserWarning,
-                    stacklevel=3,
-                )
-                raise ValueError(f"Unknown string format: {val}")
+                # Try interpreting as a JDK DateTimeFormatter pattern.
+                regex = _jdk_format_to_regex(val)
+                if regex is None:
+                    warnings.warn(
+                        f"Unknown string format '{val}' at {self._path}",
+                        UserWarning,
+                        stacklevel=3,
+                    )
+                    raise ValueError(f"Unknown string format: {val}")
 
         elif logical_type in ("date", "timestamp", "time"):
             regex = _jdk_format_to_regex(val)
@@ -576,7 +579,11 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
                 return count_where(not_null, range_check)
 
             if logical_type == "string":
-                pattern = _STRING_FORMAT_PATTERNS[val]
+                pattern = _STRING_FORMAT_PATTERNS.get(val)
+                if pattern is None:
+                    # Fall through to JDK format pattern (validated in __init__)
+                    pattern = _jdk_format_to_regex(val)
+                    assert pattern is not None  # guaranteed by _validate_format
                 cast_col = exp.TryCast(
                     this=col, to=exp.DataType.build("VARCHAR"), safe=True
                 )

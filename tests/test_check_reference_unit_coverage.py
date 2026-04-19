@@ -16,6 +16,7 @@ from vowl.contracts.check_reference import (
     UniqueCheckReference,
 )
 from vowl.contracts.check_reference_generated import _jdk_format_to_regex
+from vowl.contracts.check_reference_unsupported import UnsupportedColumnCheckReference
 from vowl.contracts.contract import Contract
 from vowl.contracts.models import get_latest_version
 
@@ -485,6 +486,28 @@ def test_format_date_unrecognized_jdk_token_skipped_with_warning(monkeypatch: py
     with pytest.warns(UserWarning, match="Could not convert JDK format"):
         with pytest.raises(ValueError, match="Cannot convert JDK format"):
             LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", "yyyy-GGGG-dd")
+
+
+@pytest.mark.parametrize(
+    ("logical_type", "fmt"),
+    [
+        ("integer", "i128"),
+        ("number", "f64"),
+        ("string", "password"),
+    ],
+)
+def test_non_actionable_format_produces_unsupported_check_reference(
+    monkeypatch: pytest.MonkeyPatch,
+    logical_type: str,
+    fmt: str,
+):
+    """Contract-level integration: non-actionable formats appear as ERROR refs, not silently dropped."""
+    contract = _make_format_contract(monkeypatch, logical_type=logical_type, fmt=fmt)
+    refs = contract.get_check_references_by_schema()["users"]
+
+    unsupported = [r for r in refs if isinstance(r, UnsupportedColumnCheckReference)]
+    assert len(unsupported) == 1
+    assert "format" in unsupported[0].path
 
 
 # ---------------------------------------------------------------------------
