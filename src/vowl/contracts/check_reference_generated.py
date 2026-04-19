@@ -246,6 +246,151 @@ class LogicalTypeCheckReference(GeneratedColumnCheckReference):
         return self._contract.resolve(self._path)
 
 
+# ---------------------------------------------------------------------------
+# Format option support: constants and helpers
+# ---------------------------------------------------------------------------
+
+_INTEGER_FORMAT_RANGES: dict[str, tuple[int, int]] = {
+    "i8": (-128, 127),
+    "i16": (-32_768, 32_767),
+    "i32": (-2_147_483_648, 2_147_483_647),
+    "i64": (-9_223_372_036_854_775_808, 9_223_372_036_854_775_807),
+    "u8": (0, 255),
+    "u16": (0, 65_535),
+    "u32": (0, 4_294_967_295),
+    "u64": (0, 18_446_744_073_709_551_615),
+}
+
+_STRING_FORMAT_PATTERNS: dict[str, str] = {
+    "uuid": r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    "email": r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+    "ipv4": r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])$",
+    "ipv6": r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$",
+    "hostname": r"^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z]{2,}$",
+    "uri": r"^[a-zA-Z][a-zA-Z0-9+.\-]*:",
+}
+
+# Formats that are recognized but produce no SQL check.
+_FORMAT_SKIP_SILENT: set[tuple[str, str]] = {
+    ("number", "f32"),
+    ("number", "f64"),
+    ("string", "password"),
+    ("string", "byte"),
+    ("string", "binary"),
+}
+
+_FORMAT_SKIP_WARN: set[tuple[str, str]] = {
+    ("integer", "i128"),
+    ("integer", "u128"),
+}
+
+# JDK DateTimeFormatter pattern letters (subset we recognize).
+_JDK_PATTERN_LETTERS = set("GyYMLdQqwWeFaAhHKkmsSNnVzZOXxpB")
+
+_JDK_TOKEN_MAP: dict[str, str] = {
+    "MM": r"(0[1-9]|1[0-2])",
+    "M": r"(0?[1-9]|1[0-2])",
+    "dd": r"(0[1-9]|[12]\d|3[01])",
+    "d": r"(0?[1-9]|[12]\d|3[01])",
+    "HH": r"([01]\d|2[0-3])",
+    "H": r"(\d|1\d|2[0-3])",
+    "hh": r"(0[1-9]|1[0-2])",
+    "h": r"(0?[1-9]|1[0-2])",
+    "mm": r"[0-5]\d",
+    "m": r"\d{1,2}",
+    "ss": r"[0-5]\d",
+    "s": r"\d{1,2}",
+    "a": r"(AM|PM|am|pm)",
+    "XXX": r"(Z|[+-]\d{2}:\d{2})",
+    "XX": r"(Z|[+-]\d{4})",
+    "X": r"(Z|[+-]\d{2})",
+    "ZZZZZ": r"(Z|[+-]\d{2}:\d{2})",
+    "ZZZ": r"[+-]\d{4}",
+    "ZZ": r"[+-]\d{4}",
+    "Z": r"[+-]\d{4}",
+}
+
+
+# Characters that are special in a regex pattern (outside character classes).
+_REGEX_META = frozenset(r"\.^$*+?{}[]|()")
+
+
+def _escape_literal(ch: str) -> str:
+    """Escape *ch* for use in a regex pattern outside a character class.
+
+    Unlike ``re.escape`` this leaves benign characters (``-``, `` ``, etc.)
+    unescaped so the resulting pattern is cleaner and avoids surprises in
+    SQL ``REGEXP_LIKE`` implementations.
+    """
+    return "\\" + ch if ch in _REGEX_META else ch
+
+
+def _jdk_format_to_regex(fmt: str) -> str | None:
+    """Convert a JDK DateTimeFormatter pattern string to a regex.
+
+    Returns ``None`` when the pattern contains tokens we cannot translate
+    (caller should emit a warning and skip the check).
+    """
+    result: list[str] = []
+    i = 0
+    n = len(fmt)
+
+    while i < n:
+        ch = fmt[i]
+
+        # Quoted literal section: 'text' or '' for a literal single-quote.
+        if ch == "'":
+            i += 1
+            if i < n and fmt[i] == "'":
+                result.append("'")
+                i += 1
+                continue
+            literal: list[str] = []
+            while i < n and fmt[i] != "'":
+                literal.append(_escape_literal(fmt[i]))
+                i += 1
+            if i < n:
+                i += 1  # skip closing quote
+            result.append("".join(literal))
+            continue
+
+        # JDK pattern letter — collect consecutive identical letters.
+        if ch.isalpha() and ch in _JDK_PATTERN_LETTERS:
+            start = i
+            while i < n and fmt[i] == ch:
+                i += 1
+            token = fmt[start:i]
+
+            # Year tokens: any count of 'y' or 'Y'.
+            if ch in ("y", "Y"):
+                count = len(token)
+                result.append(rf"\d{{{count}}}" if count > 1 else r"\d{1,4}")
+                continue
+
+            # Fractional-second tokens: any count of 'S'.
+            if ch == "S":
+                result.append(rf"\d{{{len(token)}}}")
+                continue
+
+            mapped = _JDK_TOKEN_MAP.get(token)
+            if mapped is None:
+                return None  # unrecognized JDK token
+            result.append(mapped)
+            continue
+
+        # Non-pattern alphabetic character (e.g. 'T') — literal.
+        if ch.isalpha():
+            result.append(_escape_literal(ch))
+            i += 1
+            continue
+
+        # Any other character — literal.
+        result.append(_escape_literal(ch))
+        i += 1
+
+    return "^" + "".join(result) + "$"
+
+
 class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated logicalTypeOptions check."""
 
@@ -258,6 +403,7 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         "exclusiveMinimum",
         "exclusiveMaximum",
         "multipleOf",
+        "format",
     }
 
     def __init__(self, contract: Contract, property_path: str, option_key: str, option_value: Any):
@@ -273,6 +419,73 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         super().__init__(contract, property_path, f"logicalTypeOptions.{option_key}")
         self._option_key = option_key
         self._option_value = option_value
+
+        if option_key == "format":
+            self._validate_format()
+
+    def _validate_format(self) -> None:
+        """Check that this logical_type + format combo is actionable.
+
+        Raises ``ValueError`` (caught by the caller in *contract.py*) when
+        the combination is recognised but cannot produce a SQL check.
+        """
+        logical_type = self.get_logical_type()
+        val = self._option_value
+
+        # Known silent skips (metadata-only, not checkable).
+        if (logical_type, val) in _FORMAT_SKIP_SILENT:
+            raise ValueError(
+                f"Format '{val}' is metadata-only for logical type '{logical_type}'"
+            )
+
+        # Known warn-and-skip (exceeds SQL numeric range).
+        if (logical_type, val) in _FORMAT_SKIP_WARN:
+            warnings.warn(
+                f"Format '{val}' exceeds SQL numeric range; "
+                f"skipping check at {self._path}",
+                UserWarning,
+                stacklevel=3,
+            )
+            raise ValueError(f"Format '{val}' exceeds SQL numeric range")
+
+        if logical_type == "integer":
+            if val not in _INTEGER_FORMAT_RANGES:
+                warnings.warn(
+                    f"Unknown integer format '{val}' at {self._path}",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                raise ValueError(f"Unknown integer format: {val}")
+
+        elif logical_type == "string":
+            if val not in _STRING_FORMAT_PATTERNS:
+                warnings.warn(
+                    f"Unknown string format '{val}' at {self._path}",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                raise ValueError(f"Unknown string format: {val}")
+
+        elif logical_type in ("date", "timestamp", "time"):
+            regex = _jdk_format_to_regex(val)
+            if regex is None:
+                warnings.warn(
+                    f"Could not convert JDK format '{val}' to regex at {self._path}",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                raise ValueError(f"Cannot convert JDK format to regex: {val}")
+
+        elif logical_type is not None:
+            warnings.warn(
+                f"Format option not supported for logical type "
+                f"'{logical_type}' at {self._path}",
+                UserWarning,
+                stacklevel=3,
+            )
+            raise ValueError(
+                f"Format not supported for logical type '{logical_type}'"
+            )
 
     def get_check(self) -> DataQuality:
         if self._generated_check is None:
@@ -348,6 +561,44 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
             cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
             mod_check = exp.Mod(this=cast_col, expression=exp.Literal.number(val))
             return count_where(not_null, mod_check.neq(exp.Literal.number(0)))
+        elif key == "format":
+            logical_type = self.get_logical_type()
+
+            if logical_type == "integer":
+                min_val, max_val = _INTEGER_FORMAT_RANGES[val]
+                cast_col = exp.TryCast(
+                    this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True
+                )
+                range_check = exp.Or(
+                    this=cast_col < exp.Literal.number(min_val),
+                    expression=cast_col > exp.Literal.number(max_val),
+                )
+                return count_where(not_null, range_check)
+
+            if logical_type == "string":
+                pattern = _STRING_FORMAT_PATTERNS[val]
+                cast_col = exp.TryCast(
+                    this=col, to=exp.DataType.build("VARCHAR"), safe=True
+                )
+                pattern_check = exp.Not(
+                    this=exp.RegexpLike(
+                        this=cast_col, expression=exp.Literal.string(pattern)
+                    )
+                )
+                return count_where(not_null, pattern_check)
+
+            # date / timestamp / time — already validated in _validate_format
+            pattern = _jdk_format_to_regex(val)
+            assert pattern is not None  # guaranteed by _validate_format
+            cast_col = exp.TryCast(
+                this=col, to=exp.DataType.build("VARCHAR"), safe=True
+            )
+            pattern_check = exp.Not(
+                this=exp.RegexpLike(
+                    this=cast_col, expression=exp.Literal.string(pattern)
+                )
+            )
+            return count_where(not_null, pattern_check)
 
         raise ValueError(
             f"No query implementation for logicalTypeOptions key '{key}'. "
@@ -369,7 +620,27 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
             "multipleOf": f"Column '{col_name}' must be a multiple of {val}",
         }
 
+        if key == "format":
+            return self._format_description(col_name)
+
         return descriptions.get(key, f"Column '{col_name}' must satisfy {key}={val}")
+
+    def _format_description(self, col_name: str) -> str:
+        logical_type = self.get_logical_type()
+        val = self._option_value
+
+        if logical_type == "integer":
+            min_val, max_val = _INTEGER_FORMAT_RANGES[val]
+            return (
+                f"Column '{col_name}' must fit in {val} range "
+                f"({min_val} to {max_val})"
+            )
+
+        if logical_type == "string":
+            return f"Column '{col_name}' must match {val} format"
+
+        # date / timestamp / time
+        return f"Column '{col_name}' must match format {val}"
 
 
 class RequiredCheckReference(GeneratedColumnCheckReference):
