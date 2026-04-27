@@ -553,8 +553,10 @@ class ValidationResult:
 
     @staticmethod
     def _arrow_safe(value):
-        """Coerce non-scalar types to strings so Arrow columns stay scalar-typed."""
-        return str(value) if isinstance(value, (list, dict)) else value
+        """Coerce metadata values to strings so Arrow columns stay consistently typed."""
+        if value is None:
+            return None
+        return str(value)
 
     def get_check_results_df(self) -> nw.DataFrame:
         _safe = self._arrow_safe
