@@ -8,6 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Nil
 
+## [0.0.2] - 2026-04-27
+
+### 🎉 vowl is now an official ODCS vendor!
+
+We're thrilled to announce that **vowl** has been recognised as an official [Open Data Contract Standard (ODCS)](https://bitol.io/open-data-contract-standard/) vendor. This is a proud milestone for the project and a testament to the community's commitment to open, interoperable data contracts.
+
+### Fixed
+- Getting outputs no longer crashes when a contract contains a list-valued `mustBe` field (#23).
+- Broken link on the Known Issues documentation page (#19).
+- Git link sanitisation issue in documentation (#15).
+
+### Changed (Breaking)
+- Check metadata now uses `check_definition` and `contract_definition` (#21, #26). This replaces several top-level metadata fields:
+  - **Renamed fields:** `schema` → `schema_name`, `rule` → `rendered_implementation`.
+  - **Removed from top-level:** `dimension`, `type`, `description`, `severity`, `unit` — these are no longer top-level keys in `CheckResultMetadata`.
+  - **`check_definition`** carries the resolved/generated check definition dict. Auto-generated checks are tagged with `vowl_generated_check`.
+  - **`contract_definition`** carries the raw ODCS contract content at the check's JSONPath.
+  - **Output DataFrame:** `get_check_results_df()` no longer flattens definitions into top-level columns. Pass `include_check_definition=True` and/or `include_contract_definition=True` to include them as JSON-serialised columns. `save()` accepts the same keyword arguments.
+  - Code that accesses `metadata["schema"]`, `metadata["rule"]`, `metadata["unit"]`, etc. must be updated to use the new key names or read from `metadata["check_definition"]` / `metadata["contract_definition"]`.
+
+### Added
+- Logical type `options.format` validation — contracts can now specify format constraints (e.g. date formats) on logical types, and vowl will auto-generate format checks. See the [Format Checks](https://govtech-data-practice.github.io/vowl/contracts/#format-checks) docs for details (#25).
+- DuckDB attach example demonstrating cross-database validation (#18).
+- Open Graph and SEO metadata for the documentation site (#14).
+- Google site verification meta tag (#12).
+- Updated Jupyter notebook examples (#16).
+- README badge and data contract example link (#13, #22).
+
+### Dependencies
+- Bumped `pytest` from 9.0.2 to 9.0.3 (#20).
+- Bumped `cryptography` (#17).
+- Updated Python Docker tag to 3.14.3 (#11).
+
 ## [0.0.1] - 2026-04-02
 
 ### 🎉 Celebrating Open Source
@@ -34,5 +67,6 @@ Initial public release of **vowl**.
 - `THIRD_PARTY_NOTICES` and `LICENSE_AUDIT_REPORT.md`.
 - `CONTRIBUTING.md` with development setup and release workflow.
 
-[Unreleased]: https://github.com/govtech-data-practice/vowl/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/govtech-data-practice/vowl/compare/v0.0.2...HEAD
+[0.0.2]: https://github.com/govtech-data-practice/vowl/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/govtech-data-practice/vowl/releases/tag/v0.0.1

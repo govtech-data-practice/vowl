@@ -855,8 +855,8 @@ result.display_full_report()
 | Capability | Description | Status |
 |------------|-------------|--------|
 | � **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
-| 📅 **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned |
-
+| 📅 **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned || 📅 **CLI Interface** | Command-line interface for running validations directly from the terminal | Planned |
+| 📅 **vowl-ui** | Web-based validation interface for vowl | Planned |
 ---
 
 ## Contributing
