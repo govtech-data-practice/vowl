@@ -65,7 +65,7 @@ class StubCheckReference:
             "schema_name": self._schema_name,
             "is_generated": self.is_generated(),
             "engine": "sql",
-            "contract_definition": dict(self._check),
+            "check_definition": dict(self._check),
         }
 
         if self._column_name:

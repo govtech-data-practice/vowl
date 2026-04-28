@@ -549,6 +549,8 @@ class ValidationResult:
         'check_ref_type',
         'logical_type',
         'is_generated',
+        'check_definition',
+        'contract_definition',
     ]
 
     @staticmethod
@@ -558,18 +560,30 @@ class ValidationResult:
             return None
         return str(value)
 
-    def get_check_results_df(self) -> nw.DataFrame:
+    def get_check_results_df(
+        self,
+        *,
+        include_check_definition: bool = False,
+        include_contract_definition: bool = False,
+    ) -> nw.DataFrame:
+        """Return a DataFrame with one row per check result.
+
+        Args:
+            include_check_definition: When *True* a
+                ``check_definition`` column is appended containing the
+                resolved/generated check definition serialised as JSON.
+            include_contract_definition: When *True* a
+                ``contract_definition`` column is appended containing the
+                raw ODCS contract content at the check's JSONPath.
+        """
         _safe = self._arrow_safe
         data = []
         extra_keys: list[str] = []
         for cr in self.check_results:
-            # Flatten contract_definition into top-level columns so every
-            # contract field gets its own column in the output.  Computed
-            # metadata fields are overlaid last so they take precedence.
             raw_meta = dict(cr.metadata)
+            check_def = raw_meta.pop("check_definition", {})
             contract_def = raw_meta.pop("contract_definition", {})
-            flat_meta = {k: _safe(v) for k, v in contract_def.items()}
-            flat_meta.update({k: _safe(v) for k, v in raw_meta.items()})
+            flat_meta = {k: _safe(v) for k, v in raw_meta.items()}
             row = {
                 'check_name': cr.check_name,
                 'status': cr.status,
@@ -580,6 +594,10 @@ class ValidationResult:
                 'execution_time_ms': cr.execution_time_ms,
                 **flat_meta,
             }
+            if include_check_definition:
+                row['check_definition'] = json.dumps(check_def, default=str) if check_def else None
+            if include_contract_definition:
+                row['contract_definition'] = json.dumps(contract_def, default=str) if contract_def else None
             data.append(row)
             for key in row:
                 if key not in self._CHECK_RESULTS_COLUMN_ORDER and key not in extra_keys:
@@ -593,12 +611,19 @@ class ValidationResult:
             eager_only=True,
         )
 
-    def save(self, output_dir: str = ".", prefix: str = "vowl_results") -> ValidationResult:
+    def save(
+        self,
+        output_dir: str = ".",
+        prefix: str = "vowl_results",
+        *,
+        include_check_definition: bool = False,
+        include_contract_definition: bool = False,
+    ) -> ValidationResult:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
         check_csv = output_path / f"{prefix}_check_results.csv"
-        _pa_csv.write_csv(self.get_check_results_df().to_arrow(), str(check_csv))
+        _pa_csv.write_csv(self.get_check_results_df(include_check_definition=include_check_definition, include_contract_definition=include_contract_definition).to_arrow(), str(check_csv))
 
         consolidated = self.get_consolidated_output_dfs()
         saved_files = [str(check_csv)]

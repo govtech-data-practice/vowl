@@ -109,10 +109,10 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
 
     def get_result_metadata(self):
         metadata = super().get_result_metadata()
-        cd = metadata.get("contract_definition", {})
+        cd = metadata.get("check_definition", {})
         if not cd.get("description"):
             cd["description"] = self._auto_description()
-            metadata["contract_definition"] = cd
+            metadata["check_definition"] = cd
         return metadata
 
 
@@ -308,10 +308,10 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
 
     def get_result_metadata(self):
         metadata = super().get_result_metadata()
-        cd = metadata.get("contract_definition", {})
+        cd = metadata.get("check_definition", {})
         if not cd.get("description"):
             cd["description"] = self._auto_description()
-            metadata["contract_definition"] = cd
+            metadata["check_definition"] = cd
         return metadata
 
 

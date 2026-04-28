@@ -18,10 +18,12 @@ if TYPE_CHECKING:
 class CheckResultMetadata(TypedDict, total=False):
     """Stable metadata derived from a check reference and its contract.
 
-    Computed fields are derived by the check reference; ``contract_definition``
-    carries the raw ODCS quality entry so that every contract field (tags,
-    customProperties, authoritativeDefinitions, …) is available to consumers
-    without manual forwarding.
+    Computed fields are derived by the check reference; ``check_definition``
+    carries the resolved/generated check definition (which may be synthesised
+    for generated checks), and ``contract_definition`` carries the raw ODCS
+    contract content at the check's JSONPath so that every contract field
+    (tags, customProperties, authoritativeDefinitions, …) is available to
+    consumers without manual forwarding.
     """
 
     check_path: str
@@ -37,6 +39,7 @@ class CheckResultMetadata(TypedDict, total=False):
     multi_source: bool
     aggregation_type: str
     engine: str
+    check_definition: dict[str, Any]
     contract_definition: dict[str, Any]
 
 
@@ -99,17 +102,40 @@ class CheckReference(ABC):
         unit = self.get_check().get("unit")
         return unit if isinstance(unit, str) else None
 
+    def get_raw_contract_definition(self) -> dict[str, Any] | Any | None:
+        """Return the raw contract content at this check's JSONPath.
+
+        For user-authored quality checks this returns the original ODCS
+        quality entry dict.  For generated checks (e.g. logicalType,
+        logicalTypeOptions) it returns the raw value at the path (which
+        may be a scalar, dict, or ``None``).
+        """
+        if self._contract is None:
+            return None
+        raw = self._contract.resolve(self._path)
+        if isinstance(raw, dict):
+            return dict(raw)  # shallow copy
+        return raw
+
     def get_result_metadata(self) -> CheckResultMetadata:
         """Build stable CheckResult metadata from the contract context.
 
         Computed fields (``check_path``, ``target``, ``operator``, …) are
-        derived by the check reference.  The raw ODCS quality entry is
-        attached as ``contract_definition`` so that every contract field
-        automatically flows through without manual forwarding.
+        derived by the check reference.  ``check_definition`` contains
+        the resolved check dict (which may be generated/synthesised for
+        auto-generated checks).  ``contract_definition`` contains the
+        raw ODCS contract content at the check's JSONPath.
         """
         check = self.get_check()
         schema_name = self.get_schema_name()
         operator, _expected = self.get_expected_value()
+        raw_def = self.get_raw_contract_definition()
+        check_def = dict(check)
+        if self.is_generated():
+            tags = list(check_def.get("tags", []))
+            if "vowl_generated_check" not in tags:
+                tags.append("vowl_generated_check")
+            check_def["tags"] = tags
         metadata: CheckResultMetadata = {
             "check_path": self.path,
             "check_ref_type": type(self).__name__,
@@ -117,7 +143,8 @@ class CheckReference(ABC):
             "operator": operator,
             "is_generated": self.is_generated(),
             "engine": self.get_execution_engine(),
-            "contract_definition": dict(check),
+            "check_definition": check_def,
+            "contract_definition": raw_def if isinstance(raw_def, dict) else {"value": raw_def} if raw_def is not None else {},
         }
 
         column_name = self.get_column_name()
