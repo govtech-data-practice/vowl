@@ -873,7 +873,7 @@ def test_validation_result_get_check_results_df_contract_definition_json():
     )
     result = ValidationResult(summary, [cr], contract, SimpleNamespace(adapters={}), ["t"])
 
-    df = result.get_check_results_df().to_pandas()
+    df = result.get_check_results_df(include_contract_definition=True).to_pandas()
     # contract_definition is a single JSON column
     assert "contract_definition" in df.columns
     parsed = json.loads(df["contract_definition"].iloc[0])
