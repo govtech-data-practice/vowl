@@ -27,6 +27,7 @@ We're thrilled to announce that **vowl** has been recognised as an official [Ope
   - Code that accesses `metadata["schema"]`, `metadata["rule"]`, `metadata["unit"]`, etc. must be updated to use the new key names or read from `metadata["contract_definition"]`.
 
 ### Added
+- Logical type `options.format` validation — contracts can now specify format constraints (e.g. date formats) on logical types, and vowl will auto-generate format checks. See the [Format Checks](https://govtech-data-practice.github.io/vowl/contracts/#format-checks) docs for details (#25).
 - DuckDB attach example demonstrating cross-database validation (#18).
 - Open Graph and SEO metadata for the documentation site (#14).
 - Google site verification meta tag (#12).
