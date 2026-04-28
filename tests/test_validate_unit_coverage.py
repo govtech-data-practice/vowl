@@ -840,6 +840,53 @@ def test_validation_result_get_check_results_df():
     assert checks_df.loc[checks_df["check_name"] == "rule_d", "message"].iloc[0] == "x" * 400
 
 
+def test_validation_result_get_check_results_df_contract_definition_json():
+    """contract_definition is serialised as a JSON column, not flattened."""
+    import json
+
+    summary = {
+        "validation_summary": {
+            "total_checks": 1,
+            "passed": 1,
+            "failed": 0,
+            "errors": 0,
+            "total_rows_by_schema": {},
+            "config": {},
+            "failed_rows": 0,
+            "total_execution_time_ms": 0.0,
+            "success_rate": 100.0,
+            "connection_results": {},
+        },
+        "check_results": [],
+        "contract_metadata": {},
+    }
+    contract = SimpleNamespace(get_api_version=lambda: "v3.1.0", get_metadata=lambda: {"id": "c"}, contract_data={})
+    cr = CheckResult(
+        "chk",
+        "PASSED",
+        "ok",
+        failed_rows=_nw_df({}),
+        metadata={
+            "schema_name": "t",
+            "contract_definition": {"type": "sql", "query": "SELECT 1", "mustBe": 0, "tags": ["a"]},
+        },
+    )
+    result = ValidationResult(summary, [cr], contract, SimpleNamespace(adapters={}), ["t"])
+
+    df = result.get_check_results_df().to_pandas()
+    # contract_definition is a single JSON column
+    assert "contract_definition" in df.columns
+    parsed = json.loads(df["contract_definition"].iloc[0])
+    assert parsed == {"type": "sql", "query": "SELECT 1", "mustBe": 0, "tags": ["a"]}
+    # Flattened keys from contract_definition must NOT leak as top-level columns
+    assert "query" not in df.columns
+    assert "mustBe" not in df.columns
+
+    # include_contract_definition=False omits the column entirely
+    df_no_cd = result.get_check_results_df(include_contract_definition=False).to_pandas()
+    assert "contract_definition" not in df_no_cd.columns
+
+
 def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
     summary = {
         "validation_summary": {
