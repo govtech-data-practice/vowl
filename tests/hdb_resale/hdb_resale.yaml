@@ -41,6 +41,7 @@ schema:
         logicalType: string
         logicalTypeOptions:
           pattern: ^\d{4}-(0[1-9]|1[0-2])$
+          format: "yyyy-MM"
           minLength: 7
           maxLength: 7
         required: true
@@ -131,6 +132,9 @@ schema:
           The street name where the HDB flat is located, typically including the
           area name and avenue/street number
         logicalType: string
+        logicalTypeOptions:
+          minLength: 1
+          maxLength: 32
         required: true
         unique: false
         primaryKey: false
@@ -176,6 +180,9 @@ schema:
       - name: floor_area_sqm
         description: The floor area of the HDB flat in square meters
         logicalType: number
+        logicalTypeOptions:
+          minimum: 1
+          maximum: 500
         required: true
         unique: false
         primaryKey: false
@@ -210,6 +217,10 @@ schema:
           The year when the lease of the HDB flat commenced, indicating when the
           99-year lease period began
         logicalType: integer
+        logicalTypeOptions:
+          format: i16
+          minimum: 1960
+          maximum: 2030
         required: true
         unique: false
         primaryKey: false
@@ -245,6 +256,9 @@ schema:
       - name: resale_price
         description: The transaction price of the HDB flat resale in Singapore dollars
         logicalType: number
+        logicalTypeOptions:
+          minimum: 0
+          maximum: 2000000
         required: true
         examples:
           - '232000'

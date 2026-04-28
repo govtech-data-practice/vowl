@@ -15,6 +15,8 @@ from vowl.contracts.check_reference import (
     SQLTableCheckReference,
     UniqueCheckReference,
 )
+from vowl.contracts.check_reference_generated import _jdk_format_to_regex
+from vowl.contracts.check_reference_unsupported import UnsupportedColumnCheckReference
 from vowl.contracts.contract import Contract
 from vowl.contracts.models import get_latest_version
 
@@ -245,9 +247,9 @@ def test_generated_column_reference_accessors_return_property_context(monkeypatc
 def test_logical_type_options_reference_rejects_unsupported_option(monkeypatch: pytest.MonkeyPatch):
     contract = _make_contract(monkeypatch)
 
-    with pytest.warns(UserWarning, match="Unsupported logicalTypeOptions key 'format'"):
-        with pytest.raises(ValueError, match="Unsupported logicalTypeOptions key: format"):
-            LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", "uuid")
+    with pytest.warns(UserWarning, match="Unsupported logicalTypeOptions key 'bogus'"):
+        with pytest.raises(ValueError, match="Unsupported logicalTypeOptions key: bogus"):
+            LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "bogus", "whatever")
 
 
 @pytest.mark.parametrize(
@@ -357,3 +359,192 @@ def test_generated_references_warn_and_raise_when_schema_context_is_missing(
     with pytest.warns(UserWarning, match="Could not generate"):
         with pytest.raises(ValueError, match="Cannot generate"):
             ref._build_ast()
+
+
+# ---------------------------------------------------------------------------
+# Format option tests
+# ---------------------------------------------------------------------------
+
+
+def _make_format_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    logical_type: str,
+    fmt: str,
+) -> Contract:
+    """Create a minimal contract with a single property carrying a format option."""
+    return _make_contract(
+        monkeypatch,
+        properties=[
+            {
+                "name": "col",
+                "logicalType": logical_type,
+                "logicalTypeOptions": {"format": fmt},
+            }
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    ("fmt", "description_fragment", "query_fragment"),
+    [
+        ("i8", "i8 range (-128 to 127)", "< -128"),
+        ("i32", "i32 range (-2147483648 to 2147483647)", "< -2147483648"),
+        ("u8", "u8 range (0 to 255)", "< 0"),
+        ("u64", "u64 range", "> 18446744073709551615"),
+    ],
+)
+def test_format_integer_generates_range_check(
+    monkeypatch: pytest.MonkeyPatch,
+    fmt: str,
+    description_fragment: str,
+    query_fragment: str,
+):
+    contract = _make_format_contract(monkeypatch, logical_type="integer", fmt=fmt)
+    ref = LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", fmt)
+    check = ref.get_check()
+
+    assert check["type"] == "sql"
+    assert description_fragment in check["description"]
+    assert "COUNT(*)" in check["query"]
+    assert query_fragment in check["query"]
+
+
+@pytest.mark.parametrize("fmt", ["i128", "u128"])
+def test_format_integer_128_skipped_with_warning(monkeypatch: pytest.MonkeyPatch, fmt: str):
+    contract = _make_format_contract(monkeypatch, logical_type="integer", fmt=fmt)
+
+    with pytest.warns(UserWarning, match="exceeds SQL numeric range"):
+        with pytest.raises(ValueError, match="exceeds SQL numeric range"):
+            LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", fmt)
+
+
+@pytest.mark.parametrize(
+    ("fmt", "description_fragment", "expected_pattern_fragment"),
+    [
+        ("uuid", "uuid format", "[0-9a-fA-F]"),
+        ("email", "email format", "@"),
+        ("ipv4", "ipv4 format", "25[0-5]"),
+    ],
+)
+def test_format_string_generates_regex_check(
+    monkeypatch: pytest.MonkeyPatch,
+    fmt: str,
+    description_fragment: str,
+    expected_pattern_fragment: str,
+):
+    contract = _make_format_contract(monkeypatch, logical_type="string", fmt=fmt)
+    ref = LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", fmt)
+    check = ref.get_check()
+
+    assert check["type"] == "sql"
+    assert description_fragment in check["description"]
+    assert "COUNT(*)" in check["query"]
+    assert expected_pattern_fragment in check["query"]
+
+
+@pytest.mark.parametrize("fmt", ["password", "byte", "binary"])
+def test_format_string_skip_non_validatable(monkeypatch: pytest.MonkeyPatch, fmt: str):
+    contract = _make_format_contract(monkeypatch, logical_type="string", fmt=fmt)
+
+    with pytest.raises(ValueError, match="metadata-only"):
+        LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", fmt)
+
+
+@pytest.mark.parametrize("fmt", ["f32", "f64"])
+def test_format_number_skipped_silently(monkeypatch: pytest.MonkeyPatch, fmt: str):
+    contract = _make_format_contract(monkeypatch, logical_type="number", fmt=fmt)
+
+    with pytest.raises(ValueError, match="metadata-only"):
+        LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", fmt)
+
+
+@pytest.mark.parametrize(
+    ("fmt", "description_fragment"),
+    [
+        ("yyyy-MM-dd", "match format yyyy-MM-dd"),
+        ("yyyy-MM-dd HH:mm:ss", "match format yyyy-MM-dd HH:mm:ss"),
+    ],
+)
+def test_format_date_generates_regex_check(
+    monkeypatch: pytest.MonkeyPatch,
+    fmt: str,
+    description_fragment: str,
+):
+    contract = _make_format_contract(monkeypatch, logical_type="date", fmt=fmt)
+    ref = LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", fmt)
+    check = ref.get_check()
+
+    assert check["type"] == "sql"
+    assert description_fragment in check["description"]
+    assert "COUNT(*)" in check["query"]
+
+
+def test_format_date_unrecognized_jdk_token_skipped_with_warning(monkeypatch: pytest.MonkeyPatch):
+    contract = _make_format_contract(monkeypatch, logical_type="date", fmt="yyyy-GGGG-dd")
+
+    with pytest.warns(UserWarning, match="Could not convert JDK format"):
+        with pytest.raises(ValueError, match="Cannot convert JDK format"):
+            LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "format", "yyyy-GGGG-dd")
+
+
+@pytest.mark.parametrize(
+    ("logical_type", "fmt"),
+    [
+        ("integer", "i128"),
+        ("number", "f64"),
+        ("string", "password"),
+    ],
+)
+def test_non_actionable_format_produces_unsupported_check_reference(
+    monkeypatch: pytest.MonkeyPatch,
+    logical_type: str,
+    fmt: str,
+):
+    """Contract-level integration: non-actionable formats appear as ERROR refs, not silently dropped."""
+    contract = _make_format_contract(monkeypatch, logical_type=logical_type, fmt=fmt)
+    refs = contract.get_check_references_by_schema()["users"]
+
+    unsupported = [r for r in refs if isinstance(r, UnsupportedColumnCheckReference)]
+    assert len(unsupported) == 1
+    assert "format" in unsupported[0].path
+
+
+# ---------------------------------------------------------------------------
+# _jdk_format_to_regex unit tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("fmt", "expected_regex"),
+    [
+        ("yyyy-MM-dd", r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$"),
+        (
+            "yyyy-MM-dd HH:mm:ss",
+            r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]) ([01]\d|2[0-3]):[0-5]\d:[0-5]\d$",
+        ),
+        (
+            "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+            r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d\.\d{3}(Z|[+-]\d{2}:\d{2})$",
+        ),
+    ],
+)
+def test_jdk_format_to_regex_common_patterns(fmt: str, expected_regex: str):
+    assert _jdk_format_to_regex(fmt) == expected_regex
+
+
+def test_jdk_format_to_regex_returns_none_for_unrecognized_token():
+    assert _jdk_format_to_regex("yyyy-GGGG-dd") is None
+
+
+def test_jdk_format_to_regex_handles_quoted_literals():
+    result = _jdk_format_to_regex("yyyy'T'MM")
+    assert result is not None
+    assert "T" in result
+
+
+def test_jdk_format_to_regex_handles_non_pattern_letters():
+    """T is not a JDK pattern letter and should be treated as a literal."""
+    result = _jdk_format_to_regex("yyyyMMddTHHmmss")
+    assert result is not None
+    assert "T" in result

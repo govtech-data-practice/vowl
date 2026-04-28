@@ -14,6 +14,7 @@ SQL Server does not support `REGEXP_LIKE`. Pattern-based checks, including `logi
 
 - `logicalType` checks that validate string format via regex (e.g. `date`, `timestamp`, `time`)
 - `logicalTypeOptions.pattern` checks
+- `logicalTypeOptions.format` checks for string, date, timestamp, and time logical types (these generate regex-based SQL)
 - `library` metric `invalidValues` with `arguments.pattern`
 
 **Workaround:** Use the DuckDB ATTACH compatibility mode to route queries through DuckDB, which has full regex support:

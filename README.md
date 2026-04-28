@@ -307,6 +307,7 @@ The auto-generated check types currently cover:
 | `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum |
 | `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum |
 | `logicalTypeOptions.multipleOf` | Value is a multiple of the configured number |
+| `logicalTypeOptions.format` | Value satisfies the declared format (see [Format Checks](#format-checks) below) |
 | `required: true` | Column contains no `NULL` values |
 | `unique: true` | Non-null values are unique |
 | `primaryKey: true` | Values are both unique and non-null |
@@ -392,6 +393,59 @@ produces three generated check references pointing at:
 | `$.schema[0].properties[...].required` | `RequiredCheckReference` |
 
 Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, `vowl` also generates a `logicalType` SQL check automatically. You only need to define extra `quality` entries when you want custom business rules beyond the contract metadata.
+
+### Format Checks
+
+The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`:
+
+**Integer formats** — validates that values fall within the range of a fixed-width integer type:
+
+| `format` | Min | Max |
+|----------|-----|-----|
+| `i8` | -128 | 127 |
+| `i16` | -32,768 | 32,767 |
+| `i32` | -2,147,483,648 | 2,147,483,647 |
+| `i64` | -9,223,372,036,854,775,808 | 9,223,372,036,854,775,807 |
+| `u8` | 0 | 255 |
+| `u16` | 0 | 65,535 |
+| `u32` | 0 | 4,294,967,295 |
+| `u64` | 0 | 18,446,744,073,709,551,615 |
+
+`i128` and `u128` are recognised but skipped because their ranges exceed what SQL engines can represent.
+
+**String formats** — validates values against a built-in regex pattern:
+
+| `format` | What it checks |
+|----------|----------------|
+| `uuid` | UUID v1-v5 hex format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
+| `email` | Basic `local@domain.tld` structure |
+| `ipv4` | Dotted-decimal IPv4 address (`0.0.0.0` - `255.255.255.255`) |
+| `ipv6` | Full-form colon-separated IPv6 address |
+| `hostname` | RFC-952 hostname with TLD |
+| `uri` | URI with a valid scheme prefix (e.g. `https:`, `s3:`) |
+
+`password`, `byte`, and `binary` are recognised but skipped because they cannot be validated against data.
+
+**Number formats** — `f32` and `f64` are recognised but produce no check (metadata-only).
+
+**Date, timestamp and time formats** — accepts a JDK DateTimeFormatter pattern (e.g. `yyyy-MM-dd`). `vowl` converts the pattern to a regex and validates that string-cast values match. Supported tokens include `yyyy`, `yy`, `MM`, `dd`, `HH`, `mm`, `ss`, `SSS`, and timezone offsets (`X`/`XXX`/`Z`). If a pattern contains tokens `vowl` cannot translate, the check is skipped with a warning.
+
+```yaml
+- name: age
+  logicalType: integer
+  logicalTypeOptions:
+    format: u8           # 0 – 255
+
+- name: request_id
+  logicalType: string
+  logicalTypeOptions:
+    format: uuid
+
+- name: created_at
+  logicalType: timestamp
+  logicalTypeOptions:
+    format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
+```
 
 ### Validation Results
 

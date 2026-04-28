@@ -201,6 +201,8 @@ class MultiSourceAdapter(BaseAdapter):
                 referenced_tables: set[str] = set()
                 for check_ref in check_refs_by_schema[schema_name]:
                     check = check_ref.get_check()
+                    if not isinstance(check, dict):
+                        continue
                     query = check.get("query")
                     if query:
                         referenced_tables |= self._detect_tables_in_query(query)
@@ -272,6 +274,18 @@ class MultiSourceAdapter(BaseAdapter):
             single_table_refs: list[CheckReference] = []
 
             for check_ref in check_refs:
+                from ..contracts.check_reference_unsupported import UnsupportedCheckReference
+                if isinstance(check_ref, UnsupportedCheckReference):
+                    all_results.append(
+                        CheckResult(
+                            check_name=check_ref.get_check_name(),
+                            status="ERROR",
+                            details=check_ref.error_message,
+                            metadata=dict(check_ref.get_result_metadata()),
+                            execution_time_ms=0,
+                        )
+                    )
+                    continue
                 if self._is_multi_table_check(check_ref):
                     multi_table_refs.append(check_ref)
                 else:
