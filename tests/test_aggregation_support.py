@@ -184,7 +184,7 @@ class TestSQLCheckReferenceProperties:
         )
         metadata = ref.get_result_metadata()
         assert metadata["aggregation_type"] == "count"
-        assert metadata["contract_definition"]["unit"] == "rows"
+        assert metadata["check_definition"]["unit"] == "rows"
 
 
 # ─── Stub infrastructure (reused from test_sql_executors_unit_coverage) ──
@@ -265,7 +265,7 @@ class StubCheckReference:
             "schema_name": self._schema_name,
             "is_generated": False,
             "engine": "sql",
-            "contract_definition": dict(self._check),
+            "check_definition": dict(self._check),
         }
         metadata["aggregation_type"] = self.aggregation_type
         return metadata
@@ -579,7 +579,7 @@ class TestPlainSelectExecutor:
 
         assert result.status == "FAILED"
         assert result.metadata["aggregation_type"] == "none"
-        assert result.metadata["contract_definition"]["unit"] == "rows"
+        assert result.metadata["check_definition"]["unit"] == "rows"
         assert result.actual_value == 3
         assert result.failed_rows_count == 3
         # Should have executed a COUNT wrapper, not the raw query
@@ -619,7 +619,7 @@ class TestPlainSelectExecutor:
         )
 
         result = executor.run_single_check(check_ref)
-        assert result.metadata["contract_definition"]["unit"] == "percent"
+        assert result.metadata["check_definition"]["unit"] == "percent"
 
     def test_unit_absent_when_not_specified(self):
         connection = StubRawSQLConnection(lambda q: StubFetchOneResult((0,)))
@@ -627,7 +627,7 @@ class TestPlainSelectExecutor:
         check_ref = StubCheckReference(rendered_query="SELECT COUNT(*) FROM t")
 
         result = executor.run_single_check(check_ref)
-        assert "unit" not in result.metadata.get("contract_definition", {})
+        assert "unit" not in result.metadata.get("check_definition", {})
 
     def test_percent_count_query_has_zero_failed_rows_count(self):
         """COUNT query with unit=percent should not be treated as a row count."""
@@ -648,7 +648,7 @@ class TestPlainSelectExecutor:
         result = executor.run_single_check(check_ref)
 
         assert result.status == "FAILED"
-        assert result.metadata["contract_definition"]["unit"] == "percent"
+        assert result.metadata["check_definition"]["unit"] == "percent"
         # Should NOT interpret 60.0 as 60 failed rows
         assert result.failed_rows_count == 0
         assert result.actual_value == 60.0

@@ -731,9 +731,9 @@ class TestEdgeCases:
         refs = contract.get_check_references_by_schema()["items"]
         sql_ref = [r for r in refs if isinstance(r, SQLTableCheckReference)][0]
         metadata = sql_ref.get_result_metadata()
-        # contract_definition should contain the original check dict
-        assert metadata["contract_definition"]["severity"] == "error"
-        assert metadata["contract_definition"]["dimension"] == "accuracy"
+        # check_definition should contain the original check dict
+        assert metadata["check_definition"]["severity"] == "error"
+        assert metadata["check_definition"]["dimension"] == "accuracy"
 
     def test_build_error_result(self, monkeypatch: pytest.MonkeyPatch):
         """build_error_result creates an ERROR status result."""
