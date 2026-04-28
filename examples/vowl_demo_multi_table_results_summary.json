@@ -15,7 +15,7 @@
       "use_try_cast": true
     },
     "failed_rows": 14,
-    "total_execution_time_ms": 1179.7893720504362,
+    "total_execution_time_ms": 1514.5568709558574,
     "success_rate": 92.10526315789474,
     "connection_results": {
       "demo_employee_payroll": {
@@ -35,20 +35,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.266415999969468,
+      "execution_time_ms": 7.536083998274989,
       "check_path": "$.schema[0].properties[0].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_id\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "employee_id"
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -65,20 +71,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 10.77183299639728,
+      "execution_time_ms": 11.358792005921714,
       "check_path": "$.schema[0].properties[0].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'employee_id' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"employee_id\" IS NULL AND CAST(\"employee_id\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -95,20 +107,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 34.72320800938178,
+      "execution_time_ms": 33.94816699437797,
       "check_path": "$.schema[0].properties[0].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_options_minLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must have minimum length of 7",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"employee_id\" IS NULL AND LENGTH(CAST(\"employee_id\" AS VARCHAR)) < 7",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 7
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -125,20 +143,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.42779100057669,
+      "execution_time_ms": 33.068207994801924,
       "check_path": "$.schema[0].properties[0].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_options_maxLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must have maximum length of 7",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"employee_id\" IS NULL AND LENGTH(CAST(\"employee_id\" AS VARCHAR)) > 7",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 7
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -155,20 +179,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 39.862334000645205,
+      "execution_time_ms": 29.56283300591167,
       "check_path": "$.schema[0].properties[0].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_options_pattern_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must match pattern '^e[0-9]{6}$'",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"employee_id\" IS NULL AND NOT CAST(\"employee_id\" AS VARCHAR) ~ '^e[0-9]{6}$'",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "^e[0-9]{6}$"
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -185,20 +215,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.818917001713999,
+      "execution_time_ms": 5.534250012715347,
       "check_path": "$.schema[0].properties[0].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'employee_id' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"employee_id\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -215,20 +251,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.558542001992464,
+      "execution_time_ms": 6.91154100059066,
       "check_path": "$.schema[0].properties[0].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_unique_check",
         "type": "sql",
         "dimension": "consistency",
         "description": "Column 'employee_id' must contain unique values",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_id\" FROM \"demo_employee_payroll\" WHERE NOT \"employee_id\" IS NULL GROUP BY \"employee_id\" HAVING COUNT(*) > 1)",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -245,20 +287,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.696457989164628,
+      "execution_time_ms": 6.103708001319319,
       "check_path": "$.schema[0].properties[0].primaryKey",
       "check_ref_type": "PrimaryKeyCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_primary_key_check",
         "type": "sql",
         "dimension": "consistency",
         "description": "Primary key column 'employee_id' must be unique and not null",
         "query": "SELECT ((SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"employee_id\" IS NULL)) + ((SELECT COUNT(*) FROM (SELECT \"employee_id\" FROM \"demo_employee_payroll\" WHERE NOT \"employee_id\" IS NULL GROUP BY \"employee_id\" HAVING COUNT(*) > 1)))",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -275,20 +323,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.77716700010933,
+      "execution_time_ms": 5.827750006574206,
       "check_path": "$.schema[0].properties[1].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'payroll_id' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"payroll_id\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "payroll_id"
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -305,20 +359,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 12.050000004819594,
+      "execution_time_ms": 9.204667003359646,
       "check_path": "$.schema[0].properties[1].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'payroll_id' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"payroll_id\" IS NULL AND CAST(\"payroll_id\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -335,20 +395,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 37.43920900160447,
+      "execution_time_ms": 28.868458000943065,
       "check_path": "$.schema[0].properties[1].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_logical_type_options_minLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'payroll_id' must have minimum length of 36",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"payroll_id\" IS NULL AND LENGTH(CAST(\"payroll_id\" AS VARCHAR)) < 36",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 36
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -365,20 +431,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 36.900374994729646,
+      "execution_time_ms": 30.009207999682985,
       "check_path": "$.schema[0].properties[1].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_logical_type_options_maxLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'payroll_id' must have maximum length of 36",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"payroll_id\" IS NULL AND LENGTH(CAST(\"payroll_id\" AS VARCHAR)) > 36",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 36
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -395,20 +467,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 30.695709006977268,
+      "execution_time_ms": 34.06583299511112,
       "check_path": "$.schema[0].properties[1].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_logical_type_options_pattern_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'payroll_id' must match pattern '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"payroll_id\" IS NULL AND NOT CAST(\"payroll_id\" AS VARCHAR) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -425,20 +503,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.23133301269263,
+      "execution_time_ms": 33.69458299130201,
       "check_path": "$.schema[0].properties[1].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'payroll_id' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"payroll_id\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -455,20 +539,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.7342499969527125,
+      "execution_time_ms": 11.5525409928523,
       "check_path": "$.schema[0].properties[1].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_unique_check",
         "type": "sql",
         "dimension": "consistency",
         "description": "Column 'payroll_id' must contain unique values",
         "query": "SELECT COUNT(*) FROM (SELECT \"payroll_id\" FROM \"demo_employee_payroll\" WHERE NOT \"payroll_id\" IS NULL GROUP BY \"payroll_id\" HAVING COUNT(*) > 1)",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -485,20 +575,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.641625000862405,
+      "execution_time_ms": 9.977291003451683,
       "check_path": "$.schema[0].properties[1].primaryKey",
       "check_ref_type": "PrimaryKeyCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_id_primary_key_check",
         "type": "sql",
         "dimension": "consistency",
         "description": "Primary key column 'payroll_id' must be unique and not null",
         "query": "SELECT ((SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"payroll_id\" IS NULL)) + ((SELECT COUNT(*) FROM (SELECT \"payroll_id\" FROM \"demo_employee_payroll\" WHERE NOT \"payroll_id\" IS NULL GROUP BY \"payroll_id\" HAVING COUNT(*) > 1)))",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.payroll_id",
       "logical_type": "string",
@@ -515,20 +611,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.300708002527244,
+      "execution_time_ms": 11.00429099460598,
       "check_path": "$.schema[0].properties[2].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "month_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'month' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"month\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "month"
       },
       "target": "demo_employee_payroll.month",
       "logical_type": "string",
@@ -545,20 +647,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 10.405374996480532,
+      "execution_time_ms": 14.883666997775435,
       "check_path": "$.schema[0].properties[2].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "month_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'month' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"month\" IS NULL AND CAST(\"month\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_payroll.month",
       "logical_type": "string",
@@ -575,20 +683,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 25.42725000239443,
+      "execution_time_ms": 50.78175000380725,
       "check_path": "$.schema[0].properties[2].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "month_logical_type_options_pattern_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'month' must match pattern '^\\d{4}-\\d{2}$'",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"month\" IS NULL AND NOT CAST(\"month\" AS VARCHAR) ~ '^\\d{4}-\\d{2}$'",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "^\\d{4}-\\d{2}$"
       },
       "target": "demo_employee_payroll.month",
       "logical_type": "string",
@@ -605,20 +719,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.294291997211985,
+      "execution_time_ms": 14.663374997326173,
       "check_path": "$.schema[0].properties[2].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "month_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'month' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"month\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.month",
       "logical_type": "string",
@@ -635,20 +755,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.076666999026202,
+      "execution_time_ms": 7.284459003130905,
       "check_path": "$.schema[0].properties[3].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_start_dt_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'payroll_start_dt' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"payroll_start_dt\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "payroll_start_dt"
       },
       "target": "demo_employee_payroll.payroll_start_dt",
       "logical_type": "string",
@@ -665,20 +791,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.958707992453128,
+      "execution_time_ms": 8.672416995977983,
       "check_path": "$.schema[0].properties[3].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_start_dt_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'payroll_start_dt' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"payroll_start_dt\" IS NULL AND CAST(\"payroll_start_dt\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_payroll.payroll_start_dt",
       "logical_type": "string",
@@ -695,20 +827,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.2034159996546805,
+      "execution_time_ms": 5.804250002256595,
       "check_path": "$.schema[0].properties[4].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_end_dt_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'payroll_end_dt' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"payroll_end_dt\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "payroll_end_dt"
       },
       "target": "demo_employee_payroll.payroll_end_dt",
       "logical_type": "date",
@@ -725,20 +863,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.174208003561944,
+      "execution_time_ms": 9.189958000206389,
       "check_path": "$.schema[0].properties[4].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "payroll_end_dt_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'payroll_end_dt' must be valid date",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"payroll_end_dt\" IS NULL AND CAST(\"payroll_end_dt\" AS DATE) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "date"
       },
       "target": "demo_employee_payroll.payroll_end_dt",
       "logical_type": "date",
@@ -755,20 +899,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.167917009908706,
+      "execution_time_ms": 4.887916991719976,
       "check_path": "$.schema[0].properties[5].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "total_amt_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'total_amt' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"total_amt\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "total_amt"
       },
       "target": "demo_employee_payroll.total_amt",
       "logical_type": "integer",
@@ -785,20 +935,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.325166996452026,
+      "execution_time_ms": 39.02799999923445,
       "check_path": "$.schema[0].properties[5].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "total_amt_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'total_amt' must be valid integer",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"total_amt\" IS NULL AND (CAST(\"total_amt\" AS DOUBLE PRECISION) IS NULL OR CAST(\"total_amt\" AS DOUBLE PRECISION) <> CAST(\"total_amt\" AS BIGINT))",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "integer"
       },
       "target": "demo_employee_payroll.total_amt",
       "logical_type": "integer",
@@ -815,20 +971,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.097916011232883,
+      "execution_time_ms": 5.7217919966205955,
       "check_path": "$.schema[0].properties[6].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employer_cpf_amt_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employer_cpf_amt' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"employer_cpf_amt\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "employer_cpf_amt"
       },
       "target": "demo_employee_payroll.employer_cpf_amt",
       "logical_type": "number",
@@ -845,20 +1007,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.272374994703569,
+      "execution_time_ms": 9.278917001211084,
       "check_path": "$.schema[0].properties[6].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employer_cpf_amt_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'employer_cpf_amt' must be valid number",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"employer_cpf_amt\" IS NULL AND CAST(\"employer_cpf_amt\" AS DOUBLE PRECISION) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "number"
       },
       "target": "demo_employee_payroll.employer_cpf_amt",
       "logical_type": "number",
@@ -875,20 +1043,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.967875011265278,
+      "execution_time_ms": 12.201416000607423,
       "check_path": "$.schema[0].properties[7].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "total_amt_employee_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'total_amt_employee' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"total_amt_employee\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "total_amt_employee"
       },
       "target": "demo_employee_payroll.total_amt_employee",
       "logical_type": "number",
@@ -905,20 +1079,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 39.624583994736895,
+      "execution_time_ms": 11.42637500015553,
       "check_path": "$.schema[0].properties[7].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "total_amt_employee_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'total_amt_employee' must be valid number",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"total_amt_employee\" IS NULL AND CAST(\"total_amt_employee\" AS DOUBLE PRECISION) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "number"
       },
       "target": "demo_employee_payroll.total_amt_employee",
       "logical_type": "number",
@@ -935,20 +1115,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.84237500152085,
+      "execution_time_ms": 6.754499991075136,
       "check_path": "$.schema[0].properties[7].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "total_amt_employee_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'total_amt_employee' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"total_amt_employee\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.total_amt_employee",
       "logical_type": "number",
@@ -965,20 +1151,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.1369589966489,
+      "execution_time_ms": 7.811667004716583,
       "check_path": "$.schema[0].properties[8].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_cpf_amt_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_cpf_amt' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_cpf_amt\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "employee_cpf_amt"
       },
       "target": "demo_employee_payroll.employee_cpf_amt",
       "logical_type": "number",
@@ -995,20 +1187,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.304834005888551,
+      "execution_time_ms": 10.776291994261555,
       "check_path": "$.schema[0].properties[8].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_cpf_amt_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'employee_cpf_amt' must be valid number",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"employee_cpf_amt\" IS NULL AND CAST(\"employee_cpf_amt\" AS DOUBLE PRECISION) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "number"
       },
       "target": "demo_employee_payroll.employee_cpf_amt",
       "logical_type": "number",
@@ -1025,20 +1223,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.339750001439825,
+      "execution_time_ms": 7.453291007550433,
       "check_path": "$.schema[0].properties[8].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_cpf_amt_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'employee_cpf_amt' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"employee_cpf_amt\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.employee_cpf_amt",
       "logical_type": "number",
@@ -1055,20 +1259,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.089125010883436,
+      "execution_time_ms": 6.992291993810795,
       "check_path": "$.schema[0].properties[9].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_gross_amt_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_gross_amt' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_gross_amt\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "employee_gross_amt"
       },
       "target": "demo_employee_payroll.employee_gross_amt",
       "logical_type": "number",
@@ -1085,20 +1295,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 12.091583994333632,
+      "execution_time_ms": 11.974291992373765,
       "check_path": "$.schema[0].properties[9].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_gross_amt_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'employee_gross_amt' must be valid number",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"employee_gross_amt\" IS NULL AND CAST(\"employee_gross_amt\" AS DOUBLE PRECISION) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "number"
       },
       "target": "demo_employee_payroll.employee_gross_amt",
       "logical_type": "number",
@@ -1115,20 +1331,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.5386660028016195,
+      "execution_time_ms": 6.4171249978244305,
       "check_path": "$.schema[0].properties[9].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_gross_amt_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'employee_gross_amt' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE \"employee_gross_amt\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_payroll.employee_gross_amt",
       "logical_type": "number",
@@ -1145,20 +1367,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.80279199918732,
+      "execution_time_ms": 9.263290994567797,
       "check_path": "$.schema[0].properties[10].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'phone_number' must exist in 'demo_employee_payroll'",
         "query": "SELECT COUNT(*) FROM (SELECT \"phone_number\" FROM \"demo_employee_payroll\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "phone_number"
       },
       "target": "demo_employee_payroll.phone_number",
       "logical_type": "string",
@@ -1175,20 +1403,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 14.585208002245054,
+      "execution_time_ms": 17.175583998323418,
       "check_path": "$.schema[0].properties[10].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'phone_number' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"phone_number\" IS NULL AND CAST(\"phone_number\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_payroll.phone_number",
       "logical_type": "string",
@@ -1205,20 +1439,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 32.70300000440329,
+      "execution_time_ms": 43.42120799992699,
       "check_path": "$.schema[0].properties[10].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_logical_type_options_minLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'phone_number' must have minimum length of 8",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"phone_number\" IS NULL AND LENGTH(CAST(\"phone_number\" AS VARCHAR)) < 8",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 8
       },
       "target": "demo_employee_payroll.phone_number",
       "logical_type": "string",
@@ -1235,20 +1475,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 34.6164999937173,
+      "execution_time_ms": 45.03570799715817,
       "check_path": "$.schema[0].properties[10].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_logical_type_options_maxLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'phone_number' must have maximum length of 11",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"phone_number\" IS NULL AND LENGTH(CAST(\"phone_number\" AS VARCHAR)) > 11",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 11
       },
       "target": "demo_employee_payroll.phone_number",
       "logical_type": "string",
@@ -1265,20 +1511,26 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 3,
-      "execution_time_ms": 38.351875002263114,
+      "execution_time_ms": 43.62716700416058,
       "check_path": "$.schema[0].properties[10].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_logical_type_options_pattern_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'phone_number' must match pattern '^\\+65[0-9]{8}$'",
         "query": "SELECT COUNT(*) FROM \"demo_employee_payroll\" WHERE NOT \"phone_number\" IS NULL AND NOT CAST(\"phone_number\" AS VARCHAR) ~ '^\\+65[0-9]{8}$'",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "^\\+65[0-9]{8}$"
       },
       "target": "demo_employee_payroll.phone_number",
       "logical_type": "string",
@@ -1295,13 +1547,25 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 23.633499993593432,
+      "execution_time_ms": 21.877167004277,
       "check_path": "$.schema[0].quality[0]",
       "check_ref_type": "SQLTableCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "name": "total_amt_employee_equals_gross_plus_cpf",
+        "description": "Validates that total_amt_employee equals the sum of employee_gross_amt and employee_cpf_amt for consistency",
+        "type": "sql",
+        "dimension": "consistency",
+        "severity": "error",
+        "query": "SELECT COUNT(*) FROM demo_employee_payroll WHERE total_amt_employee != (employee_gross_amt + employee_cpf_amt)",
+        "mustBe": 0,
+        "tags": [
+          "User-Defined Quality Rule"
+        ]
+      },
       "contract_definition": {
         "name": "total_amt_employee_equals_gross_plus_cpf",
         "description": "Validates that total_amt_employee equals the sum of employee_gross_amt and employee_cpf_amt for consistency",
@@ -1328,19 +1592,28 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 0,
-      "execution_time_ms": 12.046417003148235,
+      "execution_time_ms": 42.15633300191257,
       "check_path": "$.schema[0].quality[3]",
       "check_ref_type": "RowCountCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBeGreaterThan",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "type": "library",
         "metric": "rowCount",
         "mustBeGreaterThan": 0,
         "dimension": "completeness",
+        "tags": [
+          "vowl_generated_check"
+        ],
         "description": "Total row count for 'demo_employee_payroll'"
+      },
+      "contract_definition": {
+        "type": "library",
+        "metric": "rowCount",
+        "mustBeGreaterThan": 0,
+        "dimension": "completeness"
       },
       "target": "demo_employee_payroll",
       "aggregation_type": "count",
@@ -1356,19 +1629,28 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 17.949457993381657,
+      "execution_time_ms": 27.207833001739345,
       "check_path": "$.schema[0].properties[0].quality[0]",
       "check_ref_type": "NullValuesCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "type": "library",
         "metric": "nullValues",
         "mustBe": 0,
         "dimension": "completeness",
+        "tags": [
+          "vowl_generated_check"
+        ],
         "description": "Count of NULL values in 'employee_id' of 'demo_employee_payroll'"
+      },
+      "contract_definition": {
+        "type": "library",
+        "metric": "nullValues",
+        "mustBe": 0,
+        "dimension": "completeness"
       },
       "target": "demo_employee_payroll.employee_id",
       "logical_type": "string",
@@ -1385,13 +1667,24 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 23.35858299920801,
+      "execution_time_ms": 32.52749999228399,
       "check_path": "$.schema[0].properties[2].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "type": "sql",
+        "name": "Month",
+        "description": "Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM demo_employee_payroll\nWHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';",
+        "tags": [
+          "SG-DRM v5.0"
+        ],
+        "dimension": "conformity"
+      },
       "contract_definition": {
         "type": "sql",
         "name": "Month",
@@ -1418,14 +1711,14 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 25.47229200717993,
+      "execution_time_ms": 26.39941700908821,
       "check_path": "$.schema[0].properties[2].quality[1]",
       "check_ref_type": "InvalidValuesCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "type": "library",
         "metric": "invalidValues",
         "mustBe": 0,
@@ -1433,7 +1726,19 @@
         "arguments": {
           "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
         },
+        "tags": [
+          "vowl_generated_check"
+        ],
         "description": "Count of invalid values in 'month' of 'demo_employee_payroll'"
+      },
+      "contract_definition": {
+        "type": "library",
+        "metric": "invalidValues",
+        "mustBe": 0,
+        "dimension": "conformity",
+        "arguments": {
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+        }
       },
       "target": "demo_employee_payroll.month",
       "logical_type": "string",
@@ -1450,13 +1755,24 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 3,
-      "execution_time_ms": 23.1642079888843,
+      "execution_time_ms": 21.720541000831872,
       "check_path": "$.schema[0].properties[3].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "type": "sql",
+        "name": "Date With Timezone",
+        "description": "If not in UTC +8 | YYYY-MM-DD[T]hh:mm+hh:mm e.g. 2015-01-01T12:00+02:00 for UTC +2",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM demo_employee_payroll\nWHERE CAST(payroll_start_dt AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9][+-]([01][0-9]|2[0-3]):[0-5][0-9]$'\n  OR LENGTH(CAST(payroll_start_dt AS TEXT)) > 22;",
+        "tags": [
+          "SG-DRM v5.0"
+        ],
+        "dimension": "conformity"
+      },
       "contract_definition": {
         "type": "sql",
         "name": "Date With Timezone",
@@ -1483,13 +1799,24 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 3,
-      "execution_time_ms": 22.935790999326855,
+      "execution_time_ms": 21.855708007933572,
       "check_path": "$.schema[0].properties[4].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "type": "sql",
+        "name": "Date With Timezone",
+        "description": "If not in UTC +8 | YYYY-MM-DD[T]hh:mm+hh:mm e.g. 2015-01-01T12:00+02:00 for UTC +2",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM demo_employee_payroll\nWHERE CAST(payroll_end_dt AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9][+-]([01][0-9]|2[0-3]):[0-5][0-9]$'\n  OR LENGTH(CAST(payroll_end_dt AS TEXT)) > 22;",
+        "tags": [
+          "SG-DRM v5.0"
+        ],
+        "dimension": "conformity"
+      },
       "contract_definition": {
         "type": "sql",
         "name": "Date With Timezone",
@@ -1516,13 +1843,25 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 17.85162500164006,
+      "execution_time_ms": 18.529374996433035,
       "check_path": "$.schema[0].properties[5].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "description": "Validates that total_amt equals the sum of employer_cpf_amt and total_amt_employee for consistency",
+        "type": "sql",
+        "dimension": "consistency",
+        "severity": "error",
+        "query": "SELECT COUNT(*) FROM demo_employee_payroll WHERE total_amt != (employer_cpf_amt + total_amt_employee) OR (total_amt IS NOT NULL AND (employer_cpf_amt IS NULL OR total_amt_employee IS NULL))",
+        "mustBe": 0,
+        "tags": [
+          "User-Defined Quality Rule"
+        ]
+      },
       "contract_definition": {
         "name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
         "description": "Validates that total_amt equals the sum of employer_cpf_amt and total_amt_employee for consistency",
@@ -1550,14 +1889,14 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 22.719083004631102,
+      "execution_time_ms": 33.28112499730196,
       "check_path": "$.schema[0].properties[5].quality[1]",
       "check_ref_type": "MissingValuesCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "type": "library",
         "metric": "missingValues",
         "mustBe": 0,
@@ -1568,7 +1907,22 @@
             ""
           ]
         },
+        "tags": [
+          "vowl_generated_check"
+        ],
         "description": "Count of missing values in 'total_amt' of 'demo_employee_payroll'"
+      },
+      "contract_definition": {
+        "type": "library",
+        "metric": "missingValues",
+        "mustBe": 0,
+        "dimension": "completeness",
+        "arguments": {
+          "missingValues": [
+            null,
+            ""
+          ]
+        }
       },
       "target": "demo_employee_payroll.total_amt",
       "logical_type": "integer",
@@ -1585,20 +1939,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.673040999681689,
+      "execution_time_ms": 10.498125004232861,
       "check_path": "$.schema[1].properties[0].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must exist in 'demo_employee_list'",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_id\" FROM \"demo_employee_list\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "employee_id"
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1615,20 +1975,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.802083000773564,
+      "execution_time_ms": 20.03816599608399,
       "check_path": "$.schema[1].properties[0].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'employee_id' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"employee_id\" IS NULL AND CAST(\"employee_id\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1645,20 +2011,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 27.994290998321958,
+      "execution_time_ms": 42.80774999642745,
       "check_path": "$.schema[1].properties[0].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_options_pattern_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must match pattern '^e[0-9]+$'",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"employee_id\" IS NULL AND NOT CAST(\"employee_id\" AS VARCHAR) ~ '^e[0-9]+$'",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "^e[0-9]+$"
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1675,20 +2047,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 27.982749990769662,
+      "execution_time_ms": 48.060291999718174,
       "check_path": "$.schema[1].properties[0].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_options_minLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must have minimum length of 7",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"employee_id\" IS NULL AND LENGTH(CAST(\"employee_id\" AS VARCHAR)) < 7",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 7
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1705,20 +2083,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 28.017333999741822,
+      "execution_time_ms": 34.422624987200834,
       "check_path": "$.schema[1].properties[0].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_logical_type_options_maxLength_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_id' must have maximum length of 7",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"employee_id\" IS NULL AND LENGTH(CAST(\"employee_id\" AS VARCHAR)) > 7",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": 7
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1735,20 +2119,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.478375009261072,
+      "execution_time_ms": 8.225458004744723,
       "check_path": "$.schema[1].properties[0].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'employee_id' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE \"employee_id\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1765,20 +2155,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.041749995551072,
+      "execution_time_ms": 8.616082996013574,
       "check_path": "$.schema[1].properties[0].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_unique_check",
         "type": "sql",
         "dimension": "consistency",
         "description": "Column 'employee_id' must contain unique values",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_id\" FROM \"demo_employee_list\" WHERE NOT \"employee_id\" IS NULL GROUP BY \"employee_id\" HAVING COUNT(*) > 1)",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1795,20 +2191,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.410500001744367,
+      "execution_time_ms": 6.8277919926913455,
       "check_path": "$.schema[1].properties[0].primaryKey",
       "check_ref_type": "PrimaryKeyCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_id_primary_key_check",
         "type": "sql",
         "dimension": "consistency",
         "description": "Primary key column 'employee_id' must be unique and not null",
         "query": "SELECT ((SELECT COUNT(*) FROM \"demo_employee_list\" WHERE \"employee_id\" IS NULL)) + ((SELECT COUNT(*) FROM (SELECT \"employee_id\" FROM \"demo_employee_list\" WHERE NOT \"employee_id\" IS NULL GROUP BY \"employee_id\" HAVING COUNT(*) > 1)))",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_list.employee_id",
       "logical_type": "string",
@@ -1825,20 +2227,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.55170799291227,
+      "execution_time_ms": 17.24595800624229,
       "check_path": "$.schema[1].properties[1].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_last_name_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_last_name' must exist in 'demo_employee_list'",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_last_name\" FROM \"demo_employee_list\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "employee_last_name"
       },
       "target": "demo_employee_list.employee_last_name",
       "logical_type": "string",
@@ -1855,20 +2263,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 10.189666994847357,
+      "execution_time_ms": 14.31154199235607,
       "check_path": "$.schema[1].properties[1].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_last_name_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'employee_last_name' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"employee_last_name\" IS NULL AND CAST(\"employee_last_name\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_list.employee_last_name",
       "logical_type": "string",
@@ -1885,20 +2299,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.203083001310006,
+      "execution_time_ms": 6.7928750067949295,
       "check_path": "$.schema[1].properties[1].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_last_name_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'employee_last_name' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE \"employee_last_name\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_list.employee_last_name",
       "logical_type": "string",
@@ -1915,20 +2335,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.034209000063129,
+      "execution_time_ms": 7.681333998334594,
       "check_path": "$.schema[1].properties[2].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_first_name_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'employee_first_name' must exist in 'demo_employee_list'",
         "query": "SELECT COUNT(*) FROM (SELECT \"employee_first_name\" FROM \"demo_employee_list\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "employee_first_name"
       },
       "target": "demo_employee_list.employee_first_name",
       "logical_type": "string",
@@ -1945,20 +2371,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 10.555083004874177,
+      "execution_time_ms": 11.540167004568502,
       "check_path": "$.schema[1].properties[2].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_first_name_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'employee_first_name' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"employee_first_name\" IS NULL AND CAST(\"employee_first_name\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_list.employee_first_name",
       "logical_type": "string",
@@ -1975,20 +2407,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.4019589917734265,
+      "execution_time_ms": 7.362165997619741,
       "check_path": "$.schema[1].properties[2].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "employee_first_name_required_check",
         "type": "sql",
         "dimension": "completeness",
         "description": "Column 'employee_first_name' must not contain NULL values",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE \"employee_first_name\" IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_list.employee_first_name",
       "logical_type": "string",
@@ -2005,20 +2443,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.396415992639959,
+      "execution_time_ms": 7.876791001763195,
       "check_path": "$.schema[1].properties[3].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "current_title_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'current_title' must exist in 'demo_employee_list'",
         "query": "SELECT COUNT(*) FROM (SELECT \"current_title\" FROM \"demo_employee_list\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "current_title"
       },
       "target": "demo_employee_list.current_title",
       "logical_type": "string",
@@ -2035,20 +2479,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 10.182790996623226,
+      "execution_time_ms": 12.056583000230603,
       "check_path": "$.schema[1].properties[3].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "current_title_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'current_title' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"current_title\" IS NULL AND CAST(\"current_title\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_list.current_title",
       "logical_type": "string",
@@ -2065,20 +2515,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.789667007979006,
+      "execution_time_ms": 13.484708993928507,
       "check_path": "$.schema[1].properties[4].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_column_exists_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'phone_number' must exist in 'demo_employee_list'",
         "query": "SELECT COUNT(*) FROM (SELECT \"phone_number\" FROM \"demo_employee_list\" LIMIT 0) AS _vowl_column_exists",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "phone_number"
       },
       "target": "demo_employee_list.phone_number",
       "logical_type": "string",
@@ -2095,20 +2551,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 10.848208010429516,
+      "execution_time_ms": 11.268125002970919,
       "check_path": "$.schema[1].properties[4].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_logical_type_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Values in 'phone_number' must be valid string",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"phone_number\" IS NULL AND CAST(\"phone_number\" AS VARCHAR) IS NULL",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
       },
       "target": "demo_employee_list.phone_number",
       "logical_type": "string",
@@ -2125,20 +2587,26 @@
       "expected_value": 0,
       "actual_value": 2,
       "failed_rows_count": 2,
-      "execution_time_ms": 32.44387501035817,
+      "execution_time_ms": 32.583833002718166,
       "check_path": "$.schema[1].properties[4].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_logical_type_options_pattern_check",
         "type": "sql",
         "dimension": "conformity",
         "description": "Column 'phone_number' must match pattern '^\\+[0-9]+$'",
         "query": "SELECT COUNT(*) FROM \"demo_employee_list\" WHERE NOT \"phone_number\" IS NULL AND NOT CAST(\"phone_number\" AS VARCHAR) ~ '^\\+[0-9]+$'",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "^\\+[0-9]+$"
       },
       "target": "demo_employee_list.phone_number",
       "logical_type": "string",
@@ -2155,20 +2623,26 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.953083007829264,
+      "execution_time_ms": 6.587625000975095,
       "check_path": "$.schema[1].properties[4].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": true,
       "engine": "sql",
-      "contract_definition": {
+      "check_definition": {
         "name": "phone_number_unique_check",
         "type": "sql",
         "dimension": "consistency",
         "description": "Column 'phone_number' must contain unique values",
         "query": "SELECT COUNT(*) FROM (SELECT \"phone_number\" FROM \"demo_employee_list\" WHERE NOT \"phone_number\" IS NULL GROUP BY \"phone_number\" HAVING COUNT(*) > 1)",
-        "mustBe": 0
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": true
       },
       "target": "demo_employee_list.phone_number",
       "logical_type": "string",
@@ -2185,13 +2659,24 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 22.425041999667883,
+      "execution_time_ms": 21.21066600375343,
       "check_path": "$.schema[1].properties[1].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "type": "sql",
+        "name": "PersonName",
+        "description": "PersonName may include various name types for UIN/FIN holders including legal names, abbreviated names, Hanyu Pinyin names, alias names, married names, and changed names | X(66)",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM demo_employee_list\nWHERE employee_last_name IS NOT NULL\n  AND LENGTH(CAST(employee_last_name AS TEXT)) > 66;",
+        "tags": [
+          "SG-DRM v5.0"
+        ],
+        "dimension": "conformity"
+      },
       "contract_definition": {
         "type": "sql",
         "name": "PersonName",
@@ -2218,13 +2703,24 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 18.33512500161305,
+      "execution_time_ms": 25.908499999786727,
       "check_path": "$.schema[1].properties[2].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "type": "sql",
+        "name": "PersonName",
+        "description": "PersonName may include various name types for UIN/FIN holders including legal names, abbreviated names, Hanyu Pinyin names, alias names, married names, and changed names | X(66)",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM demo_employee_list\nWHERE employee_first_name IS NOT NULL\n  AND LENGTH(CAST(employee_first_name AS TEXT)) > 66;",
+        "tags": [
+          "SG-DRM v5.0"
+        ],
+        "dimension": "conformity"
+      },
       "contract_definition": {
         "type": "sql",
         "name": "PersonName",
@@ -2251,13 +2747,24 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 18.17870800732635,
+      "execution_time_ms": 23.390207992633805,
       "check_path": "$.schema[1].properties[4].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_list",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "type": "sql",
+        "name": "TelephoneNumber",
+        "description": "Based on ITU T E.164 | e.g. 095236",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM demo_employee_list\nWHERE CAST(phone_number AS TEXT) !~ '^[0-9]{1,12}$';",
+        "tags": [
+          "SG-DRM v5.0"
+        ],
+        "dimension": "conformity"
+      },
       "contract_definition": {
         "type": "sql",
         "name": "TelephoneNumber",
@@ -2284,13 +2791,24 @@
       "expected_value": 0,
       "actual_value": 1,
       "failed_rows_count": 1,
-      "execution_time_ms": 62.502582994056866,
+      "execution_time_ms": 121.92870900616981,
       "check_path": "$.schema[0].quality[1]",
       "check_ref_type": "SQLTableCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "name": "employee_id_exists_in_master_list",
+        "description": "Referential integrity check: Ensures all employee IDs in the payroll  table exist in the reference employee list.",
+        "type": "sql",
+        "dimension": "consistency",
+        "query": "SELECT COUNT(*)  FROM demo_employee_payroll payroll LEFT JOIN demo_employee_list ref \n  ON payroll.employee_id = ref.employee_id\nWHERE ref.employee_id IS NULL",
+        "mustBe": 0,
+        "tags": [
+          "Cross-Table Validation"
+        ]
+      },
       "contract_definition": {
         "name": "employee_id_exists_in_master_list",
         "description": "Referential integrity check: Ensures all employee IDs in the payroll  table exist in the reference employee list.",
@@ -2317,13 +2835,24 @@
       "expected_value": 0,
       "actual_value": 2,
       "failed_rows_count": 2,
-      "execution_time_ms": 18.972791003761813,
+      "execution_time_ms": 29.520874988520518,
       "check_path": "$.schema[0].quality[2]",
       "check_ref_type": "SQLTableCheckReference",
       "schema_name": "demo_employee_payroll",
       "operator": "mustBe",
       "is_generated": false,
       "engine": "sql",
+      "check_definition": {
+        "name": "phone_number_exists_in_master_list",
+        "description": "Ensures the phone numbers recorded in payroll matches an entry in  the master employee list.",
+        "type": "sql",
+        "dimension": "consistency",
+        "query": "SELECT COUNT(*)  FROM demo_employee_payroll payroll LEFT JOIN demo_employee_list ref \n  ON payroll.phone_number = ref.phone_number\nWHERE payroll.phone_number IS NOT NULL \n  AND ref.phone_number IS NULL",
+        "mustBe": 0,
+        "tags": [
+          "Cross-Table Validation"
+        ]
+      },
       "contract_definition": {
         "name": "phone_number_exists_in_master_list",
         "description": "Ensures the phone numbers recorded in payroll matches an entry in  the master employee list.",
