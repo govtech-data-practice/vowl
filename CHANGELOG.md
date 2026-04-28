@@ -20,11 +20,13 @@ We're thrilled to announce that **vowl** has been recognised as an official [Ope
 - Git link sanitisation issue in documentation (#15).
 
 ### Changed (Breaking)
-- `contract_definition` is now the single source of truth for check metadata (#21). This replaces several top-level metadata fields with a single `contract_definition` dict that carries the raw ODCS quality entry:
+- Check metadata now uses `check_definition` and `contract_definition` (#21, #26). This replaces several top-level metadata fields:
   - **Renamed fields:** `schema` → `schema_name`, `rule` → `rendered_implementation`.
-  - **Moved into `contract_definition`:** `dimension`, `type`, `description`, `severity`, `unit` — these are no longer top-level keys in `CheckResultMetadata`.
-  - **Output DataFrame:** `get_check_results_df()` now flattens `contract_definition` into top-level columns, so all contract fields appear automatically. The column order in the results CSV has changed accordingly.
-  - Code that accesses `metadata["schema"]`, `metadata["rule"]`, `metadata["unit"]`, etc. must be updated to use the new key names or read from `metadata["contract_definition"]`.
+  - **Removed from top-level:** `dimension`, `type`, `description`, `severity`, `unit` — these are no longer top-level keys in `CheckResultMetadata`.
+  - **`check_definition`** carries the resolved/generated check definition dict. Auto-generated checks are tagged with `vowl_generated_check`.
+  - **`contract_definition`** carries the raw ODCS contract content at the check's JSONPath.
+  - **Output DataFrame:** `get_check_results_df()` no longer flattens definitions into top-level columns. Pass `include_check_definition=True` and/or `include_contract_definition=True` to include them as JSON-serialised columns. `save()` accepts the same keyword arguments.
+  - Code that accesses `metadata["schema"]`, `metadata["rule"]`, `metadata["unit"]`, etc. must be updated to use the new key names or read from `metadata["check_definition"]` / `metadata["contract_definition"]`.
 
 ### Added
 - Logical type `options.format` validation — contracts can now specify format constraints (e.g. date formats) on logical types, and vowl will auto-generate format checks. See the [Format Checks](https://govtech-data-practice.github.io/vowl/contracts/#format-checks) docs for details (#25).
