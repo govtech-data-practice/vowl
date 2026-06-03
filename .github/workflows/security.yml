@@ -17,10 +17,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Gitleaks secret detection
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: TruffleHog secret detection
+        uses: trufflesecurity/trufflehog@v3
+        with:
+          extra_args: --only-verified
 
   dependency-review:
     runs-on: ubuntu-latest
