@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Semgrep SAST
-        run: semgrep scan --config p/python --config p/bandit --config p/secrets .
+        run: semgrep scan --error --config p/python --config p/bandit --config p/secrets .
 
   dependency-review:
     runs-on: ubuntu-latest
