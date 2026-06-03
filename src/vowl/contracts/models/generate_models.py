@@ -21,7 +21,7 @@ import re
 
 # Bandit B404: This is a trusted, repository-maintained developer utility script
 # that intentionally invokes a local codegen CLI; subprocess is required here.
-import subprocess  # nosec B404
+import subprocess  # nosec B404 # nosemgrep: gitlab.bandit.B404
 import sys
 from pathlib import Path
 
