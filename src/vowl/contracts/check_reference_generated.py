@@ -583,7 +583,8 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
                 if pattern is None:
                     # Fall through to JDK format pattern (validated in __init__)
                     pattern = _jdk_format_to_regex(val)
-                    assert pattern is not None  # guaranteed by _validate_format
+                    if pattern is None:
+                        raise RuntimeError(f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this")
                 cast_col = exp.TryCast(
                     this=col, to=exp.DataType.build("VARCHAR"), safe=True
                 )
@@ -596,7 +597,8 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
             # date / timestamp / time — already validated in _validate_format
             pattern = _jdk_format_to_regex(val)
-            assert pattern is not None  # guaranteed by _validate_format
+            if pattern is None:
+                raise RuntimeError(f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this")
             cast_col = exp.TryCast(
                 this=col, to=exp.DataType.build("VARCHAR"), safe=True
             )
