@@ -22,7 +22,7 @@ help:
 	@echo "  clean            Remove build artifacts and cache files"
 	@echo "  test             Run tests"
 	@echo "  verify           Run all checks and tests"
-	@echo "  security-scan    Run Semgrep SAST scan (matches CI)"
+	@echo "  security-scan    Run Semgrep SAST scan"
 	@echo "  security-audit   Run dependency vulnerability audit (pip-audit)"
 	@echo "  release-check    Build package artifacts and run Twine validation"
 	@echo "  release-upload-testpypi Upload dist artifacts to TestPyPI"
