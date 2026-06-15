@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-scan-json security-audit release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean
+.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-audit release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean
 
 UV ?= uv
 
@@ -22,8 +22,7 @@ help:
 	@echo "  clean            Remove build artifacts and cache files"
 	@echo "  test             Run tests"
 	@echo "  verify           Run all checks and tests"
-	@echo "  security-scan    Run Bandit security scan"
-	@echo "  security-scan-json Run Bandit security scan and write JSON report"
+	@echo "  security-scan    Run Semgrep SAST scan"
 	@echo "  security-audit   Run dependency vulnerability audit (pip-audit)"
 	@echo "  release-check    Build package artifacts and run Twine validation"
 	@echo "  release-upload-testpypi Upload dist artifacts to TestPyPI"
@@ -131,11 +130,7 @@ check: format-check lint typecheck
 
 # Security scanning
 security-scan:
-	$(UV) run bandit -r src/vowl
-
-security-scan-json:
-	mkdir -p reports
-	$(UV) run bandit -r src/vowl -f json -o reports/bandit.json
+	uvx semgrep scan --error --config p/python --config p/bandit --config p/secrets .
 
 security-audit:
 	$(UV) export --frozen --format requirements-txt --all-extras --group dev --no-hashes --no-annotate --no-header | grep -v '^-e \.$$' > /tmp/vowl-requirements-audit.txt
