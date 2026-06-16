@@ -370,13 +370,210 @@ class MultiSourceSQLExecutor(SQLExecutor):
         """
         Execute multiple data quality checks.
 
+        Parallelizes Mode 2 checks when all involved adapters are PooledAdapters.
+        Falls back to sequential execution otherwise.
+
         Args:
             check_refs: A list of CheckReference objects.
 
         Returns:
             A list of CheckResult objects.
         """
-        return [self.run_single_check(check_ref) for check_ref in check_refs]
+        concurrency = self._derive_concurrency(check_refs)
+        if concurrency <= 1 or len(check_refs) <= 1:
+            return [self.run_single_check(check_ref) for check_ref in check_refs]
+        return self._run_parallel_mode2(check_refs, concurrency)
+
+    def _derive_concurrency(self, check_refs: list[SQLCheckReference]) -> int:
+        """Derive max concurrency from involved PooledAdapters.
+
+        Returns 1 if any involved adapter is not a PooledAdapter.
+        """
+        from vowl.adapters.pooled_adapter import PooledAdapter
+
+        all_tables: set[str] = set()
+        for ref in check_refs:
+            raw_query = ref.get_check().get("query") or ""
+            all_tables |= self._detect_tables(raw_query)
+
+        if not all_tables:
+            return 1
+
+        concurrencies: list[int] = []
+        for table_name in all_tables:
+            adapter = self._multi_adapter.get_adapter(table_name)
+            if adapter is None:
+                return 1
+            if not isinstance(adapter, PooledAdapter):
+                return 1
+            concurrencies.append(adapter.max_concurrency)
+
+        return min(concurrencies) if concurrencies else 1
+
+    def _run_parallel_mode2(
+        self,
+        check_refs: list[SQLCheckReference],
+        concurrency: int,
+    ) -> list[CheckResult]:
+        """Execute Mode 2 checks in parallel using isolated DuckDB instances.
+
+        Phase 1: Materialize all needed tables to Arrow in parallel.
+        Phase 2: Run checks in parallel on independent local DuckDB instances.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        import ibis
+
+        from vowl.executors.security import SQLSecurityError, validate_query_security
+
+        # Collect table requirements per check
+        check_table_map: list[tuple[SQLCheckReference, set[str]]] = []
+        all_needed_tables: set[str] = set()
+        for ref in check_refs:
+            raw_query = ref.get_check().get("query") or ""
+            tables = self._detect_tables(raw_query)
+            check_table_map.append((ref, tables))
+            all_needed_tables |= tables
+
+        # Phase 1: Materialize tables in parallel
+        arrow_tables: dict[str, Any] = {}
+        materialization_errors: dict[str, str] = {}
+
+        def materialize_table(table_name: str) -> tuple[str, Any, str | None]:
+            adapter = self._multi_adapter.get_adapter(table_name)
+            if adapter is None:
+                return (table_name, None, f"No adapter configured for table '{table_name}'")
+            try:
+                arrow_table = adapter.export_table_as_arrow(table_name)
+                return (table_name, arrow_table, None)
+            except Exception as e:
+                return (table_name, None, str(e))
+
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            futures = [
+                pool.submit(materialize_table, tbl)
+                for tbl in all_needed_tables
+            ]
+            for future in futures:
+                table_name, arrow_table, error = future.result()
+                if error:
+                    materialization_errors[table_name] = error
+                else:
+                    arrow_tables[table_name] = arrow_table
+
+        # Phase 2: Run checks in parallel on isolated DuckDB instances
+        results: list[CheckResult | None] = [None] * len(check_refs)
+
+        def run_check_isolated(
+            index: int,
+            ref: SQLCheckReference,
+            tables: set[str],
+        ) -> None:
+            start_time = time.perf_counter()
+
+            # Check for materialization failures
+            for tbl in tables:
+                if tbl in materialization_errors:
+                    results[index] = ref.build_error_result(
+                        error_message=(
+                            f"Materialization failed for table '{tbl}': "
+                            f"{materialization_errors[tbl]}"
+                        ),
+                        execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                    )
+                    return
+
+            try:
+                local_con = ibis.duckdb.connect()
+                try:
+                    from vowl.executors.security import sanitize_identifier
+
+                    for tbl in tables:
+                        sanitize_identifier(tbl)
+                        local_con.create_table(tbl, arrow_tables[tbl], overwrite=True)
+
+                    output_dialect = "duckdb"
+                    use_try_cast = self._use_try_cast
+                    scalar_query = ref.get_scalar_query(
+                        output_dialect, None, use_try_cast=use_try_cast,
+                    )
+
+                    if not scalar_query:
+                        results[index] = ref.build_error_result(
+                            error_message="No query specified for SQL check",
+                            execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                            dialect=output_dialect,
+                            multi_source=True,
+                        )
+                        return
+
+                    try:
+                        validate_query_security(scalar_query, dialect=output_dialect)
+                        result = local_con.raw_sql(scalar_query).fetchone()
+                        actual_value = result[0] if result else None
+                    except SQLSecurityError as sec_error:
+                        results[index] = ref.build_error_result(
+                            error_message=f"Security validation failed: {sec_error}",
+                            execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                            dialect=output_dialect,
+                            use_try_cast=use_try_cast,
+                            multi_source=True,
+                            security_violation=sec_error.violation_type,
+                        )
+                        return
+
+                    failed_query = ref.get_failed_rows_query(
+                        output_dialect, None, use_try_cast=use_try_cast,
+                    )
+                    max_rows = getattr(self._multi_adapter, "max_failed_rows", 1000)
+
+                    def fetcher(q=failed_query, con=local_con, max_r=max_rows):
+                        if not q:
+                            return None
+                        if max_r >= 0 and "LIMIT" not in q.upper():
+                            q = f"{q} LIMIT {max_r}"
+                        try:
+                            validate_query_security(q, dialect="duckdb")
+                            r = con.raw_sql(q)
+                            if hasattr(r, "to_arrow_table"):
+                                at = r.to_arrow_table()
+                            else:
+                                at = r.fetch_arrow_table()
+                            at = self._deduplicate_arrow_columns(at)
+                            return nw.from_native(at, eager_only=True)
+                        except Exception:
+                            return None
+
+                    results[index] = ref.build_result(
+                        actual_value=actual_value,
+                        execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                        failed_rows_fetcher=fetcher,
+                        dialect=output_dialect,
+                        filter_conditions=None,
+                        use_try_cast=use_try_cast,
+                    )
+                except Exception as e:
+                    results[index] = ref.build_error_result(
+                        error_message=f"Error executing cross-schema check: {e}",
+                        execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                    )
+            except Exception as e:
+                results[index] = ref.build_error_result(
+                    error_message=f"Error executing cross-schema check: {e}",
+                    execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                )
+
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            futures = []
+            for i, (ref, tables) in enumerate(check_table_map):
+                if self._are_backends_compatible(tables):
+                    results[i] = self.run_single_check(ref)
+                else:
+                    futures.append(pool.submit(run_check_isolated, i, ref, tables))
+            for future in futures:
+                future.result()
+
+        return [r for r in results if r is not None]
 
     def cleanup(self) -> None:
         """
