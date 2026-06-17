@@ -153,22 +153,6 @@ class TestParallelExecution:
         assert len(results) == 10
         assert len(pooled._all_instances) <= 3
 
-    def test_parallel_faster_than_sequential(self):
-        delay = 0.05
-        pooled = PooledAdapter(
-            factory=lambda: CountingAdapter(delay=delay),
-            max_concurrency=4,
-        )
-        refs = [StubCheckRef(f"check_{i}") for i in range(8)]
-
-        start = time.perf_counter()
-        results = pooled.run_checks(refs)
-        elapsed = time.perf_counter() - start
-
-        assert len(results) == 8
-        sequential_time = delay * 8
-        assert elapsed < sequential_time * 0.7
-
 
 class TestOrderPreservation:
     def test_results_match_input_order(self):

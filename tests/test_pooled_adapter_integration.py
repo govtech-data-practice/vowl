@@ -217,6 +217,66 @@ class TestPooledAdapterDuckDB:
         assert len(pooled._all_instances) == 0
         assert pooled._created_count == 0
 
+    def test_error_isolation_with_duckdb(self, duckdb_adapter_factory):
+        """An error in one check does not prevent other checks from succeeding."""
+        from vowl.executors.base import CheckResult
+
+        class BadCheckRef:
+            def get_check_name(self):
+                return "bad_query"
+
+            def get_execution_engine(self):
+                return "sql"
+
+            def get_check(self):
+                return {
+                    "name": "bad_query",
+                    "type": "sql",
+                    "query": "SELECT COUNT(*) FROM nonexistent_table_xyz",
+                }
+
+            def get_result_metadata(self):
+                return {}
+
+            def get_scalar_query(self, dialect, filters, **kwargs):
+                return "SELECT COUNT(*) FROM nonexistent_table_xyz"
+
+            def get_failed_rows_query(self, dialect, filters, **kwargs):
+                return None
+
+            def build_result(self, actual_value, execution_time_ms, **kwargs):
+                return CheckResult(
+                    check_name="bad_query",
+                    status="PASSED",
+                    details=str(actual_value),
+                    execution_time_ms=execution_time_ms,
+                )
+
+            def build_error_result(self, error_message, execution_time_ms, **kwargs):
+                return CheckResult(
+                    check_name="bad_query",
+                    status="ERROR",
+                    details=error_message,
+                    execution_time_ms=execution_time_ms,
+                )
+
+        from vowl.contracts.contract import Contract
+
+        contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
+        refs_by_schema = contract.get_check_references_by_schema()
+        good_refs = list(refs_by_schema.values())[0][:3]
+
+        all_refs = [BadCheckRef()] + list(good_refs)
+
+        pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=3)
+        results = pooled.run_checks(all_refs)
+
+        assert len(results) == len(all_refs)
+        bad_result = results[0]
+        assert bad_result.status == "ERROR"
+        good_results = results[1:]
+        assert all(r.status != "ERROR" for r in good_results)
+
 
 class TestPooledAdapterSQLite:
     """Test PooledAdapter with real SQLite connections."""
