@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import MagicMock, patch
 
 import pyarrow as pa
-import pytest
 
 from vowl.adapters.base import BaseAdapter
 from vowl.adapters.pooled_adapter import PooledAdapter
@@ -208,12 +206,7 @@ class TestMaterializationErrors:
         multi = StubMultiAdapter(adapters)
         executor = MultiSourceSQLExecutor(multi)
 
-        ref = StubSQLCheckRef("check_1", "SELECT COUNT(*) FROM table_a JOIN table_b ON 1=1")
-        results = executor.run_batch_checks([ref])
-
-        # Should not raise — returns error result
-        # Note: with only 1 check, it falls back to sequential path
-        # We need 2+ checks to trigger parallel
+        # Need 2+ checks to trigger parallel path
         refs = [
             StubSQLCheckRef("check_1", "SELECT COUNT(*) FROM table_a JOIN table_b ON 1=1"),
             StubSQLCheckRef("check_2", "SELECT COUNT(*) FROM table_a JOIN table_b ON 1=1"),

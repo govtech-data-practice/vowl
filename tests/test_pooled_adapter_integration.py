@@ -10,7 +10,6 @@ Tests PooledAdapter with:
 
 from __future__ import annotations
 
-import time
 import threading
 from pathlib import Path
 
@@ -21,7 +20,6 @@ import pytest
 import ibis
 
 from vowl.adapters import IbisAdapter, MultiSourceAdapter, PooledAdapter
-from vowl.executors.multi_source_sql_executor import MultiSourceSQLExecutor
 
 TEST_DIR = Path(__file__).parent
 EMPLOYEE_DIR = TEST_DIR / "employee"

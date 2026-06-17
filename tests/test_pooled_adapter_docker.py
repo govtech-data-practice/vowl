@@ -408,8 +408,9 @@ class TestOraclePooledAdapter:
 
         try:
             con.raw_sql('DROP TABLE "hdb_resale_prices"')
-        except Exception:
-            pass
+        except Exception as exc:
+            if "table or view does not exist" not in str(exc).lower():
+                raise
 
         con.raw_sql("""
             CREATE TABLE "hdb_resale_prices" (
@@ -506,8 +507,9 @@ class TestOraclePooledAdapter:
         con = ibis.oracle.connect(**oracle_connect_kwargs)
         try:
             con.raw_sql("DROP TABLE EXPORT_TEST")
-        except Exception:
-            pass
+        except Exception as exc:
+            if "table or view does not exist" not in str(exc).lower():
+                raise
         con.raw_sql("CREATE TABLE EXPORT_TEST (id NUMBER, val VARCHAR2(10))")
         con.raw_sql("INSERT INTO EXPORT_TEST VALUES (1, 'a')")
         con.raw_sql("INSERT INTO EXPORT_TEST VALUES (2, 'b')")

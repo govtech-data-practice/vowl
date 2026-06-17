@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import threading
 import time
-from unittest.mock import MagicMock
 
 import pyarrow as pa
 import pytest
@@ -200,8 +199,6 @@ class TestPoolExhaustion:
 
 class TestErrorIsolation:
     def test_error_in_one_check_does_not_break_others(self):
-        call_count = 0
-
         class SelectiveErrorAdapter(BaseAdapter):
             def __init__(self):
                 super().__init__()
