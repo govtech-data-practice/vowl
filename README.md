@@ -463,10 +463,44 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`print_summary()`** | Prints high-level statistics (pass/fail counts, success rate, performance) | `self` (chainable) |
 | **`show_failed_rows(max_rows=5)`** | Displays sample of failed rows in console. Use `max_rows=-1` for all rows. | `self` (chainable) |
 | **`display_full_report(max_rows=5)`** | Prints summary + shows failed rows (convenience method) | `self` (chainable) |
-| **`save(output_dir=".", prefix="vowl_results")`** | Saves enhanced CSV and summary JSON to disk | `self` (chainable) |
+| **`save(output_dir=".", prefix="vowl_results", output_mode=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"` | `self` (chainable) |
 | **`get_output_dfs(checks=None)`** | Returns per-check failed rows as `{check_id: DataFrame}` | Dict[str, DataFrame] |
 | **`get_consolidated_output_dfs(checks=None)`** | Deduplicates failed rows across checks, grouped by table | Dict[str, DataFrame] |
+| **`get_annotated_output(checks=None, include_target=False)`** | Returns full in-scope tables with a `check_ids` column marking failed rows | Dict[str, Dict[str, DataFrame]] |
 | **`.passed`** (property) | Boolean indicating if all checks passed | `True`/`False` |
+
+#### Annotated Output
+
+`get_annotated_output()` returns the **full in-scope table** with a `check_ids` column that marks which rows failed which checks. Passing rows have `null` in the `check_ids` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
+
+```python
+result = validate_data("contract.yaml", df=df)
+output = result.get_annotated_output()
+
+# output["annotated"]["hdb_resale_prices"] — full table with check_ids column
+# output["residues"]                       — cross-table or non-mergeable failures
+```
+
+The `save()` method also supports annotated output via `output_mode`:
+
+```python
+# Save annotated tables (full tables with check_ids marking failures)
+result.save(output_mode="annotated")
+
+# Save both failed-rows CSVs and annotated tables
+result.save(output_mode="both")
+```
+
+You can also set the output mode globally via `ValidationConfig`:
+
+```python
+from vowl import validate_data
+from vowl.config import ValidationConfig
+
+config = ValidationConfig(output_mode="annotated")
+result = validate_data("contract.yaml", df=df, config=config)
+result.save()  # uses the configured output_mode
+```
 
 ---
 
