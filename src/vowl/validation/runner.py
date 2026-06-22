@@ -155,4 +155,5 @@ class ValidationRunner:
             contract=self._contract,
             multi_adapter=self._multi_adapter,
             schema_names=schema_names,
+            config=self._config,
         )
