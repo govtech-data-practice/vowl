@@ -62,6 +62,11 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 pip install vowl
 ```
 
+Or install from source:
+```bash
+pip install git+https://github.com/govtech-data-practice/vowl.git
+```
+
 Optional extras are available: `vowl[spark]`, `vowl[all]`.
 For local development, testing, and release workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -599,7 +604,7 @@ from vowl.adapters import IbisAdapter
 # Data is streamed on demand, not materialised locally.
 # All SQL is evaluated by DuckDB, so dialect differences are eliminated.
 con = ibis.duckdb.connect()
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
 con.raw_sql("USE pg")  # Allows querying tables without the pg. alias
 
 result = validate_data("contract.yaml", adapter=IbisAdapter(con))
@@ -679,7 +684,7 @@ from vowl.adapters import IbisAdapter
 con = ibis.duckdb.connect()
 
 # Attach multiple remote databases
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
 con.raw_sql("ATTACH 'sqlite:///path/to/users.db' AS sqlite_users (TYPE sqlite, READ_ONLY)")
 
 # Switch back to local DuckDB so views live in memory

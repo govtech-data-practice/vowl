@@ -63,7 +63,7 @@ from vowl import validate_data
 from vowl.adapters import IbisAdapter
 
 con = ibis.duckdb.connect()
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
 con.raw_sql("USE pg")
 
 result = validate_data("contract.yaml", adapter=IbisAdapter(con))
@@ -150,7 +150,7 @@ from vowl.adapters import IbisAdapter
 
 con = ibis.duckdb.connect()
 
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
 con.raw_sql("ATTACH 'sqlite:///path/to/users.db' AS sqlite_users (TYPE sqlite, READ_ONLY)")
 
 con.raw_sql("USE memory")
