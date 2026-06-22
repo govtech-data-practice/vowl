@@ -18,30 +18,32 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 
 ## Table of Contents
 
+**Part 1 · Getting Started**
 - [Features](#features)
-- [Getting Started](#getting-started)
-  - [Installation](#installation)
-  - [Validate in 3 lines](#validate-in-3-lines)
-- [Concepts](#concepts)
-  - [Data Contracts](#data-contracts)
-  - [Automatic `check_references`](#automatic-check_references)
-  - [Library Metrics (`type: library`)](#library-metrics-type-library)
-  - [Validation Results](#validation-results)
-  - [Architecture](#architecture)
-- [Usage Patterns](#usage-patterns)
-  - [Local DataFrame (Pandas/Polars)](#local-dataframe-pandaspolars)
-  - [PySpark](#pyspark)
-  - [Ibis Connections (20+ Backends)](#ibis-connections-20-backends)
-  - [Compatibility Mode (DuckDB ATTACH)](#compatibility-mode-duckdb-attach)
-  - [Explicit Adapter with Filter Conditions](#explicit-adapter-with-filter-conditions)
-  - [Multi-Source Validation](#multi-source-validation)
-  - [Custom Adapters and Executors](#custom-adapters-and-executors)
-  - [Using Servers Defined in Data Contract](#using-servers-defined-in-data-contract)
-  - [Loading Contracts from Git (GitHub/GitLab)](#loading-contracts-from-git-githubgitlab)
-  - [Loading Contracts from S3](#loading-contracts-from-s3)
+- [Installation](#installation)
+- [Validate in 3 lines](#validate-in-3-lines)
+
+**Part 2 · Core Concepts**
+- [Data Contracts](#data-contracts)
+- [Auto-Generated Checks](#auto-generated-checks)
+- [Library Metrics (`type: library`)](#library-metrics-type-library)
+- [Format Checks](#format-checks)
+- [Validation Results](#validation-results)
+- [Architecture](#architecture)
+
+**Part 3 · Usage Patterns**
+- *Common sources* — [Local DataFrame](#local-dataframe-pandaspolars) · [PySpark](#pyspark) · [Ibis (20+ backends)](#ibis-connections-20-backends)
+- *Filtering & cross-source* — [Filter Conditions](#explicit-adapter-with-filter-conditions) · [Multi-Source](#multi-source-validation) · [Compatibility Mode](#compatibility-mode-duckdb-attach)
+- *Advanced & extending* — [Servers in Contract](#using-servers-defined-in-data-contract) · [Custom Adapters](#custom-adapters-and-executors) · [Remote Contracts (Git/S3)](#loading-contracts-from-remote-sources-gits3)
+
+**More**
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
+
+---
+
+# Part 1 · Getting Started
 
 ## Features
 
@@ -55,9 +57,7 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 *   **Rich Reporting**: Detailed summaries, row-level failure analysis, saveable reports, and a chainable `ValidationResult` API.
 *   **No Silent Gaps**: Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
 
-## Getting Started
-
-### Installation
+## Installation
 ```bash
 pip install vowl
 ```
@@ -70,7 +70,7 @@ pip install git+https://github.com/govtech-data-practice/vowl.git
 Optional extras are available: `vowl[spark]`, `vowl[all]`.
 For local development, testing, and release workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Validate in 3 lines
+## Validate in 3 lines
 ```python
 import pandas as pd  # or any Narwhals-compatible DataFrame
 from vowl import validate_data
@@ -191,11 +191,15 @@ Total Execution:       210.88 ms
 
 </details>
 
-See [Usage Patterns](#usage-patterns) for PySpark, Ibis connections, multi-source validation, and more.
+Next, [Part 2 · Core Concepts](#part-2--core-concepts) explains what a contract looks like and what you get back. If you'd rather see runnable code, jump to [Part 3 · Usage Patterns](#part-3--usage-patterns) for PySpark, Ibis connections, multi-source validation, and more.
 
-## Concepts
+---
 
-### Data Contracts
+# Part 2 · Core Concepts
+
+This section walks through the four ideas you need: how you **declare** rules ([Data Contracts](#data-contracts)), what vowl **generates for you** ([Auto-Generated Checks](#auto-generated-checks)), the **declarative metrics** you can add ([Library Metrics](#library-metrics-type-library) and [Format Checks](#format-checks)), and what you **get back** ([Validation Results](#validation-results)). It closes with the [Architecture](#architecture).
+
+## Data Contracts
 
 Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
 
@@ -279,11 +283,45 @@ schema:
           - 30000000
 ```
 
-### Automatic `check_references`
+## Auto-Generated Checks
 
-When a contract is loaded, `vowl` automatically builds `CheckReference` objects for every executable check in the contract via `Contract.get_check_references_by_schema()`.
+You don't have to write every check by hand. When a contract is loaded, `vowl` automatically derives checks from your column metadata — so simply declaring `logicalType`, `required: true`, `unique: true`, and similar gives you validation for free. These auto-generated checks run before any explicit `quality` checks you've authored.
 
-This includes both user-authored checks in `quality` blocks and synthetic checks derived from column metadata. The generated references are grouped by schema, and the auto-generated ones run before explicit `quality` checks.
+The check types currently generated:
+
+| Generated from | What `vowl` validates |
+|----------------|------------------------|
+| `name` | Column declared in the contract exists in the source table |
+| `logicalType` | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
+| `logicalTypeOptions.minLength` | String length is at least the configured minimum |
+| `logicalTypeOptions.maxLength` | String length does not exceed the configured maximum |
+| `logicalTypeOptions.pattern` | String values match the configured regex pattern |
+| `logicalTypeOptions.minimum` | Value is greater than or equal to the configured minimum |
+| `logicalTypeOptions.maximum` | Value is less than or equal to the configured maximum |
+| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum |
+| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum |
+| `logicalTypeOptions.multipleOf` | Value is a multiple of the configured number |
+| `logicalTypeOptions.format` | Value satisfies the declared format (see [Format Checks](#format-checks)) |
+| `required: true` | Column contains no `NULL` values |
+| `unique: true` | Non-null values are unique |
+| `primaryKey: true` | Values are both unique and non-null |
+
+For example, a property like this:
+
+```yaml
+- name: block
+    logicalType: string
+    logicalTypeOptions:
+        maxLength: 10
+    required: true
+```
+
+produces three generated checks: a column-exists check, a `maxLength` option check, and a `required` (no-NULL) check. Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, `vowl` also generates a `logicalType` SQL check automatically. You only need to define extra `quality` entries when you want custom business rules beyond the contract metadata.
+
+<details>
+<summary><strong>Reference: how check references are built (JSONPath internals)</strong></summary>
+
+When a contract is loaded, `vowl` builds `CheckReference` objects for every executable check via `Contract.get_check_references_by_schema()`. This includes both user-authored checks in `quality` blocks and synthetic checks derived from column metadata. The generated references are grouped by schema, and the auto-generated ones run before explicit `quality` checks.
 
 | Reference type | Trigger in contract | JSONPath stored in the reference |
 |----------------|---------------------|----------------------------------|
@@ -298,26 +336,17 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 | Unique check | `unique: true` | `$.schema[N].properties[M].unique` |
 | Primary key check | `primaryKey: true` | `$.schema[N].properties[M].primaryKey` |
 
-The auto-generated check types currently cover:
+So the `block` property above produces three generated check references pointing at:
 
-| Generated from | What `vowl` validates |
-|----------------|------------------------|
-| `name` | Column declared in the contract exists in the source table |
-| `logicalType` | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
-| `logicalTypeOptions.minLength` | String length is at least the configured minimum |
-| `logicalTypeOptions.maxLength` | String length does not exceed the configured maximum |
-| `logicalTypeOptions.pattern` | String values match the configured regex pattern |
-| `logicalTypeOptions.minimum` | Value is greater than or equal to the configured minimum |
-| `logicalTypeOptions.maximum` | Value is less than or equal to the configured maximum |
-| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum |
-| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum |
-| `logicalTypeOptions.multipleOf` | Value is a multiple of the configured number |
-| `logicalTypeOptions.format` | Value satisfies the declared format (see [Format Checks](#format-checks) below) |
-| `required: true` | Column contains no `NULL` values |
-| `unique: true` | Non-null values are unique |
-| `primaryKey: true` | Values are both unique and non-null |
+| Check path | Check type |
+|---|---|
+| `$.schema[0].properties[...]` | `DeclaredColumnExistsCheckReference` |
+| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference` |
+| `$.schema[0].properties[...].required` | `RequiredCheckReference` |
 
-### Library Metrics (`type: library`)
+</details>
+
+## Library Metrics (`type: library`)
 
 Instead of writing SQL by hand, you can declare common data quality metrics using `type: library` in your `quality` blocks. `vowl` auto-generates the appropriate SQL at runtime.
 
@@ -379,29 +408,34 @@ quality:
         - street_name
 ```
 
-In practice, a property like this:
+## Format Checks
+
+The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`. In short:
+
+- **Integer formats** (`i8`…`u64`) — range-check a fixed-width integer type.
+- **String formats** (`uuid`, `email`, `ipv4`, `ipv6`, `hostname`, `uri`) — match a built-in regex.
+- **Date/timestamp/time formats** — a JDK `DateTimeFormatter` pattern (e.g. `yyyy-MM-dd`) is converted to a regex and matched against string-cast values.
+- **Number formats** (`f32`, `f64`) — recognised but metadata-only (no check).
 
 ```yaml
-- name: block
-    logicalType: string
-    logicalTypeOptions:
-        maxLength: 10
-    required: true
+- name: age
+  logicalType: integer
+  logicalTypeOptions:
+    format: u8           # 0 – 255
+
+- name: request_id
+  logicalType: string
+  logicalTypeOptions:
+    format: uuid
+
+- name: created_at
+  logicalType: timestamp
+  logicalTypeOptions:
+    format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
 ```
 
-produces three generated check references pointing at:
-
-| Check path | Check type |
-|---|---|
-| `$.schema[0].properties[...]` | `DeclaredColumnExistsCheckReference` |
-| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference` |
-| `$.schema[0].properties[...].required` | `RequiredCheckReference` |
-
-Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, `vowl` also generates a `logicalType` SQL check automatically. You only need to define extra `quality` entries when you want custom business rules beyond the contract metadata.
-
-### Format Checks
-
-The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`:
+<details>
+<summary><strong>Reference: supported formats and ranges</strong></summary>
 
 **Integer formats** — validates that values fall within the range of a fixed-width integer type:
 
@@ -435,24 +469,9 @@ The `logicalTypeOptions.format` key validates that column values conform to a de
 
 **Date, timestamp and time formats** — accepts a JDK DateTimeFormatter pattern (e.g. `yyyy-MM-dd`). `vowl` converts the pattern to a regex and validates that string-cast values match. Supported tokens include `yyyy`, `yy`, `MM`, `dd`, `HH`, `mm`, `ss`, `SSS`, and timezone offsets (`X`/`XXX`/`Z`). If a pattern contains tokens `vowl` cannot translate, the check is skipped with a warning.
 
-```yaml
-- name: age
-  logicalType: integer
-  logicalTypeOptions:
-    format: u8           # 0 – 255
+</details>
 
-- name: request_id
-  logicalType: string
-  logicalTypeOptions:
-    format: uuid
-
-- name: created_at
-  logicalType: timestamp
-  logicalTypeOptions:
-    format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
-```
-
-### Validation Results
+## Validation Results
 
 The `validate_data` function returns a powerful `ValidationResult` object that provides multiple ways to interact with your validation results.
 
@@ -473,13 +492,81 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 `get_annotated_output()` returns the **full in-scope table** with a `check_ids` column that marks which rows failed which checks. Passing rows have `null` in the `check_ids` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
 
+It returns a nested dict with two reserved keys:
+
+- **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_ids` column. Every original row is present; `check_ids` is `null` for rows that passed everything and names the failing check(s) otherwise.
+- **`"residues"`** — failed rows for checks that *cannot* be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none.
+
+Passing **`include_target=True`** adds a `targets` column naming the specific column(s) behind each failure.
+
 ```python
 result = validate_data("contract.yaml", df=df)
-output = result.get_annotated_output()
+output = result.get_annotated_output(include_target=True)
 
-# output["annotated"]["hdb_resale_prices"] — full table with check_ids column
-# output["residues"]                       — cross-table or non-mergeable failures
+annotated = output["annotated"]["hdb_resale_prices"].to_pandas()
+# columns: <original columns> + check_ids + targets
+# output["residues"] — cross-table or non-mergeable failures (empty for single-table contracts)
 ```
+
+<details>
+<summary><strong>Output</strong> — full table, flagged rows floated to the top (click to expand)</summary>
+
+```python
+# Sort so flagged rows surface first; passing rows (check_ids = null) sink to the bottom.
+flagged_first = annotated.sort_values("check_ids", na_position="last").reset_index(drop=True)
+
+flagged_first[["month", "town", "block", "floor_area_sqm",
+               "lease_commence_date", "check_ids", "targets"]].head(8)
+```
+
+```
+     month             town block  floor_area_sqm lease_commence_date                          check_ids                              targets
+0  2017-01            BEDOK                  84.0                1986  AddressBlockHouseNumber             hdb_resale_prices.block
+1  2017-jan            BEDOK    21           130.0                1972  Month                              hdb_resale_prices.month
+2  2017-jan           BISHAN   105             4.0                1985  Month                              hdb_resale_prices.month
+3  2017-01       ANG MO KIO   219            67.0              1977.0  Year                               hdb_resale_prices.lease_commence_date
+4  2017-01       ANG MO KIO   211            67.0                 abc  Year                               hdb_resale_prices.lease_commence_date
+5  2017-06  KALLANG/WHAMPOA    38           215.0                1972  floor_area_must_be_less_than_200   hdb_resale_prices.floor_area_sqm
+6  2017-09    CHOA CHU KANG   641           215.0                1998  floor_area_must_be_less_than_200   hdb_resale_prices.floor_area_sqm
+7  2017-12  KALLANG/WHAMPOA    65           249.0                1972  floor_area_must_be_less_than_200   hdb_resale_prices.floor_area_sqm
+```
+
+Because the annotation lives on the full table, separating the good rows from the bad is a one-liner — filter to where `check_ids` is null and drop the annotation columns:
+
+```python
+clean = annotated[annotated["check_ids"].isna()].drop(columns=["check_ids", "targets"])
+# 201,861 clean rows of 201,879, ready for downstream use — no join back to the source needed
+```
+
+</details>
+
+When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead — in the same shape as `get_consolidated_output_dfs()`, with `check_ids` and `tables_in_query` columns:
+
+<details>
+<summary><strong>Output</strong> — residues from a cross-table (multi-source) contract (click to expand)</summary>
+
+```python
+output = result.get_annotated_output(include_target=True)
+
+print("Residue keys:", list(output["residues"].keys()))
+for key, residue in output["residues"].items():
+    df = residue.to_pandas()
+    print(f"\nResidue '{key}': {len(df)} failed row(s)")
+    print(df[["employee_id", "payroll_id", "month", "check_ids", "tables_in_query"]])
+```
+
+```
+Residue keys: ['demo_employee_list, demo_employee_payroll']
+
+Residue 'demo_employee_list, demo_employee_payroll': 2 failed row(s)
+  employee_id                            payroll_id    month                                          check_ids                            tables_in_query
+0     e939123  e52e556f-79b0-471f-ad08-e27b2c524ace  2025-12  employee_id_exists_in_master_list, phone_numbe...  demo_employee_list, demo_employee_payroll
+1     e128903  cb04c5bb-9386-44cf-a565-2276744c9cc0  2025-12                 phone_number_exists_in_master_list  demo_employee_list, demo_employee_payroll
+```
+
+</details>
+
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) walks through these examples end-to-end.
 
 The `save()` method also supports annotated output via `output_mode`:
 
@@ -502,9 +589,7 @@ result = validate_data("contract.yaml", df=df, config=config)
 result.save()  # uses the configured output_mode
 ```
 
----
-
-### Architecture
+## Architecture
 
 `vowl` has a modular architecture built around **Ibis** as the universal query layer.
 
@@ -570,9 +655,19 @@ result.save()  # uses the configured output_mode
 | **Contract** | Parses ODCS YAML contracts into executable validation rules |
 | **ValidationResult** | Rich result object with enhanced DataFrames, metrics, and export capabilities |
 
-## Usage Patterns
+---
+
+# Part 3 · Usage Patterns
 
 > **Interactive demo:** Try the [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
+
+The patterns are grouped from most common to most advanced:
+
+- **Common sources** — point vowl at the data you already have: a [local DataFrame](#local-dataframe-pandaspolars), [PySpark](#pyspark), or any of [20+ Ibis backends](#ibis-connections-20-backends).
+- **Filtering & cross-source** — validate a [subset of rows](#explicit-adapter-with-filter-conditions), or join across [multiple source systems](#multi-source-validation) — optionally through [DuckDB ATTACH](#compatibility-mode-duckdb-attach).
+- **Advanced & extending** — drive connections from [servers in the contract](#using-servers-defined-in-data-contract), build [custom adapters/executors](#custom-adapters-and-executors), or load contracts from [Git and S3](#loading-contracts-from-remote-sources-gits3).
+
+## Common sources
 
 ### Local DataFrame (Pandas/Polars)
 ```python
@@ -628,24 +723,7 @@ the existing connection. If you need to avoid relying on the connection's
 default database, use qualified table names such as `my_db.my_table` in your
 contract queries.
 
-### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
-```python
-import ibis
-from vowl import validate_data
-from vowl.adapters import IbisAdapter
-
-# ATTACH lets DuckDB query your remote database directly.
-# Data is streamed on demand, not materialised locally.
-# All SQL is evaluated by DuckDB, so dialect differences are eliminated.
-con = ibis.duckdb.connect()
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
-con.raw_sql("USE pg")  # Allows querying tables without the pg. alias
-
-result = validate_data("contract.yaml", adapter=IbisAdapter(con))
-result.display_full_report()
-```
-
-> **When to use this:** Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+## Filtering & cross-source
 
 ### Explicit Adapter with Filter Conditions
 ```python
@@ -755,6 +833,53 @@ result.display_full_report()
 
 > **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). The `MultiSourceAdapter` **materialises entire tables on the client** via Arrow into a local DuckDB instance, so prefer ATTACH whenever possible. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). It also preserves a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block, and those queries succeed with `MultiSourceAdapter` (everything is materialised locally) but fail with DuckDB ATTACH (only explicitly attached tables are visible).
 
+### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter
+
+# ATTACH lets DuckDB query your remote database directly.
+# Data is streamed on demand, not materialised locally.
+# All SQL is evaluated by DuckDB, so dialect differences are eliminated.
+con = ibis.duckdb.connect()
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
+con.raw_sql("USE pg")  # Allows querying tables without the pg. alias
+
+result = validate_data("contract.yaml", adapter=IbisAdapter(con))
+result.display_full_report()
+```
+
+> **When to use this:** Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+
+## Advanced & extending
+
+### Using Servers Defined in Data Contract
+```python
+from vowl import validate_data
+from vowl.contracts import Contract
+from vowl.adapters import IbisAdapter
+import ibis
+
+# Load the contract and get server configuration
+contract = Contract.load("contract.yaml")
+server = contract.get_server("my-postgres-server")  # Match by server name
+# Or: contract.get_server("uat")        # falls back to matching by environment
+# Or: contract.get_server()             # returns the first server
+
+# Create connection based on server config
+con = ibis.postgres.connect(
+    host=server["server"],
+    port=server.get("port", 5432),
+    database=server.get("database", ""),
+)
+
+# Create adapter and validate
+adapter = IbisAdapter(con)
+result = validate_data("contract.yaml", adapter=adapter)
+result.display_full_report()
+```
+
 ### Custom Adapters and Executors
 
 `BaseAdapter`, `BaseExecutor`, and `SQLExecutor` are intended as boilerplate extension points for teams building custom integrations. The typical pattern is to wrap an existing adapter, register custom executors, and then add backend-specific behavior incrementally.
@@ -804,33 +929,11 @@ assert "sql" in executors
 
 This section documents the extension boilerplate rather than a guaranteed drop-in `validate_data(..., adapter=...)` path for arbitrary non-Ibis adapters. For end-to-end validation in the built-in runner today, the supported runtime adapter type is `IbisAdapter`.
 
-### Using Servers Defined in Data Contract
-```python
-from vowl import validate_data
-from vowl.contracts import Contract
-from vowl.adapters import IbisAdapter
-import ibis
+### Loading Contracts from Remote Sources (Git/S3)
 
-# Load the contract and get server configuration
-contract = Contract.load("contract.yaml")
-server = contract.get_server("my-postgres-server")  # Match by server name
-# Or: contract.get_server("uat")        # falls back to matching by environment
-# Or: contract.get_server()             # returns the first server
+Contracts don't have to live on local disk — `validate_data` accepts GitHub/GitLab URLs and S3 URIs directly.
 
-# Create connection based on server config
-con = ibis.postgres.connect(
-    host=server["server"],
-    port=server.get("port", 5432),
-    database=server.get("database", ""),
-)
-
-# Create adapter and validate
-adapter = IbisAdapter(con)
-result = validate_data("contract.yaml", adapter=adapter)
-result.display_full_report()
-```
-
-### Loading Contracts from Git (GitHub/GitLab)
+**Git (GitHub/GitLab):**
 ```python
 from vowl import validate_data
 
@@ -858,7 +961,7 @@ result.display_full_report()
 # Note: `requests` is included in base install.
 ```
 
-### Loading Contracts from S3
+**S3:**
 ```python
 from vowl import validate_data
 
@@ -870,6 +973,8 @@ result.display_full_report()
 # Install it with: pip install vowl[all]  or  pip install boto3
 # Uses default AWS credentials (environment variables, ~/.aws/credentials, IAM role, etc.)
 ```
+
+---
 
 ## Roadmap
 
@@ -893,9 +998,11 @@ result.display_full_report()
 
 | Capability | Description | Status |
 |------------|-------------|--------|
-| � **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
-| 📅 **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned || 📅 **CLI Interface** | Command-line interface for running validations directly from the terminal | Planned |
+| 🔬 **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
+| 📅 **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned |
+| 📅 **CLI Interface** | Command-line interface for running validations directly from the terminal | Planned |
 | 📅 **vowl-ui** | Web-based validation interface for vowl | Planned |
+
 ---
 
 ## Contributing
@@ -907,4 +1014,3 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
