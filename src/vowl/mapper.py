@@ -84,7 +84,7 @@ class DataSourceMapper:
         >>> adapter = mapper.get_adapter(polars_df)
         >>> # Returns IbisAdapter with DuckDB backend
 
-        >>> adapter = mapper.get_adapter("postgresql://user:pass@host/db")
+        >>> adapter = mapper.get_adapter("postgresql://user:pass@host/db")  # trufflehog:ignore
         >>> # Returns IbisAdapter with PostgreSQL backend
     """
 

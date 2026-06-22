@@ -53,7 +53,7 @@ The raw models have "class explosion" - redundant classes from JSON schema `oneO
 
 Use this prompt with **GitHub Copilot** or other AI coding tools:
 
-```
+````
 I have an auto-generated Pydantic v2 model file `vX_Y_Z_raw.py` that suffers from class explosion.
 
 The problem is in how DataQualityOperators, DataQualityLibrary, and DataQualitySql are defined.
@@ -83,21 +83,23 @@ Please refactor to create a new `vX_Y_Z.py` file that:
        Union[DataQualityText, DataQualityLibrary, DataQualitySql, DataQualityCustom],
        Field(discriminator="type"),
    ]
-   ```
+````
 
 5. Remove all the numbered variant classes (DataQualityOperators1-8, DataQualityLibrary1-17, DataQualitySql1-17, etc.)
 
 6. Keep all other classes unchanged.
 
 Benefits of discriminated unions:
+
 - Downstream code uses single `DataQuality` type
 - Pydantic auto-resolves to correct subclass based on `type` field
 - Type narrowing works with isinstance() and match statements
 - Better IDE autocompletion per type
 
 The goal is to reduce class count by ~50% while maintaining full schema compatibility.
-Save as `vX_Y_Z.py` (without the _raw suffix).
-```
+Save as `vX_Y_Z.py` (without the \_raw suffix).
+
+````
 
 Output: `vX_Y_Z.py` (~30-40 classes)
 
@@ -113,9 +115,10 @@ make test
 
 # Or run model tests specifically
 uv run pytest test/test_models.py -v
-```
+````
 
 Expected output:
+
 ```
 test/test_models.py::TestClassExplosion::test_raw_vs_refactored_reduction PASSED
 Class count: ~80 -> ~30 (60%+ reduction)

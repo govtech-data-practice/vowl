@@ -104,18 +104,18 @@ output["residues"]    # {key: failed rows + check_ids + tables_in_query}  <- eve
 For example, suppose your full table `hdb_resale_prices` looks like this:
 
 | month   | town       | block | street_name    | flat_type | storey_range | floor_area_sqm | lease_commence_date | remaining_lease | resale_price |
-|---------|------------|-------|----------------|-----------|--------------|----------------|---------------------|-----------------|--------------|
+| ------- | ---------- | ----- | -------------- | --------- | ------------ | -------------- | ------------------- | --------------- | ------------ |
 | 2024-01 | ANG MO KIO | 123   | ANG MO KIO AVE | 3 ROOM    | 04 TO 06     | 68             | 1980                | 55 years        | 350000       |
 | 2024-01 | BEDOK      | 456   | BEDOK NORTH    | 4 ROOM    | 07 TO 09     | 92             | 1995                | 70 years        | 480000       |
 | 2024-02 | TAMPINES   | 789   | TAMPINES ST    | 5 ROOM    | 10 TO 12     | 110            | 2000                | 75 years        | 620000       |
 
 A **mergeable** check (e.g. a row-level check like "resale_price must be > 0") can tag individual rows directly, producing an annotated table like:
 
-| month   | town       | block | ... | resale_price | check_ids              |
-|---------|------------|-------|-----|--------------|------------------------|
-| 2024-01 | ANG MO KIO | 123   | ... | 350000       | null                   |
-| 2024-01 | BEDOK      | 456   | ... | 480000       | null                   |
-| 2024-02 | TAMPINES   | 789   | ... | 620000       | resale_price_positive  |
+| month   | town       | block | ... | resale_price | check_ids             |
+| ------- | ---------- | ----- | --- | ------------ | --------------------- |
+| 2024-01 | ANG MO KIO | 123   | ... | 350000       | null                  |
+| 2024-01 | BEDOK      | 456   | ... | 480000       | null                  |
+| 2024-02 | TAMPINES   | 789   | ... | 620000       | resale_price_positive |
 
 This split is by design. A check can only be merged into the annotated table when **all** of the following are true:
 
@@ -145,7 +145,7 @@ quality:
 The query result might look like:
 
 | count |
-|-------|
+| ----- |
 | 3     |
 
 This tells us 3 payroll rows have missing employee IDs, but the failure belongs to the _relationship_ between the two tables — there's no single table to annotate it onto. It goes to `residues` keyed by `"demo_employee_list, demo_employee_payroll"`.
@@ -168,9 +168,9 @@ properties:
 
 The query result is just one number:
 
-| avg        |
-|------------|
-| 483333.33  |
+| avg       |
+| --------- |
+| 483333.33 |
 
 There are no individual rows to flag — the result is a single scalar, so it can't be annotated onto the full table. It becomes a residue.
 
@@ -197,7 +197,7 @@ properties:
 The query result might look like:
 
 | month   | block | street_name    | flat_type | storey_range |
-|---------|-------|----------------|-----------|--------------|
+| ------- | ----- | -------------- | --------- | ------------ |
 | 2024-01 | 123   | ANG MO KIO AVE | 3 ROOM    | 04 TO 06     |
 
 This tells us there's a duplicate, but the result only has 5 columns. The full table has 10 columns (including `town`, `floor_area_sqm`, `lease_commence_date`, `remaining_lease`, `resale_price`). We can't match this partial row back to a specific full row, so it becomes a residue.
@@ -242,11 +242,11 @@ Here, `audit_log` isn't declared in the contract, but the check runs fine. vowl 
 
 **Backend differences:**
 
-| Adapter                                | Behaviour                                                                                                            |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `IbisAdapter` (native Ibis connection) | Works — the query runs against whatever the connection can reach.                                                    |
-| `MultiSourceAdapter`                   | Works — all materialised tables are available in the local DuckDB instance.                                          |
+| Adapter                                | Behaviour                                                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `IbisAdapter` (native Ibis connection) | Works — the query runs against whatever the connection can reach.                                                       |
+| `MultiSourceAdapter`                   | Works — all materialised tables are available in the local DuckDB instance.                                             |
 | DuckDB ATTACH                          | **May fail** — only explicitly attached tables are visible. References to undeclared tables give a missing table error. |
 
 !!! warning
-    Treat SQL checks that reference undeclared tables as a code smell. Declare all referenced tables in your contract's `schema`, even if they're not the primary validation target.
+Treat SQL checks that reference undeclared tables as a code smell. Declare all referenced tables in your contract's `schema`, even if they're not the primary validation target.
