@@ -467,6 +467,13 @@ class ValidationResult:
         return dict(sorted(result.items()))
 
     def get_consolidated_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
+        """Group failed rows by (tables_in_query, column_set), deduplicating
+        identical rows and combining their check IDs.
+
+        Unlike ``get_annotated_output``, this does **not** filter out cross-table
+        checks. They appear under their composite table key (e.g.
+        ``"table_a, table_b"``).  See docs/known-issues.md for details.
+        """
         per_check = self.get_output_dfs(checks=checks)
         per_check = {k: v for k, v in per_check.items() if len(v) > 0}
         if not per_check:
@@ -550,7 +557,7 @@ class ValidationResult:
         """Return the full in-scope table for a schema, or ``None``.
 
         The table is exported via the schema's adapter, which applies the
-        adapter's filter conditions — so the result reflects the same in-scope
+        adapter's filter conditions, so the result reflects the same in-scope
         rows the checks ran against, not the raw source.
 
         ``None`` is returned (and cached) when there is no adapter for the
