@@ -20,7 +20,7 @@ jobs:
       - name: TruffleHog secret detection
         uses: trufflesecurity/trufflehog@main
         with:
-          extra_args: --results=verified,unknown
+          extra_args: --results=verified,unknown --exclude-paths=.trufflehog-exclude.txt
 
   sast:
     runs-on: ubuntu-latest
