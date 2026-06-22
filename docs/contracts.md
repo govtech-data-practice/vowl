@@ -93,37 +93,37 @@ When a contract is loaded, vowl automatically builds `CheckReference` objects fo
 
 This includes both user-authored checks in `quality` blocks and synthetic checks derived from column metadata. The generated references are grouped by schema, and the auto-generated ones run before explicit `quality` checks.
 
-| Reference type | Trigger in contract | JSONPath stored in the reference |
-|----------------|---------------------|----------------------------------|
-| Table check | Entry under schema-level `quality` | `$.schema[N].quality[M]` |
-| Column check | Entry under property-level `quality` | `$.schema[N].properties[M].quality[K]` |
-| Library column metric | `type: library` under property-level `quality` | `$.schema[N].properties[M].quality[K]` |
-| Library table metric | `type: library` under schema-level `quality` | `$.schema[N].quality[M]` |
-| Declared column exists check | Property has a `name` | `$.schema[N].properties[M]` |
-| Logical type check | `logicalType` present on a property | `$.schema[N].properties[M].logicalType` |
-| Logical type options check | Supported key under `logicalTypeOptions` | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
-| Required check | `required: true` | `$.schema[N].properties[M].required` |
-| Unique check | `unique: true` | `$.schema[N].properties[M].unique` |
-| Primary key check | `primaryKey: true` | `$.schema[N].properties[M].primaryKey` |
+| Reference type               | Trigger in contract                            | JSONPath stored in the reference                           |
+| ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
+| Table check                  | Entry under schema-level `quality`             | `$.schema[N].quality[M]`                                   |
+| Column check                 | Entry under property-level `quality`           | `$.schema[N].properties[M].quality[K]`                     |
+| Library column metric        | `type: library` under property-level `quality` | `$.schema[N].properties[M].quality[K]`                     |
+| Library table metric         | `type: library` under schema-level `quality`   | `$.schema[N].quality[M]`                                   |
+| Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
+| Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
+| Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
+| Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
+| Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
 
 ## Auto-Generated Checks
 
-| Generated from | What vowl validates |
-|----------------|----------------------|
-| `name` | Column declared in the contract exists in the source table |
-| `logicalType` | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
-| `logicalTypeOptions.minLength` | String length is at least the configured minimum |
-| `logicalTypeOptions.maxLength` | String length does not exceed the configured maximum |
-| `logicalTypeOptions.pattern` | String values match the configured regex pattern |
-| `logicalTypeOptions.minimum` | Value is greater than or equal to the configured minimum |
-| `logicalTypeOptions.maximum` | Value is less than or equal to the configured maximum |
-| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum |
-| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum |
-| `logicalTypeOptions.multipleOf` | Value is a multiple of the configured number |
-| `logicalTypeOptions.format` | Value satisfies the declared format (see [Format Checks](#format-checks) below) |
-| `required: true` | Column contains no `NULL` values |
-| `unique: true` | Non-null values are unique |
-| `primaryKey: true` | Values are both unique and non-null |
+| Generated from                        | What vowl validates                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `name`                                | Column declared in the contract exists in the source table                                                      |
+| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
+| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                |
+| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                            |
+| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                |
+| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                        |
+| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                           |
+| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                           |
+| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                              |
+| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                    |
+| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                 |
+| `required: true`                      | Column contains no `NULL` values                                                                                |
+| `unique: true`                        | Non-null values are unique                                                                                      |
+| `primaryKey: true`                    | Values are both unique and non-null                                                                             |
 
 In practice, a property like this:
 
@@ -137,14 +137,14 @@ In practice, a property like this:
 
 produces three generated check references:
 
-| Check path | Check type |
-|---|---|
-| `$.schema[0].properties[...]` | `DeclaredColumnExistsCheckReference` |
-| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference` |
-| `$.schema[0].properties[...].required` | `RequiredCheckReference` |
+| Check path                                                 | Check type                           |
+| ---------------------------------------------------------- | ------------------------------------ |
+| `$.schema[0].properties[...]`                              | `DeclaredColumnExistsCheckReference` |
+| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference`   |
+| `$.schema[0].properties[...].required`                     | `RequiredCheckReference`             |
 
 !!! note
-    Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
+Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
 
 ## Format Checks
 
@@ -154,16 +154,16 @@ The `logicalTypeOptions.format` key validates that column values conform to a de
 
 Validates that values fall within the range of a fixed-width integer type.
 
-| `format` | Min | Max |
-|----------|-----|-----|
-| `i8` | -128 | 127 |
-| `i16` | -32,768 | 32,767 |
-| `i32` | -2,147,483,648 | 2,147,483,647 |
-| `i64` | -9,223,372,036,854,775,808 | 9,223,372,036,854,775,807 |
-| `u8` | 0 | 255 |
-| `u16` | 0 | 65,535 |
-| `u32` | 0 | 4,294,967,295 |
-| `u64` | 0 | 18,446,744,073,709,551,615 |
+| `format` | Min                        | Max                        |
+| -------- | -------------------------- | -------------------------- |
+| `i8`     | -128                       | 127                        |
+| `i16`    | -32,768                    | 32,767                     |
+| `i32`    | -2,147,483,648             | 2,147,483,647              |
+| `i64`    | -9,223,372,036,854,775,808 | 9,223,372,036,854,775,807  |
+| `u8`     | 0                          | 255                        |
+| `u16`    | 0                          | 65,535                     |
+| `u32`    | 0                          | 4,294,967,295              |
+| `u64`    | 0                          | 18,446,744,073,709,551,615 |
 
 `i128` and `u128` are recognised but skipped because their ranges exceed what SQL engines can represent.
 
@@ -171,21 +171,21 @@ Validates that values fall within the range of a fixed-width integer type.
 - name: age
   logicalType: integer
   logicalTypeOptions:
-    format: u8       # 0 – 255
+    format: u8 # 0 – 255
 ```
 
 ### String formats
 
 Validates values against a built-in regex pattern.
 
-| `format` | What it checks |
-|----------|----------------|
-| `uuid` | UUID v1–v5 hex format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
-| `email` | Basic `local@domain.tld` structure |
-| `ipv4` | Dotted-decimal IPv4 address (`0.0.0.0` – `255.255.255.255`) |
-| `ipv6` | Full-form colon-separated IPv6 address |
-| `hostname` | RFC-952 hostname with TLD |
-| `uri` | URI with a valid scheme prefix (e.g. `https:`, `s3:`) |
+| `format`   | What it checks                                                 |
+| ---------- | -------------------------------------------------------------- |
+| `uuid`     | UUID v1–v5 hex format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
+| `email`    | Basic `local@domain.tld` structure                             |
+| `ipv4`     | Dotted-decimal IPv4 address (`0.0.0.0` – `255.255.255.255`)    |
+| `ipv6`     | Full-form colon-separated IPv6 address                         |
+| `hostname` | RFC-952 hostname with TLD                                      |
+| `uri`      | URI with a valid scheme prefix (e.g. `https:`, `s3:`)          |
 
 `password`, `byte`, and `binary` are recognised but skipped because they cannot be validated against data.
 
@@ -221,20 +221,20 @@ Instead of writing SQL by hand, you can declare common data quality metrics usin
 
 Under a property's `quality`:
 
-| `metric` | What it checks | Arguments |
-|----------|---------------|-----------|
-| `nullValues` | Count of `NULL` values in the column | - |
-| `missingValues` | Count of values matching a configurable missing-values list | `arguments.missingValues`: list of sentinel values (use `null` for SQL NULL) |
-| `invalidValues` | Count of values that fail valid-value or pattern criteria | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
-| `duplicateValues` | Count of duplicate non-NULL values in the column | - |
+| `metric`          | What it checks                                              | Arguments                                                                      |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `nullValues`      | Count of `NULL` values in the column                        | -                                                                              |
+| `missingValues`   | Count of values matching a configurable missing-values list | `arguments.missingValues`: list of sentinel values (use `null` for SQL NULL)   |
+| `invalidValues`   | Count of values that fail valid-value or pattern criteria   | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
+| `duplicateValues` | Count of duplicate non-NULL values in the column            | -                                                                              |
 
 ### Table-Level Metrics
 
 Under a schema's `quality`:
 
-| `metric` | What it checks | Arguments |
-|----------|---------------|-----------|
-| `rowCount` | Total number of rows in the table | - |
+| `metric`          | What it checks                                   | Arguments                                             |
+| ----------------- | ------------------------------------------------ | ----------------------------------------------------- |
+| `rowCount`        | Total number of rows in the table                | -                                                     |
 | `duplicateValues` | Count of duplicate rows across specified columns | `arguments.properties`: list of column names to check |
 
 All library metrics support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
