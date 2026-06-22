@@ -518,6 +518,8 @@ annotated = output["annotated"]["hdb_resale_prices"].to_pandas()
 # output["residues"] — cross-table or non-mergeable failures (empty for single-table contracts)
 ```
 
+#### Annotated Table
+
 <details>
 <summary><strong>Output</strong> — full table, flagged rows floated to the top (click to expand)</summary>
 
@@ -528,8 +530,6 @@ flagged_first = annotated.sort_values("check_ids", na_position="last").reset_ind
 flagged_first[["month", "town", "block", "floor_area_sqm",
                "lease_commence_date", "check_ids", "targets"]]
 ```
-
-#### Annotated Table
 
 |       | month    | town            | block | floor_area_sqm | lease_commence_date | check_ids                        | targets                               |
 |-------|----------|-----------------|-------|----------------|---------------------|----------------------------------|---------------------------------------|
@@ -558,6 +558,8 @@ clean = annotated[annotated["check_ids"].isna()].drop(columns=["check_ids", "tar
 
 When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead — in the same shape as `get_consolidated_output_dfs()`, with `check_ids` and `tables_in_query` columns:
 
+#### Residues
+
 <details>
 <summary><strong>Output</strong> — residues from a cross-table (multi-source) contract (click to expand)</summary>
 
@@ -570,8 +572,6 @@ for key, residue in output["residues"].items():
     print(f"\nResidue '{key}': {len(df)} failed row(s)")
     print(df[["employee_id", "payroll_id", "month", "check_ids", "tables_in_query"]])
 ```
-
-#### Residues
 
 Residue keys: `['demo_employee_list, demo_employee_payroll']`
 
