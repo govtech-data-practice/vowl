@@ -49,11 +49,6 @@ logger = logging.getLogger(__name__)
 #: underlying table's identity.  Stripped before matching annotated rows.
 _METADATA_COLUMNS = ('check_id', 'check_ids', 'tables_in_query')
 
-#: Which annotation matcher ``get_annotated_output`` uses. ``"dict"`` is the
-#: shipped strategy (Candidate B in the plan): NULL-correct for free, immune to
-#: the ``pa.null()`` join crash, and consistent with ``_consolidate_grouped_output``.
-_ANNOTATE_STRATEGY = "dict"
-
 
 class ValidationResult:
     """Container for validation results and reporting helpers."""
