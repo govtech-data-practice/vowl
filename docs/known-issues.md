@@ -6,7 +6,27 @@ description: >-
 
 # Known Issues
 
-## MSSQL: No Regex Support
+## Database Backend Differences
+
+### Null Handling Varies Across Backends
+
+Database backends handle `NULL` differently in aggregate checks like `minimum`, `maximum`, and `mean`. Most backends silently skip nulls, which means a column full of nulls can still pass a `minimum` check (because there are no non-null values to violate the constraint).
+
+If you need to catch nulls, add an explicit `nullValues` check — don't rely on aggregate checks to find them:
+
+```yaml
+properties:
+  - name: my_column
+    quality:
+      - id: my_column_no_nulls
+        metric: nullValues
+        mustBe: 0
+        description: "There must be no null values in the column."
+```
+
+This catches nulls directly, regardless of which database backend runs the validation.
+
+### MSSQL: No Regex Support
 
 SQL Server does not support regex (`REGEXP_LIKE`). Any check that uses pattern matching will return `ERROR` when run against MSSQL.
 
@@ -31,7 +51,7 @@ con.raw_sql("USE mssql_db")
 result = validate_data("contract.yaml", adapter=IbisAdapter(con))
 ```
 
-## Oracle: Dialect Differences
+### Oracle: Dialect Differences
 
 Oracle's SQL dialect differs from standard SQL in ways that can cause some checks to `ERROR`:
 
@@ -40,9 +60,11 @@ Oracle's SQL dialect differs from standard SQL in ways that can cause some check
 - **Case-sensitive identifiers:** Oracle uppercases unquoted identifiers. If your tables were created with quoted lowercase names (e.g. `CREATE TABLE "my_table"`), checks may fail because Oracle looks for `MY_TABLE` instead. vowl applies quoting transforms, but mismatches can still occur.
 - **`TEXT`/`CLOB` columns can't use `REGEXP_LIKE`:** vowl auto-casts these to `VARCHAR(4000)`, which means values longer than 4000 characters get truncated before the regex runs.
 
-## SQLite: Regex via User-Defined Function
+### SQLite: Regex via User-Defined Function
 
 SQLite has no built-in regex support. vowl works around this by using a Python-side regex function (`_IBIS_REGEX_SEARCH`) that Ibis registers automatically. This works in most cases, but may behave slightly differently from server-side regex (e.g. subtle Unicode or flag differences).
+
+---
 
 ## Multi-Source Adapters: Data Materialisation
 
@@ -193,26 +215,6 @@ If you rely solely on annotated output, always check `residues` for non-mergeabl
 - **Missing adapter?** If a schema's adapter is unavailable, that schema is skipped (with a warning) and its failures appear only as residues.
 - **`max_failed_rows` raises an error for annotated output.** If you cap failed rows (`max_failed_rows >= 0`) and a mergeable check gets truncated, `get_annotated_output()` raises `ValueError` rather than silently treating un-fetched failures as passing. Use `max_failed_rows=-1` (the default) or switch to `output_mode="failed_rows"`.
 - **Duplicate rows may be over-flagged.** Matching is value-based. If two rows are byte-identical and one failed, both get annotated (the safe direction — false positives, not false negatives). A row-id-based matcher is planned.
-
----
-
-## Null Handling Varies Across Database Backends
-
-Database backends handle `NULL` differently in aggregate checks like `minimum`, `maximum`, and `mean`. Most backends silently skip nulls, which means a column full of nulls can still pass a `minimum` check (because there are no non-null values to violate the constraint).
-
-If you need to catch nulls, add an explicit `nullValues` check — don't rely on aggregate checks to find them:
-
-```yaml
-properties:
-  - name: my_column
-    quality:
-      - id: my_column_no_nulls
-        metric: nullValues
-        mustBe: 0
-        description: "There must be no null values in the column."
-```
-
-This catches nulls directly, regardless of which database backend runs the validation.
 
 ---
 
