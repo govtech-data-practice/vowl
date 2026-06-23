@@ -4,3 +4,6 @@
 # `# trufflehog:ignore` comment cannot suppress it across the commit-range scan.
 # Each line is a regex matched against the file path.
 examples/vowl_usage_patterns_demo\.ipynb
+# This allowlist file itself contains a placeholder connection string in the
+# comments above, so exclude it from the scan too.
+\.trufflehog-exclude\.txt
