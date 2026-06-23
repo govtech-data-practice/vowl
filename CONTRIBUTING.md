@@ -164,15 +164,15 @@ Use Google-style docstrings:
 ```python
 def validate_data(df, contract_path: str, table_name: str = None):
     """Validates a DataFrame against a data contract.
-    
+
     Args:
         df: The DataFrame to validate (pandas or Spark).
         contract_path: Path to the YAML contract file.
         table_name: Optional override for the table name in SQL queries.
-        
+
     Returns:
         ValidationResult: An object containing validation results and methods.
-        
+
     Raises:
         ValueError: If the DataFrame type is not supported.
     """
@@ -198,6 +198,7 @@ Write clear, descriptive commit messages:
 - Reference issues when applicable
 
 **Examples:**
+
 ```
 Add Polars DataFrame executor support
 
@@ -309,12 +310,14 @@ Consumers should install clean releases by pinning an exact version such as `vow
 ### Pull Request Process
 
 1. **Sync your fork** with the latest upstream changes:
+
    ```bash
    git fetch upstream
    git rebase upstream/main
    ```
 
 2. **Create a feature branch:**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -322,6 +325,7 @@ Consumers should install clean releases by pinning an exact version such as `vow
 3. **Make your changes** and commit them with clear messages
 
 4. **Push your branch** to your fork:
+
    ```bash
    git push origin feature/your-feature-name
    ```

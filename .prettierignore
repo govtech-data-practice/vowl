@@ -1,0 +1,9 @@
+# Vendored, generated, and build output — not hand-authored docs.
+.venv/
+node_modules/
+site/
+dist/
+build/
+docs/doxygen/
+.pytest_cache/
+CHANGELOG.md

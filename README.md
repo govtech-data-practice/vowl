@@ -531,21 +531,21 @@ flagged_first[["month", "town", "block", "floor_area_sqm",
                "lease_commence_date", "check_ids", "targets"]]
 ```
 
-|       | month    | town            | block | floor_area_sqm | lease_commence_date | check_ids                        | targets                               |
-|-------|----------|-----------------|-------|----------------|---------------------|----------------------------------|---------------------------------------|
-| 0     | 2017-01  | BEDOK           |       | 84.0           | 1986                | AddressBlockHouseNumber          | hdb_resale_prices.block               |
-| 1     | 2017-jan | BEDOK           | 21    | 130.0          | 1972                | Month                            | hdb_resale_prices.month               |
-| 2     | 2017-jan | BISHAN          | 105   | 4.0            | 1985                | Month                            | hdb_resale_prices.month               |
-| 3     | 2017-01  | ANG MO KIO      | 219   | 67.0           | 1977.0              | Year                             | hdb_resale_prices.lease_commence_date |
-| 4     | 2017-01  | ANG MO KIO      | 211   | 67.0           | abc                 | Year                             | hdb_resale_prices.lease_commence_date |
-| 5     | 2017-06  | KALLANG/WHAMPOA | 38    | 215.0          | 1972                | floor_area_must_be_less_than_200 | hdb_resale_prices.floor_area_sqm      |
-| ...   | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
-| 8     | 2017-01  | ANG MO KIO      | 406   | 73.0           | 1979                |                                  |                                       |
-| 9     | 2017-01  | ANG MO KIO      | 108   | 67.0           | 1978                |                                  |                                       |
-| 10    | 2017-01  | ANG MO KIO      | 602   | 67.0           | 1984                |                                  |                                       |
-| ...   | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
+|     | month    | town            | block | floor_area_sqm | lease_commence_date | check_ids                        | targets                               |
+| --- | -------- | --------------- | ----- | -------------- | ------------------- | -------------------------------- | ------------------------------------- |
+| 0   | 2017-01  | BEDOK           |       | 84.0           | 1986                | AddressBlockHouseNumber          | hdb_resale_prices.block               |
+| 1   | 2017-jan | BEDOK           | 21    | 130.0          | 1972                | Month                            | hdb_resale_prices.month               |
+| 2   | 2017-jan | BISHAN          | 105   | 4.0            | 1985                | Month                            | hdb_resale_prices.month               |
+| 3   | 2017-01  | ANG MO KIO      | 219   | 67.0           | 1977.0              | Year                             | hdb_resale_prices.lease_commence_date |
+| 4   | 2017-01  | ANG MO KIO      | 211   | 67.0           | abc                 | Year                             | hdb_resale_prices.lease_commence_date |
+| 5   | 2017-06  | KALLANG/WHAMPOA | 38    | 215.0          | 1972                | floor_area_must_be_less_than_200 | hdb_resale_prices.floor_area_sqm      |
+| ... | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
+| 8   | 2017-01  | ANG MO KIO      | 406   | 73.0           | 1979                |                                  |                                       |
+| 9   | 2017-01  | ANG MO KIO      | 108   | 67.0           | 1978                |                                  |                                       |
+| 10  | 2017-01  | ANG MO KIO      | 602   | 67.0           | 1984                |                                  |                                       |
+| ... | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
 
-*201,879 rows — failed rows floated to the top, passing rows (empty `check_ids`) below.*
+_201,879 rows — failed rows floated to the top, passing rows (empty `check_ids`) below._
 
 Because the annotation lives on the full table, separating the good rows from the bad is a one-liner — filter to where `check_ids` is null and drop the annotation columns:
 
@@ -577,10 +577,10 @@ Residue keys: `['demo_employee_list, demo_employee_payroll']`
 
 Residue `'demo_employee_list, demo_employee_payroll'`: 2 failed row(s)
 
-|   | employee_id | payroll_id                           | month   | check_ids                                                            | tables_in_query                          |
-|---|-------------|--------------------------------------|---------|----------------------------------------------------------------------|------------------------------------------|
-| 0 | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | employee_id_exists_in_master_list, phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
-| 1 | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | phone_number_exists_in_master_list                                    | demo_employee_list, demo_employee_payroll |
+|     | employee_id | payroll_id                           | month   | check_ids                                                             | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | --------------------------------------------------------------------- | ----------------------------------------- |
+| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | employee_id_exists_in_master_list, phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
+| 1   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | phone_number_exists_in_master_list                                    | demo_employee_list, demo_employee_payroll |
 
 </details>
 
