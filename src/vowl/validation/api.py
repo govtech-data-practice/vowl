@@ -30,18 +30,17 @@ def validate_data(
     multi_adapter_cls: type[MultiSourceAdapter] = MultiSourceAdapter,
 ) -> ValidationResult:
     sources = {
-        'adapter': adapter,
-        'df': df,
-        'connection_str': connection_str,
-        'spark_session': spark_session,
-        'adapters': adapters,
+        "adapter": adapter,
+        "df": df,
+        "connection_str": connection_str,
+        "spark_session": spark_session,
+        "adapters": adapters,
     }
     provided = [name for name, value in sources.items() if value is not None]
 
     if len(provided) == 0:
         raise ValueError(
-            "A data source must be provided. Use one of: adapter, df, "
-            "connection_str, spark_session, or adapters."
+            "A data source must be provided. Use one of: adapter, df, connection_str, spark_session, or adapters."
         )
 
     if len(provided) > 1:
@@ -65,15 +64,11 @@ def validate_data(
 
     schema_names = resolved_contract.get_schema_names()
     if not schema_names:
-        raise ValueError(
-            "Contract has no schemas with names defined. Cannot infer table name."
-        )
+        raise ValueError("Contract has no schemas with names defined. Cannot infer table name.")
 
     if adapter is not None:
         if isinstance(adapter, multi_adapter_cls):
-            raise TypeError(
-                "Pass MultiSourceAdapter via 'adapters=' parameter, not 'adapter='."
-            )
+            raise TypeError("Pass MultiSourceAdapter via 'adapters=' parameter, not 'adapter='.")
         data_source = adapter
     else:
         data_source = next(v for v in (df, connection_str, spark_session) if v is not None)

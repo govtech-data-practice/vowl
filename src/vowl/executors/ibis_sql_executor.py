@@ -66,7 +66,7 @@ class IbisSQLExecutor(SQLExecutor):
             return None
 
         # Add LIMIT to avoid fetching too many rows (controlled by config.max_failed_rows)
-        max_rows = getattr(self._adapter, 'max_failed_rows', 1000)
+        max_rows = getattr(self._adapter, "max_failed_rows", 1000)
         if max_rows >= 0 and "LIMIT" not in select_query.upper():
             select_query = f"{select_query} LIMIT {max_rows}"
 
@@ -82,20 +82,18 @@ class IbisSQLExecutor(SQLExecutor):
             #   - PySpark 4.0+: DataFrame with .toArrow()
             #   - PySpark 3.x: internal Arrow export via ._collect_as_arrow()
             #   - MySQL/MSSQL/Oracle: standard DB-API cursor with fetchall()
-            if hasattr(result, 'to_arrow_table'):
+            if hasattr(result, "to_arrow_table"):
                 arrow_table = result.to_arrow_table()
-            elif hasattr(result, 'fetch_arrow_table'):
+            elif hasattr(result, "fetch_arrow_table"):
                 arrow_table = result.fetch_arrow_table()
-            elif hasattr(result, 'toArrow'):
+            elif hasattr(result, "toArrow"):
                 arrow_table = result.toArrow()
-            elif hasattr(result, '_collect_as_arrow'):
+            elif hasattr(result, "_collect_as_arrow"):
                 arrow_table = pa.Table.from_batches(result._collect_as_arrow())
-            elif hasattr(result, 'fetchall') and hasattr(result, 'description'):
+            elif hasattr(result, "fetchall") and hasattr(result, "description"):
                 rows = result.fetchall()
                 columns = [desc[0] for desc in result.description]
-                arrow_table = pa.table(
-                    {col: [row[i] for row in rows] for i, col in enumerate(columns)}
-                )
+                arrow_table = pa.table({col: [row[i] for row in rows] for i, col in enumerate(columns)})
             else:
                 return None
             arrow_table = self._deduplicate_arrow_columns(arrow_table)
@@ -129,10 +127,10 @@ class IbisSQLExecutor(SQLExecutor):
         # Ibis backends return different types from raw_sql:
         #   - DuckDB/Postgres/SQLite: cursor-like with .fetchone()
         #   - PySpark: a PySpark DataFrame with .collect()
-        if hasattr(result, 'fetchone'):
+        if hasattr(result, "fetchone"):
             row = result.fetchone()
             return row[0] if row else None
-        elif hasattr(result, 'collect'):
+        elif hasattr(result, "collect"):
             rows = result.collect()
             return rows[0][0] if rows else None
         return None
@@ -154,7 +152,9 @@ class IbisSQLExecutor(SQLExecutor):
 
         try:
             scalar_query = check_ref.get_scalar_query(
-                dialect, filters, use_try_cast=use_try_cast,
+                dialect,
+                filters,
+                use_try_cast=use_try_cast,
             )
             if not scalar_query:
                 return check_ref.build_error_result(
@@ -176,8 +176,11 @@ class IbisSQLExecutor(SQLExecutor):
                 )
 
             failed_query = check_ref.get_failed_rows_query(
-                dialect, filters, use_try_cast=use_try_cast,
+                dialect,
+                filters,
+                use_try_cast=use_try_cast,
             )
+
             def fetcher(q=failed_query):
                 return self._fetch_failed_rows(q)
 

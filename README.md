@@ -3,11 +3,12 @@
 
   <br/>
 
-  [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://govtech-data-practice.github.io/vowl/)
-  [![PyPI](https://img.shields.io/pypi/v/vowl?color=green)](https://pypi.org/project/vowl/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/govtech-data-practice/vowl/blob/main/LICENSE)
-  [![CI](https://github.com/govtech-data-practice/vowl/actions/workflows/ci.yml/badge.svg)](https://github.com/govtech-data-practice/vowl/actions/workflows/ci.yml)
-  [![ODCS Vendor](https://img.shields.io/badge/ODCS-Official%20Vendor-%23FF6B35)](https://github.com/bitol-io/open-data-contract-standard/blob/main/vendors.md)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://govtech-data-practice.github.io/vowl/)
+[![PyPI](https://img.shields.io/pypi/v/vowl?color=green)](https://pypi.org/project/vowl/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/govtech-data-practice/vowl/blob/main/LICENSE)
+[![CI](https://github.com/govtech-data-practice/vowl/actions/workflows/ci.yml/badge.svg)](https://github.com/govtech-data-practice/vowl/actions/workflows/ci.yml)
+[![ODCS Vendor](https://img.shields.io/badge/ODCS-Official%20Vendor-%23FF6B35)](https://github.com/bitol-io/open-data-contract-standard/blob/main/vendors.md)
+
 </div>
 
 # vowl
@@ -18,54 +19,66 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 
 ## Table of Contents
 
+**Part 1 · Getting Started**
+
 - [Features](#features)
-- [Getting Started](#getting-started)
-  - [Installation](#installation)
-  - [Validate in 3 lines](#validate-in-3-lines)
-- [Concepts](#concepts)
-  - [Data Contracts](#data-contracts)
-  - [Automatic `check_references`](#automatic-check_references)
-  - [Library Metrics (`type: library`)](#library-metrics-type-library)
-  - [Validation Results](#validation-results)
-  - [Architecture](#architecture)
-- [Usage Patterns](#usage-patterns)
-  - [Local DataFrame (Pandas/Polars)](#local-dataframe-pandaspolars)
-  - [PySpark](#pyspark)
-  - [Ibis Connections (20+ Backends)](#ibis-connections-20-backends)
-  - [Compatibility Mode (DuckDB ATTACH)](#compatibility-mode-duckdb-attach)
-  - [Explicit Adapter with Filter Conditions](#explicit-adapter-with-filter-conditions)
-  - [Multi-Source Validation](#multi-source-validation)
-  - [Custom Adapters and Executors](#custom-adapters-and-executors)
-  - [Using Servers Defined in Data Contract](#using-servers-defined-in-data-contract)
-  - [Loading Contracts from Git (GitHub/GitLab)](#loading-contracts-from-git-githubgitlab)
-  - [Loading Contracts from S3](#loading-contracts-from-s3)
+- [Installation](#installation)
+- [Validate in 3 lines](#validate-in-3-lines)
+
+**Part 2 · Core Concepts**
+
+- [Data Contracts](#data-contracts)
+- [Auto-Generated Checks](#auto-generated-checks)
+- [Library Metrics (`type: library`)](#library-metrics-type-library)
+- [Format Checks](#format-checks)
+- [Validation Results](#validation-results)
+- [Architecture](#architecture)
+
+**Part 3 · Usage Patterns**
+
+- _Common sources_ — [Local DataFrame](#local-dataframe-pandaspolars) · [PySpark](#pyspark) · [Ibis (20+ backends)](#ibis-connections-20-backends)
+- _Filtering & cross-source_ — [Filter Conditions](#explicit-adapter-with-filter-conditions) · [Multi-Source](#multi-source-validation) · [Compatibility Mode](#compatibility-mode-duckdb-attach)
+- _Advanced & extending_ — [Servers in Contract](#using-servers-defined-in-data-contract) · [Custom Adapters](#custom-adapters-and-executors) · [Remote Contracts (Git/S3)](#loading-contracts-from-remote-sources-gits3)
+
+**More**
+
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
 
+---
+
+# Part 1 · Getting Started
+
 ## Features
 
-*   **Extensible Check Engine**: Ships with a SQL check engine out of the box, with the architecture designed to support custom check types beyond SQL.
-*   **Auto-Generated Rules**: Checks are automatically derived from contract metadata (`logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`) and library metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
-*   **Any DataFrame, Any Backend**: Load any [Narwhals-compatible](https://github.com/narwhals-dev/narwhals) DataFrame type (pandas, Polars, PySpark, etc.) or connect to **20+ backends** via [Ibis](https://github.com/ibis-project/ibis). SQL dialect translation is handled by [SQLGlot](https://github.com/tobymao/sqlglot).
-*   **Server-Side Execution**: SQL checks run server-side through Ibis without materialising tables on the client.
-*   **Multi-Source Validation**: Validate across tables in different source systems with cross-database joins.
-*   **Declarative ODCS Contracts**: Define validation rules in YAML following the [Open Data Contract Standard](https://github.com/bitol-io/open-data-contract-standard).
-*   **Flexible Filtering**: Filter conditions with wildcard pattern matching, ideal for incremental validation of new data.
-*   **Rich Reporting**: Detailed summaries, row-level failure analysis, saveable reports, and a chainable `ValidationResult` API.
-*   **No Silent Gaps**: Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
+- **Extensible Check Engine**: Ships with a SQL check engine out of the box, with the architecture designed to support custom check types beyond SQL.
+- **Auto-Generated Rules**: Checks are automatically derived from contract metadata (`logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`) and library metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
+- **Any DataFrame, Any Backend**: Load any [Narwhals-compatible](https://github.com/narwhals-dev/narwhals) DataFrame type (pandas, Polars, PySpark, etc.) or connect to **20+ backends** via [Ibis](https://github.com/ibis-project/ibis). SQL dialect translation is handled by [SQLGlot](https://github.com/tobymao/sqlglot).
+- **Server-Side Execution**: SQL checks run server-side through Ibis without materialising tables on the client.
+- **Multi-Source Validation**: Validate across tables in different source systems with cross-database joins.
+- **Declarative ODCS Contracts**: Define validation rules in YAML following the [Open Data Contract Standard](https://github.com/bitol-io/open-data-contract-standard).
+- **Flexible Filtering**: Filter conditions with wildcard pattern matching, ideal for incremental validation of new data.
+- **Rich Reporting**: Detailed summaries, row-level failure analysis, saveable reports, and a chainable `ValidationResult` API.
+- **No Silent Gaps**: Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
 
-## Getting Started
+## Installation
 
-### Installation
 ```bash
 pip install vowl
+```
+
+Or install from source:
+
+```bash
+pip install git+https://github.com/govtech-data-practice/vowl.git
 ```
 
 Optional extras are available: `vowl[spark]`, `vowl[all]`.
 For local development, testing, and release workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Validate in 3 lines
+## Validate in 3 lines
+
 ```python
 import pandas as pd  # or any Narwhals-compatible DataFrame
 from vowl import validate_data
@@ -186,15 +199,20 @@ Total Execution:       210.88 ms
 
 </details>
 
-See [Usage Patterns](#usage-patterns) for PySpark, Ibis connections, multi-source validation, and more.
+Next, [Part 2 · Core Concepts](#part-2--core-concepts) explains what a contract looks like and what you get back. If you'd rather see runnable code, jump to [Part 3 · Usage Patterns](#part-3--usage-patterns) for PySpark, Ibis connections, multi-source validation, and more.
 
-## Concepts
+---
 
-### Data Contracts
+# Part 2 · Core Concepts
+
+This section walks through the four ideas you need: how you **declare** rules ([Data Contracts](#data-contracts)), what vowl **generates for you** ([Auto-Generated Checks](#auto-generated-checks)), the **declarative metrics** you can add ([Library Metrics](#library-metrics-type-library) and [Format Checks](#format-checks)), and what you **get back** ([Validation Results](#validation-results)). It closes with the [Architecture](#architecture).
+
+## Data Contracts
 
 Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
 
 **Example [`hdb_resale_simple.yaml`](tests/hdb_resale/hdb_resale_simple.yaml)** (trimmed for readability):
+
 ```yaml
 kind: DataContract
 apiVersion: v3.1.0
@@ -203,7 +221,7 @@ id: c11443ee-542f-4442-b28d-2d224342be37
 status: draft
 name: HDB Resale Flat Prices
 schema:
-  - name: hdb_resale_prices  # This becomes the table name in your SQL queries
+  - name: hdb_resale_prices # This becomes the table name in your SQL queries
     properties:
       # --- SQL Check: regex-based format validation ---
       - name: month
@@ -274,67 +292,93 @@ schema:
           - 30000000
 ```
 
-### Automatic `check_references`
+## Auto-Generated Checks
 
-When a contract is loaded, `vowl` automatically builds `CheckReference` objects for every executable check in the contract via `Contract.get_check_references_by_schema()`.
+You don't have to write every check by hand. When a contract is loaded, `vowl` automatically derives checks from your column metadata — so simply declaring `logicalType`, `required: true`, `unique: true`, and similar gives you validation for free. These auto-generated checks run before any explicit `quality` checks you've authored.
 
-This includes both user-authored checks in `quality` blocks and synthetic checks derived from column metadata. The generated references are grouped by schema, and the auto-generated ones run before explicit `quality` checks.
+The check types currently generated:
 
-| Reference type | Trigger in contract | JSONPath stored in the reference |
-|----------------|---------------------|----------------------------------|
-| Table check | Entry under schema-level `quality` | `$.schema[N].quality[M]` |
-| Column check | Entry under property-level `quality` | `$.schema[N].properties[M].quality[K]` |
-| Library column metric | `type: library` under property-level `quality` | `$.schema[N].properties[M].quality[K]` |
-| Library table metric | `type: library` under schema-level `quality` | `$.schema[N].quality[M]` |
-| Declared column exists check | Property has a `name` | `$.schema[N].properties[M]` |
-| Logical type check | `logicalType` present on a property | `$.schema[N].properties[M].logicalType` |
-| Logical type options check | Supported key under `logicalTypeOptions` | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
-| Required check | `required: true` | `$.schema[N].properties[M].required` |
-| Unique check | `unique: true` | `$.schema[N].properties[M].unique` |
-| Primary key check | `primaryKey: true` | `$.schema[N].properties[M].primaryKey` |
+| Generated from                        | What `vowl` validates                                                                                           |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `name`                                | Column declared in the contract exists in the source table                                                      |
+| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
+| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                |
+| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                            |
+| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                |
+| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                        |
+| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                           |
+| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                           |
+| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                              |
+| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                    |
+| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks))                                       |
+| `required: true`                      | Column contains no `NULL` values                                                                                |
+| `unique: true`                        | Non-null values are unique                                                                                      |
+| `primaryKey: true`                    | Values are both unique and non-null                                                                             |
 
-The auto-generated check types currently cover:
+For example, a property like this:
 
-| Generated from | What `vowl` validates |
-|----------------|------------------------|
-| `name` | Column declared in the contract exists in the source table |
-| `logicalType` | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
-| `logicalTypeOptions.minLength` | String length is at least the configured minimum |
-| `logicalTypeOptions.maxLength` | String length does not exceed the configured maximum |
-| `logicalTypeOptions.pattern` | String values match the configured regex pattern |
-| `logicalTypeOptions.minimum` | Value is greater than or equal to the configured minimum |
-| `logicalTypeOptions.maximum` | Value is less than or equal to the configured maximum |
-| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum |
-| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum |
-| `logicalTypeOptions.multipleOf` | Value is a multiple of the configured number |
-| `logicalTypeOptions.format` | Value satisfies the declared format (see [Format Checks](#format-checks) below) |
-| `required: true` | Column contains no `NULL` values |
-| `unique: true` | Non-null values are unique |
-| `primaryKey: true` | Values are both unique and non-null |
+```yaml
+- name: block
+    logicalType: string
+    logicalTypeOptions:
+        maxLength: 10
+    required: true
+```
 
-### Library Metrics (`type: library`)
+produces three generated checks: a column-exists check, a `maxLength` option check, and a `required` (no-NULL) check. Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, `vowl` also generates a `logicalType` SQL check automatically. You only need to define extra `quality` entries when you want custom business rules beyond the contract metadata.
+
+<details>
+<summary><strong>Reference: how check references are built (JSONPath internals)</strong></summary>
+
+When a contract is loaded, `vowl` builds `CheckReference` objects for every executable check via `Contract.get_check_references_by_schema()`. This includes both user-authored checks in `quality` blocks and synthetic checks derived from column metadata. The generated references are grouped by schema, and the auto-generated ones run before explicit `quality` checks.
+
+| Reference type               | Trigger in contract                            | JSONPath stored in the reference                           |
+| ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
+| Table check                  | Entry under schema-level `quality`             | `$.schema[N].quality[M]`                                   |
+| Column check                 | Entry under property-level `quality`           | `$.schema[N].properties[M].quality[K]`                     |
+| Library column metric        | `type: library` under property-level `quality` | `$.schema[N].properties[M].quality[K]`                     |
+| Library table metric         | `type: library` under schema-level `quality`   | `$.schema[N].quality[M]`                                   |
+| Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
+| Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
+| Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
+| Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
+| Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
+
+So the `block` property above produces three generated check references pointing at:
+
+| Check path                                                 | Check type                           |
+| ---------------------------------------------------------- | ------------------------------------ |
+| `$.schema[0].properties[...]`                              | `DeclaredColumnExistsCheckReference` |
+| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference`   |
+| `$.schema[0].properties[...].required`                     | `RequiredCheckReference`             |
+
+</details>
+
+## Library Metrics (`type: library`)
 
 Instead of writing SQL by hand, you can declare common data quality metrics using `type: library` in your `quality` blocks. `vowl` auto-generates the appropriate SQL at runtime.
 
 **Column-level metrics** (under a property's `quality`):
 
-| `metric` | What it checks | Arguments |
-|----------|---------------|-----------|
-| `nullValues` | Count of `NULL` values in the column | - |
-| `missingValues` | Count of values matching a configurable missing-values list | `arguments.missingValues`: list of sentinel values (use `null` for SQL NULL) |
-| `invalidValues` | Count of values that fail valid-value or pattern criteria | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
-| `duplicateValues` | Count of duplicate non-NULL values in the column | - |
+| `metric`          | What it checks                                              | Arguments                                                                      |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `nullValues`      | Count of `NULL` values in the column                        | -                                                                              |
+| `missingValues`   | Count of values matching a configurable missing-values list | `arguments.missingValues`: list of sentinel values (use `null` for SQL NULL)   |
+| `invalidValues`   | Count of values that fail valid-value or pattern criteria   | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
+| `duplicateValues` | Count of duplicate non-NULL values in the column            | -                                                                              |
 
 **Table-level metrics** (under a schema's `quality`):
 
-| `metric` | What it checks | Arguments |
-|----------|---------------|-----------|
-| `rowCount` | Total number of rows in the table | - |
+| `metric`          | What it checks                                   | Arguments                                             |
+| ----------------- | ------------------------------------------------ | ----------------------------------------------------- |
+| `rowCount`        | Total number of rows in the table                | -                                                     |
 | `duplicateValues` | Count of duplicate rows across specified columns | `arguments.properties`: list of column names to check |
 
 All library metrics support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
 
 **Example:**
+
 ```yaml
 properties:
   - name: town
@@ -374,67 +418,20 @@ quality:
         - street_name
 ```
 
-In practice, a property like this:
+## Format Checks
 
-```yaml
-- name: block
-    logicalType: string
-    logicalTypeOptions:
-        maxLength: 10
-    required: true
-```
+The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`. In short:
 
-produces three generated check references pointing at:
-
-| Check path | Check type |
-|---|---|
-| `$.schema[0].properties[...]` | `DeclaredColumnExistsCheckReference` |
-| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference` |
-| `$.schema[0].properties[...].required` | `RequiredCheckReference` |
-
-Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, `vowl` also generates a `logicalType` SQL check automatically. You only need to define extra `quality` entries when you want custom business rules beyond the contract metadata.
-
-### Format Checks
-
-The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`:
-
-**Integer formats** — validates that values fall within the range of a fixed-width integer type:
-
-| `format` | Min | Max |
-|----------|-----|-----|
-| `i8` | -128 | 127 |
-| `i16` | -32,768 | 32,767 |
-| `i32` | -2,147,483,648 | 2,147,483,647 |
-| `i64` | -9,223,372,036,854,775,808 | 9,223,372,036,854,775,807 |
-| `u8` | 0 | 255 |
-| `u16` | 0 | 65,535 |
-| `u32` | 0 | 4,294,967,295 |
-| `u64` | 0 | 18,446,744,073,709,551,615 |
-
-`i128` and `u128` are recognised but skipped because their ranges exceed what SQL engines can represent.
-
-**String formats** — validates values against a built-in regex pattern:
-
-| `format` | What it checks |
-|----------|----------------|
-| `uuid` | UUID v1-v5 hex format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
-| `email` | Basic `local@domain.tld` structure |
-| `ipv4` | Dotted-decimal IPv4 address (`0.0.0.0` - `255.255.255.255`) |
-| `ipv6` | Full-form colon-separated IPv6 address |
-| `hostname` | RFC-952 hostname with TLD |
-| `uri` | URI with a valid scheme prefix (e.g. `https:`, `s3:`) |
-
-`password`, `byte`, and `binary` are recognised but skipped because they cannot be validated against data.
-
-**Number formats** — `f32` and `f64` are recognised but produce no check (metadata-only).
-
-**Date, timestamp and time formats** — accepts a JDK DateTimeFormatter pattern (e.g. `yyyy-MM-dd`). `vowl` converts the pattern to a regex and validates that string-cast values match. Supported tokens include `yyyy`, `yy`, `MM`, `dd`, `HH`, `mm`, `ss`, `SSS`, and timezone offsets (`X`/`XXX`/`Z`). If a pattern contains tokens `vowl` cannot translate, the check is skipped with a warning.
+- **Integer formats** (`i8`…`u64`) — range-check a fixed-width integer type.
+- **String formats** (`uuid`, `email`, `ipv4`, `ipv6`, `hostname`, `uri`) — match a built-in regex.
+- **Date/timestamp/time formats** — a JDK `DateTimeFormatter` pattern (e.g. `yyyy-MM-dd`) is converted to a regex and matched against string-cast values.
+- **Number formats** (`f32`, `f64`) — recognised but metadata-only (no check).
 
 ```yaml
 - name: age
   logicalType: integer
   logicalTypeOptions:
-    format: u8           # 0 – 255
+    format: u8 # 0 – 255
 
 - name: request_id
   logicalType: string
@@ -447,25 +444,170 @@ The `logicalTypeOptions.format` key validates that column values conform to a de
     format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
 ```
 
-### Validation Results
+<details>
+<summary><strong>Reference: supported formats and ranges</strong></summary>
+
+**Integer formats** — validates that values fall within the range of a fixed-width integer type:
+
+| `format` | Min                        | Max                        |
+| -------- | -------------------------- | -------------------------- |
+| `i8`     | -128                       | 127                        |
+| `i16`    | -32,768                    | 32,767                     |
+| `i32`    | -2,147,483,648             | 2,147,483,647              |
+| `i64`    | -9,223,372,036,854,775,808 | 9,223,372,036,854,775,807  |
+| `u8`     | 0                          | 255                        |
+| `u16`    | 0                          | 65,535                     |
+| `u32`    | 0                          | 4,294,967,295              |
+| `u64`    | 0                          | 18,446,744,073,709,551,615 |
+
+`i128` and `u128` are recognised but skipped because their ranges exceed what SQL engines can represent.
+
+**String formats** — validates values against a built-in regex pattern:
+
+| `format`   | What it checks                                                 |
+| ---------- | -------------------------------------------------------------- |
+| `uuid`     | UUID v1-v5 hex format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
+| `email`    | Basic `local@domain.tld` structure                             |
+| `ipv4`     | Dotted-decimal IPv4 address (`0.0.0.0` - `255.255.255.255`)    |
+| `ipv6`     | Full-form colon-separated IPv6 address                         |
+| `hostname` | RFC-952 hostname with TLD                                      |
+| `uri`      | URI with a valid scheme prefix (e.g. `https:`, `s3:`)          |
+
+`password`, `byte`, and `binary` are recognised but skipped because they cannot be validated against data.
+
+**Number formats** — `f32` and `f64` are recognised but produce no check (metadata-only).
+
+**Date, timestamp and time formats** — accepts a JDK DateTimeFormatter pattern (e.g. `yyyy-MM-dd`). `vowl` converts the pattern to a regex and validates that string-cast values match. Supported tokens include `yyyy`, `yy`, `MM`, `dd`, `HH`, `mm`, `ss`, `SSS`, and timezone offsets (`X`/`XXX`/`Z`). If a pattern contains tokens `vowl` cannot translate, the check is skipped with a warning.
+
+</details>
+
+## Validation Results
 
 The `validate_data` function returns a powerful `ValidationResult` object that provides multiple ways to interact with your validation results.
 
 #### Core Methods
 
-| Method/Property | What It Does | Returns |
-|-----------------|--------------|---------|
-| **`print_summary()`** | Prints high-level statistics (pass/fail counts, success rate, performance) | `self` (chainable) |
-| **`show_failed_rows(max_rows=5)`** | Displays sample of failed rows in console. Use `max_rows=-1` for all rows. | `self` (chainable) |
-| **`display_full_report(max_rows=5)`** | Prints summary + shows failed rows (convenience method) | `self` (chainable) |
-| **`save(output_dir=".", prefix="vowl_results")`** | Saves enhanced CSV and summary JSON to disk | `self` (chainable) |
-| **`get_output_dfs(checks=None)`** | Returns per-check failed rows as `{check_id: DataFrame}` | Dict[str, DataFrame] |
-| **`get_consolidated_output_dfs(checks=None)`** | Deduplicates failed rows across checks, grouped by table | Dict[str, DataFrame] |
-| **`.passed`** (property) | Boolean indicating if all checks passed | `True`/`False` |
+| Method/Property                                                     | What It Does                                                                                                  | Returns                         |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **`print_summary()`**                                               | Prints high-level statistics (pass/fail counts, success rate, performance)                                    | `self` (chainable)              |
+| **`show_failed_rows(max_rows=5)`**                                  | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                    | `self` (chainable)              |
+| **`display_full_report(max_rows=5)`**                               | Prints summary + shows failed rows (convenience method)                                                       | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", output_mode=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"` | `self` (chainable)              |
+| **`get_output_dfs(checks=None)`**                                   | Returns per-check failed rows as `{check_id: DataFrame}`                                                      | Dict[str, DataFrame]            |
+| **`get_consolidated_output_dfs(checks=None)`**                      | Deduplicates failed rows across checks, grouped by table                                                      | Dict[str, DataFrame]            |
+| **`get_annotated_output(checks=None, include_target=False)`**       | Returns full in-scope tables with a `check_ids` column marking failed rows                                    | Dict[str, Dict[str, DataFrame]] |
+| **`.passed`** (property)                                            | Boolean indicating if all checks passed                                                                       | `True`/`False`                  |
 
----
+#### Annotated Output
 
-### Architecture
+`get_annotated_output()` returns the **full in-scope table** with a `check_ids` column that marks which rows failed which checks. Passing rows have `null` in the `check_ids` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
+
+It returns a nested dict with two reserved keys:
+
+- **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_ids` column. Every original row is present; `check_ids` is `null` for rows that passed everything and names the failing check(s) otherwise.
+- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none.
+
+Passing **`include_target=True`** adds a `targets` column naming the specific column(s) behind each failure.
+
+```python
+result = validate_data("contract.yaml", df=df)
+output = result.get_annotated_output(include_target=True)
+
+annotated = output["annotated"]["hdb_resale_prices"].to_pandas()
+# columns: <original columns> + check_ids + targets
+# output["residues"] — cross-table or non-mergeable failures (empty for single-table contracts)
+```
+
+#### Annotated Table
+
+<details>
+<summary><strong>Output</strong> — full table, flagged rows floated to the top (click to expand)</summary>
+
+```python
+# Sort so flagged rows surface first; passing rows (check_ids = null) sink to the bottom.
+flagged_first = annotated.sort_values("check_ids", na_position="last").reset_index(drop=True)
+
+flagged_first[["month", "town", "block", "floor_area_sqm",
+               "lease_commence_date", "check_ids", "targets"]]
+```
+
+|     | month    | town            | block | floor_area_sqm | lease_commence_date | check_ids                        | targets                               |
+| --- | -------- | --------------- | ----- | -------------- | ------------------- | -------------------------------- | ------------------------------------- |
+| 0   | 2017-01  | BEDOK           |       | 84.0           | 1986                | AddressBlockHouseNumber          | hdb_resale_prices.block               |
+| 1   | 2017-jan | BEDOK           | 21    | 130.0          | 1972                | Month                            | hdb_resale_prices.month               |
+| 2   | 2017-jan | BISHAN          | 105   | 4.0            | 1985                | Month                            | hdb_resale_prices.month               |
+| 3   | 2017-01  | ANG MO KIO      | 219   | 67.0           | 1977.0              | Year                             | hdb_resale_prices.lease_commence_date |
+| 4   | 2017-01  | ANG MO KIO      | 211   | 67.0           | abc                 | Year                             | hdb_resale_prices.lease_commence_date |
+| 5   | 2017-06  | KALLANG/WHAMPOA | 38    | 215.0          | 1972                | floor_area_must_be_less_than_200 | hdb_resale_prices.floor_area_sqm      |
+| ... | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
+| 8   | 2017-01  | ANG MO KIO      | 406   | 73.0           | 1979                |                                  |                                       |
+| 9   | 2017-01  | ANG MO KIO      | 108   | 67.0           | 1978                |                                  |                                       |
+| 10  | 2017-01  | ANG MO KIO      | 602   | 67.0           | 1984                |                                  |                                       |
+| ... | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
+
+_201,879 rows — failed rows floated to the top, passing rows (empty `check_ids`) below._
+
+Because the annotation lives on the full table, separating the good rows from the bad is a one-liner — filter to where `check_ids` is null and drop the annotation columns:
+
+```python
+clean = annotated[annotated["check_ids"].isna()].drop(columns=["check_ids", "targets"])
+# 201,861 clean rows of 201,879, ready for downstream use — no join back to the source needed
+```
+
+</details>
+
+When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead — in the same shape as `get_consolidated_output_dfs()`, with `check_ids` and `tables_in_query` columns:
+
+#### Residues
+
+<details>
+<summary><strong>Output</strong> — residues from a cross-table (multi-source) contract (click to expand)</summary>
+
+```python
+output = result.get_annotated_output(include_target=True)
+
+print("Residue keys:", list(output["residues"].keys()))
+for key, residue in output["residues"].items():
+    df = residue.to_pandas()
+    print(f"\nResidue '{key}': {len(df)} failed row(s)")
+    print(df[["employee_id", "payroll_id", "month", "check_ids", "tables_in_query"]])
+```
+
+Residue keys: `['demo_employee_list, demo_employee_payroll']`
+
+Residue `'demo_employee_list, demo_employee_payroll'`: 2 failed row(s)
+
+|     | employee_id | payroll_id                           | month   | check_ids                                                             | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | --------------------------------------------------------------------- | ----------------------------------------- |
+| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | employee_id_exists_in_master_list, phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
+| 1   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | phone_number_exists_in_master_list                                    | demo_employee_list, demo_employee_payroll |
+
+</details>
+
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) walks through these examples end-to-end.
+
+The `save()` method also supports annotated output via `output_mode`:
+
+```python
+# Save annotated tables (full tables with check_ids marking failures)
+result.save(output_mode="annotated")
+
+# Save both failed-rows CSVs and annotated tables
+result.save(output_mode="both")
+```
+
+You can also set the output mode globally via `ValidationConfig`:
+
+```python
+from vowl import validate_data
+from vowl.config import ValidationConfig
+
+config = ValidationConfig(output_mode="annotated")
+result = validate_data("contract.yaml", df=df, config=config)
+result.save()  # uses the configured output_mode
+```
+
+## Architecture
 
 `vowl` has a modular architecture built around **Ibis** as the universal query layer.
 
@@ -521,21 +663,32 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 #### Key Components
 
-| Component | Description |
-|-----------|-------------|
-| **DataSourceMapper** | Auto-detects a single input source (DataFrame, Spark object, Ibis backend, or connection string) and creates the appropriate adapter |
-| **IbisAdapter** | Universal adapter supporting 20+ backends via Ibis (pandas, Polars, PySpark, PostgreSQL, Snowflake, BigQuery, etc.) |
-| **MultiSourceAdapter** | Routes checks across multiple data sources, separating single-table checks (delegated to per-schema adapters) from multi-table checks (sent to `MultiSourceSQLExecutor`) |
-| **IbisSQLExecutor** | Executes SQL-based quality checks through the Ibis query layer (server-side) |
+| Component                  | Description                                                                                                                                                                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DataSourceMapper**       | Auto-detects a single input source (DataFrame, Spark object, Ibis backend, or connection string) and creates the appropriate adapter                                                                                                                        |
+| **IbisAdapter**            | Universal adapter supporting 20+ backends via Ibis (pandas, Polars, PySpark, PostgreSQL, Snowflake, BigQuery, etc.)                                                                                                                                         |
+| **MultiSourceAdapter**     | Routes checks across multiple data sources, separating single-table checks (delegated to per-schema adapters) from multi-table checks (sent to `MultiSourceSQLExecutor`)                                                                                    |
+| **IbisSQLExecutor**        | Executes SQL-based quality checks through the Ibis query layer (server-side)                                                                                                                                                                                |
 | **MultiSourceSQLExecutor** | Executes cross-source SQL with two modes: **direct delegation** when all tables share the same compatible backend, or **DuckDB materialisation** when backends differ. Tables are exported as Arrow and loaded into a local DuckDB for cross-database joins |
-| **Contract** | Parses ODCS YAML contracts into executable validation rules |
-| **ValidationResult** | Rich result object with enhanced DataFrames, metrics, and export capabilities |
+| **Contract**               | Parses ODCS YAML contracts into executable validation rules                                                                                                                                                                                                 |
+| **ValidationResult**       | Rich result object with enhanced DataFrames, metrics, and export capabilities                                                                                                                                                                               |
 
-## Usage Patterns
+---
+
+# Part 3 · Usage Patterns
 
 > **Interactive demo:** Try the [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
 
+The patterns are grouped from most common to most advanced:
+
+- **Common sources** — point vowl at the data you already have: a [local DataFrame](#local-dataframe-pandaspolars), [PySpark](#pyspark), or any of [20+ Ibis backends](#ibis-connections-20-backends).
+- **Filtering & cross-source** — validate a [subset of rows](#explicit-adapter-with-filter-conditions), or join across [multiple source systems](#multi-source-validation) — optionally through [DuckDB ATTACH](#compatibility-mode-duckdb-attach).
+- **Advanced & extending** — drive connections from [servers in the contract](#using-servers-defined-in-data-contract), build [custom adapters/executors](#custom-adapters-and-executors), or load contracts from [Git and S3](#loading-contracts-from-remote-sources-gits3).
+
+## Common sources
+
 ### Local DataFrame (Pandas/Polars)
+
 ```python
 import pandas as pd
 from vowl import validate_data
@@ -546,6 +699,7 @@ result.display_full_report()
 ```
 
 ### PySpark
+
 ```python
 from pyspark.sql import SparkSession
 from vowl import validate_data
@@ -565,9 +719,10 @@ finally:
 > **Note:** The library does **not** manage the SparkSession lifecycle. You must create and stop it yourself. This is by design - SparkSession is a heavy, application-owned resource with specific configuration requirements.
 
 ### Ibis Connections (20+ Backends)
+
 ```python
-# Ibis supports: Amazon Athena, BigQuery, ClickHouse, Dask, Databricks, DataFusion, 
-# Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, pandas, Polars, 
+# Ibis supports: Amazon Athena, BigQuery, ClickHouse, Dask, Databricks, DataFusion,
+# Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, pandas, Polars,
 # PostgreSQL, PySpark, RisingWave, SingleStoreDB, Snowflake, SQLite, Trino, ...
 # Find out more at https://github.com/ibis-project/ibis
 
@@ -589,26 +744,10 @@ the existing connection. If you need to avoid relying on the connection's
 default database, use qualified table names such as `my_db.my_table` in your
 contract queries.
 
-### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
-```python
-import ibis
-from vowl import validate_data
-from vowl.adapters import IbisAdapter
-
-# ATTACH lets DuckDB query your remote database directly.
-# Data is streamed on demand, not materialised locally.
-# All SQL is evaluated by DuckDB, so dialect differences are eliminated.
-con = ibis.duckdb.connect()
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")
-con.raw_sql("USE pg")  # Allows querying tables without the pg. alias
-
-result = validate_data("contract.yaml", adapter=IbisAdapter(con))
-result.display_full_report()
-```
-
-> **When to use this:** Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+## Filtering & cross-source
 
 ### Explicit Adapter with Filter Conditions
+
 ```python
 from vowl import validate_data
 from vowl.adapters import IbisAdapter
@@ -671,6 +810,7 @@ result.display_full_report()
 There are two ways to validate across tables in different databases.
 
 #### Option A: DuckDB ATTACH (recommended: streams data, no materialisation)
+
 ```python
 import ibis
 from vowl import validate_data
@@ -679,7 +819,7 @@ from vowl.adapters import IbisAdapter
 con = ibis.duckdb.connect()
 
 # Attach multiple remote databases
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
 con.raw_sql("ATTACH 'sqlite:///path/to/users.db' AS sqlite_users (TYPE sqlite, READ_ONLY)")
 
 # Switch back to local DuckDB so views live in memory
@@ -697,6 +837,7 @@ result.display_full_report()
 > **Note:** DuckDB evaluates views dynamically at query time, so this does **not** materialise or copy data. It streams live from your attached databases; you just get cleaner, prefix-free table names in your contracts. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
 
 #### Option B: Multi-Source Adapters (materialises data locally)
+
 ```python
 from vowl import validate_data
 from vowl.adapters import IbisAdapter
@@ -715,6 +856,55 @@ result.display_full_report()
 ```
 
 > **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). The `MultiSourceAdapter` **materialises entire tables on the client** via Arrow into a local DuckDB instance, so prefer ATTACH whenever possible. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). It also preserves a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block, and those queries succeed with `MultiSourceAdapter` (everything is materialised locally) but fail with DuckDB ATTACH (only explicitly attached tables are visible).
+
+### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
+
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter
+
+# ATTACH lets DuckDB query your remote database directly.
+# Data is streamed on demand, not materialised locally.
+# All SQL is evaluated by DuckDB, so dialect differences are eliminated.
+con = ibis.duckdb.connect()
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
+con.raw_sql("USE pg")  # Allows querying tables without the pg. alias
+
+result = validate_data("contract.yaml", adapter=IbisAdapter(con))
+result.display_full_report()
+```
+
+> **When to use this:** Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+
+## Advanced & extending
+
+### Using Servers Defined in Data Contract
+
+```python
+from vowl import validate_data
+from vowl.contracts import Contract
+from vowl.adapters import IbisAdapter
+import ibis
+
+# Load the contract and get server configuration
+contract = Contract.load("contract.yaml")
+server = contract.get_server("my-postgres-server")  # Match by server name
+# Or: contract.get_server("uat")        # falls back to matching by environment
+# Or: contract.get_server()             # returns the first server
+
+# Create connection based on server config
+con = ibis.postgres.connect(
+    host=server["server"],
+    port=server.get("port", 5432),
+    database=server.get("database", ""),
+)
+
+# Create adapter and validate
+adapter = IbisAdapter(con)
+result = validate_data("contract.yaml", adapter=adapter)
+result.display_full_report()
+```
 
 ### Custom Adapters and Executors
 
@@ -765,33 +955,12 @@ assert "sql" in executors
 
 This section documents the extension boilerplate rather than a guaranteed drop-in `validate_data(..., adapter=...)` path for arbitrary non-Ibis adapters. For end-to-end validation in the built-in runner today, the supported runtime adapter type is `IbisAdapter`.
 
-### Using Servers Defined in Data Contract
-```python
-from vowl import validate_data
-from vowl.contracts import Contract
-from vowl.adapters import IbisAdapter
-import ibis
+### Loading Contracts from Remote Sources (Git/S3)
 
-# Load the contract and get server configuration
-contract = Contract.load("contract.yaml")
-server = contract.get_server("my-postgres-server")  # Match by server name
-# Or: contract.get_server("uat")        # falls back to matching by environment
-# Or: contract.get_server()             # returns the first server
+Contracts don't have to live on local disk — `validate_data` accepts GitHub/GitLab URLs and S3 URIs directly.
 
-# Create connection based on server config
-con = ibis.postgres.connect(
-    host=server["server"],
-    port=server.get("port", 5432),
-    database=server.get("database", ""),
-)
+**Git (GitHub/GitLab):**
 
-# Create adapter and validate
-adapter = IbisAdapter(con)
-result = validate_data("contract.yaml", adapter=adapter)
-result.display_full_report()
-```
-
-### Loading Contracts from Git (GitHub/GitLab)
 ```python
 from vowl import validate_data
 
@@ -819,7 +988,8 @@ result.display_full_report()
 # Note: `requests` is included in base install.
 ```
 
-### Loading Contracts from S3
+**S3:**
+
 ```python
 from vowl import validate_data
 
@@ -832,31 +1002,35 @@ result.display_full_report()
 # Uses default AWS credentials (environment variables, ~/.aws/credentials, IAM role, etc.)
 ```
 
+---
+
 ## Roadmap
 
 ### Completed
 
-| Capability | Description |
-|------------|-------------|
-| ✅ **Ibis Connectors** | Interoperability with 20+ data sources via Ibis (PostgreSQL, Snowflake, BigQuery, Databricks, etc.) |
-| ✅ **Remote Contract Loading** | Load contracts from S3 (`s3://`) and Git (GitHub/GitLab URLs) |
-| ✅ **JSONPath Navigation** | Navigate contract elements using JSONPath expressions (`contract.resolve("$.schema[0].name")`) |
-| ✅ **Static Checks** | Auto-generated checks from contract elements: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey` |
-| ✅ **Library Metrics** | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. SQL auto-generated at runtime |
-| ✅ **ODCS Schema Validation** | Contracts validated against ODCS JSON Schema before execution |
-| ✅ **Filter Conditions** | Incremental quality testing with wildcard pattern matching - optimised for append-only data sources |
-| ✅ **Multi-Schema Checks** | Cross-table referential checks within a single contract |
-| ✅ **Multi-Connection Checks** | Cross-table referential checks between different servers/databases via `MultiSourceAdapter` |
-| ✅ **Optional Extras** | Add optional Spark support with `.[spark]` or install `.[all]` |
-| ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor` |
+| Capability                         | Description                                                                                                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ **Ibis Connectors**             | Interoperability with 20+ data sources via Ibis (PostgreSQL, Snowflake, BigQuery, Databricks, etc.)                                                                     |
+| ✅ **Remote Contract Loading**     | Load contracts from S3 (`s3://`) and Git (GitHub/GitLab URLs)                                                                                                           |
+| ✅ **JSONPath Navigation**         | Navigate contract elements using JSONPath expressions (`contract.resolve("$.schema[0].name")`)                                                                          |
+| ✅ **Static Checks**               | Auto-generated checks from contract elements: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`                                                   |
+| ✅ **Library Metrics**             | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. SQL auto-generated at runtime |
+| ✅ **ODCS Schema Validation**      | Contracts validated against ODCS JSON Schema before execution                                                                                                           |
+| ✅ **Filter Conditions**           | Incremental quality testing with wildcard pattern matching - optimised for append-only data sources                                                                     |
+| ✅ **Multi-Schema Checks**         | Cross-table referential checks within a single contract                                                                                                                 |
+| ✅ **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                             |
+| ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
+| ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
 
 ### Planned
 
-| Capability | Description | Status |
-|------------|-------------|--------|
-| � **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
-| 📅 **Parallel Check Execution** | Run checks in parallel for faster validation across large contracts | Planned || 📅 **CLI Interface** | Command-line interface for running validations directly from the terminal | Planned |
-| 📅 **vowl-ui** | Web-based validation interface for vowl | Planned |
+| Capability                       | Description                                                                  | Status  |
+| -------------------------------- | ---------------------------------------------------------------------------- | ------- |
+| 🔬 **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
+| 📅 **Parallel Check Execution**  | Run checks in parallel for faster validation across large contracts          | Planned |
+| 📅 **CLI Interface**             | Command-line interface for running validations directly from the terminal    | Planned |
+| 📅 **vowl-ui**                   | Web-based validation interface for vowl                                      | Planned |
+
 ---
 
 ## Contributing
@@ -868,4 +1042,3 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-

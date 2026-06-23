@@ -13,6 +13,7 @@ Note on backend connectors:
 - MariaDB uses ibis.mysql (wire-compatible with MySQL)
 - All backends use IbisAdapter for a unified interface
 """
+
 import os
 import subprocess
 from pathlib import Path
@@ -33,11 +34,15 @@ CONTRACT_PATH = HDB_DIR / "hdb_resale.yaml"
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def _docker_available() -> bool:
     """Return True if Docker daemon is reachable."""
     try:
         subprocess.run(
-            ["docker", "info"], capture_output=True, check=True, timeout=5,
+            ["docker", "info"],
+            capture_output=True,
+            check=True,
+            timeout=5,
         )
         return True
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
@@ -84,6 +89,7 @@ def _assert_no_error_checks(result) -> None:
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def sample_dataframe() -> pd.DataFrame:
     """Load the HDB resale dataset (first 100 rows)."""
@@ -99,6 +105,7 @@ def contract_path() -> str:
 # ============================================================================
 # MySQL
 # ============================================================================
+
 
 class TestMySQLConnection:
     """Test validate_data against a real MySQL instance via testcontainers.
@@ -173,9 +180,7 @@ class TestMySQLConnection:
                     vals.append(str(int(v)))
                 else:
                     vals.append("'" + str(v).replace("'", "''") + "'")
-            con.raw_sql(
-                f"INSERT INTO hdb_resale_prices VALUES ({', '.join(vals)})"
-            )
+            con.raw_sql(f"INSERT INTO hdb_resale_prices VALUES ({', '.join(vals)})")
 
         yield con
         con.disconnect()
@@ -205,7 +210,9 @@ class TestMySQLConnection:
             mysql_connection,
             filter_conditions={
                 "hdb_resale_prices": FilterCondition(
-                    field="month", operator=">=", value="2017-01",
+                    field="month",
+                    operator=">=",
+                    value="2017-01",
                 ),
             },
         )
@@ -215,9 +222,7 @@ class TestMySQLConnection:
         _assert_no_error_checks(results)
 
     def test_mysql_raw_queries(self, mysql_connection):
-        result = mysql_connection.raw_sql(
-            "SELECT COUNT(*) FROM hdb_resale_prices WHERE town = 'ANG MO KIO'"
-        )
+        result = mysql_connection.raw_sql("SELECT COUNT(*) FROM hdb_resale_prices WHERE town = 'ANG MO KIO'")
         count = result.fetchone()[0]
         assert isinstance(count, int)
 
@@ -237,6 +242,7 @@ class TestMySQLConnection:
 # Microsoft SQL Server (MSSQL)
 # ============================================================================
 
+
 class TestMSSQLConnection:
     """Test validate_data against a real SQL Server instance via testcontainers.
 
@@ -250,6 +256,7 @@ class TestMSSQLConnection:
         """Check if FreeTDS ODBC driver is registered."""
         try:
             import pyodbc
+
             drivers = pyodbc.drivers()
             return any("freetds" in d.lower() or "tds" in d.lower() for d in drivers)
         except Exception:
@@ -262,10 +269,7 @@ class TestMSSQLConnection:
         if not _docker_available():
             pytest.skip("Docker not available")
         if not TestMSSQLConnection._freetds_driver_available():
-            pytest.skip(
-                "FreeTDS ODBC driver not available. "
-                "Install with: brew install freetds"
-            )
+            pytest.skip("FreeTDS ODBC driver not available. Install with: brew install freetds")
         _configure_docker_env()
 
         from testcontainers.mssql import SqlServerContainer
@@ -300,10 +304,9 @@ class TestMSSQLConnection:
         )
         master_con.con.autocommit = True
         cursor = master_con.raw_sql(
-            f"IF DB_ID('{mssql_container.dbname}') IS NULL "
-            f"CREATE DATABASE [{mssql_container.dbname}]"
+            f"IF DB_ID('{mssql_container.dbname}') IS NULL CREATE DATABASE [{mssql_container.dbname}]"
         )
-        if hasattr(cursor, 'close'):
+        if hasattr(cursor, "close"):
             cursor.close()
         master_con.con.autocommit = False
         master_con.disconnect()
@@ -335,11 +338,11 @@ class TestMSSQLConnection:
                 resale_price INT
             )
         """)
-        if hasattr(cursor, 'close'):
+        if hasattr(cursor, "close"):
             cursor.close()
 
         cursor = con.raw_sql("TRUNCATE TABLE hdb_resale_prices")
-        if hasattr(cursor, 'close'):
+        if hasattr(cursor, "close"):
             cursor.close()
 
         df = sample_dataframe.copy()
@@ -355,10 +358,8 @@ class TestMSSQLConnection:
                     vals.append(str(int(v)))
                 else:
                     vals.append("'" + str(v).replace("'", "''") + "'")
-            cursor = con.raw_sql(
-                f"INSERT INTO hdb_resale_prices VALUES ({', '.join(vals)})"
-            )
-            if hasattr(cursor, 'close'):
+            cursor = con.raw_sql(f"INSERT INTO hdb_resale_prices VALUES ({', '.join(vals)})")
+            if hasattr(cursor, "close"):
                 cursor.close()
 
         yield con
@@ -368,14 +369,13 @@ class TestMSSQLConnection:
     def _allow_mssql_regexp_errors(self):
         """SQL Server lacks REGEXP_LIKE; allow errors mentioning it."""
         from conftest import _ALLOWED_ERROR_SUBSTRINGS
+
         token = _ALLOWED_ERROR_SUBSTRINGS.set(("REGEXP_LIKE",))
         yield
         _ALLOWED_ERROR_SUBSTRINGS.reset(token)
 
     def test_mssql_connection_setup(self, mssql_connection):
-        result = mssql_connection.raw_sql(
-            "SELECT COUNT(*) FROM hdb_resale_prices"
-        )
+        result = mssql_connection.raw_sql("SELECT COUNT(*) FROM hdb_resale_prices")
         count = result.fetchone()[0]
         result.close()
         assert count == 100
@@ -408,7 +408,9 @@ class TestMSSQLConnection:
             mssql_connection,
             filter_conditions={
                 "hdb_resale_prices": FilterCondition(
-                    field="month", operator=">=", value="2017-01",
+                    field="month",
+                    operator=">=",
+                    value="2017-01",
                 ),
             },
         )
@@ -419,9 +421,7 @@ class TestMSSQLConnection:
         assert len(results_df) > 0
 
     def test_mssql_raw_queries(self, mssql_connection):
-        result = mssql_connection.raw_sql(
-            "SELECT COUNT(*) FROM hdb_resale_prices WHERE town = 'ANG MO KIO'"
-        )
+        result = mssql_connection.raw_sql("SELECT COUNT(*) FROM hdb_resale_prices WHERE town = 'ANG MO KIO'")
         count = result.fetchone()[0]
         result.close()
         assert isinstance(count, int)
@@ -445,6 +445,7 @@ class TestMSSQLConnection:
 # ============================================================================
 # Oracle Database
 # ============================================================================
+
 
 class TestOracleConnection:
     """Test validate_data against a real Oracle DB instance via testcontainers.
@@ -529,9 +530,7 @@ class TestOracleConnection:
                     vals.append(str(int(v)))
                 else:
                     vals.append("'" + str(v).replace("'", "''") + "'")
-            con.raw_sql(
-                f'INSERT INTO "hdb_resale_prices" VALUES ({", ".join(vals)})'
-            )
+            con.raw_sql(f'INSERT INTO "hdb_resale_prices" VALUES ({", ".join(vals)})')
         # Oracle requires explicit commit
         con.raw_sql("COMMIT")
 
@@ -539,9 +538,7 @@ class TestOracleConnection:
         con.disconnect()
 
     def test_oracle_connection_setup(self, oracle_connection):
-        result = oracle_connection.raw_sql(
-            'SELECT COUNT(*) FROM "hdb_resale_prices"'
-        )
+        result = oracle_connection.raw_sql('SELECT COUNT(*) FROM "hdb_resale_prices"')
         count = int(result.fetchone()[0])
         assert count == 100
 
@@ -573,7 +570,9 @@ class TestOracleConnection:
             oracle_connection,
             filter_conditions={
                 "hdb_resale_prices": FilterCondition(
-                    field="month", operator=">=", value="2017-01",
+                    field="month",
+                    operator=">=",
+                    value="2017-01",
                 ),
             },
         )
@@ -584,15 +583,11 @@ class TestOracleConnection:
         assert len(results_df) > 0
 
     def test_oracle_raw_queries(self, oracle_connection):
-        result = oracle_connection.raw_sql(
-            'SELECT COUNT(*) FROM "hdb_resale_prices" WHERE "town" = \'ANG MO KIO\''
-        )
+        result = oracle_connection.raw_sql('SELECT COUNT(*) FROM "hdb_resale_prices" WHERE "town" = \'ANG MO KIO\'')
         count = int(result.fetchone()[0])
         assert isinstance(count, int)
 
-        result = oracle_connection.raw_sql(
-            "SELECT BANNER FROM V$VERSION WHERE ROWNUM = 1"
-        )
+        result = oracle_connection.raw_sql("SELECT BANNER FROM V$VERSION WHERE ROWNUM = 1")
         version = result.fetchone()[0]
         assert "Oracle" in version
 
@@ -609,6 +604,7 @@ class TestOracleConnection:
 # ============================================================================
 # Cross-backend integration
 # ============================================================================
+
 
 class TestCrossBackendIntegration:
     """Test using multiple real database backends together.
@@ -657,7 +653,10 @@ class TestCrossBackendIntegration:
             container.stop()
 
     def test_mysql_and_postgres_adapters(
-        self, mysql_container, postgres_container, sample_dataframe,
+        self,
+        mysql_container,
+        postgres_container,
+        sample_dataframe,
     ):
         """Verify adapters can coexist from different backends."""
         import ibis
@@ -695,9 +694,7 @@ class TestCrossBackendIntegration:
                     vals.append(str(int(v)))
                 else:
                     vals.append("'" + str(v).replace("'", "''") + "'")
-            mysql_con.raw_sql(
-                f"INSERT INTO orders VALUES ({', '.join(vals)})"
-            )
+            mysql_con.raw_sql(f"INSERT INTO orders VALUES ({', '.join(vals)})")
 
         # Postgres adapter
         pg_con = ibis.postgres.connect(
@@ -720,16 +717,18 @@ class TestCrossBackendIntegration:
         df2 = sample_dataframe.tail(50).copy()
         for col in ("floor_area_sqm", "lease_commence_date", "resale_price"):
             df2[col] = pd.to_numeric(df2[col], errors="coerce").astype("Int64")
-        pg_con.insert('products', df2)
+        pg_con.insert("products", df2)
 
         # Bundle into multi-source adapter
         mysql_adapter = IbisAdapter(mysql_con)
         pg_adapter = IbisAdapter(pg_con)
 
-        multi = MultiSourceAdapter({
-            "orders": mysql_adapter,
-            "products": pg_adapter,
-        })
+        multi = MultiSourceAdapter(
+            {
+                "orders": mysql_adapter,
+                "products": pg_adapter,
+            }
+        )
 
         assert multi.get_adapter("orders") is mysql_adapter
         assert multi.get_adapter("products") is pg_adapter
@@ -759,9 +758,7 @@ class TestCrossBackendIntegration:
         )
         # Reuse existing table if populated, else create
         try:
-            count = mysql_con.raw_sql(
-                "SELECT COUNT(*) FROM orders"
-            ).fetchone()[0]
+            count = mysql_con.raw_sql("SELECT COUNT(*) FROM orders").fetchone()[0]
         except Exception:
             count = 0
 
@@ -787,9 +784,7 @@ class TestCrossBackendIntegration:
                         vals.append(str(int(v)))
                     else:
                         vals.append("'" + str(v).replace("'", "''") + "'")
-                mysql_con.raw_sql(
-                    f"INSERT INTO orders VALUES ({', '.join(vals)})"
-                )
+                mysql_con.raw_sql(f"INSERT INTO orders VALUES ({', '.join(vals)})")
 
         # DuckDB (in-memory)
         duckdb_con = ibis.duckdb.connect()
@@ -798,9 +793,11 @@ class TestCrossBackendIntegration:
         mysql_adapter = IbisAdapter(mysql_con)
         duckdb_adapter = IbisAdapter(duckdb_con)
 
-        multi = MultiSourceAdapter({
-            "remote_orders": mysql_adapter,
-            "local_cache": duckdb_adapter,
-        })
+        multi = MultiSourceAdapter(
+            {
+                "remote_orders": mysql_adapter,
+                "local_cache": duckdb_adapter,
+            }
+        )
 
         assert len(multi.schema_names) == 2

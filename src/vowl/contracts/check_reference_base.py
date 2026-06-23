@@ -144,7 +144,11 @@ class CheckReference(ABC):
             "is_generated": self.is_generated(),
             "engine": self.get_execution_engine(),
             "check_definition": check_def,
-            "contract_definition": raw_def if isinstance(raw_def, dict) else {"value": raw_def} if raw_def is not None else {},
+            "contract_definition": raw_def
+            if isinstance(raw_def, dict)
+            else {"value": raw_def}
+            if raw_def is not None
+            else {},
         }
 
         column_name = self.get_column_name()
@@ -289,7 +293,8 @@ class CheckReference(ABC):
         return CheckResult(
             check_name=check_name,
             status="FAILED",
-            details=check.get("description") or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
+            details=check.get("description")
+            or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
             actual_value=actual_value,
             expected_value=expected_value,
             failed_rows_fetcher=failed_rows_fetcher,

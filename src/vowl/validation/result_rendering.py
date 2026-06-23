@@ -10,7 +10,7 @@ import pyarrow as pa
 from ..executors.base import CheckResult
 from .result_models import CheckStatusSummary, SchemaValidationBreakdown, SingleTableSummary
 
-STATUS_ORDER = ('FAILED', 'ERROR', 'PASSED')
+STATUS_ORDER = ("FAILED", "ERROR", "PASSED")
 SUMMARY_LABELS = (
     "Checks Pass Rate:",
     "ERRORED Checks:",
@@ -41,9 +41,9 @@ def get_summary_metric_width() -> int:
 
 
 def get_tables_in_query(check_result: CheckResult) -> list[str]:
-    tables_in_query = check_result.metadata.get('tables_in_query', [])
+    tables_in_query = check_result.metadata.get("tables_in_query", [])
     if isinstance(tables_in_query, str):
-        return [table_name.strip() for table_name in tables_in_query.split(',') if table_name.strip()]
+        return [table_name.strip() for table_name in tables_in_query.split(",") if table_name.strip()]
     if isinstance(tables_in_query, (list, tuple, set)):
         return [str(table_name).strip() for table_name in tables_in_query if str(table_name).strip()]
     return []
@@ -54,26 +54,34 @@ def is_cross_table_check(check_result: CheckResult) -> bool:
 
 
 def get_field_label(check_result: CheckResult) -> str:
-    target = check_result.metadata.get('target')
+    target = check_result.metadata.get("target")
     if target:
         return target
-    schema_name = check_result.metadata.get('schema_name') or 'unknown'
+    schema_name = check_result.metadata.get("schema_name") or "unknown"
     return str(schema_name)
 
 
 def build_check_results_table(
     check_results: list[CheckResult],
 ) -> pa.Table:
-    return pa.table({
-        'check_id': [check_result.check_name for check_result in check_results],
-        'Target': [get_field_label(check_result) for check_result in check_results],
-        'tables_in_query': [', '.join(get_tables_in_query(check_result)) for check_result in check_results],
-        'status': [check_result.status for check_result in check_results],
-        'operator': [check_result.metadata.get('operator', '') or '' for check_result in check_results],
-        'expected': ["" if check_result.expected_value is None else str(check_result.expected_value) for check_result in check_results],
-        'actual': ["" if check_result.actual_value is None else str(check_result.actual_value) for check_result in check_results],
-        'execution time': [f"{check_result.execution_time_ms:.2f} ms" for check_result in check_results],
-    })
+    return pa.table(
+        {
+            "check_id": [check_result.check_name for check_result in check_results],
+            "Target": [get_field_label(check_result) for check_result in check_results],
+            "tables_in_query": [", ".join(get_tables_in_query(check_result)) for check_result in check_results],
+            "status": [check_result.status for check_result in check_results],
+            "operator": [check_result.metadata.get("operator", "") or "" for check_result in check_results],
+            "expected": [
+                "" if check_result.expected_value is None else str(check_result.expected_value)
+                for check_result in check_results
+            ],
+            "actual": [
+                "" if check_result.actual_value is None else str(check_result.actual_value)
+                for check_result in check_results
+            ],
+            "execution time": [f"{check_result.execution_time_ms:.2f} ms" for check_result in check_results],
+        }
+    )
 
 
 def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | None = None) -> str:
@@ -92,13 +100,11 @@ def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | Non
             widths[index] = max(widths[index], len(value))
 
     border = "+" + "+".join("-" * (width + 2) for width in widths) + "+"
-    header = "| " + " | ".join(
-        column_name.ljust(widths[index])
-        for index, column_name in enumerate(column_names)
-    ) + " |"
+    header = (
+        "| " + " | ".join(column_name.ljust(widths[index]) for index, column_name in enumerate(column_names)) + " |"
+    )
     body = [
-        "| " + " | ".join(value.ljust(widths[index]) for index, value in enumerate(row)) + " |"
-        for row in string_rows
+        "| " + " | ".join(value.ljust(widths[index]) for index, value in enumerate(row)) + " |" for row in string_rows
     ]
 
     lines = [border, header, border]
@@ -126,12 +132,14 @@ def _check_status_lines(
 ) -> list[str]:
     return [
         format_summary_metric(
-            "       ", "Checks Pass Rate:",
+            "       ",
+            "Checks Pass Rate:",
             format_check_pass_rate(status_summary.passed_checks, status_summary.total_checks),
             label_width,
         ),
         format_summary_metric(
-            "       ", "ERRORED Checks:",
+            "       ",
+            "ERRORED Checks:",
             f"{status_summary.error_checks:,}",
             label_width,
         ),
@@ -150,18 +158,30 @@ def build_schema_summary_lines(
 
     lines = [f"   {schema_name}:"]
     lines += ["     Overall:"] + _check_status_lines(overall, w)
-    lines += ["     Single Table:"] + _check_status_lines(single_table, w) + [
-        format_summary_metric(
-            "       ", "Unique Passed Rows:",
-            format_unique_passed_rows(single_table), w,
-        ),
-    ]
-    lines += ["     Multi Table:"] + _check_status_lines(multi_table, w) + [
-        format_summary_metric(
-            "       ", "Non-unique Failed Rows:",
-            f"{multi_table.failed_non_unique_rows:,}", w,
-        ),
-    ]
+    lines += (
+        ["     Single Table:"]
+        + _check_status_lines(single_table, w)
+        + [
+            format_summary_metric(
+                "       ",
+                "Unique Passed Rows:",
+                format_unique_passed_rows(single_table),
+                w,
+            ),
+        ]
+    )
+    lines += (
+        ["     Multi Table:"]
+        + _check_status_lines(multi_table, w)
+        + [
+            format_summary_metric(
+                "       ",
+                "Non-unique Failed Rows:",
+                f"{multi_table.failed_non_unique_rows:,}",
+                w,
+            ),
+        ]
+    )
     return "\n".join(lines)
 
 

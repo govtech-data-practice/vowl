@@ -108,7 +108,7 @@ def _to_pandas(df: Any) -> pd.DataFrame:
     """Convert any narwhals-compatible DataFrame to pandas."""
     if isinstance(df, pd.DataFrame):
         return df
-    if hasattr(df, 'to_pandas'):
+    if hasattr(df, "to_pandas"):
         return df.to_pandas()
     return nw.from_native(df, eager_only=True).to_pandas()
 
@@ -171,17 +171,10 @@ def _assert_no_unexpected_errors(result: Any) -> None:
     """
     if not hasattr(result, "check_results"):
         return
-    unexpected_errors = [
-        cr for cr in result.check_results
-        if cr.status == "ERROR" and not _is_expected_error(cr)
-    ]
+    unexpected_errors = [cr for cr in result.check_results if cr.status == "ERROR" and not _is_expected_error(cr)]
     if unexpected_errors:
-        details = "\n".join(
-            f"  {cr.check_name}: {cr.details}" for cr in unexpected_errors
-        )
-        raise AssertionError(
-            f"Validation returned unexpected ERROR checks:\n{details}"
-        )
+        details = "\n".join(f"  {cr.check_name}: {cr.details}" for cr in unexpected_errors)
+        raise AssertionError(f"Validation returned unexpected ERROR checks:\n{details}")
 
 
 def _compare_or_update_golden(result: Any) -> None:

@@ -38,25 +38,30 @@ LOGICAL_TYPE_TO_SQL: dict[str, str] = {
     "time": "TIME",
 }
 
-_ORACLE_STRING_TYPES = frozenset({
-    exp.DataType.Type.VARCHAR,
-    exp.DataType.Type.TEXT,
-    exp.DataType.Type.CHAR,
-    exp.DataType.Type.NCHAR,
-    exp.DataType.Type.NVARCHAR,
-})
+_ORACLE_STRING_TYPES = frozenset(
+    {
+        exp.DataType.Type.VARCHAR,
+        exp.DataType.Type.TEXT,
+        exp.DataType.Type.CHAR,
+        exp.DataType.Type.NCHAR,
+        exp.DataType.Type.NVARCHAR,
+    }
+)
 
-_ORACLE_SIZEABLE_TYPES = frozenset({
-    exp.DataType.Type.VARCHAR,
-    exp.DataType.Type.CHAR,
-    exp.DataType.Type.NCHAR,
-    exp.DataType.Type.NVARCHAR,
-})
+_ORACLE_SIZEABLE_TYPES = frozenset(
+    {
+        exp.DataType.Type.VARCHAR,
+        exp.DataType.Type.CHAR,
+        exp.DataType.Type.NCHAR,
+        exp.DataType.Type.NVARCHAR,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Oracle AST transforms
 # ---------------------------------------------------------------------------
+
 
 def oracle_trycast_to_safe_cast(ast: exp.Expression) -> exp.Expression:
     """Convert TryCast to Oracle-compatible Cast.
@@ -97,10 +102,13 @@ def oracle_fix_cast_types(ast: exp.Expression) -> exp.Expression:
         # Bare VARCHAR/CHAR without explicit size → add (4000)
         if dtype.this in _ORACLE_SIZEABLE_TYPES and not dtype.expressions:
             new = node.copy()
-            new.set("to", exp.DataType(
-                this=dtype.this,
-                expressions=[exp.DataTypeParam(this=exp.Literal.number(4000))],
-            ))
+            new.set(
+                "to",
+                exp.DataType(
+                    this=dtype.this,
+                    expressions=[exp.DataTypeParam(this=exp.Literal.number(4000))],
+                ),
+            )
             return new
         return node
 
@@ -194,6 +202,7 @@ def transpile(query: str, source_dialect: str, target_dialect: str) -> str:
 # ---------------------------------------------------------------------------
 # Safe / TRY_CAST helpers
 # ---------------------------------------------------------------------------
+
 
 def infer_type_from_literal(literal_value: Any) -> str | None:
     """Infer the SQL type to cast to based on a literal value."""
@@ -294,6 +303,7 @@ def apply_try_cast(query: str, dialect: str) -> tuple[str, bool]:
 # Filter application
 # ---------------------------------------------------------------------------
 
+
 def apply_filters(
     query: str,
     dialect: str,
@@ -310,8 +320,7 @@ def apply_filters(
         tables = list(parsed.find_all(exp.Table))
     except Exception as e:
         warnings.warn(
-            f"Failed to parse SQL query for filter application: {e}. "
-            "Filter conditions will not be applied.",
+            f"Failed to parse SQL query for filter application: {e}. Filter conditions will not be applied.",
             UserWarning,
             stacklevel=2,
         )
@@ -364,6 +373,7 @@ def apply_filters(
 # Query analysis
 # ---------------------------------------------------------------------------
 
+
 def detect_aggregation_type(query: str, dialect: str) -> str:
     """Detect the aggregate function used in a SQL check query."""
     try:
@@ -377,9 +387,7 @@ def detect_aggregation_type(query: str, dialect: str) -> str:
     agg_nodes: list[exp.Expression] = []
     for select_expr in parsed.expressions:
         agg_nodes.extend(
-            node
-            for node in select_expr.walk()
-            if isinstance(node, (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max))
+            node for node in select_expr.walk() if isinstance(node, (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max))
         )
 
     if len(agg_nodes) == 0:

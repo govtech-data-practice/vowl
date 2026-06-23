@@ -35,32 +35,80 @@ from typing import Any, Literal, TypedDict
 # =============================================================================
 
 ApiVersion = Literal[
-    "v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0",
-    "v2.2.2", "v2.2.1", "v2.2.0",
+    "v3.1.0",
+    "v3.0.2",
+    "v3.0.1",
+    "v3.0.0",
+    "v2.2.2",
+    "v2.2.1",
+    "v2.2.0",
 ]
 
 ServerType = Literal[
-    "api", "athena", "azure", "bigquery", "clickhouse", "databricks",
-    "denodo", "dremio", "duckdb", "glue", "cloudsql", "db2", "hive",
-    "impala", "informix", "kafka", "kinesis", "local", "mysql", "oracle",
-    "postgresql", "postgres", "presto", "pubsub", "redshift", "s3",
-    "sftp", "snowflake", "sqlserver", "synapse", "trino", "vertica",
-    "zen", "custom",
+    "api",
+    "athena",
+    "azure",
+    "bigquery",
+    "clickhouse",
+    "databricks",
+    "denodo",
+    "dremio",
+    "duckdb",
+    "glue",
+    "cloudsql",
+    "db2",
+    "hive",
+    "impala",
+    "informix",
+    "kafka",
+    "kinesis",
+    "local",
+    "mysql",
+    "oracle",
+    "postgresql",
+    "postgres",
+    "presto",
+    "pubsub",
+    "redshift",
+    "s3",
+    "sftp",
+    "snowflake",
+    "sqlserver",
+    "synapse",
+    "trino",
+    "vertica",
+    "zen",
+    "custom",
 ]
 
 LogicalType = Literal[
-    "string", "date", "timestamp", "time", "number",
-    "integer", "object", "array", "boolean",
+    "string",
+    "date",
+    "timestamp",
+    "time",
+    "number",
+    "integer",
+    "object",
+    "array",
+    "boolean",
 ]
 
 Dimension = Literal[
-    "accuracy", "completeness", "conformity", "consistency",
-    "coverage", "timeliness", "uniqueness",
+    "accuracy",
+    "completeness",
+    "conformity",
+    "consistency",
+    "coverage",
+    "timeliness",
+    "uniqueness",
 ]
 
 Metric = Literal[
-    "nullValues", "missingValues", "invalidValues",
-    "duplicateValues", "rowCount",
+    "nullValues",
+    "missingValues",
+    "invalidValues",
+    "duplicateValues",
+    "rowCount",
 ]
 
 # Reference types - just strings with specific patterns (patterns not enforced at type level)
@@ -72,11 +120,13 @@ FullyQualifiedReference = str  # e.g., "schema/id/properties/column_id"
 # Simple TypedDict definitions
 # =============================================================================
 
+
 class AuthoritativeDefinition(TypedDict, total=False):
     """Reference to external authoritative definition.
 
     Required fields in schema: url, type
     """
+
     id: str
     url: str  # Required in schema
     type: str  # Required in schema
@@ -88,6 +138,7 @@ class CustomProperty(TypedDict, total=False):
 
     Required fields in schema: property, value
     """
+
     id: str
     property: str  # Required in schema
     value: str | float | int | bool | list[Any] | dict[str, Any] | None  # Required in schema
@@ -96,6 +147,7 @@ class CustomProperty(TypedDict, total=False):
 
 class Pricing(TypedDict, total=False):
     """Pricing information for the data contract."""
+
     id: str
     priceAmount: float
     priceCurrency: str
@@ -107,6 +159,7 @@ class ServiceLevelAgreementProperty(TypedDict, total=False):
 
     Required fields in schema: property, value
     """
+
     id: str
     property: str  # Required in schema
     value: str | float | int | bool | None  # Required in schema
@@ -124,6 +177,7 @@ class TeamMember(TypedDict, total=False):
 
     Required fields in schema: username
     """
+
     id: str
     username: str  # Required in schema
     name: str
@@ -139,6 +193,7 @@ class TeamMember(TypedDict, total=False):
 
 class Team(TypedDict, total=False):
     """Team information."""
+
     id: str
     name: str
     description: str
@@ -153,6 +208,7 @@ class Role(TypedDict, total=False):
 
     Required fields in schema: role
     """
+
     id: str
     role: str  # Required in schema
     description: str
@@ -167,6 +223,7 @@ class Server(TypedDict, total=False):
 
     Required fields in schema: server, type
     """
+
     id: str
     server: str  # Required in schema
     type: ServerType  # Required in schema
@@ -181,6 +238,7 @@ class SupportItem(TypedDict, total=False):
 
     Required fields in schema: channel
     """
+
     id: str
     channel: str  # Required in schema
     url: str
@@ -193,6 +251,7 @@ class SupportItem(TypedDict, total=False):
 
 class Description(TypedDict, total=False):
     """Contract description section."""
+
     usage: str
     purpose: str
     limitations: str
@@ -206,6 +265,7 @@ class RelationshipPropertyLevel(TypedDict, total=False):
     Note: 'from' field must NOT be specified at property level.
     Required fields in schema: to
     """
+
     type: Literal["foreignKey"]
     to: str | list[str]  # Required in schema
     customProperties: list[CustomProperty]
@@ -219,6 +279,7 @@ class RelationshipSchemaLevel(TypedDict, total=False):
     Required fields in schema: from, to
     Note: Access 'from' field via subscript: rel["from"]
     """
+
     type: Literal["foreignKey"]
     to: str | list[str]  # Required in schema
     customProperties: list[CustomProperty]
@@ -233,8 +294,10 @@ RelationshipSchemaLevel.__annotations__["from"] = str | list[str]  # Add 'from' 
 # DataQuality discriminated union types
 # =============================================================================
 
+
 class _DataQualityBase(TypedDict, total=False):
     """Common fields for all DataQuality types."""
+
     id: str
     name: str
     description: str
@@ -252,6 +315,7 @@ class _DataQualityBase(TypedDict, total=False):
 
 class _DataQualityOperators(TypedDict, total=False):
     """Comparison operator fields."""
+
     mustBe: Any
     mustNotBe: Any
     mustBeGreaterThan: float
@@ -264,6 +328,7 @@ class _DataQualityOperators(TypedDict, total=False):
 
 class DataQualityText(_DataQualityBase, total=False):
     """Text-only data quality description."""
+
     type: Literal["text"]
 
 
@@ -272,6 +337,7 @@ class DataQualityLibrary(_DataQualityBase, _DataQualityOperators, total=False):
 
     Required fields in schema: metric
     """
+
     type: Literal["library"]
     metric: Metric  # Required in schema
     rule: str  # Deprecated - use metric instead
@@ -283,6 +349,7 @@ class DataQualitySql(_DataQualityBase, _DataQualityOperators, total=False):
 
     Required fields in schema: query
     """
+
     type: Literal["sql"]
     query: str  # Required in schema
 
@@ -292,6 +359,7 @@ class DataQualityCustom(_DataQualityBase, total=False):
 
     Required fields in schema: engine, implementation
     """
+
     type: Literal["custom"]
     engine: str  # Required in schema
     implementation: str | dict[str, Any]  # Required in schema
@@ -316,12 +384,14 @@ Type narrowing example:
 # Schema definitions
 # =============================================================================
 
+
 # Forward reference for recursive types
 class SchemaItemProperty(TypedDict, total=False):
     """Item definition for array logicalType (recursive schema structure).
 
     Inherits all fields from SchemaBaseProperty in the JSON schema.
     """
+
     id: str
     name: str
     description: str
@@ -357,6 +427,7 @@ class SchemaProperty(TypedDict, total=False):
 
     Required fields in schema: name
     """
+
     id: str
     name: str  # Required in schema
     description: str
@@ -394,6 +465,7 @@ class SchemaObject(TypedDict, total=False):
 
     Required fields in schema: name
     """
+
     id: str
     name: str  # Required in schema
     description: str
@@ -414,6 +486,7 @@ class SchemaObject(TypedDict, total=False):
 # Root contract type
 # =============================================================================
 
+
 class DataContract(TypedDict, total=False):
     """
     Root type for Open Data Contract Standard (ODCS).
@@ -424,6 +497,7 @@ class DataContract(TypedDict, total=False):
 
     Required fields in schema: version, apiVersion, kind, id, status
     """
+
     # Required fields in schema (kept optional here for flexibility)
     version: str  # Required in schema
     apiVersion: ApiVersion  # Required in schema
@@ -462,6 +536,7 @@ DataQualityOperatorsMixin = _DataQualityOperators
 # =============================================================================
 # Helper functions for working with contracts
 # =============================================================================
+
 
 def get_quality_type(dq: DataQuality) -> str | None:
     """Get the type discriminator from a DataQuality dict."""

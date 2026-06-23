@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _table_ref(schema_name: str) -> exp.Table:
     return exp.Table(this=exp.to_identifier(schema_name, quoted=True))
 
@@ -59,6 +60,7 @@ def _wrap_percent(core_ast: exp.Expression, table: exp.Table) -> exp.Expression:
 # Base for library-metric column checks
 # ---------------------------------------------------------------------------
 
+
 class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
     """Intermediate base for library metrics at property level.
 
@@ -70,7 +72,7 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
     def __init__(self, contract: Contract, quality_path: str, property_path: str):
         # Derive the path suffix so we can use the standard init chain.
         # quality_path is always property_path + ".quality[N]".
-        path_suffix = quality_path[len(property_path) + 1:]
+        path_suffix = quality_path[len(property_path) + 1 :]
         super().__init__(contract, property_path, path_suffix)
 
     # The check dict is the *original* quality entry from the contract,
@@ -119,6 +121,7 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
 # ---------------------------------------------------------------------------
 # Property-level metrics
 # ---------------------------------------------------------------------------
+
 
 class NullValuesCheckReference(_LibraryColumnMetricBase):
     """``nullValues``: count of NULL values in a column."""
@@ -215,8 +218,7 @@ class InvalidValuesCheckReference(_LibraryColumnMetricBase):
 
         if not valid_values and not pattern:
             raise ValueError(
-                f"invalidValues metric at {self._path} requires "
-                "'arguments.validValues' and/or 'arguments.pattern'"
+                f"invalidValues metric at {self._path} requires 'arguments.validValues' and/or 'arguments.pattern'"
             )
 
         col = _col_ref(col_name)
@@ -234,9 +236,7 @@ class InvalidValuesCheckReference(_LibraryColumnMetricBase):
 
         if pattern is not None:
             cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
-            not_matching = exp.Not(
-                this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern))
-            )
+            not_matching = exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern)))
             invalid_conditions.append(not_matching)
 
         # If both are present, a value is invalid if it fails BOTH criteria
@@ -283,6 +283,7 @@ class DuplicateValuesColumnCheckReference(_LibraryColumnMetricBase):
 # ---------------------------------------------------------------------------
 # Schema-level metrics
 # ---------------------------------------------------------------------------
+
 
 class _LibraryTableMetricBase(GeneratedTableCheckReference):
     """Intermediate base for library metrics at schema level."""
@@ -376,9 +377,7 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
         dup_subquery = sqlglot.select(*cols).from_(table)
         for col in cols:
             dup_subquery = dup_subquery.where(col.is_(exp.Null()).not_())
-        dup_subquery = dup_subquery.group_by(*cols).having(
-            _count_star() > exp.Literal.number(1)
-        )
+        dup_subquery = dup_subquery.group_by(*cols).having(_count_star() > exp.Literal.number(1))
 
         core = sqlglot.select(_count_star()).from_(dup_subquery.subquery("_dup"))
 

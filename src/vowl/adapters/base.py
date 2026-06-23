@@ -70,7 +70,7 @@ class BaseAdapter(ABC):  # noqa: B024
         """
         executor_class: type[BaseExecutor] | None = self._executors.get(engine)
         if executor_class is None:
-            available = ', '.join(sorted(self._executors.keys())) or 'none'
+            available = ", ".join(sorted(self._executors.keys())) or "none"
             raise NotImplementedError(
                 f"{type(self).__name__} has no executor registered for engine '{engine}'. "
                 f"Available engines: {available}"
@@ -173,8 +173,10 @@ class BaseAdapter(ABC):  # noqa: B024
         for check_ref in check_refs:
             # Unsupported refs produce ERROR results immediately
             from vowl.contracts.check_reference_unsupported import UnsupportedCheckReference
+
             if isinstance(check_ref, UnsupportedCheckReference):
                 from vowl.executors.base import CheckResult
+
                 all_results.append(
                     CheckResult(
                         check_name=check_ref.get_check_name(),
@@ -197,15 +199,17 @@ class BaseAdapter(ABC):  # noqa: B024
             except NotImplementedError as e:
                 # Return error results for unsupported check types
                 from vowl.executors.base import CheckResult
-                all_results.extend([
-                    CheckResult(
-                        check_name=ref.get_check_name(),
-                        status="ERROR",
-                        details=str(e),
-                        execution_time_ms=0,
-                    )
-                    for ref in type_refs
-                ])
+
+                all_results.extend(
+                    [
+                        CheckResult(
+                            check_name=ref.get_check_name(),
+                            status="ERROR",
+                            details=str(e),
+                            execution_time_ms=0,
+                        )
+                        for ref in type_refs
+                    ]
+                )
 
         return all_results
-

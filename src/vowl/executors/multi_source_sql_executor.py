@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from vowl.adapters.multi_source_adapter import MultiSourceAdapter
     from vowl.contracts.check_reference import SQLCheckReference
 
+
 class MultiSourceSQLExecutor(SQLExecutor):
     """
     SQL Executor for handling cross-schema queries in multi-source scenarios.
@@ -119,11 +120,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 return False
             adapters.append(adapter)
 
-        return all(
-            a.is_compatible_with(b)
-            for i, a in enumerate(adapters)
-            for b in adapters[i + 1:]
-        )
+        return all(a.is_compatible_with(b) for i, a in enumerate(adapters) for b in adapters[i + 1 :])
 
     def _get_local_duckdb(self):
         """
@@ -134,6 +131,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         """
         if self._local_duckdb_con is None:
             import ibis
+
             self._local_duckdb_con = ibis.duckdb.connect()
         return self._local_duckdb_con
 
@@ -157,7 +155,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         if not select_query:
             return None
 
-        max_rows = getattr(self._multi_adapter, 'max_failed_rows', 1000)
+        max_rows = getattr(self._multi_adapter, "max_failed_rows", 1000)
         if max_rows >= 0 and "LIMIT" not in select_query.upper():
             select_query = f"{select_query} LIMIT {max_rows}"
 
@@ -166,7 +164,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             self._ensure_tables_available(table_names)
             local_con = self._get_local_duckdb()
             result = local_con.raw_sql(select_query)
-            if hasattr(result, 'to_arrow_table'):
+            if hasattr(result, "to_arrow_table"):
                 arrow_table = result.to_arrow_table()
             else:
                 arrow_table = result.fetch_arrow_table()
@@ -318,7 +316,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
             use_try_cast = self._use_try_cast
 
             scalar_query = check_ref.get_scalar_query(
-                output_dialect, query_filters,
+                output_dialect,
+                query_filters,
                 use_try_cast=use_try_cast,
             )
             if not scalar_query:
@@ -344,9 +343,11 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 )
 
             failed_query = check_ref.get_failed_rows_query(
-                output_dialect, query_filters,
+                output_dialect,
+                query_filters,
                 use_try_cast=use_try_cast,
             )
+
             def fetcher(q=failed_query, t=table_names):
                 return self._fetch_failed_rows(q, t)
 

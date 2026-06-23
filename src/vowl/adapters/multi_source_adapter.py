@@ -221,8 +221,7 @@ class MultiSourceAdapter(BaseAdapter):
                     table_error = adapter.test_connection(table)
                     if table_error:
                         schema_results[table] = (
-                            f"error: table '{table}' not accessible via "
-                            f"schema '{schema_name}' adapter: {table_error}"
+                            f"error: table '{table}' not accessible via schema '{schema_name}' adapter: {table_error}"
                         )
                         warnings.warn(
                             f"Schema '{schema_name}' references table '{table}' "
@@ -275,6 +274,7 @@ class MultiSourceAdapter(BaseAdapter):
 
             for check_ref in check_refs:
                 from ..contracts.check_reference_unsupported import UnsupportedCheckReference
+
                 if isinstance(check_ref, UnsupportedCheckReference):
                     all_results.append(
                         CheckResult(
@@ -297,15 +297,17 @@ class MultiSourceAdapter(BaseAdapter):
 
                 if adapter is None:
                     # Return error results for this schema's checks
-                    all_results.extend([
-                        CheckResult(
-                            check_name=check_ref.get_check_name(),
-                            status="ERROR",
-                            details=f"No adapter configured for schema '{schema_name}'",
-                            execution_time_ms=0,
-                        )
-                        for check_ref in single_table_refs
-                    ])
+                    all_results.extend(
+                        [
+                            CheckResult(
+                                check_name=check_ref.get_check_name(),
+                                status="ERROR",
+                                details=f"No adapter configured for schema '{schema_name}'",
+                                execution_time_ms=0,
+                            )
+                            for check_ref in single_table_refs
+                        ]
+                    )
                 else:
                     results = adapter.run_checks(single_table_refs)
                     all_results.extend(results)
@@ -334,5 +336,3 @@ class MultiSourceAdapter(BaseAdapter):
             schema_name: adapter.get_total_rows(schema_name, max_rows)
             for schema_name, adapter in self._adapters.items()
         }
-
-

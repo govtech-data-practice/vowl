@@ -182,7 +182,8 @@ class SQLCheckReference(CheckReference, ABC):
         return CheckResult(
             check_name=check_name,
             status="FAILED",
-            details=check.get("description") or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
+            details=check.get("description")
+            or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
             actual_value=actual_value,
             expected_value=expected_value,
             failed_rows_fetcher=failed_rows_fetcher,
@@ -206,7 +207,10 @@ class SQLCheckReference(CheckReference, ABC):
         from vowl.executors.base import CheckResult
 
         metadata = self._build_full_metadata(
-            dialect, filter_conditions, use_try_cast, **extra_metadata,
+            dialect,
+            filter_conditions,
+            use_try_cast,
+            **extra_metadata,
         )
         return CheckResult(
             check_name=self.get_check_name(),

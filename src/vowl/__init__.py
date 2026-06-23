@@ -26,7 +26,6 @@ from .executors import BaseExecutor, CheckResult, IbisSQLExecutor, SQLExecutor
 from .mapper import DataSourceMapper, create_adapter
 from .validate import ValidationResult, ValidationRunner, validate_data
 
-
 __all__ = [
     # Main API
     "validate_data",

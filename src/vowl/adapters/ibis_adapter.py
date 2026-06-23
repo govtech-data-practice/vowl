@@ -90,9 +90,11 @@ class IbisAdapter(BaseAdapter):
                 Supports glob-style patterns for table name matching.
                 Example: {"orders": {"field": "date_dt", "operator": ">=", "value": "2024-01-01"}}
         """
-        super().__init__(executors={
-            "sql": IbisSQLExecutor,
-        })
+        super().__init__(
+            executors={
+                "sql": IbisSQLExecutor,
+            }
+        )
         self._con = con
         self._filter_conditions: dict[str, FilterConditionType] = filter_conditions.copy() if filter_conditions else {}
 
@@ -152,31 +154,23 @@ class IbisAdapter(BaseAdapter):
             filter_conditions = self.filter_conditions
 
             if max_rows is not None and max_rows >= 0:
-                inner = (
-                    sqlglot.select(exp.Literal.number(1))
-                    .from_(table)
-                    .limit(max_rows)
+                inner = sqlglot.select(exp.Literal.number(1)).from_(table).limit(max_rows)
+                query = (
+                    sqlglot.select(exp.Count(this=exp.Star())).from_(inner.subquery(alias="sub")).sql(dialect=dialect)
                 )
-                query = sqlglot.select(exp.Count(this=exp.Star())).from_(
-                    inner.subquery(alias="sub")
-                ).sql(dialect=dialect)
             else:
-                query = sqlglot.select(exp.Count(this=exp.Star())).from_(
-                    table
-                ).sql(dialect=dialect)
+                query = sqlglot.select(exp.Count(this=exp.Star())).from_(table).sql(dialect=dialect)
 
             if filter_conditions:
-                query = SQLCheckReference.apply_filters(
-                    query, dialect, filter_conditions
-                )
+                query = SQLCheckReference.apply_filters(query, dialect, filter_conditions)
 
             validate_query_security(query, dialect=dialect)
 
             result = self._con.raw_sql(query)
-            if hasattr(result, 'fetchone'):
+            if hasattr(result, "fetchone"):
                 row = result.fetchone()
                 return int(row[0]) if row else 0
-            elif hasattr(result, 'collect'):
+            elif hasattr(result, "collect"):
                 rows = result.collect()
                 return int(rows[0][0]) if rows else 0
             return 0
@@ -201,16 +195,11 @@ class IbisAdapter(BaseAdapter):
             # backends (e.g. Oracle uppercases unquoted identifiers).
             if table.this:
                 table.this.set("quoted", True)
-            query = (
-                sqlglot.select(exp.Literal.number(1))
-                .from_(table)
-                .limit(1)
-                .sql(dialect=self.get_sql_dialect())
-            )
+            query = sqlglot.select(exp.Literal.number(1)).from_(table).limit(1).sql(dialect=self.get_sql_dialect())
             result = self._con.raw_sql(query)
-            if hasattr(result, 'fetchone'):
+            if hasattr(result, "fetchone"):
                 result.fetchone()
-            elif hasattr(result, 'collect'):
+            elif hasattr(result, "collect"):
                 result.collect()
             return None
         except Exception as e:
@@ -244,4 +233,3 @@ class IbisAdapter(BaseAdapter):
         validate_query_security(query, dialect=dialect)
 
         return self._con.sql(query).to_pyarrow()
-

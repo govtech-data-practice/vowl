@@ -1,6 +1,10 @@
-.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-audit release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean
+.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-audit security-secrets release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean docs-lint docs-format
 
 UV ?= uv
+
+# Prettier (Markdown docs) — run via npx, no Node project install required.
+PRETTIER ?= npx --yes prettier
+DOCS_GLOB ?= "**/*.md"
 
 # Default target
 help:
@@ -14,7 +18,9 @@ help:
 	@echo "  lint             Run linting checks"
 	@echo "  lint-fix         Lint and auto-fix with ruff"
 	@echo "  typecheck        Type check with ty"
-	@echo "  check            Run all code quality checks (format, lint, typecheck)"
+	@echo "  docs-lint        Check Markdown formatting with Prettier"
+	@echo "  docs-format      Format Markdown docs with Prettier"
+	@echo "  check            Run all code quality checks (format, lint, typecheck, docs-lint)"
 	@echo "  generate-models  Generate Pydantic models from ODCS JSON schemas"
 	@echo "  doxygen          Regenerate Doxygen code structure documentation"
 	@echo "  doxygen-open     Open generated Doxygen documentation in browser"
@@ -24,6 +30,7 @@ help:
 	@echo "  verify           Run all checks and tests"
 	@echo "  security-scan    Run Semgrep SAST scan"
 	@echo "  security-audit   Run dependency vulnerability audit (pip-audit)"
+	@echo "  security-secrets Reproduce the CI TruffleHog secret scan locally (needs Docker)"
 	@echo "  release-check    Build package artifacts and run Twine validation"
 	@echo "  release-upload-testpypi Upload dist artifacts to TestPyPI"
 	@echo "  release-tag       Create annotated tag after version consistency check"
@@ -126,7 +133,22 @@ lint-fix:
 typecheck:
 	$(UV) run ty check src/
 
-check: format-check lint typecheck
+# Markdown documentation linting/formatting (Prettier)
+docs-lint:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "Error: npx is not installed. Install Node.js (e.g. brew install node)"; \
+		exit 1; \
+	fi
+	$(PRETTIER) --check $(DOCS_GLOB)
+
+docs-format:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "Error: npx is not installed. Install Node.js (e.g. brew install node)"; \
+		exit 1; \
+	fi
+	$(PRETTIER) --write $(DOCS_GLOB)
+
+check: format-check lint typecheck docs-lint
 
 # Security scanning
 security-scan:
@@ -135,6 +157,14 @@ security-scan:
 security-audit:
 	$(UV) export --frozen --format requirements-txt --all-extras --group dev --no-hashes --no-annotate --no-header | grep -v '^-e \.$$' > /tmp/vowl-requirements-audit.txt
 	uvx pip-audit -r /tmp/vowl-requirements-audit.txt --no-deps --disable-pip --progress-spinner off
+
+# Reproduce the CI TruffleHog secret scan locally (requires Docker running).
+# Scans the full commit range against the default branch, exactly like CI, and
+# honours the same .trufflehog-exclude.txt allowlist. Exits non-zero on a finding.
+security-secrets:
+	docker run --rm -v "$(CURDIR):/pwd" -w /pwd trufflesecurity/trufflehog:latest \
+		git file:///pwd --since-commit=$$(git merge-base HEAD origin/main) \
+		--results=verified,unknown --exclude-paths=.trufflehog-exclude.txt --no-update --fail
 
 # Release validation
 release-check: clean

@@ -34,6 +34,7 @@ class FilterCondition:
         >>> # NULL check (value is ignored)
         >>> FilterCondition(field="deleted_at", operator="IS NULL")
     """
+
     field: str
     operator: FilterOperator
     value: Any | None = None
@@ -100,6 +101,7 @@ class FilterCondition:
         else:
             return exp.Literal.string(str(value))
 
+
 def build_filter_ast(
     conditions: FilterCondition | list[FilterCondition] | FilterConditionDict | list[FilterConditionDict],
 ) -> exp.Expression:
@@ -113,6 +115,7 @@ def build_filter_ast(
     Returns:
         A sqlglot Expression node. Multiple conditions are combined with AND.
     """
+
     def _to_filter_condition(cond: FilterCondition | FilterConditionDict) -> FilterCondition:
         if isinstance(cond, dict):
             cond_dict = cast(FilterConditionDict, cond)

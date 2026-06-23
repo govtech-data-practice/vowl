@@ -134,7 +134,10 @@ def test_sql_executor_extract_table_names_returns_sorted_unique_tables():
 def test_sql_executor_extract_table_names_returns_empty_list_on_parse_failure(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    monkeypatch.setattr("vowl.contracts.check_reference_sql.sqlglot.parse_one", lambda query, dialect: (_ for _ in ()).throw(ValueError("bad sql")))
+    monkeypatch.setattr(
+        "vowl.contracts.check_reference_sql.sqlglot.parse_one",
+        lambda query, dialect: (_ for _ in ()).throw(ValueError("bad sql")),
+    )
 
     assert SQLCheckReference.extract_table_names("SELECT * FROM", "postgres") == []
 

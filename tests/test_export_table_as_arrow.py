@@ -7,6 +7,7 @@ Covers:
 - MultiSourceSQLExecutor mode 2 using adapter export API
 - Custom adapter participating in mode 2 via export_table_as_arrow
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,6 +26,7 @@ CONTRACT_PATH = EMPLOYEE_DIR / "employee_payroll_datacontract.yaml"
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def employee_list_df():
@@ -46,6 +48,7 @@ def contract_path():
 # ---------------------------------------------------------------------------
 # 1. BaseAdapter.export_table_as_arrow default behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestBaseAdapterExportDefault:
     """BaseAdapter.export_table_as_arrow should raise NotImplementedError."""
@@ -74,6 +77,7 @@ class TestBaseAdapterExportDefault:
 # ---------------------------------------------------------------------------
 # 2. IbisAdapter.export_table_as_arrow
 # ---------------------------------------------------------------------------
+
 
 class TestIbisAdapterExport:
     """IbisAdapter.export_table_as_arrow returns Arrow tables correctly."""
@@ -174,12 +178,11 @@ class TestIbisAdapterExport:
 # 3. MultiSourceSQLExecutor mode 2 via adapter export
 # ---------------------------------------------------------------------------
 
+
 class TestMultiSourceMode2ViaExport:
     """Mode 2 materialization should delegate to adapter.export_table_as_arrow."""
 
-    def test_cross_backend_materialization(
-        self, employee_list_df, employee_payroll_df, contract_path
-    ):
+    def test_cross_backend_materialization(self, employee_list_df, employee_payroll_df, contract_path):
         """Cross-backend queries materialize via export_table_as_arrow and run in DuckDB."""
         import ibis
 
@@ -194,18 +197,22 @@ class TestMultiSourceMode2ViaExport:
         ref_con = ibis.duckdb.connect()
         ref_con.create_table("demo_employee_list", employee_list_df)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": IbisAdapter(payroll_con),
-            "demo_employee_list": IbisAdapter(ref_con),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": IbisAdapter(payroll_con),
+                "demo_employee_list": IbisAdapter(ref_con),
+            }
+        )
 
         contract = Contract.load(contract_path)
         refs_by_schema = contract.get_check_references_by_schema()
         results = multi.run_checks(refs_by_schema)
 
         cross_results = [
-            r for r in results
-            if r.check_name in (
+            r
+            for r in results
+            if r.check_name
+            in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
@@ -231,24 +238,23 @@ class TestMultiSourceMode2ViaExport:
         ref_con = ibis.duckdb.connect()
         ref_con.create_table("demo_employee_list", employee_list_df)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": IbisAdapter(
-                payroll_con,
-                filter_conditions={
-                    "demo_employee_payroll": FilterCondition("employee_id", "=", target_id),
-                },
-            ),
-            "demo_employee_list": IbisAdapter(ref_con),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": IbisAdapter(
+                    payroll_con,
+                    filter_conditions={
+                        "demo_employee_payroll": FilterCondition("employee_id", "=", target_id),
+                    },
+                ),
+                "demo_employee_list": IbisAdapter(ref_con),
+            }
+        )
 
         contract = Contract.load(str(CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         results = multi.run_checks(refs_by_schema)
 
-        cross_results = [
-            r for r in results
-            if r.check_name == "employee_id_exists_in_master_list"
-        ]
+        cross_results = [r for r in results if r.check_name == "employee_id_exists_in_master_list"]
         assert len(cross_results) == 1
         # If double-filtering occurred, the result would differ or error.
         # The important thing is the check ran without error.
@@ -258,6 +264,7 @@ class TestMultiSourceMode2ViaExport:
 # ---------------------------------------------------------------------------
 # 4. Custom adapter in mode 2
 # ---------------------------------------------------------------------------
+
 
 class _InMemoryArrowAdapter:
     """
@@ -305,9 +312,7 @@ class TestCustomAdapterMode2:
         result = adapter.export_table_as_arrow("my_table")
         assert result.equals(table)
 
-    def test_custom_adapter_in_multi_source_mode2(
-        self, employee_payroll_df, employee_list_df, contract_path
-    ):
+    def test_custom_adapter_in_multi_source_mode2(self, employee_payroll_df, employee_list_df, contract_path):
         """
         A multi-source scenario where one schema uses IbisAdapter and the other
         uses a custom adapter, forcing mode 2 materialization.
@@ -329,18 +334,22 @@ class TestCustomAdapterMode2:
         ref_arrow = pa.Table.from_pandas(employee_list_df)
         ref_adapter = ArrowTableAdapter({"demo_employee_list": ref_arrow})
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": payroll_adapter,
-            "demo_employee_list": ref_adapter,
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": payroll_adapter,
+                "demo_employee_list": ref_adapter,
+            }
+        )
 
         contract = Contract.load(contract_path)
         refs_by_schema = contract.get_check_references_by_schema()
         results = multi.run_checks(refs_by_schema)
 
         cross_results = [
-            r for r in results
-            if r.check_name in (
+            r
+            for r in results
+            if r.check_name
+            in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
@@ -369,18 +378,22 @@ class TestCustomAdapterMode2:
         payroll_con = ibis.duckdb.connect()
         payroll_con.create_table("demo_employee_payroll", employee_payroll_df)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": IbisAdapter(payroll_con),
-            "demo_employee_list": NoExportAdapter(),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": IbisAdapter(payroll_con),
+                "demo_employee_list": NoExportAdapter(),
+            }
+        )
 
         contract = Contract.load(str(CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         results = multi.run_checks(refs_by_schema)
 
         cross_results = [
-            r for r in results
-            if r.check_name in (
+            r
+            for r in results
+            if r.check_name
+            in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
@@ -394,6 +407,7 @@ class TestCustomAdapterMode2:
 # ---------------------------------------------------------------------------
 # 5. Mode selection and fallback
 # ---------------------------------------------------------------------------
+
 
 class TestModeSelection:
     """MultiSourceSQLExecutor falls back to mode 2 for mixed/non-Ibis adapters."""
@@ -422,10 +436,12 @@ class TestModeSelection:
         ref_arrow = pa.Table.from_pandas(employee_list_df)
         custom_adapter = ArrowAdapter(ref_arrow)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": ibis_adapter,
-            "demo_employee_list": custom_adapter,
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": ibis_adapter,
+                "demo_employee_list": custom_adapter,
+            }
+        )
 
         executor = MultiSourceSQLExecutor(multi)
 

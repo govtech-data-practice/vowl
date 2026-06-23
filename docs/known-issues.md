@@ -6,18 +6,38 @@ description: >-
 
 # Known Issues
 
-## MSSQL: No Regex Support
+## Database Backend Differences
 
-SQL Server does not support `REGEXP_LIKE`. Pattern-based checks, including `logicalType` format validation (e.g. date patterns like `YYYY-MM`) and `logicalTypeOptions.pattern`, will return `ERROR` status when running against MSSQL.
+### Null Handling Varies Across Backends
+
+Database backends handle `NULL` differently in aggregate checks like `minimum`, `maximum`, and `mean`. Most backends silently skip nulls, which means a column full of nulls can still pass a `minimum` check (because there are no non-null values to violate the constraint).
+
+If you need to catch nulls, add an explicit `nullValues` check — don't rely on aggregate checks to find them:
+
+```yaml
+properties:
+  - name: my_column
+    quality:
+      - id: my_column_no_nulls
+        metric: nullValues
+        mustBe: 0
+        description: "There must be no null values in the column."
+```
+
+This catches nulls directly, regardless of which database backend runs the validation.
+
+### MSSQL: No Regex Support
+
+SQL Server does not support regex (`REGEXP_LIKE`). Any check that uses pattern matching will return `ERROR` when run against MSSQL.
 
 **Affected checks:**
 
-- `logicalType` checks that validate string format via regex (e.g. `date`, `timestamp`, `time`)
+- `logicalType` checks that validate string formats (e.g. `date`, `timestamp`, `time`)
 - `logicalTypeOptions.pattern` checks
-- `logicalTypeOptions.format` checks for string, date, timestamp, and time logical types (these generate regex-based SQL)
+- `logicalTypeOptions.format` checks for string, date, timestamp, and time logical types
 - `library` metric `invalidValues` with `arguments.pattern`
 
-**Workaround:** Use the DuckDB ATTACH compatibility mode to route queries through DuckDB, which has full regex support:
+**Workaround:** Route queries through DuckDB instead, which has full regex support:
 
 ```python
 import ibis
@@ -31,62 +51,170 @@ con.raw_sql("USE mssql_db")
 result = validate_data("contract.yaml", adapter=IbisAdapter(con))
 ```
 
-## Oracle: Dialect Differences
+### Oracle: Dialect Differences
 
-Oracle has several SQL dialect differences that can cause some generated checks to `ERROR`:
+Oracle's SQL dialect differs from standard SQL in ways that can cause some checks to `ERROR`:
 
-- **No `LIMIT` clause:** Ibis handles this via `FETCH FIRST N ROWS ONLY`, but edge cases may arise.
-- **No `!~` regex operator:** vowl applies an AST transform to use `REGEXP_LIKE` on Oracle, but complex patterns may not translate cleanly.
-- **Case-sensitive identifiers:** Oracle folds unquoted identifiers to uppercase. If your source tables were created with quoted lowercase column names, auto-generated checks may fail to match. vowl applies quoting transforms to mitigate this, but mismatches can still occur.
-- **`TEXT`/`CLOB` types cannot be used in `REGEXP_LIKE`:** vowl automatically casts these to `VARCHAR(4000)`, which truncates values longer than 4000 characters.
+- **No `LIMIT` clause:** Ibis rewrites this as `FETCH FIRST N ROWS ONLY`, but edge cases may arise.
+- **No `!~` regex operator:** vowl rewrites regex checks to use `REGEXP_LIKE`, but complex patterns may not translate cleanly.
+- **Case-sensitive identifiers:** Oracle uppercases unquoted identifiers. If your tables were created with quoted lowercase names (e.g. `CREATE TABLE "my_table"`), checks may fail because Oracle looks for `MY_TABLE` instead. vowl applies quoting transforms, but mismatches can still occur.
+- **`TEXT`/`CLOB` columns can't use `REGEXP_LIKE`:** vowl auto-casts these to `VARCHAR(4000)`, which means values longer than 4000 characters get truncated before the regex runs.
 
-## SQLite: Regex via User-Defined Function
+### SQLite: Regex via User-Defined Function
 
-SQLite does not natively support `REGEXP_LIKE`. vowl rewrites regex checks to use Ibis's `_IBIS_REGEX_SEARCH` user-defined function, which Ibis registers automatically when using a DuckDB or SQLite backend. This generally works but may behave differently from server-side regex implementations in edge cases.
-
-## Multi-Source Adapters: Data Materialisation
-
-When using `MultiSourceAdapter` (passing `adapters={}` to `validate_data`), each table is materialised into a local DuckDB instance before running checks. This means:
-
-- **Memory usage** scales with the size of your tables.
-- **Network transfer:** the full table (or filtered subset) is downloaded to the client.
-- Large tables may cause out-of-memory errors.
-
-For large datasets, prefer the **DuckDB ATTACH** approach which streams data on demand without materialisation. See [Usage Patterns](usage-patterns.md#option-a-duckdb-attach) for details.
-
-### Why Not Use DuckDB ATTACH Internally?
-
-The `MultiSourceSQLExecutor` materialises tables via Arrow instead of using DuckDB's `ATTACH` statement for several technical reasons:
-
-1. **Table namespace mismatch.** DuckDB ATTACH places tables under a qualified namespace (e.g. `pg_db.public.my_table`). User-authored contract queries use bare table names (`my_table`). `USE` or `SET search_path` resolves this for a single attached database, but cross-database joins (the core multi-source use case) require every table reference to be fully qualified. Rewriting arbitrary user SQL to inject per-table namespace prefixes is fragile and error-prone.
-
-2. **No access to connection credentials.** DuckDB ATTACH requires a connection string (`host=... port=... dbname=... user=... password=...`), not a live connection object. vowl receives an Ibis connection from the user. Reconstructing credentials would require accessing private Ibis internals (`_con_kwargs`), would not work for connections created via `from_connection()` or environment-based auth, and would surface passwords in SQL strings.
-
-3. **Limited backend coverage.** DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. vowl supports 12+ Ibis backends (Snowflake, Spark, BigQuery, Trino, ClickHouse, Oracle, MSSQL, DataFusion, etc.). The materialisation path would still be needed for every unsupported backend, so ATTACH would only serve as a partial optimisation.
-
-4. **Filter conditions cannot be pushed through ATTACH.** When an adapter has filter conditions, `export_table_as_arrow()` applies them at the source before export. With ATTACH, the remote table is exposed raw, and pushing per-adapter filters into cross-database joins would require deep query rewriting.
-
-5. **ATTACH opens a separate connection.** DuckDB ATTACH creates a new, independent connection to the remote database. This misses any session-level state on the user's Ibis connection (transactions, temp tables, session variables, `search_path`).
+SQLite has no built-in regex support. vowl works around this by using a Python-side regex function (`_IBIS_REGEX_SEARCH`) that Ibis registers automatically. This works in most cases, but may behave slightly differently from server-side regex (e.g. subtle Unicode or flag differences).
 
 ---
 
-## Null Handling Varies Across Database Backends
+## Multi-Source Adapters: Data Materialisation
 
-Different database backends handle `NULL` values differently in generic checks such as `minimum`, `maximum`, and `mean`. Some backends silently skip `NULL` rows when computing aggregates, while others may include them or produce unexpected results. This means a column containing `NULL` values might still pass a `minimum` or `maximum` check because the nulls are ignored during evaluation.
+When using `MultiSourceAdapter` (passing `adapters={}` to `validate_data`), vowl downloads each table into a local DuckDB instance before running checks. This means:
 
-If you need to guarantee that a column contains **no null values**, add an explicit `nullValues` library check rather than relying on aggregate checks to catch them:
+- **Memory usage** grows with table size — large tables may cause out-of-memory errors.
+- **Network transfer:** the full table (or filtered subset) is pulled to the client.
+
+For large datasets, prefer the **DuckDB ATTACH** approach which queries data in-place without downloading it. See [Usage Patterns](usage-patterns.md#option-a-duckdb-attach) for details.
+
+### Why Not Use DuckDB ATTACH Internally?
+
+vowl materialises tables via Arrow instead of using DuckDB ATTACH for these reasons:
+
+1. **Table names don't line up.** DuckDB ATTACH puts tables under a qualified path (e.g. `pg_db.public.my_table`), but contract queries use bare names like `my_table`. For cross-database joins (the main multi-source use case), every table reference would need rewriting — which is fragile.
+
+2. **No access to connection credentials.** DuckDB ATTACH needs a connection string with host/port/password, but vowl only receives a live Ibis connection object. There's no reliable way to extract credentials from it.
+
+3. **Limited backend support.** DuckDB ATTACH only works with PostgreSQL, MySQL, and SQLite. vowl supports any Ibis backend, so materialisation is needed anyway for most of them.
+
+4. **Filters can't be pushed down.** With materialisation, vowl applies filter conditions at the source before downloading. With ATTACH, the remote table is exposed raw and pushing per-adapter filters into cross-database joins would require complex query rewriting.
+
+5. **ATTACH opens a separate connection.** This bypasses any session state on the user's Ibis connection (transactions, temp tables, session variables, `search_path`).
+
+---
+
+## Annotated Output: Not All Checks Can Be Merged
+
+`get_annotated_output()` (and `save(output_mode="annotated")`) returns your **full table** with an extra `check_ids` column showing which check(s) each row failed. However, not every check can be merged into this table — some checks simply don't produce results that map back to individual rows.
+
+```python
+output = result.get_annotated_output()
+output["annotated"]   # {schema: full table + check_ids}      <- mergeable checks
+output["residues"]    # {key: failed rows + check_ids + tables_in_query}  <- everything else
+```
+
+For example, suppose your full table `hdb_resale_prices` looks like this:
+
+| month   | town       | block | street_name    | flat_type | storey_range | floor_area_sqm | lease_commence_date | remaining_lease | resale_price |
+| ------- | ---------- | ----- | -------------- | --------- | ------------ | -------------- | ------------------- | --------------- | ------------ |
+| 2024-01 | ANG MO KIO | 123   | ANG MO KIO AVE | 3 ROOM    | 04 TO 06     | 68             | 1980                | 55 years        | 350000       |
+| 2024-01 | BEDOK      | 456   | BEDOK NORTH    | 4 ROOM    | 07 TO 09     | 92             | 1995                | 70 years        | 480000       |
+| 2024-02 | TAMPINES   | 789   | TAMPINES ST    | 5 ROOM    | 10 TO 12     | 110            | 2000                | 75 years        | 620000       |
+
+A **mergeable** check (e.g. a row-level check like "resale_price must be > 0") can tag individual rows directly, producing an annotated table like:
+
+| month   | town       | block | ... | resale_price | check_ids             |
+| ------- | ---------- | ----- | --- | ------------ | --------------------- |
+| 2024-01 | ANG MO KIO | 123   | ... | 350000       | null                  |
+| 2024-01 | BEDOK      | 456   | ... | 480000       | null                  |
+| 2024-02 | TAMPINES   | 789   | ... | 620000       | resale_price_positive |
+
+This split is by design. A check can only be merged into the annotated table when **all** of the following are true:
+
+1. **The check didn't error.** An errored check has no usable failed rows.
+2. **It queries exactly one table.** A cross-table check (e.g. a JOIN between two tables) has no single table to annotate onto.
+3. **It produces row-level results** (aggregation type is `count` or `none`). Checks that return a single number (like `mean` or `maximum`) can't point to specific rows.
+4. **Its failed rows have the same columns as the full table.** If a check only selects a few columns, we can't match results back to full rows.
+
+When any condition fails, the check becomes a **residue** (returned separately). The three common cases:
+
+### 1. Cross-table checks (fails condition 2)
+
+Checks that JOIN multiple tables have no single table to annotate onto.
+
+```yaml
+# This check spans two tables — which table should the failure appear in?
+quality:
+  - type: sql
+    name: employee_id_exists_in_master_list
+    query: >-
+      SELECT COUNT(*) FROM demo_employee_payroll p
+      LEFT JOIN demo_employee_list e ON p.employee_id = e.employee_id
+      WHERE e.employee_id IS NULL
+    mustBe: 0
+```
+
+The query result might look like:
+
+| count |
+| ----- |
+| 3     |
+
+This tells us 3 payroll rows have missing employee IDs, but the failure belongs to the _relationship_ between the two tables — there's no single table to annotate it onto. It goes to `residues` keyed by `"demo_employee_list, demo_employee_payroll"`.
+
+### 2. Aggregation checks (fails condition 3)
+
+Checks that produce a single number (e.g. `AVG`, `MAX`, `SUM`) can't point to specific rows.
 
 ```yaml
 properties:
-  - name: my_column
+  - name: resale_price
     quality:
-      - id: my_column_no_nulls
-        metric: nullValues
-        mustBe: 0
-        description: "There must be no null values in the column."
+      - type: sql
+        name: avg_resale_price_in_range
+        query: "SELECT AVG(resale_price) FROM hdb_resale_prices"
+        mustBeBetween:
+          - 100000
+          - 2000000
 ```
 
-This ensures nulls are caught directly, regardless of which database backend is running the validation.
+The query result is just one number:
+
+| avg       |
+| --------- |
+| 483333.33 |
+
+There are no individual rows to flag — the result is a single scalar, so it can't be annotated onto the full table. It becomes a residue.
+
+Note: `rowCount` is technically an aggregate too, but it fails at condition 4 instead (no data columns). Either way, it's not merged.
+
+### 3. Column-subset checks (fails condition 4)
+
+Checks that only return _some_ columns can't be matched back to full rows. The most common example is duplicate detection, which groups by a subset of columns:
+
+```yaml
+properties:
+  - name: resale_price
+    quality:
+      - type: sql
+        name: no_duplicate_listings
+        query: >-
+          SELECT month, block, street_name, flat_type, storey_range
+          FROM hdb_resale_prices
+          GROUP BY month, block, street_name, flat_type, storey_range
+          HAVING COUNT(*) > 1
+        mustBe: 0
+```
+
+The query result might look like:
+
+| month   | block | street_name    | flat_type | storey_range |
+| ------- | ----- | -------------- | --------- | ------------ |
+| 2024-01 | 123   | ANG MO KIO AVE | 3 ROOM    | 04 TO 06     |
+
+This tells us there's a duplicate, but the result only has 5 columns. The full table has 10 columns (including `town`, `floor_area_sqm`, `lease_commence_date`, `remaining_lease`, `resale_price`). We can't match this partial row back to a specific full row, so it becomes a residue.
+
+### Consolidated output includes cross-table checks; annotated output does not
+
+`get_consolidated_output_dfs()` includes cross-table failures (keyed by composite table name, e.g. `"table_a, table_b"`). `get_annotated_output()` does not — they only appear in `residues`.
+
+If you rely solely on annotated output, always check `residues` for non-mergeable failures.
+
+### Other things to know
+
+- **A table can have both.** If a table has mergeable _and_ non-mergeable failing checks, you'll get both an annotated table and residue entries for that schema. Mergeable checks are never duplicated into `residues`.
+- **Annotated entries exist even when nothing failed.** Every schema with an available adapter gets an annotated table — the `check_ids` column is just all null.
+- **Missing adapter?** If a schema's adapter is unavailable, that schema is skipped (with a warning) and its failures appear only as residues.
+- **`max_failed_rows` raises an error for annotated output.** If you cap failed rows (`max_failed_rows >= 0`) and a mergeable check gets truncated, `get_annotated_output()` raises `ValueError` rather than silently treating un-fetched failures as passing. Use `max_failed_rows=-1` (the default) or switch to `output_mode="failed_rows"`.
+- **Duplicate rows may be over-flagged.** Matching is value-based. If two rows are byte-identical and one failed, both get annotated (the safe direction — false positives, not false negatives). A row-id-based matcher is planned.
 
 ---
 
@@ -94,7 +222,7 @@ This ensures nulls are caught directly, regardless of which database backend is 
 
 ### Queries Accessing Tables Outside the Contract
 
-SQL checks in a contract can reference any table reachable on the connection, not just the tables declared in the contract's `schema` block. For example, a check like this:
+SQL checks can reference **any** table the connection can reach, not just those declared in your contract's `schema`. For example:
 
 ```yaml
 quality:
@@ -104,23 +232,21 @@ quality:
     mustBe: 0
 ```
 
-will happily query `audit_log` even if it is not declared anywhere in the contract. vowl extracts and reports the tables involved via `tables_in_query` in the results, but it does **not** block execution against undeclared tables.
+Here, `audit_log` isn't declared in the contract, but the check runs fine. vowl reports the tables involved via `tables_in_query` but does **not** block undeclared table access.
 
 **Why this matters:**
 
-- It breaks the principle that the contract is the single source of truth for what data is being validated.
-- It creates implicit dependencies on tables that may not be obvious to reviewers of the contract.
-- It can inadvertently expose data from tables the contract author did not intend to include.
+- The contract is no longer the single source of truth for what's being validated.
+- Hidden dependencies on undeclared tables aren't obvious to contract reviewers.
+- It may unintentionally expose data the contract author didn't intend to include.
 
 **Backend differences:**
 
-| Adapter | Behaviour |
-|---------|-----------|
-| `IbisAdapter` (native Ibis connection) | Works: the query runs against whatever the connection can reach. |
-| `MultiSourceAdapter` | Works: all materialised tables are available in the local DuckDB instance, so cross-references between them succeed. |
-| DuckDB ATTACH | **May not work:** only tables explicitly attached or aliased as views are visible. References to undeclared tables will fail with a missing table error. |
-
-This is one reason the `MultiSourceAdapter` materialisation approach remains available despite its memory cost: it preserves the ability to run cross-table checks that reference tables outside the contract.
+| Adapter                                | Behaviour                                                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `IbisAdapter` (native Ibis connection) | Works — the query runs against whatever the connection can reach.                                                       |
+| `MultiSourceAdapter`                   | Works — all materialised tables are available in the local DuckDB instance.                                             |
+| DuckDB ATTACH                          | **May fail** — only explicitly attached tables are visible. References to undeclared tables give a missing table error. |
 
 !!! warning
-    Treat SQL checks that reference tables not in your contract's `schema` as a code smell. Consider declaring all referenced tables explicitly, even if they are not the primary validation target.
+Treat SQL checks that reference undeclared tables as a code smell. Declare all referenced tables in your contract's `schema`, even if they're not the primary validation target.

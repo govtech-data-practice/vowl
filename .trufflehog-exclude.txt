@@ -1,0 +1,9 @@
+# TruffleHog path allowlist — files containing known fake/placeholder credentials.
+# These are documentation examples (e.g. postgresql://user:pass@host:5432/mydb),
+# not real secrets. The literal lives in git history, so an inline
+# `# trufflehog:ignore` comment cannot suppress it across the commit-range scan.
+# Each line is a regex matched against the file path.
+examples/vowl_usage_patterns_demo\.ipynb
+# This allowlist file itself contains a placeholder connection string in the
+# comments above, so exclude it from the scan too.
+\.trufflehog-exclude\.txt

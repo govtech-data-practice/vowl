@@ -5,7 +5,7 @@ description: Usage patterns for vowl — local DataFrames, PySpark, Ibis connect
 # Usage Patterns
 
 !!! tip "Interactive Demo"
-    Try the [usage patterns notebook](https://github.com/govtech-data-practice/vowl/blob/main/examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
+Try the [usage patterns notebook](https://github.com/govtech-data-practice/vowl/blob/main/examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
 
 ## Local DataFrame (Pandas/Polars)
 
@@ -35,7 +35,7 @@ finally:
 ```
 
 !!! note
-    The library does **not** manage the SparkSession lifecycle. You must create and stop it yourself. This is by design. SparkSession is a heavy, application-owned resource with specific configuration requirements.
+The library does **not** manage the SparkSession lifecycle. You must create and stop it yourself. This is by design. SparkSession is a heavy, application-owned resource with specific configuration requirements.
 
 ## Ibis Connections (20+ Backends)
 
@@ -53,7 +53,7 @@ result.display_full_report()
 Ibis supports: Amazon Athena, BigQuery, ClickHouse, Dask, Databricks, DataFusion, Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, pandas, Polars, PostgreSQL, PySpark, RisingWave, SingleStoreDB, Snowflake, SQLite, Trino, and more. See [ibis-project/ibis](https://github.com/ibis-project/ibis).
 
 !!! info "MySQL"
-    Select the database when you create the connection, for example via `ibis.mysql.connect(..., database="my_db")` or a connection URI that already includes the database name. vowl does not issue `USE database` during validation; it runs read-only `SELECT` queries against the active database on the existing connection.
+Select the database when you create the connection, for example via `ibis.mysql.connect(..., database="my_db")` or a connection URI that already includes the database name. vowl does not issue `USE database` during validation; it runs read-only `SELECT` queries against the active database on the existing connection.
 
 ## Compatibility Mode (DuckDB ATTACH)
 
@@ -63,7 +63,7 @@ from vowl import validate_data
 from vowl.adapters import IbisAdapter
 
 con = ibis.duckdb.connect()
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
 con.raw_sql("USE pg")
 
 result = validate_data("contract.yaml", adapter=IbisAdapter(con))
@@ -71,7 +71,7 @@ result.display_full_report()
 ```
 
 !!! tip "When to use this"
-    Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
 
 ## Explicit Adapter with Filter Conditions
 
@@ -119,7 +119,7 @@ result.display_full_report()
 ```
 
 !!! note
-    If multiple patterns match a table, conditions are combined with AND.
+If multiple patterns match a table, conditions are combined with AND.
 
 ### Multiple Filter Conditions on Same Table
 
@@ -150,7 +150,7 @@ from vowl.adapters import IbisAdapter
 
 con = ibis.duckdb.connect()
 
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")
+con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/salesdb' AS pg_sales (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
 con.raw_sql("ATTACH 'sqlite:///path/to/users.db' AS sqlite_users (TYPE sqlite, READ_ONLY)")
 
 con.raw_sql("USE memory")
@@ -163,7 +163,7 @@ result.display_full_report()
 ```
 
 !!! note
-    DuckDB evaluates views dynamically at query time; this does **not** materialise or copy data. It streams live from your attached databases.
+DuckDB evaluates views dynamically at query time; this does **not** materialise or copy data. It streams live from your attached databases.
 
 ### Option B: Multi-Source Adapters
 
@@ -187,7 +187,7 @@ result.display_full_report()
 ```
 
 !!! warning
-    Multi-source adapters **materialise** each table into a local DuckDB instance before running checks. Ensure your local machine can handle the data volume.
+Multi-source adapters **materialise** each table into a local DuckDB instance before running checks. Ensure your local machine can handle the data volume.
 
 ## Custom Adapters and Executors
 
@@ -237,7 +237,7 @@ assert "sql" in executors
 ```
 
 !!! info
-    For end-to-end validation in the built-in runner today, the supported runtime adapter type is `IbisAdapter`.
+For end-to-end validation in the built-in runner today, the supported runtime adapter type is `IbisAdapter`.
 
 ## Using Servers Defined in Data Contract
 
@@ -297,4 +297,4 @@ result.display_full_report()
 ```
 
 !!! note
-    `boto3` is not included in the base install. Install it with `pip install vowl[all]` or `pip install boto3`. Uses default AWS credentials (environment variables, `~/.aws/credentials`, IAM role, etc.).
+`boto3` is not included in the base install. Install it with `pip install vowl[all]` or `pip install boto3`. Uses default AWS credentials (environment variables, `~/.aws/credentials`, IAM role, etc.).

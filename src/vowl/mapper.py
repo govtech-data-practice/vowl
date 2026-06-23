@@ -33,6 +33,7 @@ def _spark_types() -> tuple[type, type] | None:
     try:
         from pyspark.sql import DataFrame as SparkDataFrame
         from pyspark.sql import SparkSession
+
         return (SparkSession, SparkDataFrame)
     except ImportError:
         return None
@@ -84,7 +85,7 @@ class DataSourceMapper:
         >>> adapter = mapper.get_adapter(polars_df)
         >>> # Returns IbisAdapter with DuckDB backend
 
-        >>> adapter = mapper.get_adapter("postgresql://user:pass@host/db")
+        >>> adapter = mapper.get_adapter("postgresql://user:pass@host/db")  # trufflehog:ignore
         >>> # Returns IbisAdapter with PostgreSQL backend
     """
 
@@ -123,10 +124,7 @@ class DataSourceMapper:
             return data_source
 
         if isinstance(data_source, BaseAdapter):
-            raise TypeError(
-                f"Unsupported adapter type: {type(data_source).__name__}. "
-                "Only IbisAdapter is supported."
-            )
+            raise TypeError(f"Unsupported adapter type: {type(data_source).__name__}. Only IbisAdapter is supported.")
 
         # PySpark DataFrame - use ibis pyspark backend (check before narwhals
         # since PySpark DataFrames need special handling via the Spark backend)
@@ -146,7 +144,7 @@ class DataSourceMapper:
             return self._create_adapter_from_connection_string(data_source)
 
         # Ibis backend - duck typing fallback
-        if hasattr(data_source, 'raw_sql'):
+        if hasattr(data_source, "raw_sql"):
             return IbisAdapter(data_source)
 
         # Unknown type
@@ -181,10 +179,7 @@ class DataSourceMapper:
             con.create_table(table_name, arrow_table)
         except Exception as e:
             error_msg = str(e).lower()
-            is_type_error = any(
-                keyword in error_msg
-                for keyword in ['arrow', 'type', 'conversion', 'expected']
-            )
+            is_type_error = any(keyword in error_msg for keyword in ["arrow", "type", "conversion", "expected"])
 
             if is_type_error:
                 arrow_table, coerced_columns = self._build_arrow_with_column_fallback(

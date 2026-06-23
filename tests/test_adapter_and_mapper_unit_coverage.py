@@ -191,12 +191,8 @@ def test_mapper_stringifies_all_columns_when_error_column_is_unknown():
     )
 
     assert coerced_columns == ["a", "b"]
-    assert pa.types.is_string(table.schema.field("a").type) or pa.types.is_large_string(
-        table.schema.field("a").type
-    )
-    assert pa.types.is_string(table.schema.field("b").type) or pa.types.is_large_string(
-        table.schema.field("b").type
-    )
+    assert pa.types.is_string(table.schema.field("a").type) or pa.types.is_large_string(table.schema.field("a").type)
+    assert pa.types.is_string(table.schema.field("b").type) or pa.types.is_large_string(table.schema.field("b").type)
 
 
 def test_mapper_reraises_retry_error_after_full_dataframe_stringification(monkeypatch: pytest.MonkeyPatch):
