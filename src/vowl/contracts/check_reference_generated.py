@@ -434,15 +434,12 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
         # Known silent skips (metadata-only, not checkable).
         if (logical_type, val) in _FORMAT_SKIP_SILENT:
-            raise ValueError(
-                f"Format '{val}' is metadata-only for logical type '{logical_type}'"
-            )
+            raise ValueError(f"Format '{val}' is metadata-only for logical type '{logical_type}'")
 
         # Known warn-and-skip (exceeds SQL numeric range).
         if (logical_type, val) in _FORMAT_SKIP_WARN:
             warnings.warn(
-                f"Format '{val}' exceeds SQL numeric range; "
-                f"skipping check at {self._path}",
+                f"Format '{val}' exceeds SQL numeric range; skipping check at {self._path}",
                 UserWarning,
                 stacklevel=3,
             )
@@ -481,14 +478,11 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
         elif logical_type is not None:
             warnings.warn(
-                f"Format option not supported for logical type "
-                f"'{logical_type}' at {self._path}",
+                f"Format option not supported for logical type '{logical_type}' at {self._path}",
                 UserWarning,
                 stacklevel=3,
             )
-            raise ValueError(
-                f"Format not supported for logical type '{logical_type}'"
-            )
+            raise ValueError(f"Format not supported for logical type '{logical_type}'")
 
     def get_check(self) -> DataQuality:
         if self._generated_check is None:
@@ -569,9 +563,7 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
             if logical_type == "integer":
                 min_val, max_val = _INTEGER_FORMAT_RANGES[val]
-                cast_col = exp.TryCast(
-                    this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True
-                )
+                cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
                 range_check = exp.Or(
                     this=cast_col < exp.Literal.number(min_val),
                     expression=cast_col > exp.Literal.number(max_val),
@@ -584,29 +576,21 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
                     # Fall through to JDK format pattern (validated in __init__)
                     pattern = _jdk_format_to_regex(val)
                     if pattern is None:
-                        raise RuntimeError(f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this")
-                cast_col = exp.TryCast(
-                    this=col, to=exp.DataType.build("VARCHAR"), safe=True
-                )
-                pattern_check = exp.Not(
-                    this=exp.RegexpLike(
-                        this=cast_col, expression=exp.Literal.string(pattern)
-                    )
-                )
+                        raise RuntimeError(
+                            f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this"
+                        )
+                cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
+                pattern_check = exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern)))
                 return count_where(not_null, pattern_check)
 
             # date / timestamp / time — already validated in _validate_format
             pattern = _jdk_format_to_regex(val)
             if pattern is None:
-                raise RuntimeError(f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this")
-            cast_col = exp.TryCast(
-                this=col, to=exp.DataType.build("VARCHAR"), safe=True
-            )
-            pattern_check = exp.Not(
-                this=exp.RegexpLike(
-                    this=cast_col, expression=exp.Literal.string(pattern)
+                raise RuntimeError(
+                    f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this"
                 )
-            )
+            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
+            pattern_check = exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern)))
             return count_where(not_null, pattern_check)
 
         raise ValueError(
@@ -640,10 +624,7 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
         if logical_type == "integer":
             min_val, max_val = _INTEGER_FORMAT_RANGES[val]
-            return (
-                f"Column '{col_name}' must fit in {val} range "
-                f"({min_val} to {max_val})"
-            )
+            return f"Column '{col_name}' must fit in {val} range ({min_val} to {max_val})"
 
         if logical_type == "string":
             return f"Column '{col_name}' must match {val} format"
@@ -672,8 +653,7 @@ class RequiredCheckReference(GeneratedColumnCheckReference):
 
         if not col_name or not schema_name:
             warnings.warn(
-                f"Could not generate required check at {self._path}: "
-                f"col_name={col_name}, schema_name={schema_name}",
+                f"Could not generate required check at {self._path}: col_name={col_name}, schema_name={schema_name}",
                 UserWarning,
                 stacklevel=2,
             )
@@ -719,8 +699,7 @@ class UniqueCheckReference(GeneratedColumnCheckReference):
 
         if not col_name or not schema_name:
             warnings.warn(
-                f"Could not generate unique check at {self._path}: "
-                f"col_name={col_name}, schema_name={schema_name}",
+                f"Could not generate unique check at {self._path}: col_name={col_name}, schema_name={schema_name}",
                 UserWarning,
                 stacklevel=2,
             )
@@ -774,8 +753,7 @@ class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
 
         if not col_name or not schema_name:
             warnings.warn(
-                f"Could not generate primary key check at {self._path}: "
-                f"col_name={col_name}, schema_name={schema_name}",
+                f"Could not generate primary key check at {self._path}: col_name={col_name}, schema_name={schema_name}",
                 UserWarning,
                 stacklevel=2,
             )

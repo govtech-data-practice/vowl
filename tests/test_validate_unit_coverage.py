@@ -113,7 +113,13 @@ def _sample_validation_result() -> ValidationResult:
         failed_rows=_nw_df({"id": [1], "value": ["bad"]}),
         failed_rows_count=1,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["users"], "dimension": "completeness", "schema_name": "users", "target": "users.value", "rendered_implementation": "value IS NULL"},
+        metadata={
+            "tables_in_query": ["users"],
+            "dimension": "completeness",
+            "schema_name": "users",
+            "target": "users.value",
+            "rendered_implementation": "value IS NULL",
+        },
         execution_time_ms=1.5,
     )
     failed_b = CheckResult(
@@ -125,7 +131,13 @@ def _sample_validation_result() -> ValidationResult:
         failed_rows=_nw_df({"id": [1], "value": ["bad"]}),
         failed_rows_count=1,
         supports_row_level_output=True,
-        metadata={"tables_in_query": ["users"], "dimension": "validity", "schema_name": "users", "target": "users.value", "rendered_implementation": "value NOT IN ('bad')"},
+        metadata={
+            "tables_in_query": ["users"],
+            "dimension": "validity",
+            "schema_name": "users",
+            "target": "users.value",
+            "rendered_implementation": "value NOT IN ('bad')",
+        },
         execution_time_ms=2.5,
     )
     passed = CheckResult(
@@ -220,7 +232,9 @@ def test_validation_result_contract_data_property_returns_underlying_contract_da
         "check_results": [],
         "contract_metadata": {},
     }
-    contract = SimpleNamespace(get_api_version=lambda: "v3.1.0", get_metadata=lambda: {}, contract_data={"kind": "DataContract"})
+    contract = SimpleNamespace(
+        get_api_version=lambda: "v3.1.0", get_metadata=lambda: {}, contract_data={"kind": "DataContract"}
+    )
     result = ValidationResult(summary, [], contract, SimpleNamespace(adapters={}), [])
 
     assert result.contract_data == {"kind": "DataContract"}
@@ -692,7 +706,9 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
     assert "cross_rule" in output
 
 
-def test_validation_result_print_summary_omits_row_quality_when_only_cross_table_failures(capsys: pytest.CaptureFixture[str]):
+def test_validation_result_print_summary_omits_row_quality_when_only_cross_table_failures(
+    capsys: pytest.CaptureFixture[str],
+):
     summary = {
         "validation_summary": {
             "total_checks": 1,
@@ -768,7 +784,9 @@ def test_validation_result_consolidation_handles_no_failed_rows_and_no_data_colu
         "check_results": [],
         "contract_metadata": {},
     }
-    contract = SimpleNamespace(get_api_version=lambda: "v3.1.0", get_metadata=lambda: {"id": "contract-id"}, contract_data={})
+    contract = SimpleNamespace(
+        get_api_version=lambda: "v3.1.0", get_metadata=lambda: {"id": "contract-id"}, contract_data={}
+    )
     empty_result = ValidationResult(
         summary,
         [CheckResult("rule", "PASSED", "ok", failed_rows=_nw_df({}))],
@@ -802,12 +820,28 @@ def test_validation_result_consolidation_adds_suffix_for_same_table_different_co
         "check_results": [],
         "contract_metadata": {},
     }
-    contract = SimpleNamespace(get_api_version=lambda: "v3.1.0", get_metadata=lambda: {"id": "contract-id"}, contract_data={})
+    contract = SimpleNamespace(
+        get_api_version=lambda: "v3.1.0", get_metadata=lambda: {"id": "contract-id"}, contract_data={}
+    )
     result = ValidationResult(
         summary,
         [
-            CheckResult("rule_a", "FAILED", "bad", failed_rows=_nw_df({"id": [1]}), failed_rows_count=1, metadata={"tables_in_query": ["users"]}),
-            CheckResult("rule_b", "FAILED", "bad", failed_rows=_nw_df({"other": [2]}), failed_rows_count=1, metadata={"tables_in_query": ["users"]}),
+            CheckResult(
+                "rule_a",
+                "FAILED",
+                "bad",
+                failed_rows=_nw_df({"id": [1]}),
+                failed_rows_count=1,
+                metadata={"tables_in_query": ["users"]},
+            ),
+            CheckResult(
+                "rule_b",
+                "FAILED",
+                "bad",
+                failed_rows=_nw_df({"other": [2]}),
+                failed_rows_count=1,
+                metadata={"tables_in_query": ["users"]},
+            ),
         ],
         contract,
         SimpleNamespace(adapters={"users": SimpleNamespace()}),
@@ -919,7 +953,9 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
         "check_results": [],
         "contract_metadata": {},
     }
-    contract = SimpleNamespace(get_api_version=lambda: "v3.1.0", get_metadata=lambda: {"id": "contract-id"}, contract_data={})
+    contract = SimpleNamespace(
+        get_api_version=lambda: "v3.1.0", get_metadata=lambda: {"id": "contract-id"}, contract_data={}
+    )
     result = ValidationResult(
         summary,
         [
@@ -1074,7 +1110,9 @@ def test_validation_runner_resolve_adapters_keeps_existing_ibis_adapter(monkeypa
 def test_validation_runner_run_propagates_config_and_builds_result(monkeypatch: pytest.MonkeyPatch):
     contract = _make_contract(monkeypatch, ["users"])
     fake_multi = FakeMultiAdapter({"users": SimpleNamespace(max_failed_rows=None, use_try_cast=None)})
-    config = ValidationConfig(max_failed_rows=7, use_try_cast=False, enable_additional_schema_statistics=True, max_rows_for_statistics=12)
+    config = ValidationConfig(
+        max_failed_rows=7, use_try_cast=False, enable_additional_schema_statistics=True, max_rows_for_statistics=12
+    )
     runner = ValidationRunner(contract=contract, adapters={"users": object()}, config=config)
 
     monkeypatch.setattr(runner, "_resolve_adapters", lambda: fake_multi)
@@ -1098,7 +1136,9 @@ def test_validation_runner_build_summary_aggregates_counts(monkeypatch: pytest.M
     runner = ValidationRunner(contract=contract, adapters={"users": object()})
     check_results = [
         CheckResult("pass", "PASSED", "ok", failed_rows_count=0, execution_time_ms=1.0),
-        CheckResult("fail", "FAILED", "bad", failed_rows_count=3, supports_row_level_output=True, execution_time_ms=2.0),
+        CheckResult(
+            "fail", "FAILED", "bad", failed_rows_count=3, supports_row_level_output=True, execution_time_ms=2.0
+        ),
         CheckResult("err", "ERROR", "boom", failed_rows_count=0, execution_time_ms=4.0),
     ]
 
@@ -1173,5 +1213,3 @@ def test_validate_data_errors_when_named_schemas_cannot_be_inferred(monkeypatch:
 
     with pytest.raises(ValueError, match="Contract has no schemas with names defined. Cannot infer table name"):
         original_validate_data(contract="contract.yaml", df=object())
-
-

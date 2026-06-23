@@ -1,4 +1,5 @@
 """Tests for ODCS models and validation."""
+
 import inspect
 import json
 import re
@@ -28,7 +29,7 @@ def find_latest_schema_file() -> Path:
 
     def parse_version(path: Path) -> tuple:
         """Extract version tuple from filename for sorting."""
-        match = re.search(r'v(\d+)\.(\d+)\.(\d+)', path.name)
+        match = re.search(r"v(\d+)\.(\d+)\.(\d+)", path.name)
         if match:
             return tuple(int(x) for x in match.groups())
         return (0, 0, 0)
@@ -39,7 +40,7 @@ def find_latest_schema_file() -> Path:
 
 
 LATEST_SCHEMA_FILE = find_latest_schema_file()
-_match = re.search(r'v(\d+)\.(\d+)\.(\d+)', LATEST_SCHEMA_FILE.name)
+_match = re.search(r"v(\d+)\.(\d+)\.(\d+)", LATEST_SCHEMA_FILE.name)
 LATEST_VERSION = "v" + ".".join(str(x) for x in _match.groups())
 
 
@@ -153,8 +154,13 @@ class TestJsonSchemaValidation:
         dimension_prop = data_quality.get("properties", {}).get("dimension", {})
 
         expected_dimensions = {
-            "accuracy", "completeness", "conformity", "consistency",
-            "coverage", "timeliness", "uniqueness"
+            "accuracy",
+            "completeness",
+            "conformity",
+            "consistency",
+            "coverage",
+            "timeliness",
+            "uniqueness",
         }
         actual_dimensions = set(dimension_prop.get("enum", []))
 
@@ -166,10 +172,7 @@ class TestJsonSchemaValidation:
         library = defs.get("DataQualityLibrary", {})
         metric_prop = library.get("properties", {}).get("metric", {})
 
-        expected_metrics = {
-            "nullValues", "missingValues", "invalidValues",
-            "duplicateValues", "rowCount"
-        }
+        expected_metrics = {"nullValues", "missingValues", "invalidValues", "duplicateValues", "rowCount"}
         actual_metrics = set(metric_prop.get("enum", []))
 
         assert expected_metrics == actual_metrics

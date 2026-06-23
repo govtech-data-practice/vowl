@@ -44,9 +44,7 @@ class ValidationRunner:
             return self._adapters_input
 
         if not isinstance(self._adapters_input, dict):
-            raise TypeError(
-                f"Expected dict or MultiSourceAdapter, got {type(self._adapters_input).__name__}"
-            )
+            raise TypeError(f"Expected dict or MultiSourceAdapter, got {type(self._adapters_input).__name__}")
 
         self._schema_names = self._contract.get_schema_names()
 
@@ -74,8 +72,7 @@ class ValidationRunner:
         missing = set(self._schema_names) - set(resolved.keys())
         if missing:
             raise ValueError(
-                f"No adapter provided for schema(s): {missing}. "
-                f"Provide adapters for all schemas in the contract."
+                f"No adapter provided for schema(s): {missing}. Provide adapters for all schemas in the contract."
             )
 
         return self.multi_adapter_cls(resolved)
@@ -86,46 +83,43 @@ class ValidationRunner:
         total_rows_by_schema: dict[str, int],
         connection_results: dict[str, dict[str, str]] | None = None,
     ) -> dict[str, Any]:
-        passed = sum(1 for cr in check_results if cr.status == 'PASSED')
-        failed = sum(1 for cr in check_results if cr.status == 'FAILED')
-        errors = sum(1 for cr in check_results if cr.status == 'ERROR')
+        passed = sum(1 for cr in check_results if cr.status == "PASSED")
+        failed = sum(1 for cr in check_results if cr.status == "FAILED")
+        errors = sum(1 for cr in check_results if cr.status == "ERROR")
         total_time = sum(cr.execution_time_ms for cr in check_results)
         failed_rows = sum(
-            cr.failed_rows_count
-            for cr in check_results
-            if cr.failed_rows_count
-            and cr.supports_row_level_output
+            cr.failed_rows_count for cr in check_results if cr.failed_rows_count and cr.supports_row_level_output
         )
 
         check_results_dicts = [
             {
-                'name': cr.check_name,
-                'status': cr.status,
-                'details': cr.details,
-                'expected_value': cr.expected_value,
-                'actual_value': cr.actual_value,
-                'failed_rows_count': cr.failed_rows_count,
-                'execution_time_ms': cr.execution_time_ms,
+                "name": cr.check_name,
+                "status": cr.status,
+                "details": cr.details,
+                "expected_value": cr.expected_value,
+                "actual_value": cr.actual_value,
+                "failed_rows_count": cr.failed_rows_count,
+                "execution_time_ms": cr.execution_time_ms,
                 **cr.metadata,
             }
             for cr in check_results
         ]
 
         return {
-            'validation_summary': {
-                'total_checks': len(check_results),
-                'passed': passed,
-                'failed': failed,
-                'errors': errors,
-                'total_rows_by_schema': total_rows_by_schema,
-                'config': self._config.to_dict(),
-                'failed_rows': failed_rows,
-                'total_execution_time_ms': total_time,
-                'success_rate': (passed / len(check_results) * 100) if check_results else 100,
-                'connection_results': connection_results or {},
+            "validation_summary": {
+                "total_checks": len(check_results),
+                "passed": passed,
+                "failed": failed,
+                "errors": errors,
+                "total_rows_by_schema": total_rows_by_schema,
+                "config": self._config.to_dict(),
+                "failed_rows": failed_rows,
+                "total_execution_time_ms": total_time,
+                "success_rate": (passed / len(check_results) * 100) if check_results else 100,
+                "connection_results": connection_results or {},
             },
-            'check_results': check_results_dicts,
-            'contract_metadata': self._contract.get_metadata() if self._contract else {},
+            "check_results": check_results_dicts,
+            "contract_metadata": self._contract.get_metadata() if self._contract else {},
         }
 
     def run(self) -> ValidationResult:

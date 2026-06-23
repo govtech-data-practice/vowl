@@ -76,10 +76,7 @@ def _load_schema(api_version: str) -> dict[str, Any]:
     if api_version not in _schema_cache:
         if api_version not in SCHEMA_FILES:
             supported = ", ".join(SUPPORTED_VERSIONS)
-            raise ValueError(
-                f"Unsupported API version: {api_version}. "
-                f"Supported versions: {supported}"
-            )
+            raise ValueError(f"Unsupported API version: {api_version}. Supported versions: {supported}")
 
         schema_path = SCHEMAS_DIR / SCHEMA_FILES[api_version]
         if not schema_path.exists():
@@ -113,8 +110,7 @@ def validate_contract(contract_data: dict[str, Any], api_version: str | None = N
         api_version = contract_data.get("apiVersion")
         if not api_version:
             raise ValueError(
-                "Contract does not specify an apiVersion. "
-                f"Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
+                f"Contract does not specify an apiVersion. Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
 
     schema = _load_schema(api_version)

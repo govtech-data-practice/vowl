@@ -151,11 +151,14 @@ def test_apply_filters_warns_and_returns_original_query_on_parse_failure():
 
 
 def test_apply_filters_handles_queries_without_tables():
-    assert SQLCheckReference.apply_filters(
-        "SELECT 1",
-        "postgres",
-        {"users": {"field": "id", "operator": ">", "value": 1}},
-    ) == "SELECT 1"
+    assert (
+        SQLCheckReference.apply_filters(
+            "SELECT 1",
+            "postgres",
+            {"users": {"field": "id", "operator": ">", "value": 1}},
+        )
+        == "SELECT 1"
+    )
 
 
 def test_apply_filters_keeps_unmatched_tables_unchanged():
@@ -206,10 +209,7 @@ def test_infer_type_from_literal_covers_supported_variants(literal: object, expe
 
 
 def test_apply_try_cast_rewrites_casts_and_numeric_literal_comparisons():
-    query = (
-        "SELECT * FROM users "
-        "WHERE CAST(raw_id AS INT) = 1 AND score = 2 AND 3 < attempts AND note = 'plain-text'"
-    )
+    query = "SELECT * FROM users WHERE CAST(raw_id AS INT) = 1 AND score = 2 AND 3 < attempts AND note = 'plain-text'"
 
     result, modified = SQLCheckReference.apply_try_cast(query, "duckdb")
 

@@ -55,6 +55,7 @@ EMPLOYEE_CONTRACT_PATH = EMPLOYEE_DIR / "employee_payroll_datacontract.yaml"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _docker_available() -> bool:
     try:
         subprocess.run(["docker", "info"], capture_output=True, check=True, timeout=5)
@@ -84,6 +85,7 @@ def _assert_no_error_checks(result) -> None:
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sample_df() -> pd.DataFrame:
     # Assume blank string for null values
@@ -103,6 +105,7 @@ def contract_path() -> str:
 # ============================================================================
 # 1. examples/basic_usage.py: "Validate in 3 lines"
 # ============================================================================
+
 
 class TestBasicUsageExample:
     """Mirrors ``examples/basic_usage.py`` exactly."""
@@ -125,6 +128,7 @@ class TestBasicUsageExample:
 # ============================================================================
 # 2. Local DataFrame: Pandas & Polars
 # ============================================================================
+
 
 class TestLocalDataFramePandas:
     """README: Local DataFrame (Pandas/Polars): pandas path."""
@@ -169,6 +173,7 @@ class TestLocalDataFramePolars:
 # 3. PySpark
 # ============================================================================
 
+
 class TestPySparkExample:
     """README: PySpark pattern."""
 
@@ -184,8 +189,7 @@ class TestPySparkExample:
 
         try:
             spark = (
-                SparkSession.builder
-                .master("local[1]")
+                SparkSession.builder.master("local[1]")
                 .appName("test_readme_examples")
                 .config("spark.driver.memory", "512m")
                 .config("spark.sql.shuffle.partitions", "1")
@@ -229,6 +233,7 @@ class TestPySparkExample:
 # 4. Ibis Connections: DuckDB
 # ============================================================================
 
+
 class TestIbisDuckDB:
     """README: Ibis Connections (20+ Backends): DuckDB in-memory."""
 
@@ -252,6 +257,7 @@ class TestIbisDuckDB:
 # ============================================================================
 # 5. Ibis Connections: PostgreSQL via testcontainers
 # ============================================================================
+
 
 @pytest.mark.docker_integration
 class TestIbisPostgres:
@@ -323,7 +329,9 @@ class TestIbisPostgres:
             pg_connection,
             filter_conditions={
                 "hdb_resale_prices": FilterCondition(
-                    field="month", operator=">=", value="2017-01",
+                    field="month",
+                    operator=">=",
+                    value="2017-01",
                 ),
             },
         )
@@ -336,6 +344,7 @@ class TestIbisPostgres:
 # ============================================================================
 # 6. DuckDB ATTACH: Compatibility Mode (PostgreSQL via testcontainers)
 # ============================================================================
+
 
 @pytest.mark.docker_integration
 class TestDuckDBAttach:
@@ -419,6 +428,7 @@ class TestDuckDBAttach:
 # 7. Explicit Adapter with Filter Conditions
 # ============================================================================
 
+
 class TestFilterConditions:
     """README: Explicit Adapter with Filter Conditions."""
 
@@ -459,7 +469,9 @@ class TestFilterConditions:
             duckdb_with_data,
             filter_conditions={
                 "hdb_resale_prices": FilterCondition(
-                    field="month", operator=">=", value="2017-01",
+                    field="month",
+                    operator=">=",
+                    value="2017-01",
                 )
             },
         )
@@ -508,6 +520,7 @@ class TestFilterConditions:
 # ============================================================================
 # 8. Multi-Source Validation
 # ============================================================================
+
 
 class TestMultiSourceValidation:
     """README: Multi-Source Validation (Option B: multi-adapter)."""
@@ -583,7 +596,11 @@ class TestMultiSourceDuckDBAttach:
         db = postgres_container.dbname
 
         pg_con = ibis.postgres.connect(
-            host=host, port=port, user=user, password=pw, database=db,
+            host=host,
+            port=port,
+            user=user,
+            password=pw,
+            database=db,
         )
         pg_con.raw_sql("""
             CREATE TABLE IF NOT EXISTS hdb_resale_prices (
@@ -622,6 +639,7 @@ class TestMultiSourceDuckDBAttach:
 # 9. Custom Adapters and Executors
 # ============================================================================
 
+
 class TestCustomAdaptersExecutors:
     """README: Custom Adapters and Executors boilerplate."""
 
@@ -659,6 +677,7 @@ class TestCustomAdaptersExecutors:
 # ============================================================================
 # 10. ValidationResult API
 # ============================================================================
+
 
 class TestValidationResultAPI:
     """README: The ValidationResult Object."""
@@ -737,6 +756,7 @@ class TestValidationResultAPI:
 # 11. Contract API
 # ============================================================================
 
+
 class TestContractAPI:
     """README: Contract loading, schema introspection, check references."""
 
@@ -783,6 +803,7 @@ class TestContractAPI:
 # 12. DataSourceMapper
 # ============================================================================
 
+
 class TestDataSourceMapper:
     """README implicitly: DataSourceMapper auto-detection."""
 
@@ -805,6 +826,7 @@ class TestDataSourceMapper:
 # ============================================================================
 # 13. Error Handling (documented behaviour)
 # ============================================================================
+
 
 class TestErrorHandling:
     """Verify error paths mentioned / implied in README."""
@@ -836,6 +858,7 @@ class TestErrorHandling:
 # 14. MySQL via testcontainers
 # ============================================================================
 
+
 @pytest.mark.docker_integration
 class TestMySQL:
     """Notebook pattern: MySQL via testcontainers."""
@@ -853,6 +876,7 @@ class TestMySQL:
 
         try:
             import ibis
+
             ibis.mysql.connect  # noqa: B018  # just check it exists
         except (ImportError, AttributeError):
             pytest.skip("Ibis MySQL backend not installed")
@@ -907,9 +931,7 @@ class TestMySQL:
                     vals.append(str(int(v)))
                 else:
                     vals.append("'" + str(v).replace("'", "''") + "'")
-            con.raw_sql(
-                f"INSERT INTO hdb_resale_prices VALUES ({', '.join(vals)})"
-            )
+            con.raw_sql(f"INSERT INTO hdb_resale_prices VALUES ({', '.join(vals)})")
 
         yield con
         con.disconnect()
@@ -933,7 +955,9 @@ class TestMySQL:
             mysql_connection,
             filter_conditions={
                 "hdb_resale_prices": FilterCondition(
-                    field="month", operator=">=", value="2017-01",
+                    field="month",
+                    operator=">=",
+                    value="2017-01",
                 ),
             },
         )
@@ -946,6 +970,7 @@ class TestMySQL:
 # ============================================================================
 # 15. DuckDB ATTACH with PostgreSQL: multi-source views
 # ============================================================================
+
 
 @pytest.mark.docker_integration
 class TestDuckDBAttachMultiSourceValidation:
@@ -978,7 +1003,11 @@ class TestDuckDBAttachMultiSourceValidation:
         db = postgres_container.dbname
 
         pg_con = ibis.postgres.connect(
-            host=host, port=port, user=user, password=pw, database=db,
+            host=host,
+            port=port,
+            user=user,
+            password=pw,
+            database=db,
         )
         pg_con.raw_sql("""
             CREATE TABLE IF NOT EXISTS hdb_resale_prices (

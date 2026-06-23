@@ -18,7 +18,7 @@ def get_eligible_schema_names(
     return {
         schema_name
         for check_result in eligible_checks
-        for schema_name in [check_result.metadata.get('schema_name')]
+        for schema_name in [check_result.metadata.get("schema_name")]
         if isinstance(schema_name, str) and schema_name in total_rows_by_schema
     }
 
@@ -30,17 +30,11 @@ def select_relevant_failed_row_columns(
     excluded_columns: Sequence[str],
 ) -> list[str]:
     relevant_columns = [
-        column_name
-        for column_name in failed_rows.columns
-        if column_name in schema_columns.get(schema_name, [])
+        column_name for column_name in failed_rows.columns if column_name in schema_columns.get(schema_name, [])
     ]
     if relevant_columns:
         return relevant_columns
-    return [
-        column_name
-        for column_name in failed_rows.columns
-        if column_name not in excluded_columns
-    ]
+    return [column_name for column_name in failed_rows.columns if column_name not in excluded_columns]
 
 
 def iter_unique_failed_row_keys(
@@ -50,8 +44,7 @@ def iter_unique_failed_row_keys(
     failed_rows_table = failed_rows.to_arrow().select(list(relevant_columns))
     for row_index in range(failed_rows_table.num_rows):
         yield (tuple(relevant_columns),) + tuple(
-            failed_rows_table[column_name][row_index].as_py()
-            for column_name in relevant_columns
+            failed_rows_table[column_name][row_index].as_py() for column_name in relevant_columns
         )
 
 

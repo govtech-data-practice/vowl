@@ -35,8 +35,7 @@ class Contract:
         api_version = contract_data.get("apiVersion")
         if not api_version:
             raise ValueError(
-                "Contract does not specify an apiVersion. "
-                f"Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
+                f"Contract does not specify an apiVersion. Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
         validate_contract(contract_data, api_version)
 
@@ -112,7 +111,7 @@ class Contract:
             ) from None
 
         # Parse S3 path
-        match = re.match(r's3://([^/]+)/(.+)', s3_path)
+        match = re.match(r"s3://([^/]+)/(.+)", s3_path)
         if not match:
             raise ValueError(f"Invalid S3 path format: {s3_path}")
 
@@ -120,9 +119,9 @@ class Contract:
         object_key = match.group(2)
 
         try:
-            s3_client = boto3.client('s3')
+            s3_client = boto3.client("s3")
             response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
-            return response['Body'].read().decode('utf-8')
+            return response["Body"].read().decode("utf-8")
         except Exception as e:
             raise OSError(f"Error fetching contract from S3 {s3_path}: {e}") from e
 
@@ -190,8 +189,8 @@ class Contract:
         Returns the entire dictionary of properties for the first schema entry.
         This includes name, data_domain_name, and any other custom properties.
         """
-        if self.contract_data and 'schema' in self.contract_data and self.contract_data['schema']:
-            return self.contract_data['schema'][0]
+        if self.contract_data and "schema" in self.contract_data and self.contract_data["schema"]:
+            return self.contract_data["schema"][0]
         return {}
 
     def get_version(self) -> str | None:
@@ -206,10 +205,7 @@ class Contract:
             Dictionary containing contract metadata (kind, version, etc.)
         """
         metadata_field_names = ["kind", "apiVersion", "version", "status", "id", "description"]
-        return {
-            field_name: self.contract_data.get(field_name)
-            for field_name in metadata_field_names
-        }
+        return {field_name: self.contract_data.get(field_name) for field_name in metadata_field_names}
 
     def get_api_version(self) -> str:
         """
@@ -285,7 +281,7 @@ class Contract:
         parts = []
         current = ""
         for char in jsonpath:
-            if char == '.' and current:
+            if char == "." and current:
                 parts.append(current)
                 current = ""
             else:
@@ -362,33 +358,29 @@ class Contract:
 
         refs_by_schema: dict[str, list[CheckReference]] = {}
 
-        schema_list = self.contract_data.get('schema', [])
+        schema_list = self.contract_data.get("schema", [])
         for schema_idx, schema_obj in enumerate(schema_list):
-            schema_name = schema_obj.get('name')
+            schema_name = schema_obj.get("name")
             if not schema_name:
                 continue
 
             refs_by_schema[schema_name] = []
 
             # Auto-generated checks from property attributes (run first)
-            properties = schema_obj.get('properties', [])
+            properties = schema_obj.get("properties", [])
             for prop_idx, prop in enumerate(properties):
                 prop_path = f"$.schema[{schema_idx}].properties[{prop_idx}]"
-                prop_name = prop.get('name', f'property[{prop_idx}]')
+                prop_name = prop.get("name", f"property[{prop_idx}]")
 
                 # Column existence checks for all declared properties.
-                if prop.get('name'):
-                    refs_by_schema[schema_name].append(
-                        DeclaredColumnExistsCheckReference(self, prop_path)
-                    )
+                if prop.get("name"):
+                    refs_by_schema[schema_name].append(DeclaredColumnExistsCheckReference(self, prop_path))
 
                 # Type checks for columns with logicalType
-                logical_type = prop.get('logicalType')
+                logical_type = prop.get("logicalType")
                 if logical_type:
                     if logical_type in LOGICAL_TYPE_TO_SQL:
-                        refs_by_schema[schema_name].append(
-                            LogicalTypeCheckReference(self, prop_path)
-                        )
+                        refs_by_schema[schema_name].append(LogicalTypeCheckReference(self, prop_path))
                     else:
                         # string, object, array have no SQL type check
                         warnings.warn(
@@ -399,15 +391,13 @@ class Contract:
                         )
 
                 # LogicalTypeOptions checks
-                logical_type_options = prop.get('logicalTypeOptions')
+                logical_type_options = prop.get("logicalTypeOptions")
                 if logical_type_options:
                     for option_key, option_value in logical_type_options.items():
                         if option_value is not None:
                             try:
                                 refs_by_schema[schema_name].append(
-                                    LogicalTypeOptionsCheckReference(
-                                        self, prop_path, option_key, option_value
-                                    )
+                                    LogicalTypeOptionsCheckReference(self, prop_path, option_key, option_value)
                                 )
                             except ValueError as exc:
                                 refs_by_schema[schema_name].append(
@@ -419,25 +409,19 @@ class Contract:
                                 )
 
                 # Required checks for columns with required: true
-                if prop.get('required') is True:
-                    refs_by_schema[schema_name].append(
-                        RequiredCheckReference(self, prop_path)
-                    )
+                if prop.get("required") is True:
+                    refs_by_schema[schema_name].append(RequiredCheckReference(self, prop_path))
 
                 # Unique checks for columns with unique: true
-                if prop.get('unique') is True:
-                    refs_by_schema[schema_name].append(
-                        UniqueCheckReference(self, prop_path)
-                    )
+                if prop.get("unique") is True:
+                    refs_by_schema[schema_name].append(UniqueCheckReference(self, prop_path))
 
                 # Primary key checks for columns with primaryKey: true
-                if prop.get('primaryKey') is True:
-                    refs_by_schema[schema_name].append(
-                        PrimaryKeyCheckReference(self, prop_path)
-                    )
+                if prop.get("primaryKey") is True:
+                    refs_by_schema[schema_name].append(PrimaryKeyCheckReference(self, prop_path))
 
             # Table-level checks
-            table_quality = schema_obj.get('quality', [])
+            table_quality = schema_obj.get("quality", [])
             for qual_idx in range(len(table_quality)):
                 check_path = f"$.schema[{schema_idx}].quality[{qual_idx}]"
                 check_type = table_quality[qual_idx].get("type", "sql")
@@ -448,35 +432,33 @@ class Contract:
                     if metric_cls is None:
                         refs_by_schema[schema_name].append(
                             UnsupportedTableCheckReference(
-                                self, check_path,
+                                self,
+                                check_path,
                                 f"Unsupported library metric '{metric}' at schema level. "
                                 f"Supported schema-level metrics: {', '.join(sorted(LIBRARY_TABLE_METRICS))}",
                             )
                         )
                     else:
-                        refs_by_schema[schema_name].append(
-                            metric_cls(self, check_path)
-                        )
+                        refs_by_schema[schema_name].append(metric_cls(self, check_path))
                 else:
                     table_cls = TABLE_CHECK_TYPES.get(check_type)
                     if table_cls is None:
                         refs_by_schema[schema_name].append(
                             UnsupportedTableCheckReference(
-                                self, check_path,
+                                self,
+                                check_path,
                                 f"Unsupported check type '{check_type}'. "
                                 f"Supported types: {', '.join(sorted(TABLE_CHECK_TYPES | {'library': None}))}",
                             )
                         )
                     else:
-                        refs_by_schema[schema_name].append(
-                            table_cls(self, check_path)
-                        )
+                        refs_by_schema[schema_name].append(table_cls(self, check_path))
 
             # Column-level checks
-            properties = schema_obj.get('properties', [])
+            properties = schema_obj.get("properties", [])
             for prop_idx, prop in enumerate(properties):
                 prop_path = f"$.schema[{schema_idx}].properties[{prop_idx}]"
-                prop_quality = prop.get('quality', [])
+                prop_quality = prop.get("quality", [])
                 for qual_idx in range(len(prop_quality)):
                     check_path = f"$.schema[{schema_idx}].properties[{prop_idx}].quality[{qual_idx}]"
                     check_type = prop_quality[qual_idx].get("type", "sql")
@@ -487,29 +469,27 @@ class Contract:
                         if metric_cls is None:
                             refs_by_schema[schema_name].append(
                                 UnsupportedColumnCheckReference(
-                                    self, check_path,
+                                    self,
+                                    check_path,
                                     f"Unsupported library metric '{metric}' at property level. "
                                     f"Supported property-level metrics: {', '.join(sorted(LIBRARY_COLUMN_METRICS))}",
                                 )
                             )
                         else:
-                            refs_by_schema[schema_name].append(
-                                metric_cls(self, check_path, prop_path)
-                            )
+                            refs_by_schema[schema_name].append(metric_cls(self, check_path, prop_path))
                     else:
                         col_cls = COLUMN_CHECK_TYPES.get(check_type)
                         if col_cls is None:
                             refs_by_schema[schema_name].append(
                                 UnsupportedColumnCheckReference(
-                                    self, check_path,
+                                    self,
+                                    check_path,
                                     f"Unsupported check type '{check_type}'. "
                                     f"Supported types: {', '.join(sorted(COLUMN_CHECK_TYPES | {'library': None}))}",
                                 )
                             )
                         else:
-                            refs_by_schema[schema_name].append(
-                                col_cls(self, check_path)
-                            )
+                            refs_by_schema[schema_name].append(col_cls(self, check_path))
 
         return refs_by_schema
 
@@ -520,7 +500,7 @@ class Contract:
         Returns:
             List of Server dicts.
         """
-        return self.contract_data.get('servers', [])
+        return self.contract_data.get("servers", [])
 
     def get_server(self, server_name: str | None = None) -> Server:
         """
@@ -551,29 +531,23 @@ class Contract:
         """
         servers = self.get_servers()
         if not servers:
-            raise ValueError(
-                "No servers defined in the contract. "
-                "Add a 'servers' section to your contract YAML."
-            )
+            raise ValueError("No servers defined in the contract. Add a 'servers' section to your contract YAML.")
 
         if server_name is None:
             return servers[0]
 
         # Primary: match on the 'server' identifier field
         for server in servers:
-            if server.get('server') == server_name:
+            if server.get("server") == server_name:
                 return server
 
         # Fallback: match on 'environment'
         for server in servers:
-            if server.get('environment') == server_name:
+            if server.get("environment") == server_name:
                 return server
 
-        available = [s.get('server', '<unnamed>') for s in servers]
-        raise ValueError(
-            f"No server found matching '{server_name}'. "
-            f"Available servers: {available}"
-        )
+        available = [s.get("server", "<unnamed>") for s in servers]
+        raise ValueError(f"No server found matching '{server_name}'. Available servers: {available}")
 
     def get_schema_names(self) -> list[str]:
         """
@@ -586,5 +560,5 @@ class Contract:
             >>> contract.get_schema_names()
             ['orders', 'products', 'customers']
         """
-        schema_list = self.contract_data.get('schema', [])
-        return [s.get('name') for s in schema_list if s.get('name')]
+        schema_list = self.contract_data.get("schema", [])
+        return [s.get("name") for s in schema_list if s.get("name")]

@@ -20,6 +20,7 @@ from vowl.validation.result import ValidationResult
 # Fakes / builders
 # ---------------------------------------------------------------------------
 
+
 class _FakeAdapter:
     """Adapter stub whose export returns a preset Arrow table (or raises)."""
 
@@ -119,6 +120,7 @@ def _row(df: nw.DataFrame) -> list[dict]:
 # Shape / reserved keys
 # ---------------------------------------------------------------------------
 
+
 class TestShape:
     def test_reserved_keys_always_present(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
@@ -141,6 +143,7 @@ class TestShape:
 # ---------------------------------------------------------------------------
 # Annotation correctness
 # ---------------------------------------------------------------------------
+
 
 class TestAnnotation:
     def test_failed_rows_marked_passing_rows_null(self):
@@ -196,10 +199,7 @@ class TestAnnotation:
 
     def test_multiple_null_columns(self):
         full = pa.table({"a": [1, 2], "b": ["x", None], "c": [None, None]})
-        failed = pa.table(
-            {"a": [2], "b": pa.array([None], type=pa.string()),
-             "c": pa.array([None], type=pa.string())}
-        )
+        failed = pa.table({"a": [2], "b": pa.array([None], type=pa.string()), "c": pa.array([None], type=pa.string())})
         check = _make_check("c", "orders", failed_rows=failed)
         result = _make_result([check], {"orders": _FakeAdapter(full)})
         annotated = result.get_annotated_output()["annotated"]["orders"]
@@ -249,6 +249,7 @@ class TestAnnotation:
 # Match-count invariant warning
 # ---------------------------------------------------------------------------
 
+
 class TestMatchCountWarning:
     def test_warns_when_failed_row_unmatched(self, caplog):
         # Failed row that does NOT exist in the full table -> count mismatch.
@@ -265,11 +266,13 @@ class TestMatchCountWarning:
 # Eligibility
 # ---------------------------------------------------------------------------
 
+
 class TestEligibility:
     def test_cross_table_check_is_residue(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         check = _make_check(
-            "join_check", "orders",
+            "join_check",
+            "orders",
             failed_rows=pa.table({"id": [2], "name": ["b"]}),
             tables_in_query="orders, customers",
         )
@@ -282,7 +285,8 @@ class TestEligibility:
     def test_aggregation_check_is_residue(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         check = _make_check(
-            "agg_check", "orders",
+            "agg_check",
+            "orders",
             failed_rows=pa.table({"cnt": [5]}),
             supports_row_level_output=False,
         )
@@ -329,6 +333,7 @@ class TestEligibility:
 # Subsumption (the critical fix)
 # ---------------------------------------------------------------------------
 
+
 class TestSubsumption:
     def test_nonmergeable_single_table_check_kept(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
@@ -343,12 +348,8 @@ class TestSubsumption:
 
     def test_mergeable_plus_nonmergeable_no_duplication(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
-        mergeable = _make_check(
-            "full_row", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]})
-        )
-        nonmergeable = _make_check(
-            "subset", "orders", failed_rows=pa.table({"id": [3]})
-        )
+        mergeable = _make_check("full_row", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}))
+        nonmergeable = _make_check("subset", "orders", failed_rows=pa.table({"id": [3]}))
         result = _make_result([mergeable, nonmergeable], {"orders": _FakeAdapter(full)})
         out = result.get_annotated_output()
 
@@ -367,6 +368,7 @@ class TestSubsumption:
 # ---------------------------------------------------------------------------
 # Adapter failure paths
 # ---------------------------------------------------------------------------
+
 
 class TestFetchFailurePaths:
     def test_none_adapter_skips_schema_keeps_residue(self):
@@ -401,17 +403,20 @@ class TestFetchFailurePaths:
 # max_failed_rows truncation guard
 # ---------------------------------------------------------------------------
 
+
 class TestTruncationGuard:
     def test_mergeable_truncated_raises(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         # Fetched 1 row but true count is 2 -> truncated.
         check = _make_check(
-            "c", "orders",
+            "c",
+            "orders",
             failed_rows=pa.table({"id": [2], "name": ["b"]}),
             failed_rows_count=2,
         )
         result = _make_result(
-            [check], {"orders": _FakeAdapter(full)},
+            [check],
+            {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
         with pytest.raises(ValueError, match="annotated output"):
@@ -420,12 +425,14 @@ class TestTruncationGuard:
     def test_uncapped_same_scenario_does_not_raise(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
-            "c", "orders",
+            "c",
+            "orders",
             failed_rows=pa.table({"id": [2], "name": ["b"]}),
             failed_rows_count=2,
         )
         result = _make_result(
-            [check], {"orders": _FakeAdapter(full)},
+            [check],
+            {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=-1),
         )
         out = result.get_annotated_output()  # no raise
@@ -434,13 +441,15 @@ class TestTruncationGuard:
     def test_nonmergeable_truncated_does_not_raise(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         check = _make_check(
-            "subset", "orders",
+            "subset",
+            "orders",
             failed_rows=pa.table({"id": [2]}),
             failed_rows_count=5,
             supports_row_level_output=True,
         )
         result = _make_result(
-            [check], {"orders": _FakeAdapter(full)},
+            [check],
+            {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
         out = result.get_annotated_output()  # no raise: non-mergeable -> residue
@@ -454,11 +463,14 @@ class TestTruncationGuard:
 # include_target
 # ---------------------------------------------------------------------------
 
+
 class TestIncludeTarget:
     def test_targets_column_added(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         check = _make_check(
-            "c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            "c",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"]}),
             target="orders.name",
         )
         result = _make_result([check], {"orders": _FakeAdapter(full)})
@@ -472,11 +484,13 @@ class TestIncludeTarget:
 # save() output modes
 # ---------------------------------------------------------------------------
 
+
 class TestSaveModes:
     def _result_with_failures(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
-            "c", "orders",
+            "c",
+            "orders",
             failed_rows=pa.table({"id": [2], "name": ["b"]}),
             tables_in_query="orders",
         )
@@ -507,7 +521,8 @@ class TestSaveModes:
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check("c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}))
         result = _make_result(
-            [check], {"orders": _FakeAdapter(full)},
+            [check],
+            {"orders": _FakeAdapter(full)},
             config=ValidationConfig(output_mode="annotated"),
         )
         result.save(str(tmp_path), prefix="r")  # no explicit mode
@@ -518,6 +533,7 @@ class TestSaveModes:
 # ---------------------------------------------------------------------------
 # End-to-end with a real DuckDB-backed adapter
 # ---------------------------------------------------------------------------
+
 
 class TestDuckDBIntegration:
     def test_full_roundtrip_with_nulls(self):
@@ -538,10 +554,16 @@ class TestDuckDBIntegration:
         failed = pa.table({"id": [2], "email": pa.array([None], type=pa.string())})
         check = _make_check("email_not_null", "people", failed_rows=failed)
 
-        summary = {"validation_summary": {
-            "total_checks": 1, "passed": 0, "failed": 1, "errors": 0,
-            "total_execution_time_ms": 0.0, "success_rate": 0.0,
-        }}
+        summary = {
+            "validation_summary": {
+                "total_checks": 1,
+                "passed": 0,
+                "failed": 1,
+                "errors": 0,
+                "total_execution_time_ms": 0.0,
+                "success_rate": 0.0,
+            }
+        }
         result = ValidationResult(
             summary=summary,
             check_results=[check],

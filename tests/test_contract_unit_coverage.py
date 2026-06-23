@@ -390,9 +390,7 @@ def test_contract_get_check_references_by_schema_covers_remaining_branch_paths(
                                 "unsupportedOption": 10,
                                 "minLength": None,
                             },
-                            "quality": [
-                                {"name": "column_check", "type": "sql", "query": "SELECT 1", "mustBe": 1}
-                            ],
+                            "quality": [{"name": "column_check", "type": "sql", "query": "SELECT 1", "mustBe": 1}],
                         },
                         {
                             "name": "user_id",
@@ -421,12 +419,13 @@ def test_contract_get_check_references_by_schema_covers_remaining_branch_paths(
     assert any(isinstance(ref, UniqueCheckReference) for ref in user_refs)
     assert any(isinstance(ref, PrimaryKeyCheckReference) for ref in user_refs)
     assert not any(
-        isinstance(ref, LogicalTypeCheckReference) and ref.get_column_name() == "profile"
-        for ref in user_refs
+        isinstance(ref, LogicalTypeCheckReference) and ref.get_column_name() == "profile" for ref in user_refs
     )
 
     warning_messages = [str(record.message) for record in warning_records]
-    assert any("No type check generated for 'profile' with logicalType 'object'" in message for message in warning_messages)
+    assert any(
+        "No type check generated for 'profile' with logicalType 'object'" in message for message in warning_messages
+    )
     assert any("Unsupported logicalTypeOptions key 'unsupportedOption'" in message for message in warning_messages)
 
 
@@ -461,5 +460,7 @@ def test_declared_column_exists_check_returns_error_when_input_column_is_missing
 
     assert results_by_name["id_column_exists_check"].status == "PASSED"
     assert results_by_name["email_column_exists_check"].status == "ERROR"
-    assert results_by_name["email_column_exists_check"].metadata["check_ref_type"] == "DeclaredColumnExistsCheckReference"
+    assert (
+        results_by_name["email_column_exists_check"].metadata["check_ref_type"] == "DeclaredColumnExistsCheckReference"
+    )
     assert results_by_name["email_column_exists_check"].metadata["check_path"] == "$.schema[0].properties[1].name"

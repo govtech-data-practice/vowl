@@ -78,12 +78,18 @@ def generate_model(schema_path: Path, output_dir: Path) -> Path:
 
     # Build datamodel-codegen command
     cmd = [
-        sys.executable, "-m", "datamodel_code_generator",
-        "--input", str(schema_path),
-        "--output", str(output_file),
-        "--input-file-type", "jsonschema",
+        sys.executable,
+        "-m",
+        "datamodel_code_generator",
+        "--input",
+        str(schema_path),
+        "--output",
+        str(output_file),
+        "--input-file-type",
+        "jsonschema",
         # Model options
-        "--output-model-type", "pydantic_v2.BaseModel",
+        "--output-model-type",
+        "pydantic_v2.BaseModel",
         "--use-annotated",
         "--field-constraints",
         "--use-default",
@@ -93,15 +99,19 @@ def generate_model(schema_path: Path, output_dir: Path) -> Path:
         "--snake-case-field",
         "--use-title-as-name",
         # Reduce class explosion
-        "--allof-class-hierarchy", "always",
-        "--allof-merge-mode", "all",
+        "--allof-class-hierarchy",
+        "always",
+        "--allof-merge-mode",
+        "all",
         "--collapse-root-models",
         "--use-standard-collections",
         "--reuse-model",
         # Enum handling
-        "--enum-field-as-literal", "one",
+        "--enum-field-as-literal",
+        "one",
         # Extra options
-        "--target-python-version", "3.10",
+        "--target-python-version",
+        "3.10",
         "--use-double-quotes",
         "--wrap-string-literal",
     ]
@@ -109,12 +119,7 @@ def generate_model(schema_path: Path, output_dir: Path) -> Path:
     try:
         # Bandit B603: Command is constructed as a fixed argument list (no shell)
         # with trusted local inputs (schema/output paths) in this dev-only workflow.
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True
-        )  # nosec B603
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)  # nosec B603
         print("  Success!")
         if result.stdout:
             print(f"  {result.stdout}")
@@ -236,36 +241,25 @@ def find_all_schemas(schemas_dir: Path) -> list[Path]:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate Pydantic models from ODCS JSON Schema files."
-    )
+    parser = argparse.ArgumentParser(description="Generate Pydantic models from ODCS JSON Schema files.")
+    parser.add_argument("--schema", type=Path, help="Path to a specific JSON schema file to process.")
     parser.add_argument(
-        "--schema",
-        type=Path,
-        help="Path to a specific JSON schema file to process."
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        dest="process_all",
-        help="Process all schema files in the schemas directory."
+        "--all", action="store_true", dest="process_all", help="Process all schema files in the schemas directory."
     )
     parser.add_argument(
         "--schemas-dir",
         type=Path,
         default=DEFAULT_SCHEMAS_DIR,
-        help=f"Directory containing JSON schema files (default: {DEFAULT_SCHEMAS_DIR})"
+        help=f"Directory containing JSON schema files (default: {DEFAULT_SCHEMAS_DIR})",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_MODELS_DIR,
-        help=f"Directory for generated model files (default: {DEFAULT_MODELS_DIR})"
+        help=f"Directory for generated model files (default: {DEFAULT_MODELS_DIR})",
     )
     parser.add_argument(
-        "--no-update-init",
-        action="store_true",
-        help="Skip updating __init__.py in the models directory."
+        "--no-update-init", action="store_true", help="Skip updating __init__.py in the models directory."
     )
 
     args = parser.parse_args()

@@ -333,36 +333,61 @@ class StubCheckReference:
         metadata.update(extra)
         return metadata
 
-    def build_result(self, *, actual_value, execution_time_ms, failed_rows_fetcher=None,
-                     dialect="", filter_conditions=None, use_try_cast=False):
+    def build_result(
+        self,
+        *,
+        actual_value,
+        execution_time_ms,
+        failed_rows_fetcher=None,
+        dialect="",
+        filter_conditions=None,
+        use_try_cast=False,
+    ):
         check = self.get_check()
         operator, expected_value = self.get_expected_value()
         passed = self.evaluate(actual_value, operator, expected_value)
         metadata = self._build_full_metadata(dialect, filter_conditions, use_try_cast)
         if passed:
             return CheckResult(
-                check_name=self.get_check_name(), status="PASSED",
+                check_name=self.get_check_name(),
+                status="PASSED",
                 details=check.get("description") or f"Check passed: {operator} {expected_value}",
-                actual_value=actual_value, expected_value=expected_value,
+                actual_value=actual_value,
+                expected_value=expected_value,
                 supports_row_level_output=self.supports_row_level_output,
-                metadata=metadata, execution_time_ms=execution_time_ms,
+                metadata=metadata,
+                execution_time_ms=execution_time_ms,
             )
         return CheckResult(
-            check_name=self.get_check_name(), status="FAILED",
-            details=check.get("description") or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
-            actual_value=actual_value, expected_value=expected_value,
+            check_name=self.get_check_name(),
+            status="FAILED",
+            details=check.get("description")
+            or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
+            actual_value=actual_value,
+            expected_value=expected_value,
             failed_rows_fetcher=failed_rows_fetcher,
             failed_rows_count=self.compute_failed_rows_count(actual_value),
             supports_row_level_output=self.supports_row_level_output,
-            metadata=metadata, execution_time_ms=execution_time_ms,
+            metadata=metadata,
+            execution_time_ms=execution_time_ms,
         )
 
-    def build_error_result(self, *, error_message, execution_time_ms, dialect="",
-                           filter_conditions=None, use_try_cast=False, **extra_metadata):
+    def build_error_result(
+        self,
+        *,
+        error_message,
+        execution_time_ms,
+        dialect="",
+        filter_conditions=None,
+        use_try_cast=False,
+        **extra_metadata,
+    ):
         metadata = self._build_full_metadata(dialect, filter_conditions, use_try_cast, **extra_metadata)
         return CheckResult(
-            check_name=self.get_check_name(), status="ERROR",
-            details=error_message, metadata=metadata,
+            check_name=self.get_check_name(),
+            status="ERROR",
+            details=error_message,
+            metadata=metadata,
             execution_time_ms=execution_time_ms,
         )
 
@@ -494,6 +519,7 @@ class TestGetFailedRowsQueryPlainSelect:
         """Sanity: confirm plain SELECT is detected as having no aggregates."""
         import sqlglot
         from sqlglot import exp as sqlexp
+
         query = "SELECT * FROM users WHERE active = 0"
         parsed = sqlglot.parse_one(query, dialect="duckdb")
         has_agg = any(

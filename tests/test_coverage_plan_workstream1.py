@@ -94,9 +94,9 @@ def test_filter_condition_to_ast_for_in_and_not_in():
     not_in_ast = FilterCondition(field="status", operator="NOT IN", value="archived").to_ast()
 
     assert isinstance(in_ast, exp.In)
-    assert in_ast.sql() == '"status" IN (\'active\', \'pending\')'
+    assert in_ast.sql() == "\"status\" IN ('active', 'pending')"
     assert isinstance(not_in_ast, exp.Not)
-    assert not_in_ast.sql() == 'NOT "status" IN (\'archived\')'
+    assert not_in_ast.sql() == "NOT \"status\" IN ('archived')"
 
 
 def test_filter_condition_to_ast_for_like_and_not_like():
@@ -104,9 +104,9 @@ def test_filter_condition_to_ast_for_like_and_not_like():
     not_like_ast = FilterCondition(field="name", operator="NOT LIKE", value="B%").to_ast()
 
     assert isinstance(like_ast, exp.Like)
-    assert like_ast.sql() == '"name" LIKE \'A%\''
+    assert like_ast.sql() == "\"name\" LIKE 'A%'"
     assert isinstance(not_like_ast, exp.Not)
-    assert not_like_ast.sql() == 'NOT "name" LIKE \'B%\''
+    assert not_like_ast.sql() == "NOT \"name\" LIKE 'B%'"
 
 
 def test_filter_condition_to_ast_for_null_operators():
@@ -143,7 +143,7 @@ def test_build_filter_ast_accepts_single_filter_condition_and_dict_input():
     dict_ast = build_filter_ast({"field": "status", "operator": "=", "value": "active"})
 
     assert dataclass_ast.sql() == '"age" >= 18'
-    assert dict_ast.sql() == '"status" = \'active\''
+    assert dict_ast.sql() == "\"status\" = 'active'"
 
 
 def test_build_filter_ast_combines_multiple_conditions_with_and():
@@ -285,7 +285,9 @@ def test_mapper_only_stringifies_problematic_columns_on_fallback(monkeypatch: py
 
     arrow_table = fake_connection.created_tables[0][1]
     assert arrow_table.schema.field("good_int").type == pa.int64()
-    assert pa.types.is_string(arrow_table.schema.field("bad_mixed").type) or pa.types.is_large_string(arrow_table.schema.field("bad_mixed").type)
+    assert pa.types.is_string(arrow_table.schema.field("bad_mixed").type) or pa.types.is_large_string(
+        arrow_table.schema.field("bad_mixed").type
+    )
 
 
 def test_mapper_reraises_non_type_related_dataframe_conversion_errors(monkeypatch: pytest.MonkeyPatch):
@@ -349,6 +351,7 @@ def test_vowl_dunder_dir_exposes_public_api():
 
 def test_vowl_version_falls_back_when_package_metadata_is_missing(monkeypatch: pytest.MonkeyPatch):
     with monkeypatch.context() as context:
+
         def raise_not_found(_: str) -> str:
             raise importlib.metadata.PackageNotFoundError
 

@@ -33,33 +33,37 @@ class SQLSecurityError(Exception):
 
 
 # SQL statement types that are NOT allowed (write/modify operations)
-FORBIDDEN_STATEMENT_TYPES = frozenset({
-    # Data modification
-    exp.Insert,
-    exp.Update,
-    exp.Delete,
-    exp.Merge,
-    # Schema modification
-    exp.Create,
-    exp.Drop,
-    exp.Alter,
-    exp.AlterColumn,
-    # Transaction control (could be used to manipulate state)
-    exp.Transaction,
-    exp.Commit,
-    exp.Rollback,
-    # Permission management
-    exp.Grant,
-    exp.Revoke,
-    # Other dangerous operations
-    exp.Command,  # Generic commands like TRUNCATE, etc.
-})
+FORBIDDEN_STATEMENT_TYPES = frozenset(
+    {
+        # Data modification
+        exp.Insert,
+        exp.Update,
+        exp.Delete,
+        exp.Merge,
+        # Schema modification
+        exp.Create,
+        exp.Drop,
+        exp.Alter,
+        exp.AlterColumn,
+        # Transaction control (could be used to manipulate state)
+        exp.Transaction,
+        exp.Commit,
+        exp.Rollback,
+        # Permission management
+        exp.Grant,
+        exp.Revoke,
+        # Other dangerous operations
+        exp.Command,  # Generic commands like TRUNCATE, etc.
+    }
+)
 
 # Statement type names for the allowlist approach (more restrictive)
-ALLOWED_STATEMENT_TYPES = frozenset({
-    exp.Select,
-    # EXPLAIN/DESCRIBE are read-only analysis operations
-})
+ALLOWED_STATEMENT_TYPES = frozenset(
+    {
+        exp.Select,
+        # EXPLAIN/DESCRIBE are read-only analysis operations
+    }
+)
 
 # Patterns that indicate potential SQL injection attempts
 # These are checked against the raw query string
@@ -67,7 +71,10 @@ SQL_INJECTION_PATTERNS = [
     # Multiple statements (statement stacking)
     (r";\s*(?:INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXEC|EXECUTE)\b", "statement_stacking"),
     # UNION-based injection (suspicious UNION patterns)
-    (r"UNION\s+(?:ALL\s+)?SELECT\s+(?:NULL|[0-9]+|'[^']*')\s*(?:,\s*(?:NULL|[0-9]+|'[^']*'))*\s*(?:--|#|$)", "union_injection"),
+    (
+        r"UNION\s+(?:ALL\s+)?SELECT\s+(?:NULL|[0-9]+|'[^']*')\s*(?:,\s*(?:NULL|[0-9]+|'[^']*'))*\s*(?:--|#|$)",
+        "union_injection",
+    ),
     # Time-based blind injection
     (r"(?:WAITFOR\s+DELAY|SLEEP\s*\(|PG_SLEEP\s*\(|BENCHMARK\s*\()", "time_based_injection"),
     # Error-based injection
@@ -84,8 +91,7 @@ SQL_INJECTION_PATTERNS = [
 
 # Compiled regex patterns for efficiency
 _COMPILED_INJECTION_PATTERNS: list[tuple[re.Pattern, str]] = [
-    (re.compile(pattern, re.IGNORECASE | re.DOTALL), name)
-    for pattern, name in SQL_INJECTION_PATTERNS
+    (re.compile(pattern, re.IGNORECASE | re.DOTALL), name) for pattern, name in SQL_INJECTION_PATTERNS
 ]
 
 
@@ -140,8 +146,7 @@ def validate_read_only_query(query: str, dialect: str = "postgres") -> None:
             # Get a human-readable name for the statement type
             stmt_name = stmt_type.__name__ if hasattr(stmt_type, "__name__") else str(stmt_type)
             raise SQLSecurityError(
-                f"Only SELECT queries are allowed for data quality checks. "
-                f"Found: {stmt_name}",
+                f"Only SELECT queries are allowed for data quality checks. Found: {stmt_name}",
                 violation_type="write_operation",
                 query=query,
             )
@@ -179,8 +184,7 @@ def _check_for_write_subqueries(ast: exp.Expression, original_query: str) -> Non
         if node_type in FORBIDDEN_STATEMENT_TYPES:
             stmt_name = node_type.__name__ if hasattr(node_type, "__name__") else str(node_type)
             raise SQLSecurityError(
-                f"Write operation '{stmt_name}' found in subquery or CTE. "
-                "Only read operations are allowed.",
+                f"Write operation '{stmt_name}' found in subquery or CTE. Only read operations are allowed.",
                 violation_type="write_in_subquery",
                 query=original_query,
             )
@@ -230,8 +234,7 @@ def validate_query_security(query: str, dialect: str = "postgres") -> None:
     if injection_result:
         pattern_name, matched_text = injection_result
         raise SQLSecurityError(
-            f"Potential SQL injection detected: {pattern_name}. "
-            f"Matched pattern: '{matched_text}'",
+            f"Potential SQL injection detected: {pattern_name}. Matched pattern: '{matched_text}'",
             violation_type=f"injection_{pattern_name}",
             query=query,
         )

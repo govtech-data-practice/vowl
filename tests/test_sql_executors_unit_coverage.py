@@ -148,36 +148,61 @@ class StubCheckReference:
         metadata.update(extra)
         return metadata
 
-    def build_result(self, *, actual_value, execution_time_ms, failed_rows_fetcher=None,
-                     dialect="", filter_conditions=None, use_try_cast=False):
+    def build_result(
+        self,
+        *,
+        actual_value,
+        execution_time_ms,
+        failed_rows_fetcher=None,
+        dialect="",
+        filter_conditions=None,
+        use_try_cast=False,
+    ):
         check = self.get_check()
         operator, expected_value = self.get_expected_value()
         passed = self.evaluate(actual_value, operator, expected_value)
         metadata = self._build_full_metadata(dialect, filter_conditions, use_try_cast)
         if passed:
             return CheckResult(
-                check_name=self.get_check_name(), status="PASSED",
+                check_name=self.get_check_name(),
+                status="PASSED",
                 details=check.get("description") or f"Check passed: {operator} {expected_value}",
-                actual_value=actual_value, expected_value=expected_value,
+                actual_value=actual_value,
+                expected_value=expected_value,
                 supports_row_level_output=self.supports_row_level_output,
-                metadata=metadata, execution_time_ms=execution_time_ms,
+                metadata=metadata,
+                execution_time_ms=execution_time_ms,
             )
         return CheckResult(
-            check_name=self.get_check_name(), status="FAILED",
-            details=check.get("description") or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
-            actual_value=actual_value, expected_value=expected_value,
+            check_name=self.get_check_name(),
+            status="FAILED",
+            details=check.get("description")
+            or f"Check failed: expected {operator} {expected_value}, got {actual_value}",
+            actual_value=actual_value,
+            expected_value=expected_value,
             failed_rows_fetcher=failed_rows_fetcher,
             failed_rows_count=self.compute_failed_rows_count(actual_value),
             supports_row_level_output=self.supports_row_level_output,
-            metadata=metadata, execution_time_ms=execution_time_ms,
+            metadata=metadata,
+            execution_time_ms=execution_time_ms,
         )
 
-    def build_error_result(self, *, error_message, execution_time_ms, dialect="",
-                           filter_conditions=None, use_try_cast=False, **extra_metadata):
+    def build_error_result(
+        self,
+        *,
+        error_message,
+        execution_time_ms,
+        dialect="",
+        filter_conditions=None,
+        use_try_cast=False,
+        **extra_metadata,
+    ):
         metadata = self._build_full_metadata(dialect, filter_conditions, use_try_cast, **extra_metadata)
         return CheckResult(
-            check_name=self.get_check_name(), status="ERROR",
-            details=error_message, metadata=metadata,
+            check_name=self.get_check_name(),
+            status="ERROR",
+            details=error_message,
+            metadata=metadata,
             execution_time_ms=execution_time_ms,
         )
 
@@ -319,7 +344,9 @@ def test_multisource_fetch_failed_rows_returns_none_for_empty_query():
 
 def test_multisource_fetch_failed_rows_adds_limit_and_returns_dataframe(monkeypatch: pytest.MonkeyPatch):
     query_log: list[str] = []
-    local_con = StubRawSQLConnection(lambda query: query_log.append(query) or StubFetchArrowResult(pa.table({"id": [1]})))
+    local_con = StubRawSQLConnection(
+        lambda query: query_log.append(query) or StubFetchArrowResult(pa.table({"id": [1]}))
+    )
     executor = MultiSourceSQLExecutor(StubMultiAdapter({}, max_failed_rows=5))
     executor._local_duckdb_con = local_con
 
@@ -448,9 +475,7 @@ def test_ibis_fetch_failed_rows_returns_none_for_empty_query():
 
 def test_ibis_fetch_failed_rows_adds_limit_and_supports_to_arrow(monkeypatch: pytest.MonkeyPatch):
     query_log: list[str] = []
-    connection = StubRawSQLConnection(
-        lambda query: query_log.append(query) or StubToArrowResult(pa.table({"id": [1]}))
-    )
+    connection = StubRawSQLConnection(lambda query: query_log.append(query) or StubToArrowResult(pa.table({"id": [1]})))
     executor = IbisSQLExecutor(StubIbisAdapter(connection, max_failed_rows=3))
 
     monkeypatch.setattr(executor, "validate_query_security", lambda query: None)
@@ -506,9 +531,7 @@ def test_ibis_run_single_check_returns_security_error(monkeypatch: pytest.Monkey
     monkeypatch.setattr(
         executor,
         "_execute_query",
-        lambda query: (_ for _ in ()).throw(
-            SQLSecurityError("blocked", violation_type="write_operation", query=query)
-        ),
+        lambda query: (_ for _ in ()).throw(SQLSecurityError("blocked", violation_type="write_operation", query=query)),
     )
 
     result = executor.run_single_check(check_ref)

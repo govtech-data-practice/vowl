@@ -47,13 +47,13 @@ logger = logging.getLogger(__name__)
 
 #: Metadata columns that tag failed-rows output but are not part of the
 #: underlying table's identity.  Stripped before matching annotated rows.
-_METADATA_COLUMNS = ('check_id', 'check_ids', 'tables_in_query')
+_METADATA_COLUMNS = ("check_id", "check_ids", "tables_in_query")
 
 
 class ValidationResult:
     """Container for validation results and reporting helpers."""
 
-    _ROW_QUALITY_EXCLUDED_COLUMNS = ('check_id', 'check_ids', 'tables_in_query')
+    _ROW_QUALITY_EXCLUDED_COLUMNS = ("check_id", "check_ids", "tables_in_query")
 
     def __init__(
         self,
@@ -70,16 +70,16 @@ class ValidationResult:
         self._multi_adapter: MultiSourceAdapter = multi_adapter
         self._schema_names = list(schema_names)
         self._config = config or ValidationConfig()
-        self._vs = summary['validation_summary']
+        self._vs = summary["validation_summary"]
         self._row_quality_summary_by_schema: dict[str, dict[str, Any]] | None = None
         self._schema_validation_breakdown: dict[str, SchemaValidationBreakdown] | None = None
         self._schema_column_names: dict[str, list[str]] = {}
         self._full_table_cache: dict[str, nw.DataFrame | None] = {}
 
     def __repr__(self) -> str:
-        total = self._vs['total_checks']
-        passed = self._vs['passed']
-        failed = self._vs['failed']
+        total = self._vs["total_checks"]
+        passed = self._vs["passed"]
+        failed = self._vs["failed"]
         return f"ValidationResult(passed={self.passed}, checks={total}, passed_checks={passed}, failed_checks={failed})"
 
     @staticmethod
@@ -91,7 +91,7 @@ class ValidationResult:
         return [
             check_result
             for check_result in self.check_results
-            if check_result.status != 'ERROR'
+            if check_result.status != "ERROR"
             and not is_cross_table_check(check_result)
             and self._supports_row_level_output(check_result)
         ]
@@ -100,7 +100,7 @@ class ValidationResult:
         return [
             check_result
             for check_result in self.check_results
-            if check_result.metadata.get('schema_name') == schema_name
+            if check_result.metadata.get("schema_name") == schema_name
         ]
 
     def _get_failed_checks_summary_by_schema(self) -> dict[str, dict[str, list[CheckResult]]]:
@@ -109,12 +109,12 @@ class ValidationResult:
             single_checks, multi_checks = self._split_checks_by_scope(
                 check_result
                 for check_result in self._get_checks_for_schema(schema_name)
-                if check_result.status == 'FAILED'
+                if check_result.status == "FAILED"
             )
             if single_checks or multi_checks:
                 summary[schema_name] = {
-                    'single_checks': single_checks,
-                    'multi_checks': multi_checks,
+                    "single_checks": single_checks,
+                    "multi_checks": multi_checks,
                 }
         return summary
 
@@ -135,11 +135,11 @@ class ValidationResult:
         return sorted(
             self.check_results,
             key=lambda result: (
-                STATUS_ORDER.index(result.status)
-                if result.status in STATUS_ORDER else len(STATUS_ORDER),
-                self._schema_names.index(result.metadata.get('schema_name'))
-                if result.metadata.get('schema_name') in self._schema_names else len(self._schema_names),
-                'Multi' if is_cross_table_check(result) else 'Single',
+                STATUS_ORDER.index(result.status) if result.status in STATUS_ORDER else len(STATUS_ORDER),
+                self._schema_names.index(result.metadata.get("schema_name"))
+                if result.metadata.get("schema_name") in self._schema_names
+                else len(self._schema_names),
+                "Multi" if is_cross_table_check(result) else "Single",
                 result.check_name,
             ),
         )
@@ -148,19 +148,19 @@ class ValidationResult:
         if schema_name in self._schema_column_names:
             return self._schema_column_names[schema_name]
 
-        contract_data = getattr(self.contract, 'contract_data', None)
-        schema_entries = contract_data.get('schema', []) if isinstance(contract_data, dict) else []
+        contract_data = getattr(self.contract, "contract_data", None)
+        schema_entries = contract_data.get("schema", []) if isinstance(contract_data, dict) else []
         column_names = []
 
         for schema_entry in schema_entries:
-            if not isinstance(schema_entry, dict) or schema_entry.get('name') != schema_name:
+            if not isinstance(schema_entry, dict) or schema_entry.get("name") != schema_name:
                 continue
 
-            properties = schema_entry.get('properties') or []
+            properties = schema_entry.get("properties") or []
             column_names = [
-                property_data['name']
+                property_data["name"]
                 for property_data in properties
-                if isinstance(property_data, dict) and property_data.get('name')
+                if isinstance(property_data, dict) and property_data.get("name")
             ]
             break
 
@@ -171,7 +171,7 @@ class ValidationResult:
         if self._row_quality_summary_by_schema is not None:
             return self._row_quality_summary_by_schema
 
-        total_rows_by_schema = self._vs.get('total_rows_by_schema', {})
+        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
         if not total_rows_by_schema:
             return {}
 
@@ -180,10 +180,7 @@ class ValidationResult:
         if not eligible_schemas:
             return {}
 
-        schema_columns = {
-            schema_name: self._get_schema_column_names(schema_name)
-            for schema_name in eligible_schemas
-        }
+        schema_columns = {schema_name: self._get_schema_column_names(schema_name) for schema_name in eligible_schemas}
         unique_rows_by_schema = self._collect_unique_failed_rows_by_schema(
             eligible_checks,
             eligible_schemas,
@@ -211,10 +208,10 @@ class ValidationResult:
             schema_name: set() for schema_name in eligible_schemas
         }
         for check_result in eligible_checks:
-            if check_result.status != 'FAILED':
+            if check_result.status != "FAILED":
                 continue
 
-            schema_name = check_result.metadata.get('schema_name')
+            schema_name = check_result.metadata.get("schema_name")
             if not isinstance(schema_name, str) or schema_name not in unique_rows_by_schema:
                 continue
 
@@ -231,16 +228,14 @@ class ValidationResult:
             if not relevant_columns:
                 continue
 
-            unique_rows_by_schema[schema_name].update(
-                iter_unique_failed_row_keys(failed_rows, relevant_columns)
-            )
+            unique_rows_by_schema[schema_name].update(iter_unique_failed_row_keys(failed_rows, relevant_columns))
         return unique_rows_by_schema
 
     def _get_schema_validation_breakdown(self) -> dict[str, SchemaValidationBreakdown]:
         if self._schema_validation_breakdown is not None:
             return self._schema_validation_breakdown
 
-        total_rows_by_schema = self._vs.get('total_rows_by_schema', {})
+        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
         row_quality_summary_by_schema = self._get_row_quality_summary_by_schema()
         breakdown: dict[str, SchemaValidationBreakdown] = {}
 
@@ -259,8 +254,8 @@ class ValidationResult:
     @staticmethod
     def _summarize_check_statuses(check_results: Sequence[CheckResult]) -> CheckStatusSummary:
         return CheckStatusSummary(
-            passed_checks=sum(check_result.status == 'PASSED' for check_result in check_results),
-            error_checks=sum(check_result.status == 'ERROR' for check_result in check_results),
+            passed_checks=sum(check_result.status == "PASSED" for check_result in check_results),
+            error_checks=sum(check_result.status == "ERROR" for check_result in check_results),
             total_checks=len(check_results),
         )
 
@@ -274,9 +269,7 @@ class ValidationResult:
         single_table_checks, multi_table_checks = self._split_checks_by_scope(schema_checks)
         single_table_row_summary = row_quality_summary_by_schema.get(schema_name)
         total_rows = total_rows_by_schema.get(schema_name)
-        failed_unique_rows = (
-            single_table_row_summary['records_with_issues'] if single_table_row_summary else 0
-        )
+        failed_unique_rows = single_table_row_summary["records_with_issues"] if single_table_row_summary else 0
         passed_unique_rows = max((total_rows or 0) - failed_unique_rows, 0)
         passed_row_percentage = passed_unique_rows / total_rows * 100 if total_rows else None
 
@@ -297,15 +290,14 @@ class ValidationResult:
                 failed_non_unique_rows=sum(
                     (check_result.failed_rows_count or 0)
                     for check_result in multi_table_checks
-                    if check_result.status == 'FAILED'
-                    and self._supports_row_level_output(check_result)
+                    if check_result.status == "FAILED" and self._supports_row_level_output(check_result)
                 ),
             ),
         )
 
     @property
     def passed(self) -> bool:
-        return self._vs['failed'] == 0
+        return self._vs["failed"] == 0
 
     @property
     def api_version(self) -> str:
@@ -313,7 +305,7 @@ class ValidationResult:
 
     @property
     def contract_id(self) -> str:
-        return self.contract.get_metadata().get('id') or 'unknown'
+        return self.contract.get_metadata().get("id") or "unknown"
 
     @property
     def contract_data(self) -> DataContract:
@@ -321,10 +313,10 @@ class ValidationResult:
 
     def print_summary(self) -> ValidationResult:
         summary_section = build_summary_section(
-            total_checks=self._vs['total_checks'],
-            passed_checks=self._vs['passed'],
-            error_checks=self._vs.get('errors', 0),
-            check_pass_rate=self._vs.get('success_rate', 100.0),
+            total_checks=self._vs["total_checks"],
+            passed_checks=self._vs["passed"],
+            error_checks=self._vs.get("errors", 0),
+            check_pass_rate=self._vs.get("success_rate", 100.0),
             schema_names=self._schema_names,
             schema_validation_breakdown=self._get_schema_validation_breakdown(),
         )
@@ -335,16 +327,16 @@ class ValidationResult:
 === Data Quality Validation Results ===
    Contract Version:      {self.api_version}
    Contract ID:           {self.contract_id}
-   Schemas:               {', '.join(self._schema_names)}
+   Schemas:               {", ".join(self._schema_names)}
 {summary_section}
-{check_results_section}Total Execution:       {self._vs['total_execution_time_ms']:.2f} ms"""
+{check_results_section}Total Execution:       {self._vs["total_execution_time_ms"]:.2f} ms"""
 
         print("\n" + report.rstrip())
 
         return self
 
     def show_failed_checks(self) -> ValidationResult:
-        failed_checks = [cr for cr in self.check_results if cr.status == 'FAILED']
+        failed_checks = [cr for cr in self.check_results if cr.status == "FAILED"]
 
         if not failed_checks:
             print("\n All checks passed!")
@@ -378,7 +370,7 @@ class ValidationResult:
             schema_summary = failed_checks_summary[schema_name]
             print(f"\n  {schema_name}")
 
-            for section_label, check_key in (("Single checks", 'single_checks'), ("Multi checks", 'multi_checks')):
+            for section_label, check_key in (("Single checks", "single_checks"), ("Multi checks", "multi_checks")):
                 check_results = schema_summary[check_key]
                 if not check_results:
                     continue
@@ -399,9 +391,9 @@ class ValidationResult:
         max_rows: int,
     ) -> None:
         target_label = get_field_label(check_result)
-        rule = check_result.metadata.get('rendered_implementation')
+        rule = check_result.metadata.get("rendered_implementation")
 
-        operator = check_result.metadata.get('operator', '')
+        operator = check_result.metadata.get("operator", "")
 
         print(f"\n      [{check_result.check_name}]")
         print(f"        Operator:   {operator}")
@@ -429,20 +421,18 @@ class ValidationResult:
     def _append_output_metadata(df: nw.DataFrame, check_name: str, tables_str: str) -> nw.DataFrame:
         if len(df) > 0:
             return df.with_columns(
-                nw.lit(check_name).alias('check_id'),
-                nw.lit(tables_str).alias('tables_in_query'),
+                nw.lit(check_name).alias("check_id"),
+                nw.lit(tables_str).alias("tables_in_query"),
             )
 
         arrow_df = df.to_arrow()
-        arrow_df = arrow_df.append_column(
-            'check_id', pa.array([], type=pa.utf8())
-        ).append_column(
-            'tables_in_query', pa.array([], type=pa.utf8())
+        arrow_df = arrow_df.append_column("check_id", pa.array([], type=pa.utf8())).append_column(
+            "tables_in_query", pa.array([], type=pa.utf8())
         )
         return nw.from_native(arrow_df, eager_only=True)
 
     def _output_key(self, cr: CheckResult) -> str:
-        schema = cr.metadata.get('schema_name', '')
+        schema = cr.metadata.get("schema_name", "")
         return f"{schema}::{cr.check_name}" if schema else cr.check_name
 
     def get_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
@@ -450,13 +440,13 @@ class ValidationResult:
         checks_set = set(checks) if checks else None
 
         for cr in self.check_results:
-            if cr.status == 'ERROR':
+            if cr.status == "ERROR":
                 continue
             if checks_set and cr.check_name not in checks_set:
                 continue
 
             tables = get_tables_in_query(cr)
-            tables_str = ', '.join(sorted(tables)) if tables else ''
+            tables_str = ", ".join(sorted(tables)) if tables else ""
             result[self._output_key(cr)] = self._append_output_metadata(cr.failed_rows, cr.check_name, tables_str)
 
         return dict(sorted(result.items()))
@@ -476,17 +466,17 @@ class ValidationResult:
 
         groups: dict[tuple, list[nw.DataFrame]] = {}
         for df in per_check.values():
-            tables_key = df['tables_in_query'][0] if len(df) > 0 else ''
-            cols_key = frozenset(c for c in df.columns if c not in ('check_id', 'tables_in_query'))
+            tables_key = df["tables_in_query"][0] if len(df) > 0 else ""
+            cols_key = frozenset(c for c in df.columns if c not in ("check_id", "tables_in_query"))
             group_key = (tables_key, cols_key)
             groups.setdefault(group_key, []).append(df)
 
         raw_results: dict[str, list[nw.DataFrame]] = {}
         for (tables_key, _cols_key), dfs in groups.items():
             arrow_tables = [df.to_arrow() for df in dfs]
-            combined = pa.concat_tables(arrow_tables, promote_options='default')
+            combined = pa.concat_tables(arrow_tables, promote_options="default")
             grouped = self._consolidate_grouped_output(nw.from_native(combined, eager_only=True))
-            key = tables_key or 'unknown'
+            key = tables_key or "unknown"
             raw_results.setdefault(key, []).append(grouped)
 
         result: dict[str, nw.DataFrame] = {}
@@ -501,23 +491,22 @@ class ValidationResult:
 
     @staticmethod
     def _consolidate_grouped_output(combined: nw.DataFrame) -> nw.DataFrame:
-        data_cols = [
-            column for column in combined.columns
-            if column not in ('check_id', 'tables_in_query')
-        ]
+        data_cols = [column for column in combined.columns if column not in ("check_id", "tables_in_query")]
 
         if not data_cols:
             return nw.from_native(
-                pa.table({
-                    'check_ids': [', '.join(sorted(set(combined['check_id'].to_list())))],
-                    'tables_in_query': [combined['tables_in_query'][0]],
-                }),
+                pa.table(
+                    {
+                        "check_ids": [", ".join(sorted(set(combined["check_id"].to_list())))],
+                        "tables_in_query": [combined["tables_in_query"][0]],
+                    }
+                ),
                 eager_only=True,
             )
 
         arrow_table = combined.to_arrow()
-        check_id_col = arrow_table.column('check_id')
-        tables_col = arrow_table.column('tables_in_query')
+        check_id_col = arrow_table.column("check_id")
+        tables_col = arrow_table.column("tables_in_query")
         data_arrow_cols = [arrow_table.column(column) for column in data_cols]
 
         row_groups: dict[tuple[Any, ...], dict[str, Any]] = {}
@@ -526,21 +515,21 @@ class ValidationResult:
             group = row_groups.setdefault(
                 row_key,
                 {
-                    'check_ids': set(),
-                    'tables_in_query': tables_col[row_index].as_py(),
+                    "check_ids": set(),
+                    "tables_in_query": tables_col[row_index].as_py(),
                 },
             )
-            group['check_ids'].add(check_id_col[row_index].as_py())
+            group["check_ids"].add(check_id_col[row_index].as_py())
 
         result_data: dict[str, list] = {column: [] for column in data_cols}
-        result_data['check_ids'] = []
-        result_data['tables_in_query'] = []
+        result_data["check_ids"] = []
+        result_data["tables_in_query"] = []
 
         for row_key, group in row_groups.items():
             for column, value in zip(data_cols, row_key, strict=False):
                 result_data[column].append(value)
-            result_data['check_ids'].append(', '.join(sorted(group['check_ids'])))
-            result_data['tables_in_query'].append(group['tables_in_query'])
+            result_data["check_ids"].append(", ".join(sorted(group["check_ids"])))
+            result_data["tables_in_query"].append(group["tables_in_query"])
 
         return nw.from_native(pa.table(result_data), eager_only=True)
 
@@ -563,9 +552,7 @@ class ValidationResult:
             result: nw.DataFrame | None = None
             adapter = self._multi_adapter.get_adapter(schema_name)
             if adapter is None:
-                logger.warning(
-                    "No adapter for schema %r; skipping annotated output.", schema_name
-                )
+                logger.warning("No adapter for schema %r; skipping annotated output.", schema_name)
             else:
                 try:
                     arrow_table = adapter.export_table_as_arrow(schema_name)
@@ -582,7 +569,7 @@ class ValidationResult:
         Predicates are ordered cheapest-first so the lazy ``failed_rows`` fetch
         (criterion 4) is only triggered for checks that pass 1-3.
         """
-        if cr.status == 'ERROR':
+        if cr.status == "ERROR":
             return False
         if is_cross_table_check(cr):
             return False
@@ -612,36 +599,33 @@ class ValidationResult:
         deduplicated and comma-joined per row, so ``include_target`` callers get
         a per-row ``targets`` column alongside ``check_ids``.
         """
-        has_targets = 'targets' in combined.columns
-        data_cols = [
-            c for c in combined.columns
-            if c not in (*_METADATA_COLUMNS, 'targets')
-        ]
+        has_targets = "targets" in combined.columns
+        data_cols = [c for c in combined.columns if c not in (*_METADATA_COLUMNS, "targets")]
         arrow_table = combined.to_arrow()
-        check_id_col = arrow_table.column('check_id')
-        targets_col = arrow_table.column('targets') if has_targets else None
+        check_id_col = arrow_table.column("check_id")
+        targets_col = arrow_table.column("targets") if has_targets else None
         data_arrow_cols = [arrow_table.column(c) for c in data_cols]
 
         row_groups: dict[tuple[Any, ...], dict[str, set[str]]] = {}
         for i in range(arrow_table.num_rows):
             row_key = tuple(c[i].as_py() for c in data_arrow_cols)
-            group = row_groups.setdefault(row_key, {'check_ids': set(), 'targets': set()})
-            group['check_ids'].add(check_id_col[i].as_py())
+            group = row_groups.setdefault(row_key, {"check_ids": set(), "targets": set()})
+            group["check_ids"].add(check_id_col[i].as_py())
             if targets_col is not None:
                 target_value = targets_col[i].as_py()
                 if target_value:
-                    group['targets'].add(target_value)
+                    group["targets"].add(target_value)
 
         result_data: dict[str, list] = {c: [] for c in data_cols}
-        result_data['check_ids'] = []
+        result_data["check_ids"] = []
         if has_targets:
-            result_data['targets'] = []
+            result_data["targets"] = []
         for row_key, group in row_groups.items():
             for c, v in zip(data_cols, row_key, strict=False):
                 result_data[c].append(v)
-            result_data['check_ids'].append(', '.join(sorted(group['check_ids'])))
+            result_data["check_ids"].append(", ".join(sorted(group["check_ids"])))
             if has_targets:
-                result_data['targets'].append(', '.join(sorted(group['targets'])))
+                result_data["targets"].append(", ".join(sorted(group["targets"])))
         return nw.from_native(pa.table(result_data), eager_only=True)
 
     @staticmethod
@@ -651,12 +635,12 @@ class ValidationResult:
         Assumes check names contain no commas -- they are identifiers, so this
         holds.  If that ever changes, ``check_ids`` needs a different delimiter.
         """
-        if 'check_ids' not in df.columns:
+        if "check_ids" not in df.columns:
             return set()
         names: set[str] = set()
-        for cell in df['check_ids'].to_list():
+        for cell in df["check_ids"].to_list():
             if cell:
-                names.update(p.strip() for p in cell.split(',') if p.strip())
+                names.update(p.strip() for p in cell.split(",") if p.strip())
         return names
 
     @staticmethod
@@ -680,7 +664,7 @@ class ValidationResult:
         rows: if one such row failed, all N receive ``check_ids`` (the safe
         over-flagging direction).  See the plan's matching caveats §2.
         """
-        marker_cols = ['check_ids', *extra_cols]
+        marker_cols = ["check_ids", *extra_cols]
         consolidated_arrow = consolidated.to_arrow()
         key_cols = [consolidated_arrow.column(c) for c in data_cols]
         marker_arrow = {c: consolidated_arrow.column(c) for c in marker_cols}
@@ -710,14 +694,14 @@ class ValidationResult:
                 "Annotated row count mismatch for schema %r: annotated %d distinct "
                 "row(s) but %d distinct failed row(s) were provided. Some failed "
                 "rows may not have matched a full-table row.",
-                schema_name, annotated_rows, distinct_failed,
+                schema_name,
+                annotated_rows,
+                distinct_failed,
             )
 
         result = full_arrow
         for col_name in marker_cols:
-            result = result.append_column(
-                col_name, pa.array(outputs[col_name], type=pa.string())
-            )
+            result = result.append_column(col_name, pa.array(outputs[col_name], type=pa.string()))
         return nw.from_native(result, eager_only=True)
 
     def get_annotated_output(
@@ -771,10 +755,11 @@ class ValidationResult:
             full_table_cols = set(full_table.columns)
 
             eligible_failed = [
-                cr for cr in self.check_results
-                if cr.metadata.get('schema_name') == schema_name
+                cr
+                for cr in self.check_results
+                if cr.metadata.get("schema_name") == schema_name
                 and (not checks_set or cr.check_name in checks_set)
-                and cr.status == 'FAILED'
+                and cr.status == "FAILED"
                 and self._is_mergeable_for_full_table(cr, full_table_cols)
                 and len(cr.failed_rows) > 0
             ]
@@ -793,37 +778,30 @@ class ValidationResult:
                     )
 
             if not eligible_failed:
-                annotated[schema_name] = self._with_null_marker(
-                    full_table, include_target=include_target
-                )
+                annotated[schema_name] = self._with_null_marker(full_table, include_target=include_target)
                 continue
 
             tagged_failures: list[nw.DataFrame] = []
             for cr in eligible_failed:
                 rows = self._strip_metadata_cols(cr.failed_rows).unique()
-                additions = [nw.lit(cr.check_name).alias('check_id')]
+                additions = [nw.lit(cr.check_name).alias("check_id")]
                 if include_target:
-                    additions.append(
-                        nw.lit(get_field_label(cr)).alias('targets')
-                    )
+                    additions.append(nw.lit(get_field_label(cr)).alias("targets"))
                 tagged_failures.append(rows.with_columns(*additions))
                 merged_check_names.add(cr.check_name)
 
             # Collapse duplicate rows into comma-joined check_ids (and targets).
-            union = pa.concat_tables(
-                [df.to_arrow() for df in tagged_failures], promote_options='default'
-            )
-            consolidated = self._group_check_ids_by_row(
-                nw.from_native(union, eager_only=True)
-            )
+            union = pa.concat_tables([df.to_arrow() for df in tagged_failures], promote_options="default")
+            consolidated = self._group_check_ids_by_row(nw.from_native(union, eager_only=True))
 
-            extra_cols = ('targets',) if include_target else ()
-            data_cols = [
-                c for c in consolidated.columns if c not in ('check_ids', *extra_cols)
-            ]
+            extra_cols = ("targets",) if include_target else ()
+            data_cols = [c for c in consolidated.columns if c not in ("check_ids", *extra_cols)]
             annotated[schema_name] = self._annotate_full_table(
-                full_table, consolidated, data_cols,
-                schema_name=schema_name, extra_cols=extra_cols,
+                full_table,
+                consolidated,
+                data_cols,
+                schema_name=schema_name,
+                extra_cols=extra_cols,
             )
 
         # Step 3: residues = consolidated entries NOT fully subsumed by an
@@ -844,46 +822,40 @@ class ValidationResult:
         return df.drop(to_drop) if to_drop else df
 
     @staticmethod
-    def _with_null_marker(
-        full_table: nw.DataFrame, *, include_target: bool
-    ) -> nw.DataFrame:
+    def _with_null_marker(full_table: nw.DataFrame, *, include_target: bool) -> nw.DataFrame:
         """Return *full_table* with all-null ``check_ids`` (and ``targets``)."""
         arrow_table = full_table.to_arrow()
         n = arrow_table.num_rows
-        arrow_table = arrow_table.append_column(
-            'check_ids', pa.array([None] * n, type=pa.string())
-        )
+        arrow_table = arrow_table.append_column("check_ids", pa.array([None] * n, type=pa.string()))
         if include_target:
-            arrow_table = arrow_table.append_column(
-                'targets', pa.array([None] * n, type=pa.string())
-            )
+            arrow_table = arrow_table.append_column("targets", pa.array([None] * n, type=pa.string()))
         return nw.from_native(arrow_table, eager_only=True)
 
     # Preferred column order for check results output.
     _CHECK_RESULTS_COLUMN_ORDER: list[str] = [
-        'check_name',
-        'target',
-        'schema_name',
-        'engine',
-        'type',
-        'dimension',
-        'description',
-        'status',
-        'severity',
-        'operator',
-        'actual_value',
-        'expected_value',
-        'failed_rows_count',
-        'aggregation_type',
-        'message',
-        'rendered_implementation',
-        'tables_in_query',
-        'check_path',
-        'check_ref_type',
-        'logical_type',
-        'is_generated',
-        'check_definition',
-        'contract_definition',
+        "check_name",
+        "target",
+        "schema_name",
+        "engine",
+        "type",
+        "dimension",
+        "description",
+        "status",
+        "severity",
+        "operator",
+        "actual_value",
+        "expected_value",
+        "failed_rows_count",
+        "aggregation_type",
+        "message",
+        "rendered_implementation",
+        "tables_in_query",
+        "check_path",
+        "check_ref_type",
+        "logical_type",
+        "is_generated",
+        "check_definition",
+        "contract_definition",
     ]
 
     @staticmethod
@@ -918,29 +890,29 @@ class ValidationResult:
             contract_def = raw_meta.pop("contract_definition", {})
             flat_meta = {k: _safe(v) for k, v in raw_meta.items()}
             row = {
-                'check_name': cr.check_name,
-                'status': cr.status,
-                'expected_value': str(cr.expected_value) if cr.expected_value is not None else None,
-                'actual_value': str(cr.actual_value) if cr.actual_value is not None else None,
-                'failed_rows_count': cr.failed_rows_count,
-                'message': cr.details if cr.status == 'ERROR' else '',
-                'execution_time_ms': cr.execution_time_ms,
+                "check_name": cr.check_name,
+                "status": cr.status,
+                "expected_value": str(cr.expected_value) if cr.expected_value is not None else None,
+                "actual_value": str(cr.actual_value) if cr.actual_value is not None else None,
+                "failed_rows_count": cr.failed_rows_count,
+                "message": cr.details if cr.status == "ERROR" else "",
+                "execution_time_ms": cr.execution_time_ms,
                 **flat_meta,
             }
             if include_check_definition:
-                row['check_definition'] = json.dumps(check_def, default=str) if check_def else None
+                row["check_definition"] = json.dumps(check_def, default=str) if check_def else None
             if include_contract_definition:
-                row['contract_definition'] = json.dumps(contract_def, default=str) if contract_def else None
+                row["contract_definition"] = json.dumps(contract_def, default=str) if contract_def else None
             data.append(row)
             for key in row:
                 if key not in self._CHECK_RESULTS_COLUMN_ORDER and key not in extra_keys:
                     extra_keys.append(key)
-        ordered_keys = [k for k in self._CHECK_RESULTS_COLUMN_ORDER if data and k in data[0] or any(k in r for r in data)]
+        ordered_keys = [
+            k for k in self._CHECK_RESULTS_COLUMN_ORDER if data and k in data[0] or any(k in r for r in data)
+        ]
         ordered_keys += [k for k in extra_keys if k not in ordered_keys]
         return nw.from_native(
-            pa.table(
-                {key: [row.get(key) for row in data] for key in ordered_keys}
-            ) if data else pa.table({}),
+            pa.table({key: [row.get(key) for row in data] for key in ordered_keys}) if data else pa.table({}),
             eager_only=True,
         )
 
@@ -955,22 +927,25 @@ class ValidationResult:
     ) -> ValidationResult:
         mode = output_mode if output_mode is not None else self._config.output_mode
         if mode not in ("failed_rows", "annotated", "both"):
-            raise ValueError(
-                f"Unknown output_mode: {mode!r}. "
-                f"Expected one of 'failed_rows', 'annotated', 'both'."
-            )
+            raise ValueError(f"Unknown output_mode: {mode!r}. Expected one of 'failed_rows', 'annotated', 'both'.")
 
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
         check_csv = output_path / f"{prefix}_check_results.csv"
-        _pa_csv.write_csv(self.get_check_results_df(include_check_definition=include_check_definition, include_contract_definition=include_contract_definition).to_arrow(), str(check_csv))
+        _pa_csv.write_csv(
+            self.get_check_results_df(
+                include_check_definition=include_check_definition,
+                include_contract_definition=include_contract_definition,
+            ).to_arrow(),
+            str(check_csv),
+        )
 
         saved_files = [str(check_csv)]
 
         if mode in ("failed_rows", "both"):
             for table_key, df in self.get_consolidated_output_dfs().items():
-                safe_key = table_key.replace(', ', '_').replace(' ', '_')
+                safe_key = table_key.replace(", ", "_").replace(" ", "_")
                 csv_path = output_path / f"{prefix}_{safe_key}.csv"
                 _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                 saved_files.append(str(csv_path))
@@ -978,7 +953,7 @@ class ValidationResult:
         if mode in ("annotated", "both"):
             out = self.get_annotated_output(include_target=True)
             for schema, df in out["annotated"].items():
-                safe_key = schema.replace(', ', '_').replace(' ', '_')
+                safe_key = schema.replace(", ", "_").replace(" ", "_")
                 csv_path = output_path / f"{prefix}_{safe_key}_annotated.csv"
                 _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                 saved_files.append(str(csv_path))
@@ -988,13 +963,13 @@ class ValidationResult:
             # already written above (same filenames) -- skip to avoid rewrites.
             if mode == "annotated":
                 for table_key, df in out["residues"].items():
-                    safe_key = table_key.replace(', ', '_').replace(' ', '_')
+                    safe_key = table_key.replace(", ", "_").replace(" ", "_")
                     csv_path = output_path / f"{prefix}_{safe_key}.csv"
                     _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                     saved_files.append(str(csv_path))
 
         json_path = output_path / f"{prefix}_summary.json"
-        with open(json_path, 'w') as f:
+        with open(json_path, "w") as f:
             json.dump(self.summary, f, indent=2, default=str)
 
         print("\nResults saved:")
@@ -1004,7 +979,7 @@ class ValidationResult:
         return self
 
     @staticmethod
-    def save_dataframe(df: Any, filepath: str, file_format: str = 'csv', **kwargs) -> None:
+    def save_dataframe(df: Any, filepath: str, file_format: str = "csv", **kwargs) -> None:
         output_dir = Path(filepath).parent
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1012,21 +987,21 @@ class ValidationResult:
             arrow_table = df
         elif isinstance(df, nw.DataFrame):
             arrow_table = df.to_arrow()
-        elif hasattr(df, 'to_arrow'):
+        elif hasattr(df, "to_arrow"):
             arrow_table = df.to_arrow()
         else:
             arrow_table = nw.from_native(df, eager_only=True).to_arrow()
 
         fmt = file_format.lower()
-        if fmt == 'csv':
+        if fmt == "csv":
             _pa_csv.write_csv(arrow_table, filepath, **kwargs)
-        elif fmt == 'parquet':
+        elif fmt == "parquet":
             _pa_pq.write_table(arrow_table, filepath, **kwargs)
-        elif fmt == 'json':
+        elif fmt == "json":
             rows = arrow_table.to_pylist()
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 for row in rows:
-                    f.write(json.dumps(row, default=str) + '\n')
+                    f.write(json.dumps(row, default=str) + "\n")
         else:
             raise ValueError(f"Unsupported format: {file_format}. Use 'csv', 'parquet', or 'json'")
 

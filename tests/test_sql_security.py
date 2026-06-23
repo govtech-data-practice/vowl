@@ -340,11 +340,7 @@ class TestSQLSecurityError:
 
     def test_error_attributes(self):
         """Error should have correct attributes."""
-        error = SQLSecurityError(
-            message="Test error",
-            violation_type="test_violation",
-            query="SELECT * FROM test"
-        )
+        error = SQLSecurityError(message="Test error", violation_type="test_violation", query="SELECT * FROM test")
         assert str(error) == "Test error"
         assert error.violation_type == "test_violation"
         assert error.query == "SELECT * FROM test"
@@ -352,11 +348,7 @@ class TestSQLSecurityError:
     def test_query_truncation(self):
         """Long queries should be truncated in error."""
         long_query = "SELECT " + "x, " * 1000 + "y FROM test"
-        error = SQLSecurityError(
-            message="Test error",
-            violation_type="test",
-            query=long_query
-        )
+        error = SQLSecurityError(message="Test error", violation_type="test", query=long_query)
         assert len(error.query) <= 500
 
     def test_none_query_handling(self):
@@ -364,7 +356,7 @@ class TestSQLSecurityError:
         error = SQLSecurityError(
             message="Test error",
             violation_type="test",
-            query=None  # type: ignore
+            query=None,  # type: ignore
         )
         assert error.query == ""
 

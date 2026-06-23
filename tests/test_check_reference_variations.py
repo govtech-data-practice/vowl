@@ -223,7 +223,9 @@ class TestBuildResultPassedFailed:
         want_status: str,
     ):
         contract = _make_contract(monkeypatch, table_quality=[_sql_check(operator, expected)])
-        ref = [r for r in contract.get_check_references_by_schema()["items"] if isinstance(r, SQLTableCheckReference)][0]
+        ref = [r for r in contract.get_check_references_by_schema()["items"] if isinstance(r, SQLTableCheckReference)][
+            0
+        ]
         result = ref.build_result(actual_value=actual, execution_time_ms=1.0)
         assert result.status == want_status
 
@@ -739,7 +741,9 @@ class TestEdgeCases:
         """build_error_result creates an ERROR status result."""
         table_q = [{"name": "err_check", "type": "sql", "query": "SELECT 1", "mustBe": 0}]
         contract = _make_contract(monkeypatch, table_quality=table_q)
-        ref = [r for r in contract.get_check_references_by_schema()["items"] if isinstance(r, SQLTableCheckReference)][0]
+        ref = [r for r in contract.get_check_references_by_schema()["items"] if isinstance(r, SQLTableCheckReference)][
+            0
+        ]
         result = ref.build_error_result(error_message="timeout", execution_time_ms=100.0)
         assert result.status == "ERROR"
         assert "timeout" in result.details
@@ -756,7 +760,12 @@ class TestEdgeCases:
             "logicalType": "string",
             "required": True,
             "quality": [
-                {"name": "col_sql", "type": "sql", "query": "SELECT COUNT(*) FROM items WHERE col_a IS NULL", "mustBe": 0},
+                {
+                    "name": "col_sql",
+                    "type": "sql",
+                    "query": "SELECT COUNT(*) FROM items WHERE col_a IS NULL",
+                    "mustBe": 0,
+                },
                 {"type": "library", "metric": "nullValues", "mustBe": 0, "dimension": "completeness"},
             ],
         }

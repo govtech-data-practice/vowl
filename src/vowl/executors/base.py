@@ -218,7 +218,7 @@ class SQLExecutor(BaseExecutor):
                 Default True.
         """
         super().__init__(adapter)
-        self._use_try_cast = getattr(adapter, 'use_try_cast', use_try_cast)
+        self._use_try_cast = getattr(adapter, "use_try_cast", use_try_cast)
 
     def validate_query_security(self, query: str) -> None:
         """
