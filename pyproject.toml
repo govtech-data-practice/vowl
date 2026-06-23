@@ -82,6 +82,7 @@ dev = [
     "ruff>=0.8.0",
     "setuptools>=80.10.2",
     "testcontainers>=4.14.1",
+    "ty>=0.0.52",
     "zensical>=0.0.30",
 ]
 lean-ci-test = [

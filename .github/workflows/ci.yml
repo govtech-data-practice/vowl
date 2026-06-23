@@ -15,6 +15,23 @@ env:
   PIP_NO_CACHE_DIR: "1"
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Run ruff lint
+        run: uvx ruff check src/ tests/
+
+      - name: Check Python formatting
+        run: uvx ruff format --check src/ tests/
+
+      - name: Check Markdown formatting
+        run: npx --yes prettier --check "**/*.md"
+
   test:
     runs-on: ubuntu-latest
     strategy:
