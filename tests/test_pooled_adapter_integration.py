@@ -13,13 +13,27 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
+import ibis
+import narwhals as nw
 import pandas as pd
 import pyarrow as pa
+import pyarrow.compute  # noqa: F401  (registers pa.compute)
 import pytest
 
-import ibis
-
 from vowl.adapters import IbisAdapter, MultiSourceAdapter, PooledAdapter
+
+
+class _FakeAnnotatedContract:
+    """Minimal contract stub for ValidationResult in annotated-output tests."""
+
+    contract_data: dict = {"schema": []}
+
+    def get_api_version(self) -> str:
+        return "v1"
+
+    def get_metadata(self) -> dict:
+        return {"id": "test-contract"}
+
 
 TEST_DIR = Path(__file__).parent
 EMPLOYEE_DIR = TEST_DIR / "employee"
@@ -169,7 +183,7 @@ class TestPooledAdapterDuckDB:
             assert instance.use_try_cast is False
 
     def test_export_table_as_arrow_delegates_correctly(self, duckdb_adapter_factory):
-        """export_table_as_arrow uses the primary adapter's connection."""
+        """export_table_as_arrow delegates through a pooled adapter instance."""
         pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=2)
 
         arrow_table = pooled.export_table_as_arrow("demo_employee_payroll")
@@ -705,3 +719,163 @@ class TestPooledAdapterConcurrencyDeriving:
         if cross_refs:
             concurrency = executor._derive_concurrency(cross_refs)
             assert concurrency == 2  # min(4, 2)
+
+
+class TestPooledAdapterAnnotatedOutput:
+    """Annotated table output (full in-scope table with failed rows marked)
+    flows correctly when a schema is backed by a PooledAdapter.
+
+    The annotated-output path calls ``adapter.export_table_as_arrow`` via
+    ``ValidationResult._fetch_full_table``; for a PooledAdapter that export
+    runs through the connection pool, so these tests guard the intersection
+    of the annotated-output feature and pooled concurrency.
+    """
+
+    @staticmethod
+    def _make_failed_check(name, schema_name, failed_rows):
+        from vowl.executors.base import CheckResult
+
+        return CheckResult(
+            check_name=name,
+            status="FAILED",
+            details="",
+            failed_rows=nw.from_native(failed_rows, eager_only=True),
+            failed_rows_count=failed_rows.num_rows,
+            supports_row_level_output=True,
+            metadata={"schema_name": schema_name},
+        )
+
+    @staticmethod
+    def _make_result(check_results, multi, schema_names, config=None):
+        from vowl.validation.result import ValidationResult
+
+        summary = {
+            "validation_summary": {
+                "total_checks": len(check_results),
+                "passed": sum(c.status == "PASSED" for c in check_results),
+                "failed": sum(c.status == "FAILED" for c in check_results),
+                "errors": sum(c.status == "ERROR" for c in check_results),
+                "total_execution_time_ms": 0.0,
+                "success_rate": 0.0,
+            }
+        }
+        return ValidationResult(
+            summary=summary,
+            check_results=check_results,
+            contract=_FakeAnnotatedContract(),
+            multi_adapter=multi,
+            schema_names=schema_names,
+            config=config,
+        )
+
+    def test_annotated_output_through_pooled_adapter(self, duckdb_adapter_factory):
+        """get_annotated_output marks failed rows on a PooledAdapter-backed schema."""
+        pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=3)
+        multi = MultiSourceAdapter({"demo_employee_payroll": pooled})
+
+        # Export the real table to pick a genuine employee_id to "fail".
+        full = pooled.export_table_as_arrow("demo_employee_payroll")
+        target_id = full.column("employee_id").to_pylist()[0]
+        failed = full.filter(
+            pa.compute.equal(full.column("employee_id"), target_id)
+        ).select(full.column_names)
+
+        check = self._make_failed_check("payroll_check", "demo_employee_payroll", failed)
+        result = self._make_result([check], multi, ["demo_employee_payroll"])
+
+        annotated = result.get_annotated_output()["annotated"]["demo_employee_payroll"]
+        rows = annotated.to_arrow().to_pylist()
+
+        # Every row is present, and exactly the failed employee_id is marked.
+        assert len(rows) == full.num_rows
+        marked = {r["employee_id"] for r in rows if r["check_ids"]}
+        assert marked == {target_id}
+        for r in rows:
+            if r["employee_id"] == target_id:
+                assert r["check_ids"] == "payroll_check"
+            else:
+                assert r["check_ids"] is None
+
+    def test_annotated_output_pooled_respects_filter_conditions(self, employee_data):
+        """Annotated full table reflects each pooled instance's filter conditions.
+
+        The exported in-scope table must exclude filtered-out rows, so the
+        annotated table never contains rows the checks did not run against —
+        even though the export was served by a pooled (cloned) instance.
+        """
+        from vowl.adapters.models import FilterCondition
+
+        _, employee_payroll = employee_data
+
+        def make_filtered_adapter():
+            con = ibis.duckdb.connect()
+            con.create_table("demo_employee_payroll", employee_payroll)
+            return IbisAdapter(
+                con=con,
+                filter_conditions={
+                    "demo_employee_payroll": FilterCondition(
+                        field="employee_id", operator="!=", value="",
+                    ),
+                },
+            )
+
+        pooled = PooledAdapter(factory=make_filtered_adapter, max_concurrency=2)
+        multi = MultiSourceAdapter({"demo_employee_payroll": pooled})
+
+        full = pooled.export_table_as_arrow("demo_employee_payroll")
+        target_id = full.column("employee_id").to_pylist()[0]
+        failed = full.filter(
+            pa.compute.equal(full.column("employee_id"), target_id)
+        ).select(full.column_names)
+
+        check = self._make_failed_check("payroll_check", "demo_employee_payroll", failed)
+        result = self._make_result([check], multi, ["demo_employee_payroll"])
+
+        annotated = result.get_annotated_output()["annotated"]["demo_employee_payroll"]
+        ids = [r["employee_id"] for r in annotated.to_arrow().to_pylist()]
+        # Filter conditions honoured: no empty-id rows leaked into the annotated table.
+        assert all(id_val != "" for id_val in ids)
+        assert len(ids) == full.num_rows
+
+    def test_annotated_output_pooled_concurrent_exports(self, duckdb_adapter_factory):
+        """Concurrent annotated-output builds over a shared pool are thread-safe.
+
+        A single PooledAdapter backs the schema and several threads build the
+        annotated output at once, each fetching the full table through the
+        shared pool.  This guards against checkout/return races corrupting or
+        truncating the exported table.
+        """
+        pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=4)
+        full = pooled.export_table_as_arrow("demo_employee_payroll")
+        target_id = full.column("employee_id").to_pylist()[0]
+        failed = full.filter(
+            pa.compute.equal(full.column("employee_id"), target_id)
+        ).select(full.column_names)
+
+        row_counts: list[int] = []
+        errors: list[Exception] = []
+
+        def build():
+            try:
+                # Fresh MultiSourceAdapter per thread (shallow-copies the pool's
+                # schema entry), all sharing the same underlying PooledAdapter.
+                multi = MultiSourceAdapter({"demo_employee_payroll": pooled})
+                check = self._make_failed_check(
+                    "payroll_check", "demo_employee_payroll", failed
+                )
+                result = self._make_result([check], multi, ["demo_employee_payroll"])
+                annotated = result.get_annotated_output()["annotated"]
+                row_counts.append(annotated["demo_employee_payroll"].to_arrow().num_rows)
+            except Exception as e:  # pragma: no cover - failure path
+                errors.append(e)
+
+        threads = [threading.Thread(target=build) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Concurrent annotated-output errors: {errors}"
+        # Every concurrent build saw the complete, uncorrupted table.
+        assert len(row_counts) == 6
+        assert all(n == full.num_rows for n in row_counts)
