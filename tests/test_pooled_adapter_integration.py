@@ -96,10 +96,12 @@ class TestPooledAdapterDuckDB:
         from vowl.validation.runner import ValidationRunner
 
         pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=3)
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": pooled,
-            "demo_employee_list": pooled,
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": pooled,
+                "demo_employee_list": pooled,
+            }
+        )
 
         runner = ValidationRunner(
             contract=str(EMPLOYEE_CONTRACT_PATH),
@@ -166,10 +168,12 @@ class TestPooledAdapterDuckDB:
         from vowl.validation.runner import ValidationRunner
 
         pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=2)
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": pooled,
-            "demo_employee_list": pooled,
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": pooled,
+                "demo_employee_list": pooled,
+            }
+        )
 
         runner = ValidationRunner(
             contract=str(EMPLOYEE_CONTRACT_PATH),
@@ -211,15 +215,13 @@ class TestPooledAdapterDuckDB:
 
         # Force creation of multiple instances by running checks in parallel
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         # Get single-table refs from first schema
         first_schema_refs = list(refs_by_schema.values())[0]
         # Filter to only non-cross-table refs (no JOINs)
-        single_refs = [
-            ref for ref in first_schema_refs
-            if "JOIN" not in (ref.get_check().get("query") or "").upper()
-        ]
+        single_refs = [ref for ref in first_schema_refs if "JOIN" not in (ref.get_check().get("query") or "").upper()]
         if len(single_refs) >= 2:
             pooled.run_checks(single_refs)
 
@@ -300,30 +302,27 @@ class TestPooledAdapterSQLite:
         pooled = PooledAdapter(factory=sqlite_adapter_factory, max_concurrency=2)
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
         # Run single-table checks only (SQLite doesn't support cross-thread export)
         payroll_refs = refs_by_schema.get("demo_employee_payroll", [])
-        single_refs = [
-            ref for ref in payroll_refs
-            if "JOIN" not in (ref.get_check().get("query") or "").upper()
-        ]
+        single_refs = [ref for ref in payroll_refs if "JOIN" not in (ref.get_check().get("query") or "").upper()]
 
         results = pooled.run_checks(single_refs)
 
         assert len(results) > 0
         # SQLite runs checks without internal errors (type mismatches are FAILED, not ERROR)
         for r in results:
-            assert r.status in ("PASSED", "FAILED"), (
-                f"Check '{r.check_name}' errored: {r.details}"
-            )
+            assert r.status in ("PASSED", "FAILED"), f"Check '{r.check_name}' errored: {r.details}"
 
     def test_parallel_execution_with_sqlite(self, sqlite_adapter_factory):
         """Multiple checks execute in parallel across pooled SQLite connections."""
         pooled = PooledAdapter(factory=sqlite_adapter_factory, max_concurrency=3)
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
@@ -370,16 +369,21 @@ class TestPooledAdapterMultiSource:
             con.create_table("demo_employee_list", employee_list)
             return IbisAdapter(con)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(
-                factory=make_payroll_adapter, max_concurrency=2,
-            ),
-            "demo_employee_list": PooledAdapter(
-                factory=make_list_adapter, max_concurrency=2,
-            ),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(
+                    factory=make_payroll_adapter,
+                    max_concurrency=2,
+                ),
+                "demo_employee_list": PooledAdapter(
+                    factory=make_list_adapter,
+                    max_concurrency=2,
+                ),
+            }
+        )
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
@@ -392,9 +396,7 @@ class TestPooledAdapterMultiSource:
         results = multi.run_checks(refs_by_schema)
 
         error_results = [r for r in results if r.status == "ERROR"]
-        assert len(error_results) == 0, (
-            f"Errors: {[(r.check_name, r.details) for r in error_results]}"
-        )
+        assert len(error_results) == 0, f"Errors: {[(r.check_name, r.details) for r in error_results]}"
 
     def test_pooled_multi_source_cross_table_mode2(self, employee_data):
         """Cross-table checks via Mode 2 work with PooledAdapters in MultiSourceAdapter."""
@@ -410,14 +412,18 @@ class TestPooledAdapterMultiSource:
             con.create_table("demo_employee_list", employee_list)
             return IbisAdapter(con)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(
-                factory=make_payroll_adapter, max_concurrency=2,
-            ),
-            "demo_employee_list": PooledAdapter(
-                factory=make_list_adapter, max_concurrency=2,
-            ),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(
+                    factory=make_payroll_adapter,
+                    max_concurrency=2,
+                ),
+                "demo_employee_list": PooledAdapter(
+                    factory=make_list_adapter,
+                    max_concurrency=2,
+                ),
+            }
+        )
 
         multi.max_failed_rows = 100
         multi.use_try_cast = True
@@ -426,6 +432,7 @@ class TestPooledAdapterMultiSource:
             adapter.use_try_cast = True
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
@@ -440,9 +447,7 @@ class TestPooledAdapterMultiSource:
         for check_name in cross_table_checks:
             assert check_name in results_by_name, f"Missing cross-table check: {check_name}"
             result = results_by_name[check_name]
-            assert result.status != "ERROR", (
-                f"Cross-table check '{check_name}' errored: {result.details}"
-            )
+            assert result.status != "ERROR", f"Cross-table check '{check_name}' errored: {result.details}"
 
     def test_mixed_pooled_and_unpooled(self, employee_data):
         """MultiSourceAdapter with one pooled and one non-pooled adapter works."""
@@ -458,12 +463,15 @@ class TestPooledAdapterMultiSource:
         list_con = ibis.duckdb.connect()
         list_con.create_table("demo_employee_list", employee_list)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(
-                factory=make_payroll_adapter, max_concurrency=3,
-            ),
-            "demo_employee_list": IbisAdapter(list_con),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(
+                    factory=make_payroll_adapter,
+                    max_concurrency=3,
+                ),
+                "demo_employee_list": IbisAdapter(list_con),
+            }
+        )
 
         multi.max_failed_rows = 10
         multi.use_try_cast = True
@@ -472,15 +480,14 @@ class TestPooledAdapterMultiSource:
             adapter.use_try_cast = True
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
         results = multi.run_checks(refs_by_schema)
 
         error_results = [r for r in results if r.status == "ERROR"]
-        assert len(error_results) == 0, (
-            f"Errors: {[(r.check_name, r.details) for r in error_results]}"
-        )
+        assert len(error_results) == 0, f"Errors: {[(r.check_name, r.details) for r in error_results]}"
 
     def test_full_validation_pipeline_pooled_multi_source(self, employee_data):
         """Full validation pipeline with PooledAdapters in multi-source mode."""
@@ -498,14 +505,18 @@ class TestPooledAdapterMultiSource:
             con.create_table("demo_employee_list", employee_list)
             return IbisAdapter(con)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(
-                factory=make_payroll_adapter, max_concurrency=2,
-            ),
-            "demo_employee_list": PooledAdapter(
-                factory=make_list_adapter, max_concurrency=2,
-            ),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(
+                    factory=make_payroll_adapter,
+                    max_concurrency=2,
+                ),
+                "demo_employee_list": PooledAdapter(
+                    factory=make_list_adapter,
+                    max_concurrency=2,
+                ),
+            }
+        )
 
         runner = ValidationRunner(
             contract=str(EMPLOYEE_CONTRACT_PATH),
@@ -515,16 +526,16 @@ class TestPooledAdapterMultiSource:
 
         results_df = results.get_check_results_df().to_pandas()
         error_checks = results_df[results_df["status"] == "ERROR"]
-        assert len(error_checks) == 0, (
-            f"Checks errored: {error_checks[['check_name', 'message']].to_dict('records')}"
-        )
+        assert len(error_checks) == 0, f"Checks errored: {error_checks[['check_name', 'message']].to_dict('records')}"
 
         # Verify cross-table checks ran and detected issues
         cross_checks = results_df[
-            results_df["check_name"].isin([
-                "employee_id_exists_in_master_list",
-                "phone_number_exists_in_master_list",
-            ])
+            results_df["check_name"].isin(
+                [
+                    "employee_id_exists_in_master_list",
+                    "phone_number_exists_in_master_list",
+                ]
+            )
         ]
         assert len(cross_checks) == 2
         assert all(cross_checks["status"].isin(["PASSED", "FAILED"]))
@@ -548,14 +559,18 @@ class TestPooledAdapterCrossBackend:
             con.create_table("demo_employee_list", employee_list)
             return IbisAdapter(con)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(
-                factory=make_payroll, max_concurrency=2,
-            ),
-            "demo_employee_list": PooledAdapter(
-                factory=make_list, max_concurrency=2,
-            ),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(
+                    factory=make_payroll,
+                    max_concurrency=2,
+                ),
+                "demo_employee_list": PooledAdapter(
+                    factory=make_list,
+                    max_concurrency=2,
+                ),
+            }
+        )
 
         multi.max_failed_rows = 10
         multi.use_try_cast = True
@@ -564,6 +579,7 @@ class TestPooledAdapterCrossBackend:
             adapter.use_try_cast = True
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
@@ -571,8 +587,10 @@ class TestPooledAdapterCrossBackend:
 
         # Single-table checks should not error
         single_table_results = [
-            r for r in results
-            if r.check_name not in (
+            r
+            for r in results
+            if r.check_name
+            not in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
@@ -584,17 +602,17 @@ class TestPooledAdapterCrossBackend:
 
         # Cross-table checks use Mode 2 (materialization)
         cross_table_results = [
-            r for r in results
-            if r.check_name in (
+            r
+            for r in results
+            if r.check_name
+            in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
         ]
         assert len(cross_table_results) == 2
         for r in cross_table_results:
-            assert r.status != "ERROR", (
-                f"Cross-backend check '{r.check_name}' errored: {r.details}"
-            )
+            assert r.status != "ERROR", f"Cross-backend check '{r.check_name}' errored: {r.details}"
 
     def test_sqlite_not_thread_safe_for_export(self, employee_data, tmp_path):
         """SQLite connections cannot be used across threads for export.
@@ -664,7 +682,9 @@ class TestPooledAdapterFilterConditions:
                 con=con,
                 filter_conditions={
                     "demo_employee_payroll": FilterCondition(
-                        field="employee_id", operator="!=", value="",
+                        field="employee_id",
+                        operator="!=",
+                        value="",
                     ),
                 },
             )
@@ -704,6 +724,7 @@ class TestPooledAdapterConcurrencyDeriving:
         executor = multi._get_executor("sql")
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
@@ -776,9 +797,7 @@ class TestPooledAdapterAnnotatedOutput:
         # Export the real table to pick a genuine employee_id to "fail".
         full = pooled.export_table_as_arrow("demo_employee_payroll")
         target_id = full.column("employee_id").to_pylist()[0]
-        failed = full.filter(
-            pa.compute.equal(full.column("employee_id"), target_id)
-        ).select(full.column_names)
+        failed = full.filter(pa.compute.equal(full.column("employee_id"), target_id)).select(full.column_names)
 
         check = self._make_failed_check("payroll_check", "demo_employee_payroll", failed)
         result = self._make_result([check], multi, ["demo_employee_payroll"])
@@ -814,7 +833,9 @@ class TestPooledAdapterAnnotatedOutput:
                 con=con,
                 filter_conditions={
                     "demo_employee_payroll": FilterCondition(
-                        field="employee_id", operator="!=", value="",
+                        field="employee_id",
+                        operator="!=",
+                        value="",
                     ),
                 },
             )
@@ -824,9 +845,7 @@ class TestPooledAdapterAnnotatedOutput:
 
         full = pooled.export_table_as_arrow("demo_employee_payroll")
         target_id = full.column("employee_id").to_pylist()[0]
-        failed = full.filter(
-            pa.compute.equal(full.column("employee_id"), target_id)
-        ).select(full.column_names)
+        failed = full.filter(pa.compute.equal(full.column("employee_id"), target_id)).select(full.column_names)
 
         check = self._make_failed_check("payroll_check", "demo_employee_payroll", failed)
         result = self._make_result([check], multi, ["demo_employee_payroll"])
@@ -848,9 +867,7 @@ class TestPooledAdapterAnnotatedOutput:
         pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=4)
         full = pooled.export_table_as_arrow("demo_employee_payroll")
         target_id = full.column("employee_id").to_pylist()[0]
-        failed = full.filter(
-            pa.compute.equal(full.column("employee_id"), target_id)
-        ).select(full.column_names)
+        failed = full.filter(pa.compute.equal(full.column("employee_id"), target_id)).select(full.column_names)
 
         row_counts: list[int] = []
         errors: list[Exception] = []
@@ -860,9 +877,7 @@ class TestPooledAdapterAnnotatedOutput:
                 # Fresh MultiSourceAdapter per thread (shallow-copies the pool's
                 # schema entry), all sharing the same underlying PooledAdapter.
                 multi = MultiSourceAdapter({"demo_employee_payroll": pooled})
-                check = self._make_failed_check(
-                    "payroll_check", "demo_employee_payroll", failed
-                )
+                check = self._make_failed_check("payroll_check", "demo_employee_payroll", failed)
                 result = self._make_result([check], multi, ["demo_employee_payroll"])
                 annotated = result.get_annotated_output()["annotated"]
                 row_counts.append(annotated["demo_employee_payroll"].to_arrow().num_rows)

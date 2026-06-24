@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import subprocess
-import time
 from pathlib import Path
 
 import pandas as pd
@@ -34,7 +33,10 @@ EMPLOYEE_CONTRACT_PATH = EMPLOYEE_DIR / "employee_payroll_datacontract.yaml"
 def _docker_available() -> bool:
     try:
         subprocess.run(
-            ["docker", "info"], capture_output=True, check=True, timeout=5,
+            ["docker", "info"],
+            capture_output=True,
+            check=True,
+            timeout=5,
         )
         return True
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
@@ -52,6 +54,7 @@ def _configure_docker_env():
 def _ibis_backend_available(backend_name: str) -> bool:
     try:
         import ibis
+
         backend = getattr(ibis, backend_name)
         return hasattr(backend, "connect")
     except Exception:
@@ -68,13 +71,14 @@ def _insert_rows_sql(con, table_name, df, quote_char="'"):
             elif isinstance(v, (int, float)):
                 vals.append(str(int(v)))
             else:
-                vals.append(f"{quote_char}{str(v).replace(quote_char, quote_char*2)}{quote_char}")
+                vals.append(f"{quote_char}{str(v).replace(quote_char, quote_char * 2)}{quote_char}")
         con.raw_sql(f"INSERT INTO {table_name} VALUES ({', '.join(vals)})")
 
 
 # ============================================================================
 # PostgreSQL + PooledAdapter
 # ============================================================================
+
 
 class TestPostgresPooledAdapter:
     """Test PooledAdapter with real PostgreSQL via testcontainers."""
@@ -136,8 +140,11 @@ class TestPostgresPooledAdapter:
         # Cast numeric columns before insert
         payroll_insert = employee_payroll.copy()
         numeric_cols = [
-            "total_amt", "employer_cpf_amt", "total_amt_employee",
-            "employee_cpf_amt", "employee_gross_amt",
+            "total_amt",
+            "employer_cpf_amt",
+            "total_amt_employee",
+            "employee_cpf_amt",
+            "employee_gross_amt",
         ]
         for col in numeric_cols:
             payroll_insert[col] = pd.to_numeric(payroll_insert[col], errors="coerce")
@@ -155,6 +162,7 @@ class TestPostgresPooledAdapter:
     def _make_pg_factory(self, pg_connect_kwargs):
         """Create a factory that produces Postgres IbisAdapter instances."""
         import ibis
+
         from vowl.adapters import IbisAdapter
 
         def factory():
@@ -164,7 +172,9 @@ class TestPostgresPooledAdapter:
         return factory
 
     def test_pooled_postgres_single_table_checks(
-        self, pg_connect_kwargs, pg_setup,
+        self,
+        pg_connect_kwargs,
+        pg_setup,
     ):
         """PooledAdapter with Postgres executes single-table checks in parallel."""
         from vowl.adapters import PooledAdapter
@@ -177,10 +187,7 @@ class TestPostgresPooledAdapter:
         refs_by_schema = contract.get_check_references_by_schema()
 
         payroll_refs = refs_by_schema.get("demo_employee_payroll", [])
-        single_refs = [
-            ref for ref in payroll_refs
-            if "JOIN" not in (ref.get_check().get("query") or "").upper()
-        ]
+        single_refs = [ref for ref in payroll_refs if "JOIN" not in (ref.get_check().get("query") or "").upper()]
 
         results = pooled.run_checks(single_refs)
 
@@ -189,9 +196,7 @@ class TestPostgresPooledAdapter:
         # alias requirements, text arithmetic). Verify the pipeline works and
         # the majority of checks execute successfully.
         non_error = [r for r in results if r.status != "ERROR"]
-        assert len(non_error) > len(results) // 2, (
-            f"Too many errors ({len(results) - len(non_error)}/{len(results)})"
-        )
+        assert len(non_error) > len(results) // 2, f"Too many errors ({len(results) - len(non_error)}/{len(results)})"
         assert len(pooled._all_instances) <= 3
         pooled.cleanup()
 
@@ -205,10 +210,7 @@ class TestPostgresPooledAdapter:
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         payroll_refs = refs_by_schema.get("demo_employee_payroll", [])
-        single_refs = [
-            ref for ref in payroll_refs
-            if "JOIN" not in (ref.get_check().get("query") or "").upper()
-        ]
+        single_refs = [ref for ref in payroll_refs if "JOIN" not in (ref.get_check().get("query") or "").upper()]
 
         parallel = PooledAdapter(factory=factory, max_concurrency=4)
         results = parallel.run_checks(single_refs)
@@ -218,9 +220,7 @@ class TestPostgresPooledAdapter:
         # Some checks may ERROR due to Postgres dialect differences (subquery
         # alias requirements, text arithmetic). Verify the majority succeed.
         non_error = [r for r in results if r.status != "ERROR"]
-        assert len(non_error) > len(results) // 2, (
-            f"Too many errors ({len(results) - len(non_error)}/{len(results)})"
-        )
+        assert len(non_error) > len(results) // 2, f"Too many errors ({len(results) - len(non_error)}/{len(results)})"
 
     def test_pooled_postgres_export_table_as_arrow(self, pg_connect_kwargs, pg_setup):
         """export_table_as_arrow works with Postgres PooledAdapter."""
@@ -239,6 +239,7 @@ class TestPostgresPooledAdapter:
     def test_pooled_postgres_cross_table_mode2(self, pg_connect_kwargs, pg_setup):
         """Cross-table checks with two Postgres PooledAdapters use Mode 2 parallel."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter, PooledAdapter
         from vowl.contracts.contract import Contract
 
@@ -251,10 +252,12 @@ class TestPostgresPooledAdapter:
             con = ibis.postgres.connect(**pg_connect_kwargs)
             return IbisAdapter(con)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(factory=make_payroll, max_concurrency=2),
-            "demo_employee_list": PooledAdapter(factory=make_list, max_concurrency=2),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(factory=make_payroll, max_concurrency=2),
+                "demo_employee_list": PooledAdapter(factory=make_list, max_concurrency=2),
+            }
+        )
         multi.max_failed_rows = 10
         multi.use_try_cast = True
         for adapter in multi.adapters.values():
@@ -312,6 +315,7 @@ class TestPostgresPooledAdapter:
     def test_pooled_postgres_validation_runner(self, pg_connect_kwargs, pg_setup):
         """Full ValidationRunner pipeline with Postgres PooledAdapter."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter, PooledAdapter
         from vowl.validation.runner import ValidationRunner
 
@@ -321,12 +325,15 @@ class TestPostgresPooledAdapter:
 
         pooled = PooledAdapter(factory=make_adapter, max_concurrency=3)
         import warnings
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            multi = MultiSourceAdapter({
-                "demo_employee_payroll": pooled,
-                "demo_employee_list": pooled,
-            })
+            multi = MultiSourceAdapter(
+                {
+                    "demo_employee_payroll": pooled,
+                    "demo_employee_list": pooled,
+                }
+            )
 
         runner = ValidationRunner(
             contract=str(EMPLOYEE_CONTRACT_PATH),
@@ -348,6 +355,7 @@ class TestPostgresPooledAdapter:
 # ============================================================================
 # Oracle + PooledAdapter
 # ============================================================================
+
 
 class TestOraclePooledAdapter:
     """Test PooledAdapter with real Oracle DB via testcontainers."""
@@ -425,6 +433,7 @@ class TestOraclePooledAdapter:
 
     def _make_oracle_factory(self, oracle_connect_kwargs):
         import ibis
+
         from vowl.adapters import IbisAdapter
 
         def factory():
@@ -434,7 +443,9 @@ class TestOraclePooledAdapter:
         return factory
 
     def test_pooled_oracle_single_table_checks(
-        self, oracle_connect_kwargs, oracle_setup,
+        self,
+        oracle_connect_kwargs,
+        oracle_setup,
     ):
         """PooledAdapter with Oracle executes checks in parallel."""
         from vowl.adapters import PooledAdapter
@@ -459,7 +470,9 @@ class TestOraclePooledAdapter:
         pooled.cleanup()
 
     def test_pooled_oracle_parallel_execution(
-        self, oracle_connect_kwargs, oracle_setup,
+        self,
+        oracle_connect_kwargs,
+        oracle_setup,
     ):
         """Parallel execution creates multiple Oracle connections."""
         from vowl.adapters import PooledAdapter
@@ -480,7 +493,9 @@ class TestOraclePooledAdapter:
         pooled.cleanup()
 
     def test_pooled_oracle_export_table_as_arrow(
-        self, oracle_connect_kwargs, oracle_setup,
+        self,
+        oracle_connect_kwargs,
+        oracle_setup,
     ):
         """export_table_as_arrow delegates through PooledAdapter on Oracle.
 
@@ -491,6 +506,7 @@ class TestOraclePooledAdapter:
         to test the export path.
         """
         import ibis
+
         from vowl.adapters import IbisAdapter, PooledAdapter
 
         # Create a simple uppercase table for export testing
@@ -519,7 +535,9 @@ class TestOraclePooledAdapter:
         pooled.cleanup()
 
     def test_pooled_oracle_get_sql_dialect(
-        self, oracle_connect_kwargs, oracle_setup,
+        self,
+        oracle_connect_kwargs,
+        oracle_setup,
     ):
         """Oracle PooledAdapter reports correct dialect."""
         from vowl.adapters import PooledAdapter
@@ -531,7 +549,9 @@ class TestOraclePooledAdapter:
         pooled.cleanup()
 
     def test_pooled_oracle_config_propagation(
-        self, oracle_connect_kwargs, oracle_setup,
+        self,
+        oracle_connect_kwargs,
+        oracle_setup,
     ):
         """Config propagates to Oracle pooled instances."""
         from vowl.adapters import PooledAdapter
@@ -574,6 +594,7 @@ class TestOraclePooledAdapter:
 # ============================================================================
 # Cross-backend with PooledAdapter (Postgres + DuckDB)
 # ============================================================================
+
 
 class TestCrossBackendPooled:
     """Test PooledAdapter in cross-backend scenarios with Postgres + DuckDB."""
@@ -622,10 +643,13 @@ class TestCrossBackendPooled:
         yield
 
     def test_postgres_pooled_duckdb_pooled_cross_table(
-        self, pg_connect_kwargs, cross_backend_setup,
+        self,
+        pg_connect_kwargs,
+        cross_backend_setup,
     ):
         """Cross-table check: Postgres payroll + DuckDB employee list (Mode 2)."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter, PooledAdapter
         from vowl.contracts.contract import Contract
 
@@ -642,10 +666,12 @@ class TestCrossBackendPooled:
             con.create_table("demo_employee_list", employee_list)
             return IbisAdapter(con)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(factory=make_pg, max_concurrency=2),
-            "demo_employee_list": PooledAdapter(factory=make_duckdb, max_concurrency=2),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(factory=make_pg, max_concurrency=2),
+                "demo_employee_list": PooledAdapter(factory=make_duckdb, max_concurrency=2),
+            }
+        )
         multi.max_failed_rows = 10
         multi.use_try_cast = True
         for adapter in multi.adapters.values():
@@ -660,21 +686,23 @@ class TestCrossBackendPooled:
         # Single-table checks: some may ERROR due to Postgres dialect quirks
         # (subquery aliases, text arithmetic). Verify majority pass.
         single_results = [
-            r for r in results
-            if r.check_name not in (
+            r
+            for r in results
+            if r.check_name
+            not in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
         ]
         single_non_error = [r for r in single_results if r.status != "ERROR"]
-        assert len(single_non_error) > len(single_results) // 2, (
-            f"Too many single-table errors"
-        )
+        assert len(single_non_error) > len(single_results) // 2, "Too many single-table errors"
 
         # Cross-table checks (Mode 2: materializes Postgres + DuckDB → local DuckDB)
         cross_results = {
-            r.check_name: r for r in results
-            if r.check_name in (
+            r.check_name: r
+            for r in results
+            if r.check_name
+            in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
@@ -688,10 +716,13 @@ class TestCrossBackendPooled:
             adapter.cleanup()
 
     def test_derive_concurrency_postgres_and_duckdb(
-        self, pg_connect_kwargs, cross_backend_setup,
+        self,
+        pg_connect_kwargs,
+        cross_backend_setup,
     ):
         """Concurrency derived from min of Postgres pool and DuckDB pool."""
         import ibis
+
         from vowl.adapters import IbisAdapter, MultiSourceAdapter, PooledAdapter
 
         employee_list = pd.read_csv(EMPLOYEE_LIST_FILE).fillna("")
@@ -704,14 +735,17 @@ class TestCrossBackendPooled:
             con.create_table("demo_employee_list", employee_list)
             return IbisAdapter(con)
 
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(factory=make_pg, max_concurrency=5),
-            "demo_employee_list": PooledAdapter(factory=make_duckdb, max_concurrency=3),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(factory=make_pg, max_concurrency=5),
+                "demo_employee_list": PooledAdapter(factory=make_duckdb, max_concurrency=3),
+            }
+        )
 
         executor = multi._get_executor("sql")
 
         from vowl.contracts.contract import Contract
+
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
 
@@ -877,6 +911,7 @@ class TestPooledAdapterBackendPatterns:
 
     def _make_pg_direct_factory(self, pg_connect_kwargs):
         import ibis
+
         from vowl.adapters import IbisAdapter
 
         def factory():
@@ -887,6 +922,7 @@ class TestPooledAdapterBackendPatterns:
 
     def _make_duckdb_attach_pg_factory(self, pg_connect_kwargs):
         import ibis
+
         from vowl.adapters import IbisAdapter
 
         def factory():
@@ -897,8 +933,7 @@ class TestPooledAdapterBackendPatterns:
             password = pg_connect_kwargs["password"]
             database = pg_connect_kwargs["database"]
             con.raw_sql(
-                f"ATTACH 'postgresql://{user}:{password}@{host}:{port}/{database}' "
-                f"AS pg (TYPE postgres, READ_ONLY)"
+                f"ATTACH 'postgresql://{user}:{password}@{host}:{port}/{database}' AS pg (TYPE postgres, READ_ONLY)"
             )
             con.raw_sql("USE pg")
             return IbisAdapter(con)
@@ -907,6 +942,7 @@ class TestPooledAdapterBackendPatterns:
 
     def _make_oracle_direct_factory(self, oracle_connect_kwargs):
         import ibis
+
         from vowl.adapters import IbisAdapter
 
         def factory():
@@ -930,10 +966,7 @@ class TestPooledAdapterBackendPatterns:
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         payroll_refs = refs_by_schema.get("demo_employee_payroll", [])
-        single_refs = [
-            ref for ref in payroll_refs
-            if "JOIN" not in (ref.get_check().get("query") or "").upper()
-        ]
+        single_refs = [ref for ref in payroll_refs if "JOIN" not in (ref.get_check().get("query") or "").upper()]
 
         results = pooled.run_checks(single_refs)
 
@@ -963,10 +996,12 @@ class TestPooledAdapterBackendPatterns:
         from vowl.contracts.contract import Contract
 
         factory = self._make_pg_direct_factory(pg_connect_kwargs)
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(factory=factory, max_concurrency=2),
-            "demo_employee_list": PooledAdapter(factory=factory, max_concurrency=2),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(factory=factory, max_concurrency=2),
+                "demo_employee_list": PooledAdapter(factory=factory, max_concurrency=2),
+            }
+        )
         multi.max_failed_rows = 10
         multi.use_try_cast = True
         for adapter in multi.adapters.values():
@@ -979,8 +1014,10 @@ class TestPooledAdapterBackendPatterns:
         results = multi.run_checks(refs_by_schema)
 
         cross_results = [
-            r for r in results
-            if r.check_name in (
+            r
+            for r in results
+            if r.check_name
+            in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
@@ -995,6 +1032,7 @@ class TestPooledAdapterBackendPatterns:
     def test_pg_direct_filter_conditions(self, pg_connect_kwargs, pg_setup):
         """PG direct: filter conditions propagate through PooledAdapter."""
         import ibis
+
         from vowl.adapters import IbisAdapter, PooledAdapter
         from vowl.adapters.models import FilterCondition
 
@@ -1004,7 +1042,9 @@ class TestPooledAdapterBackendPatterns:
                 con=con,
                 filter_conditions={
                     "demo_employee_payroll": FilterCondition(
-                        field="employee_id", operator="!=", value="",
+                        field="employee_id",
+                        operator="!=",
+                        value="",
                     ),
                 },
             )
@@ -1045,14 +1085,18 @@ class TestPooledAdapterBackendPatterns:
 
             def build_result(self, actual_value, execution_time_ms, **kwargs):
                 return CheckResult(
-                    check_name="bad_pg_query", status="PASSED",
-                    details=str(actual_value), execution_time_ms=execution_time_ms,
+                    check_name="bad_pg_query",
+                    status="PASSED",
+                    details=str(actual_value),
+                    execution_time_ms=execution_time_ms,
                 )
 
             def build_error_result(self, error_message, execution_time_ms, **kwargs):
                 return CheckResult(
-                    check_name="bad_pg_query", status="ERROR",
-                    details=error_message, execution_time_ms=execution_time_ms,
+                    check_name="bad_pg_query",
+                    status="ERROR",
+                    details=error_message,
+                    execution_time_ms=execution_time_ms,
                 )
 
         factory = self._make_pg_direct_factory(pg_connect_kwargs)
@@ -1061,7 +1105,8 @@ class TestPooledAdapterBackendPatterns:
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         good_refs = [
-            ref for ref in refs_by_schema.get("demo_employee_payroll", [])
+            ref
+            for ref in refs_by_schema.get("demo_employee_payroll", [])
             if "JOIN" not in (ref.get_check().get("query") or "").upper()
         ][:3]
 
@@ -1085,7 +1130,8 @@ class TestPooledAdapterBackendPatterns:
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         payroll_refs = [
-            ref for ref in refs_by_schema.get("demo_employee_payroll", [])
+            ref
+            for ref in refs_by_schema.get("demo_employee_payroll", [])
             if "JOIN" not in (ref.get_check().get("query") or "").upper()
         ]
         pooled.run_checks(payroll_refs)
@@ -1110,10 +1156,7 @@ class TestPooledAdapterBackendPatterns:
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         payroll_refs = refs_by_schema.get("demo_employee_payroll", [])
-        single_refs = [
-            ref for ref in payroll_refs
-            if "JOIN" not in (ref.get_check().get("query") or "").upper()
-        ]
+        single_refs = [ref for ref in payroll_refs if "JOIN" not in (ref.get_check().get("query") or "").upper()]
 
         results = pooled.run_checks(single_refs)
 
@@ -1143,10 +1186,12 @@ class TestPooledAdapterBackendPatterns:
         from vowl.contracts.contract import Contract
 
         factory = self._make_duckdb_attach_pg_factory(pg_connect_kwargs)
-        multi = MultiSourceAdapter({
-            "demo_employee_payroll": PooledAdapter(factory=factory, max_concurrency=2),
-            "demo_employee_list": PooledAdapter(factory=factory, max_concurrency=2),
-        })
+        multi = MultiSourceAdapter(
+            {
+                "demo_employee_payroll": PooledAdapter(factory=factory, max_concurrency=2),
+                "demo_employee_list": PooledAdapter(factory=factory, max_concurrency=2),
+            }
+        )
         multi.max_failed_rows = 10
         multi.use_try_cast = True
         for adapter in multi.adapters.values():
@@ -1159,8 +1204,10 @@ class TestPooledAdapterBackendPatterns:
         results = multi.run_checks(refs_by_schema)
 
         cross_results = [
-            r for r in results
-            if r.check_name in (
+            r
+            for r in results
+            if r.check_name
+            in (
                 "employee_id_exists_in_master_list",
                 "phone_number_exists_in_master_list",
             )
@@ -1175,6 +1222,7 @@ class TestPooledAdapterBackendPatterns:
     def test_duckdb_attach_pg_filter_conditions(self, pg_connect_kwargs, pg_setup):
         """DuckDB ATTACH PG: filter conditions work through attached connection."""
         import ibis
+
         from vowl.adapters import IbisAdapter, PooledAdapter
         from vowl.adapters.models import FilterCondition
 
@@ -1186,15 +1234,16 @@ class TestPooledAdapterBackendPatterns:
             password = pg_connect_kwargs["password"]
             database = pg_connect_kwargs["database"]
             con.raw_sql(
-                f"ATTACH 'postgresql://{user}:{password}@{host}:{port}/{database}' "
-                f"AS pg (TYPE postgres, READ_ONLY)"
+                f"ATTACH 'postgresql://{user}:{password}@{host}:{port}/{database}' AS pg (TYPE postgres, READ_ONLY)"
             )
             con.raw_sql("USE pg")
             return IbisAdapter(
                 con=con,
                 filter_conditions={
                     "demo_employee_payroll": FilterCondition(
-                        field="employee_id", operator="!=", value="",
+                        field="employee_id",
+                        operator="!=",
+                        value="",
                     ),
                 },
             )
@@ -1223,7 +1272,8 @@ class TestPooledAdapterBackendPatterns:
 
             def get_check(self):
                 return {
-                    "name": "bad_attach_query", "type": "sql",
+                    "name": "bad_attach_query",
+                    "type": "sql",
                     "query": "SELECT COUNT(*) FROM nonexistent_table_xyz",
                 }
 
@@ -1238,14 +1288,18 @@ class TestPooledAdapterBackendPatterns:
 
             def build_result(self, actual_value, execution_time_ms, **kwargs):
                 return CheckResult(
-                    check_name="bad_attach_query", status="PASSED",
-                    details=str(actual_value), execution_time_ms=execution_time_ms,
+                    check_name="bad_attach_query",
+                    status="PASSED",
+                    details=str(actual_value),
+                    execution_time_ms=execution_time_ms,
                 )
 
             def build_error_result(self, error_message, execution_time_ms, **kwargs):
                 return CheckResult(
-                    check_name="bad_attach_query", status="ERROR",
-                    details=error_message, execution_time_ms=execution_time_ms,
+                    check_name="bad_attach_query",
+                    status="ERROR",
+                    details=error_message,
+                    execution_time_ms=execution_time_ms,
                 )
 
         factory = self._make_duckdb_attach_pg_factory(pg_connect_kwargs)
@@ -1254,7 +1308,8 @@ class TestPooledAdapterBackendPatterns:
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         good_refs = [
-            ref for ref in refs_by_schema.get("demo_employee_payroll", [])
+            ref
+            for ref in refs_by_schema.get("demo_employee_payroll", [])
             if "JOIN" not in (ref.get_check().get("query") or "").upper()
         ][:3]
 
@@ -1278,7 +1333,8 @@ class TestPooledAdapterBackendPatterns:
         contract = Contract.load(str(EMPLOYEE_CONTRACT_PATH))
         refs_by_schema = contract.get_check_references_by_schema()
         payroll_refs = [
-            ref for ref in refs_by_schema.get("demo_employee_payroll", [])
+            ref
+            for ref in refs_by_schema.get("demo_employee_payroll", [])
             if "JOIN" not in (ref.get_check().get("query") or "").upper()
         ]
         pooled.run_checks(payroll_refs)
@@ -1325,6 +1381,7 @@ class TestPooledAdapterBackendPatterns:
     def test_oracle_direct_export_table_as_arrow(self, oracle_connect_kwargs, oracle_setup):
         """Oracle direct: export_table_as_arrow works."""
         import ibis
+
         from vowl.adapters import IbisAdapter, PooledAdapter
 
         # Create a simple uppercase table for export testing
@@ -1366,7 +1423,8 @@ class TestPooledAdapterBackendPatterns:
 
             def get_check(self):
                 return {
-                    "name": "bad_oracle_query", "type": "sql",
+                    "name": "bad_oracle_query",
+                    "type": "sql",
                     "query": "SELECT COUNT(*) FROM nonexistent_xyz",
                 }
 
@@ -1381,14 +1439,18 @@ class TestPooledAdapterBackendPatterns:
 
             def build_result(self, actual_value, execution_time_ms, **kwargs):
                 return CheckResult(
-                    check_name="bad_oracle_query", status="PASSED",
-                    details=str(actual_value), execution_time_ms=execution_time_ms,
+                    check_name="bad_oracle_query",
+                    status="PASSED",
+                    details=str(actual_value),
+                    execution_time_ms=execution_time_ms,
                 )
 
             def build_error_result(self, error_message, execution_time_ms, **kwargs):
                 return CheckResult(
-                    check_name="bad_oracle_query", status="ERROR",
-                    details=error_message, execution_time_ms=execution_time_ms,
+                    check_name="bad_oracle_query",
+                    status="ERROR",
+                    details=error_message,
+                    execution_time_ms=execution_time_ms,
                 )
 
         factory = self._make_oracle_direct_factory(oracle_connect_kwargs)

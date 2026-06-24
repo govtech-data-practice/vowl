@@ -450,10 +450,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 return (table_name, None, str(e))
 
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            futures = [
-                pool.submit(materialize_table, tbl)
-                for tbl in all_needed_tables
-            ]
+            futures = [pool.submit(materialize_table, tbl) for tbl in all_needed_tables]
             for future in futures:
                 table_name, arrow_table, error = future.result()
                 if error:
@@ -475,10 +472,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             for tbl in tables:
                 if tbl in materialization_errors:
                     results[index] = ref.build_error_result(
-                        error_message=(
-                            f"Materialization failed for table '{tbl}': "
-                            f"{materialization_errors[tbl]}"
-                        ),
+                        error_message=(f"Materialization failed for table '{tbl}': {materialization_errors[tbl]}"),
                         execution_time_ms=(time.perf_counter() - start_time) * 1000,
                     )
                     return
@@ -495,7 +489,9 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     output_dialect = "duckdb"
                     use_try_cast = self._use_try_cast
                     scalar_query = ref.get_scalar_query(
-                        output_dialect, None, use_try_cast=use_try_cast,
+                        output_dialect,
+                        None,
+                        use_try_cast=use_try_cast,
                     )
 
                     if not scalar_query:
@@ -523,7 +519,9 @@ class MultiSourceSQLExecutor(SQLExecutor):
                         return
 
                     failed_query = ref.get_failed_rows_query(
-                        output_dialect, None, use_try_cast=use_try_cast,
+                        output_dialect,
+                        None,
+                        use_try_cast=use_try_cast,
                     )
                     max_rows = getattr(self._multi_adapter, "max_failed_rows", 1000)
 

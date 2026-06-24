@@ -40,7 +40,6 @@ class CountingAdapter(BaseAdapter):
     _counter_lock = threading.Lock()
 
     def __init__(self, delay: float = 0.0):
-        from vowl.executors.base import BaseExecutor
 
         super().__init__()
         with CountingAdapter._counter_lock:

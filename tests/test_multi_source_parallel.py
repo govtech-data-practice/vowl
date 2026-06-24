@@ -38,6 +38,7 @@ class StubSQLCheckRef:
 
     def build_result(self, actual_value, execution_time_ms, **kwargs):
         from vowl.executors.base import CheckResult
+
         return CheckResult(
             check_name=self._name,
             status="PASSED",
@@ -47,6 +48,7 @@ class StubSQLCheckRef:
 
     def build_error_result(self, error_message, execution_time_ms, **kwargs):
         from vowl.executors.base import CheckResult
+
         return CheckResult(
             check_name=self._name,
             status="ERROR",
@@ -267,10 +269,7 @@ class TestParallelQueryExecution:
         multi = StubMultiAdapter(adapters)
         executor = MultiSourceSQLExecutor(multi)
 
-        refs = [
-            StubSQLCheckRef(f"check_{i}", "SELECT COUNT(*) FROM t1 JOIN t2 ON t1.id = t2.id")
-            for i in range(5)
-        ]
+        refs = [StubSQLCheckRef(f"check_{i}", "SELECT COUNT(*) FROM t1 JOIN t2 ON t1.id = t2.id") for i in range(5)]
 
         results = executor.run_batch_checks(refs)
 

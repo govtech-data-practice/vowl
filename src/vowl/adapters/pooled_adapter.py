@@ -122,10 +122,7 @@ class PooledAdapter(BaseAdapter):
                 self._return(adapter)
 
         with ThreadPoolExecutor(max_workers=self._max_concurrency) as pool:
-            futures = [
-                pool.submit(run_single, i, ref)
-                for i, ref in enumerate(check_refs)
-            ]
+            futures = [pool.submit(run_single, i, ref) for i, ref in enumerate(check_refs)]
             for future in futures:
                 future.result()
 
@@ -151,17 +148,13 @@ class PooledAdapter(BaseAdapter):
         primary = self._primary_adapter
         if hasattr(primary, "get_sql_dialect"):
             return primary.get_sql_dialect()
-        raise AttributeError(
-            f"{type(primary).__name__} has no get_sql_dialect method"
-        )
+        raise AttributeError(f"{type(primary).__name__} has no get_sql_dialect method")
 
     def get_connection(self):
         primary = self._primary_adapter
         if hasattr(primary, "get_connection"):
             return primary.get_connection()
-        raise AttributeError(
-            f"{type(primary).__name__} has no get_connection method"
-        )
+        raise AttributeError(f"{type(primary).__name__} has no get_connection method")
 
     def cleanup(self) -> None:
         for adapter in self._all_instances:
