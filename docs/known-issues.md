@@ -207,8 +207,8 @@ This tells us a town has an outlier, but the result only has 1 column. The full 
 > rewrites their failed-rows query to return the **full participating rows** (every row
 > whose value belongs to a duplicate group, plus NULL primary keys) via an `IN`/`EXISTS`
 > predicate against the base table. They therefore annotate directly onto the table rather
-> than becoming residues. Their reported `failed_rows_count` counts participating *rows*
-> (not duplicate *groups*), so it matches the number of annotated rows. The `percent`-unit
+> than becoming residues. Their reported `failed_rows_count` counts participating _rows_
+> (not duplicate _groups_), so it matches the number of annotated rows. The `percent`-unit
 > variant of `duplicateValues` stays non-mergeable (its result is a ratio, not a row count).
 
 ### Consolidated output includes cross-table checks; annotated output does not
