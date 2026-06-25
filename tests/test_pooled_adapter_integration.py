@@ -17,7 +17,7 @@ import ibis
 import narwhals as nw
 import pandas as pd
 import pyarrow as pa
-import pyarrow.compute  # noqa: F401  (registers pa.compute)
+import pyarrow.compute as pc
 import pytest
 
 from vowl.adapters import IbisAdapter, MultiSourceAdapter, PooledAdapter
@@ -797,7 +797,7 @@ class TestPooledAdapterAnnotatedOutput:
         # Export the real table to pick a genuine employee_id to "fail".
         full = pooled.export_table_as_arrow("demo_employee_payroll")
         target_id = full.column("employee_id").to_pylist()[0]
-        failed = full.filter(pa.compute.equal(full.column("employee_id"), target_id)).select(full.column_names)
+        failed = full.filter(pc.equal(full.column("employee_id"), target_id)).select(full.column_names)
 
         check = self._make_failed_check("payroll_check", "demo_employee_payroll", failed)
         result = self._make_result([check], multi, ["demo_employee_payroll"])
@@ -845,7 +845,7 @@ class TestPooledAdapterAnnotatedOutput:
 
         full = pooled.export_table_as_arrow("demo_employee_payroll")
         target_id = full.column("employee_id").to_pylist()[0]
-        failed = full.filter(pa.compute.equal(full.column("employee_id"), target_id)).select(full.column_names)
+        failed = full.filter(pc.equal(full.column("employee_id"), target_id)).select(full.column_names)
 
         check = self._make_failed_check("payroll_check", "demo_employee_payroll", failed)
         result = self._make_result([check], multi, ["demo_employee_payroll"])
@@ -867,7 +867,7 @@ class TestPooledAdapterAnnotatedOutput:
         pooled = PooledAdapter(factory=duckdb_adapter_factory, max_concurrency=4)
         full = pooled.export_table_as_arrow("demo_employee_payroll")
         target_id = full.column("employee_id").to_pylist()[0]
-        failed = full.filter(pa.compute.equal(full.column("employee_id"), target_id)).select(full.column_names)
+        failed = full.filter(pc.equal(full.column("employee_id"), target_id)).select(full.column_names)
 
         row_counts: list[int] = []
         errors: list[Exception] = []
