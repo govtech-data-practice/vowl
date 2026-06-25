@@ -708,7 +708,12 @@ class UniqueCheckReference(GeneratedColumnCheckReference):
         col = exp.Column(this=exp.to_identifier(col_name, quoted=True))
         table = exp.Table(this=exp.to_identifier(schema_name, quoted=True))
 
-        subquery = (
+        # Count the *participating rows* (every row whose value belongs to a
+        # duplicate group), not the number of duplicate groups, so the failed
+        # rows auto-derived from this query (SELECT * FROM table WHERE <pred>)
+        # are full rows that merge into the annotated table.  The verdict is
+        # unchanged: zero duplicate groups <=> zero participating rows.
+        dup_subquery = (
             sqlglot.select(col)
             .from_(table)
             .where(col.is_(exp.Null()).not_())
@@ -716,7 +721,11 @@ class UniqueCheckReference(GeneratedColumnCheckReference):
             .having(exp.Count(this=exp.Star()) > exp.Literal.number(1))
         )
 
-        self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(subquery.subquery())
+        self._cached_ast = (
+            sqlglot.select(exp.Count(this=exp.Star()))
+            .from_(table)
+            .where(exp.In(this=col, query=dup_subquery.subquery()))
+        )
         return self._cached_ast
 
     def _generate_check(self) -> DataQuality:
@@ -762,7 +771,11 @@ class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
         col = exp.Column(this=exp.to_identifier(col_name, quoted=True))
         table = exp.Table(this=exp.to_identifier(schema_name, quoted=True))
 
-        null_count = sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(col.is_(exp.Null()))
+        # Count the *participating rows*: NULL primary keys plus every row whose
+        # value belongs to a duplicate group.  A single COUNT(*) over the base
+        # table with this predicate lets the failed rows auto-derive as
+        # SELECT * FROM table WHERE <pred> (full rows -> mergeable into the
+        # annotated table).  Verdict unchanged: zero violations <=> zero rows.
         dup_subquery = (
             sqlglot.select(col)
             .from_(table)
@@ -770,14 +783,12 @@ class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
             .group_by(col)
             .having(exp.Count(this=exp.Star()) > exp.Literal.number(1))
         )
-        dup_count = sqlglot.select(exp.Count(this=exp.Star())).from_(dup_subquery.subquery())
-
-        self._cached_ast = sqlglot.select(
-            exp.Add(
-                this=exp.Paren(this=null_count.subquery()),
-                expression=exp.Paren(this=dup_count.subquery()),
-            )
+        pred = exp.Or(
+            this=col.is_(exp.Null()),
+            expression=exp.In(this=col, query=dup_subquery.subquery()),
         )
+
+        self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(pred)
         return self._cached_ast
 
     def _generate_check(self) -> DataQuality:

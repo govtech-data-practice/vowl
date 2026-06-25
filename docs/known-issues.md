@@ -178,29 +178,38 @@ Note: `rowCount` is technically an aggregate too, but it fails at condition 4 in
 
 ### 3. Column-subset checks (fails condition 4)
 
-Checks that only return _some_ columns can't be matched back to full rows. The most common example is duplicate detection, which groups by a subset of columns:
+A check that only returns _some_ columns can't be matched back to full rows. This happens with custom SQL `query:` checks that `SELECT` (or `GROUP BY`) a subset of columns rather than whole rows:
 
 ```yaml
 properties:
   - name: resale_price
     quality:
       - type: sql
-        name: no_duplicate_listings
+        name: distinct_towns_with_outliers
         query: >-
-          SELECT month, block, street_name, flat_type, storey_range
+          SELECT town
           FROM hdb_resale_prices
-          GROUP BY month, block, street_name, flat_type, storey_range
-          HAVING COUNT(*) > 1
+          GROUP BY town
+          HAVING MAX(resale_price) > 2000000
         mustBe: 0
 ```
 
 The query result might look like:
 
-| month   | block | street_name    | flat_type | storey_range |
-| ------- | ----- | -------------- | --------- | ------------ |
-| 2024-01 | 123   | ANG MO KIO AVE | 3 ROOM    | 04 TO 06     |
+| town       |
+| ---------- |
+| ANG MO KIO |
 
-This tells us there's a duplicate, but the result only has 5 columns. The full table has 10 columns (including `town`, `floor_area_sqm`, `lease_commence_date`, `remaining_lease`, `resale_price`). We can't match this partial row back to a specific full row, so it becomes a residue.
+This tells us a town has an outlier, but the result only has 1 column. The full table has 10+ columns, so we can't match this partial result back to specific full rows — it becomes a residue.
+
+> **Auto-generated `unique`, `primaryKey`, and `duplicateValues` checks are mergeable.**
+> Although these are implemented with `GROUP BY … HAVING COUNT(*) > 1` internally, vowl
+> rewrites their failed-rows query to return the **full participating rows** (every row
+> whose value belongs to a duplicate group, plus NULL primary keys) via an `IN`/`EXISTS`
+> predicate against the base table. They therefore annotate directly onto the table rather
+> than becoming residues. Their reported `failed_rows_count` counts participating *rows*
+> (not duplicate *groups*), so it matches the number of annotated rows. The `percent`-unit
+> variant of `duplicateValues` stays non-mergeable (its result is a ratio, not a row count).
 
 ### Consolidated output includes cross-table checks; annotated output does not
 
