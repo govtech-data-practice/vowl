@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-check typecheck check verify security-scan security-audit security-secrets release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean docs-lint docs-format
+.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-fix typecheck check verify security-scan security-audit security-secrets release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean docs-lint docs-fix
 
 UV ?= uv
 
@@ -13,14 +13,14 @@ help:
 	@echo "  install-dev      Install with development dependencies"
 	@echo "  install-lean-ci-test Install the lean CI test dependency set"
 	@echo "  install-all      Install with all optional dependencies"
-	@echo "  format           Format code with ruff"
-	@echo "  format-check     Check code formatting with ruff"
-	@echo "  lint             Run linting checks"
+	@echo "  lint             Run ruff lint checks"
 	@echo "  lint-fix         Lint and auto-fix with ruff"
+	@echo "  format           Check code formatting with ruff"
+	@echo "  format-fix       Format code with ruff"
 	@echo "  typecheck        Type check with ty"
 	@echo "  docs-lint        Check Markdown formatting with Prettier"
-	@echo "  docs-format      Format Markdown docs with Prettier"
-	@echo "  check            Run all code quality checks (format, lint, typecheck, docs-lint)"
+	@echo "  docs-fix         Format Markdown docs with Prettier"
+	@echo "  check            Run all code quality checks (lint, format, typecheck, docs-lint)"
 	@echo "  generate-models  Generate Pydantic models from ODCS JSON schemas"
 	@echo "  doxygen          Regenerate Doxygen code structure documentation"
 	@echo "  doxygen-open     Open generated Doxygen documentation in browser"
@@ -118,17 +118,17 @@ test:
 	$(UV) run pytest tests/
 
 # Code quality
-format:
-	$(UV) run ruff format src/ tests/
-
-format-check:
-	$(UV) run ruff format --check src/ tests/
-
 lint:
 	$(UV) run ruff check src/ tests/
 
 lint-fix:
 	$(UV) run ruff check --fix src/ tests/
+
+format:
+	$(UV) run ruff format --check src/ tests/
+
+format-fix:
+	$(UV) run ruff format src/ tests/
 
 typecheck:
 	$(UV) run ty check src/
@@ -141,14 +141,14 @@ docs-lint:
 	fi
 	$(PRETTIER) --check $(DOCS_GLOB)
 
-docs-format:
+docs-fix:
 	@if ! command -v npx >/dev/null 2>&1; then \
 		echo "Error: npx is not installed. Install Node.js (e.g. brew install node)"; \
 		exit 1; \
 	fi
 	$(PRETTIER) --write $(DOCS_GLOB)
 
-check: format-check lint typecheck docs-lint
+check: lint format typecheck docs-lint
 
 # Security scanning
 security-scan:

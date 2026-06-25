@@ -1,4 +1,4 @@
-# Prettier config — used by `make docs-lint` / `make docs-format` for Markdown docs.
+# Prettier config — used by `make docs-lint` / `make docs-fix` for Markdown docs.
 # proseWrap: preserve keeps existing line breaks in prose untouched (no reflowing);
 # Markdown tables are still re-aligned.
 proseWrap: preserve
