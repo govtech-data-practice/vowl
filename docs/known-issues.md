@@ -174,7 +174,7 @@ The query result is just one number:
 
 There are no individual rows to flag — the result is a single scalar, so it can't be annotated onto the full table. It becomes a residue.
 
-Note: `rowCount` is technically an aggregate too, but it fails at condition 4 instead (no data columns). Either way, it's not merged.
+Note: `rowCount` is an aggregate too. Its query is a bare `SELECT COUNT(*) FROM t` with no failure predicate, so the count measures table cardinality rather than a number of failing rows — there is no per-row failure to annotate. It is treated as non-row-level (fails condition 3) and goes to residues like `AVG`/`MAX`/`SUM`.
 
 ### 3. Column-subset checks (fails condition 4)
 

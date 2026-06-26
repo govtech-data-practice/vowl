@@ -7,7 +7,7 @@ executed through the standard SQL executor pipeline.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import sqlglot
 from sqlglot import exp
@@ -323,6 +323,24 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
 
 class RowCountCheckReference(_LibraryTableMetricBase):
     """``rowCount``: total number of rows in a table."""
+
+    @property
+    def supports_row_level_output(self) -> bool:
+        """``rowCount`` is a whole-table aggregate, not a per-row check.
+
+        Its query is a bare ``SELECT COUNT(*) FROM t`` with no failure
+        predicate, so ``COUNT`` measures table cardinality rather than a
+        count of failing rows.  Treat it like ``AVG``/``MAX``/``SUM``: it has
+        no meaningful row-level output, so it is never merged into the
+        annotated table (it falls to residues) and does not contribute to the
+        summary's ``failed_rows`` total.
+        """
+        return False
+
+    def compute_failed_rows_count(self, actual_value: Any) -> int:
+        """A failing ``rowCount`` has no failing *rows* (the count is the table
+        size, not a violation count), so report zero like other aggregates."""
+        return 0
 
     def get_check(self) -> DataQuality:
         return self._contract.resolve(self._path)
