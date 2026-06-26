@@ -396,6 +396,73 @@ class TestSubsumption:
 
 
 # ---------------------------------------------------------------------------
+# Per-check residues (residues are one-entry-per-check, never grouped)
+# ---------------------------------------------------------------------------
+
+
+class TestPerCheckResidues:
+    def test_residue_keyed_by_schema_and_check(self):
+        full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        check = _make_check(
+            "join_check",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([check], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+        assert list(out["residues"].keys()) == ["orders::join_check"]
+
+    def test_each_residue_carries_exactly_one_check_name(self):
+        full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        # Two non-mergeable checks that share table AND column set: under the old
+        # grouped path these collapsed into one entry; now each is its own.
+        c1 = _make_check(
+            "join_a", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders, customers"
+        )
+        c2 = _make_check(
+            "join_b", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders, customers"
+        )
+        result = _make_result([c1, c2], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+        # Two separate entries, each with a single check name (never merged).
+        assert set(out["residues"].keys()) == {"orders::join_a", "orders::join_b"}
+        for df in out["residues"].values():
+            assert len(ValidationResult._check_names_in_entry(df)) == 1
+
+    def test_mergeable_and_aggregation_same_row_no_double_report(self):
+        # Regression for the grouped-path edge: an aggregation check whose failed
+        # rows share a full row with a mergeable check used to glue onto it and
+        # re-surface the merged row in residues. Per-check residues prevent that.
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        mergeable = _make_check("row_check", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}))
+        # supports_row_level_output=False -> non-mergeable, but full-column rows.
+        agg = _make_check(
+            "agg_check",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            supports_row_level_output=False,
+        )
+        result = _make_result([mergeable, agg], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+
+        # row_check is annotated and does NOT reappear in any residue.
+        rows = {r["id"]: r["check_info"] for r in _row(out["annotated"]["orders"])}
+        assert _check_names_of(rows[2]) == ["row_check"]
+        residue_checks = set()
+        for df in out["residues"].values():
+            residue_checks |= ValidationResult._check_names_in_entry(df)
+        assert residue_checks == {"agg_check"}  # row_check absent
+
+    def test_passing_and_error_checks_not_in_residues(self):
+        full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        passed = _make_check("ok", "orders", status="PASSED", failed_rows=pa.table({"id": []}))
+        result = _make_result([passed], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+        assert out["residues"] == {}
+
+
+# ---------------------------------------------------------------------------
 # Adapter failure paths
 # ---------------------------------------------------------------------------
 
@@ -657,9 +724,11 @@ class TestSaveModes:
         assert "check_info" in annotated_cols
         assert "check_ids" not in annotated_cols
 
-        # Residue CSV (cross-table key, sorted) keeps the legacy check_ids column.
-        residue_csv = tmp_path / "r_customers_orders.csv"
+        # Residue CSV is per-check (keyed "<schema>::<check>") and keeps the
+        # legacy check_ids column. The mergeable check is NOT written as a residue.
+        residue_csv = tmp_path / "r_orders_join_check_residue.csv"
         assert residue_csv.exists()
+        assert not (tmp_path / "r_orders_row_check_residue.csv").exists()
         residue_cols = self._read_csv(residue_csv).column_names
         assert "check_ids" in residue_cols
         assert "check_info" not in residue_cols

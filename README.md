@@ -505,7 +505,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 It returns a nested dict with two reserved keys:
 
 - **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none. Residues keep the legacy comma-joined `check_ids` column (the consolidated path is unchanged), so in `output_mode="annotated"` the annotated tables carry `check_info` while residue CSVs carry `check_ids`.
+- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and use a `check_ids` column rather than `check_info` — so in `output_mode="annotated"` the annotated tables carry `check_info` while residues carry `check_ids`.
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -568,7 +568,7 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead — in the same shape as `get_consolidated_output_dfs()`, with the legacy `check_ids` and `tables_in_query` columns:
+When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead. Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus a single-name `check_ids` column and `tables_in_query`:
 
 #### Residues
 
@@ -585,14 +585,22 @@ for key, residue in output["residues"].items():
     print(df[["employee_id", "payroll_id", "month", "check_ids", "tables_in_query"]])
 ```
 
-Residue keys: `['demo_employee_list, demo_employee_payroll']`
+Residue keys: `['demo_employee_payroll::employee_id_exists_in_master_list', 'demo_employee_payroll::phone_number_exists_in_master_list']`
 
-Residue `'demo_employee_list, demo_employee_payroll'`: 2 failed row(s)
+Each non-mergeable check gets its own entry — they are never grouped together, so a row that failed two cross-table checks appears once under each check's residue:
 
-|     | employee_id | payroll_id                           | month   | check_ids                                                             | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | --------------------------------------------------------------------- | ----------------------------------------- |
-| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | employee_id_exists_in_master_list, phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
-| 1   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | phone_number_exists_in_master_list                                    | demo_employee_list, demo_employee_payroll |
+Residue `'demo_employee_payroll::employee_id_exists_in_master_list'`: 1 failed row(s)
+
+|     | employee_id | payroll_id                           | month   | check_ids                         | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | --------------------------------- | ----------------------------------------- |
+| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | employee_id_exists_in_master_list | demo_employee_list, demo_employee_payroll |
+
+Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed row(s)
+
+|     | employee_id | payroll_id                           | month   | check_ids                          | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | ---------------------------------- | ----------------------------------------- |
+| 0   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
+| 1   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
 
 </details>
 

@@ -98,10 +98,10 @@ vowl materialises tables via Arrow instead of using DuckDB ATTACH for these reas
 ```python
 output = result.get_annotated_output()
 output["annotated"]   # {schema: full table + check_info}     <- mergeable checks
-output["residues"]    # {key: failed rows + check_ids + tables_in_query}  <- everything else
+output["residues"]    # {"<schema>::<check>": failed rows + check_ids + tables_in_query}  <- everything else
 ```
 
-The `check_info` column holds a JSON array of objects (one per failing check), shaped by the `check_info` preset (`"names"` default, `"summary"`, `"full"`). Residues are unchanged and keep the legacy comma-joined `check_ids` column — so in `output_mode="annotated"` annotated tables carry `check_info` while residue CSVs carry `check_ids`.
+The `check_info` column holds a JSON array of objects (one per failing check), shaped by the `check_info` preset (`"names"` default, `"summary"`, `"full"`). Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows and a single-name `check_ids` column (not `check_info`). Two non-mergeable checks are never grouped into one entry, and a check that was annotated onto a full table never reappears as a residue. So in `output_mode="annotated"` annotated tables carry `check_info` while residues carry `check_ids`.
 
 For example, suppose your full table `hdb_resale_prices` looks like this:
 
@@ -150,7 +150,7 @@ The query result might look like:
 | ----- |
 | 3     |
 
-This tells us 3 payroll rows have missing employee IDs, but the failure belongs to the _relationship_ between the two tables — there's no single table to annotate it onto. It goes to `residues` keyed by `"demo_employee_list, demo_employee_payroll"`.
+This tells us 3 payroll rows have missing employee IDs, but the failure belongs to the _relationship_ between the two tables — there's no single table to annotate it onto. It goes to `residues` keyed by `"demo_employee_payroll::employee_id_exists_in_master_list"` (the check's home schema and name).
 
 ### 2. Aggregation checks (fails condition 3)
 
@@ -213,9 +213,11 @@ This tells us a town has an outlier, but the result only has 1 column. The full 
 > (not duplicate _groups_), so it matches the number of annotated rows. The `percent`-unit
 > variant of `duplicateValues` stays non-mergeable (its result is a ratio, not a row count).
 
-### Consolidated output includes cross-table checks; annotated output does not
+### Consolidated output groups; annotated residues are per-check
 
-`get_consolidated_output_dfs()` includes cross-table failures (keyed by composite table name, e.g. `"table_a, table_b"`). `get_annotated_output()` does not — they only appear in `residues`.
+`get_consolidated_output_dfs()` (used by `output_mode="failed_rows"`/`"both"`) **groups** failed rows by `(tables_in_query, column_set)`, deduplicating identical rows and comma-joining the check names that hit them — cross-table failures included, keyed by composite table name (e.g. `"table_a, table_b"`).
+
+`get_annotated_output()`'s `residues` instead emit **one entry per non-mergeable check**, keyed `"<schema>::<check_name>"`, never grouped across checks. So the same non-mergeable failure looks different between the two: grouped (possibly multi-check) rows in the failed-rows CSVs, vs. a single-check entry under annotated residues.
 
 If you rely solely on annotated output, always check `residues` for non-mergeable failures.
 

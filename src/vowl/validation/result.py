@@ -767,15 +767,21 @@ class ValidationResult:
           ``check_info`` column holds a JSON array of objects per failing row,
           shaped by the ``check_info`` preset (see :data:`CheckInfoPreset`);
           passing rows are ``null``.
-        - ``"residues"`` -- the non-mergeable entries from
-          ``get_consolidated_output_dfs`` (cross-table, aggregation, or
-          column-subset checks).  Empty dict when there are none.  Entries
-          fully represented by an annotated table are dropped.  **Note:**
-          residues keep the legacy comma-joined ``check_ids`` column (the
-          consolidated path is untouched this iteration), so in
-          ``output_mode="annotated"`` annotated tables carry ``check_info``
-          while residue CSVs still carry ``check_ids`` -- an accepted,
-          documented within-mode asymmetry.
+        - ``"residues"`` -- **one entry per non-mergeable check** (cross-table,
+          aggregation, column-subset, or any check on a schema with no
+          adapter).  Keyed by ``"<schema>::<check_name>"``.  Empty dict when
+          there are none.  Residues are **per-check, not grouped across
+          checks**: a check whose failed rows were annotated onto a full table
+          never reappears here, and two non-mergeable checks are never folded
+          into one entry even when they share a table and column set.  Each
+          residue carries a ``check_ids`` column (holding just that check's
+          name) and ``tables_in_query``, so in ``output_mode="annotated"``
+          annotated tables carry ``check_info`` while residues carry
+          ``check_ids`` -- an accepted, documented within-mode asymmetry.
+
+          (The standalone ``failed_rows``/``both`` CSVs still come from the
+          grouped :meth:`get_consolidated_output_dfs` and are unchanged; only
+          annotated-mode residues are per-check.)
 
         Args:
             checks: Optional check-name filter.
@@ -792,12 +798,11 @@ class ValidationResult:
         preset = check_info if check_info is not None else self._config.annotated_check_info
         checks_set = set(checks) if checks else None
 
-        # Step 1: existing consolidated failed-rows output (residue candidates).
-        consolidated_failed = self.get_consolidated_output_dfs(checks=checks)
-
-        # Step 2: build one annotated table per schema, tracking merged checks.
+        # Step 1: build one annotated table per schema, tracking which checks
+        # were merged in (by output key, so same-named checks across schemas
+        # stay distinct).
         annotated: dict[str, nw.DataFrame] = {}
-        merged_check_names: set[str] = set()
+        merged_check_keys: set[str] = set()
 
         for schema_name in self._schema_names:
             full_table = self._fetch_full_table(schema_name)
@@ -837,7 +842,7 @@ class ValidationResult:
                 rows = self._strip_metadata_cols(cr.failed_rows).unique()
                 item = self._check_info_item_json(cr, preset)
                 tagged_failures.append(rows.with_columns(nw.lit(item).alias("check_info_item")))
-                merged_check_names.add(cr.check_name)
+                merged_check_keys.add(self._output_key(cr))
 
             # Collapse duplicate rows into a JSON-array check_info column.
             union = pa.concat_tables([df.to_arrow() for df in tagged_failures], promote_options="default")
@@ -851,14 +856,26 @@ class ValidationResult:
                 schema_name=schema_name,
             )
 
-        # Step 3: residues = consolidated entries NOT fully subsumed by an
-        # annotated table. Decision is by check-name membership, NOT key.
+        # Step 2: residues = one entry per FAILED check that was NOT merged onto
+        # an annotated table. Per-check (never grouped across checks), so a
+        # merged check can never reappear and two non-mergeable checks are never
+        # folded together. Each entry is row-deduped within its own check and
+        # carries the legacy single-name check_ids + tables_in_query columns.
         residues: dict[str, nw.DataFrame] = {}
-        for key, df in consolidated_failed.items():
-            entry_checks = self._check_names_in_entry(df)
-            if entry_checks and entry_checks.issubset(merged_check_names):
-                continue  # fully represented by an annotated table -> drop
-            residues[key] = df
+        for cr in self.check_results:
+            if cr.status != "FAILED":
+                continue  # PASSED/ERROR checks have no residue rows
+            if checks_set and cr.check_name not in checks_set:
+                continue
+            if self._output_key(cr) in merged_check_keys:
+                continue  # already annotated onto a full table -> not a residue
+            if len(cr.failed_rows) == 0:
+                continue  # scalar aggregations etc. -- no rows to emit
+
+            tables = get_tables_in_query(cr)
+            tables_str = ", ".join(sorted(tables)) if tables else ""
+            tagged = self._append_output_metadata(cr.failed_rows, cr.check_name, tables_str)
+            residues[self._output_key(cr)] = self._consolidate_grouped_output(tagged)
 
         return {"annotated": annotated, "residues": residues}
 
@@ -1004,13 +1021,14 @@ class ValidationResult:
                 _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                 saved_files.append(str(csv_path))
             # In "annotated" mode, residues cover the non-mergeable checks and
-            # the standalone failed-rows CSVs were NOT written, so no collision.
-            # In "both" mode, residue keys are a subset of the failed-rows CSVs
-            # already written above (same filenames) -- skip to avoid rewrites.
+            # the standalone failed-rows CSVs were NOT written, so emit them
+            # here. In "both" mode, those same failed rows are already in the
+            # grouped failed-rows CSVs written above, so skip to avoid emitting
+            # the same rows twice in a different (per-check) shape.
             if mode == "annotated":
-                for table_key, df in out["residues"].items():
-                    safe_key = table_key.replace(", ", "_").replace(" ", "_")
-                    csv_path = output_path / f"{prefix}_{safe_key}.csv"
+                for residue_key, df in out["residues"].items():
+                    safe_key = residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_")
+                    csv_path = output_path / f"{prefix}_{safe_key}_residue.csv"
                     _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                     saved_files.append(str(csv_path))
 
