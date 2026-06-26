@@ -16,6 +16,17 @@ from typing import Literal
 #: - ``"both"``         -- failed-rows CSVs *and* annotated tables.
 OutputMode = Literal["failed_rows", "annotated", "both"]
 
+#: Presets controlling the contents of the annotated table's ``check_info``
+#: column.  Every preset emits a JSON **array of objects** (uniform type) so
+#: consumers parse the same way (``item["check_name"]``); they differ only in
+#: how many keys each object carries:
+#:
+#: - ``"names"``   -- ``[{"check_name": ...}, ...]`` (default; the legacy
+#:                    ``check_ids`` content as a list of dicts).
+#: - ``"summary"`` -- ``[{check_name, dimension, tags, target}, ...]``.
+#: - ``"full"``    -- ``[<full check_definition> + check_name + target, ...]``.
+CheckInfoPreset = Literal["names", "summary", "full"]
+
 
 @dataclass
 class ValidationConfig:
@@ -44,6 +55,12 @@ class ValidationConfig:
             ``"failed_rows"`` (default), ``"annotated"``, or ``"both"``.  See
             :data:`OutputMode`.  ``save(output_mode=...)`` overrides this per
             call; when its argument is ``None`` this config value is used.
+        annotated_check_info: Preset controlling the annotated table's
+            ``check_info`` column.  One of ``"names"`` (default),
+            ``"summary"``, or ``"full"``.  See :data:`CheckInfoPreset`.
+            ``get_annotated_output(check_info=...)`` / ``save(check_info=...)``
+            override this per call; when their argument is ``None`` this config
+            value is used.
     """
 
     max_rows_for_statistics: int = -1
@@ -51,6 +68,7 @@ class ValidationConfig:
     max_failed_rows: int = -1
     use_try_cast: bool = True
     output_mode: OutputMode = "failed_rows"
+    annotated_check_info: CheckInfoPreset = "names"
 
     def to_dict(self) -> dict:
         """Return a plain dict representation of the config."""

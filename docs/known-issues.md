@@ -93,13 +93,15 @@ vowl materialises tables via Arrow instead of using DuckDB ATTACH for these reas
 
 ## Annotated Output: Not All Checks Can Be Merged
 
-`get_annotated_output()` (and `save(output_mode="annotated")`) returns your **full table** with an extra `check_ids` column showing which check(s) each row failed. However, not every check can be merged into this table — some checks simply don't produce results that map back to individual rows.
+`get_annotated_output()` (and `save(output_mode="annotated")`) returns your **full table** with an extra `check_info` column showing which check(s) each row failed. However, not every check can be merged into this table — some checks simply don't produce results that map back to individual rows.
 
 ```python
 output = result.get_annotated_output()
-output["annotated"]   # {schema: full table + check_ids}      <- mergeable checks
+output["annotated"]   # {schema: full table + check_info}     <- mergeable checks
 output["residues"]    # {key: failed rows + check_ids + tables_in_query}  <- everything else
 ```
+
+The `check_info` column holds a JSON array of objects (one per failing check), shaped by the `check_info` preset (`"names"` default, `"summary"`, `"full"`). Residues are unchanged and keep the legacy comma-joined `check_ids` column — so in `output_mode="annotated"` annotated tables carry `check_info` while residue CSVs carry `check_ids`.
 
 For example, suppose your full table `hdb_resale_prices` looks like this:
 
@@ -111,11 +113,11 @@ For example, suppose your full table `hdb_resale_prices` looks like this:
 
 A **mergeable** check (e.g. a row-level check like "resale_price must be > 0") can tag individual rows directly, producing an annotated table like:
 
-| month   | town       | block | ... | resale_price | check_ids             |
-| ------- | ---------- | ----- | --- | ------------ | --------------------- |
-| 2024-01 | ANG MO KIO | 123   | ... | 350000       | null                  |
-| 2024-01 | BEDOK      | 456   | ... | 480000       | null                  |
-| 2024-02 | TAMPINES   | 789   | ... | 620000       | resale_price_positive |
+| month   | town       | block | ... | resale_price | check_info                                  |
+| ------- | ---------- | ----- | --- | ------------ | ------------------------------------------- |
+| 2024-01 | ANG MO KIO | 123   | ... | 350000       | null                                        |
+| 2024-01 | BEDOK      | 456   | ... | 480000       | null                                        |
+| 2024-02 | TAMPINES   | 789   | ... | 620000       | `[{"check_name": "resale_price_positive"}]` |
 
 This split is by design. A check can only be merged into the annotated table when **all** of the following are true:
 
@@ -220,7 +222,7 @@ If you rely solely on annotated output, always check `residues` for non-mergeabl
 ### Other things to know
 
 - **A table can have both.** If a table has mergeable _and_ non-mergeable failing checks, you'll get both an annotated table and residue entries for that schema. Mergeable checks are never duplicated into `residues`.
-- **Annotated entries exist even when nothing failed.** Every schema with an available adapter gets an annotated table — the `check_ids` column is just all null.
+- **Annotated entries exist even when nothing failed.** Every schema with an available adapter gets an annotated table — the `check_info` column is just all null.
 - **Missing adapter?** If a schema's adapter is unavailable, that schema is skipped (with a warning) and its failures appear only as residues.
 - **`max_failed_rows` raises an error for annotated output.** If you cap failed rows (`max_failed_rows >= 0`) and a mergeable check gets truncated, `get_annotated_output()` raises `ValueError` rather than silently treating un-fetched failures as passing. Use `max_failed_rows=-1` (the default) or switch to `output_mode="failed_rows"`.
 - **Duplicate rows may be over-flagged.** Matching is value-based. If two rows are byte-identical and one failed, both get annotated (the safe direction — false positives, not false negatives). A row-id-based matcher is planned.

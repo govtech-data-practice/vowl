@@ -14,7 +14,7 @@ import pyarrow as pa
 import pyarrow.csv as _pa_csv
 import pyarrow.parquet as _pa_pq
 
-from ..config import OutputMode, ValidationConfig
+from ..config import CheckInfoPreset, OutputMode, ValidationConfig
 from ..contracts.contract import Contract
 from ..contracts.models.ODCS_types import DataContract
 from ..executors.base import CheckResult
@@ -47,13 +47,28 @@ logger = logging.getLogger(__name__)
 
 #: Metadata columns that tag failed-rows output but are not part of the
 #: underlying table's identity.  Stripped before matching annotated rows.
-_METADATA_COLUMNS = ("check_id", "check_ids", "tables_in_query")
+#: Legacy ``check_id``/``check_ids`` are kept (still used by the untouched
+#: consolidated/residue path); ``check_info``/``check_info_item`` are the
+#: annotated path's enriched columns.
+_METADATA_COLUMNS = (
+    "check_id",
+    "check_ids",
+    "check_info",
+    "check_info_item",
+    "tables_in_query",
+)
 
 
 class ValidationResult:
     """Container for validation results and reporting helpers."""
 
-    _ROW_QUALITY_EXCLUDED_COLUMNS = ("check_id", "check_ids", "tables_in_query")
+    _ROW_QUALITY_EXCLUDED_COLUMNS = (
+        "check_id",
+        "check_ids",
+        "check_info",
+        "check_info_item",
+        "tables_in_query",
+    )
 
     def __init__(
         self,
@@ -591,41 +606,68 @@ class ValidationResult:
         return cap >= 0 and count is not None and count > len(cr.failed_rows)
 
     @staticmethod
-    def _group_check_ids_by_row(combined: nw.DataFrame) -> nw.DataFrame:
-        """Group identical data rows, collapsing ``check_id`` into comma-joined
-        ``check_ids``.  Does NOT require or emit ``tables_in_query``.
+    def _check_info_item_json(cr: CheckResult, preset: CheckInfoPreset) -> str:
+        """JSON-encode one failing check's per-row item for the given preset.
 
-        ``targets`` (when present) is treated like ``check_id``: its values are
-        deduplicated and comma-joined per row, so ``include_target`` callers get
-        a per-row ``targets`` column alongside ``check_ids``.
+        Every preset returns a JSON **object** (a single array element), so the
+        collapsed ``check_info`` column is a uniform array-of-objects regardless
+        of preset.  Missing ``check_definition`` keys yield JSON ``null``; this
+        never raises.
+
+        - ``"names"``   -> ``{"check_name": ...}``
+        - ``"summary"`` -> ``{check_name, dimension, tags, target}``
+        - ``"full"``    -> full ``check_definition`` + ``check_name`` + ``target``
         """
-        has_targets = "targets" in combined.columns
-        data_cols = [c for c in combined.columns if c not in (*_METADATA_COLUMNS, "targets")]
+        if preset == "names":
+            return json.dumps({"check_name": cr.check_name})
+        check_definition = cr.metadata.get("check_definition") or {}
+        target = get_field_label(cr)
+        if preset == "summary":
+            obj = {
+                "check_name": cr.check_name,
+                "dimension": check_definition.get("dimension"),
+                "tags": check_definition.get("tags"),
+                "target": target,
+            }
+        else:  # "full"
+            obj = dict(check_definition)
+            obj["check_name"] = cr.check_name
+            obj["target"] = target
+        return json.dumps(obj, default=str)
+
+    @staticmethod
+    def _join_check_info_items(items: Iterable[str]) -> str:
+        """Collapse already-JSON-encoded items (ordered, deduped) into a JSON array."""
+        return "[" + ", ".join(items) + "]"
+
+    @classmethod
+    def _group_check_ids_by_row(cls, combined: nw.DataFrame) -> nw.DataFrame:
+        """Group identical data rows, collapsing per-row ``check_info_item``
+        JSON objects into a single JSON-array ``check_info`` column.  Does NOT
+        require or emit ``tables_in_query``.
+
+        Items are deduplicated and emitted in first-seen order so multi-check
+        rows produce one stable array element per distinct failing check.
+        """
+        data_cols = [c for c in combined.columns if c not in _METADATA_COLUMNS]
         arrow_table = combined.to_arrow()
-        check_id_col = arrow_table.column("check_id")
-        targets_col = arrow_table.column("targets") if has_targets else None
+        check_info_col = arrow_table.column("check_info_item")
         data_arrow_cols = [arrow_table.column(c) for c in data_cols]
 
-        row_groups: dict[tuple[Any, ...], dict[str, set[str]]] = {}
+        row_groups: dict[tuple[Any, ...], list[str]] = {}
         for i in range(arrow_table.num_rows):
             row_key = tuple(c[i].as_py() for c in data_arrow_cols)
-            group = row_groups.setdefault(row_key, {"check_ids": set(), "targets": set()})
-            group["check_ids"].add(check_id_col[i].as_py())
-            if targets_col is not None:
-                target_value = targets_col[i].as_py()
-                if target_value:
-                    group["targets"].add(target_value)
+            items = row_groups.setdefault(row_key, [])
+            item = check_info_col[i].as_py()
+            if item is not None and item not in items:
+                items.append(item)
 
         result_data: dict[str, list] = {c: [] for c in data_cols}
-        result_data["check_ids"] = []
-        if has_targets:
-            result_data["targets"] = []
-        for row_key, group in row_groups.items():
+        result_data["check_info"] = []
+        for row_key, items in row_groups.items():
             for c, v in zip(data_cols, row_key, strict=False):
                 result_data[c].append(v)
-            result_data["check_ids"].append(", ".join(sorted(group["check_ids"])))
-            if has_targets:
-                result_data["targets"].append(", ".join(sorted(group["targets"])))
+            result_data["check_info"].append(cls._join_check_info_items(items))
         return nw.from_native(pa.table(result_data), eager_only=True)
 
     @staticmethod
@@ -652,7 +694,7 @@ class ValidationResult:
         schema_name: str,
         extra_cols: Sequence[str] = (),
     ) -> nw.DataFrame:
-        """Attach ``check_ids`` (and any *extra_cols*) to matching full-table rows.
+        """Attach ``check_info`` (and any *extra_cols*) to matching full-table rows.
 
         Uses Python dict matching on the row value-tuple (Candidate B).  Python's
         ``None == None`` is ``True`` and tuples containing ``None`` hash/compare
@@ -661,10 +703,10 @@ class ValidationResult:
         ``_consolidate_grouped_output`` row-grouping pattern.
 
         A value-based matcher cannot distinguish N byte-identical full-table
-        rows: if one such row failed, all N receive ``check_ids`` (the safe
+        rows: if one such row failed, all N receive ``check_info`` (the safe
         over-flagging direction).  See the plan's matching caveats §2.
         """
-        marker_cols = ["check_ids", *extra_cols]
+        marker_cols = ["check_info", *extra_cols]
         consolidated_arrow = consolidated.to_arrow()
         key_cols = [consolidated_arrow.column(c) for c in data_cols]
         marker_arrow = {c: consolidated_arrow.column(c) for c in marker_cols}
@@ -708,30 +750,38 @@ class ValidationResult:
         self,
         checks: Sequence[str] | None = None,
         *,
-        include_target: bool = False,
+        check_info: CheckInfoPreset | None = None,
     ) -> dict[str, dict[str, nw.DataFrame]]:
         """Return the full in-scope tables with failed rows annotated.
 
         The result is a nested dict with two fixed reserved top-level keys::
 
             {
-                "annotated": {<schema>: <full table + check_ids>, ...},
+                "annotated": {<schema>: <full table + check_info>, ...},
                 "residues":  {<key>: <failed rows + check_ids + tables_in_query>, ...},
             }
 
         - ``"annotated"`` -- one entry per schema with an available adapter,
           always present even when no eligible check failed (all-null
-          ``check_ids``).  Inner keys are plain schema names.
+          ``check_info``).  Inner keys are plain schema names.  The
+          ``check_info`` column holds a JSON array of objects per failing row,
+          shaped by the ``check_info`` preset (see :data:`CheckInfoPreset`);
+          passing rows are ``null``.
         - ``"residues"`` -- the non-mergeable entries from
           ``get_consolidated_output_dfs`` (cross-table, aggregation, or
           column-subset checks).  Empty dict when there are none.  Entries
-          fully represented by an annotated table are dropped.
+          fully represented by an annotated table are dropped.  **Note:**
+          residues keep the legacy comma-joined ``check_ids`` column (the
+          consolidated path is untouched this iteration), so in
+          ``output_mode="annotated"`` annotated tables carry ``check_info``
+          while residue CSVs still carry ``check_ids`` -- an accepted,
+          documented within-mode asymmetry.
 
         Args:
             checks: Optional check-name filter.
-            include_target: When ``True``, annotated entries gain a ``targets``
-                column (comma-separated deduplicated targets per failed row,
-                null for passing rows).
+            check_info: Preset controlling the ``check_info`` column contents
+                (``"names"`` / ``"summary"`` / ``"full"``).  When ``None`` the
+                config's ``annotated_check_info`` is used.
 
         Raises:
             ValueError: When a mergeable check's failed rows were truncated by
@@ -739,6 +789,7 @@ class ValidationResult:
                 annotated as passing.  Set ``max_failed_rows=-1`` or use
                 ``output_mode="failed_rows"``.
         """
+        preset = check_info if check_info is not None else self._config.annotated_check_info
         checks_set = set(checks) if checks else None
 
         # Step 1: existing consolidated failed-rows output (residue candidates).
@@ -778,30 +829,26 @@ class ValidationResult:
                     )
 
             if not eligible_failed:
-                annotated[schema_name] = self._with_null_marker(full_table, include_target=include_target)
+                annotated[schema_name] = self._with_null_marker(full_table)
                 continue
 
             tagged_failures: list[nw.DataFrame] = []
             for cr in eligible_failed:
                 rows = self._strip_metadata_cols(cr.failed_rows).unique()
-                additions = [nw.lit(cr.check_name).alias("check_id")]
-                if include_target:
-                    additions.append(nw.lit(get_field_label(cr)).alias("targets"))
-                tagged_failures.append(rows.with_columns(*additions))
+                item = self._check_info_item_json(cr, preset)
+                tagged_failures.append(rows.with_columns(nw.lit(item).alias("check_info_item")))
                 merged_check_names.add(cr.check_name)
 
-            # Collapse duplicate rows into comma-joined check_ids (and targets).
+            # Collapse duplicate rows into a JSON-array check_info column.
             union = pa.concat_tables([df.to_arrow() for df in tagged_failures], promote_options="default")
             consolidated = self._group_check_ids_by_row(nw.from_native(union, eager_only=True))
 
-            extra_cols = ("targets",) if include_target else ()
-            data_cols = [c for c in consolidated.columns if c not in ("check_ids", *extra_cols)]
+            data_cols = [c for c in consolidated.columns if c != "check_info"]
             annotated[schema_name] = self._annotate_full_table(
                 full_table,
                 consolidated,
                 data_cols,
                 schema_name=schema_name,
-                extra_cols=extra_cols,
             )
 
         # Step 3: residues = consolidated entries NOT fully subsumed by an
@@ -822,13 +869,11 @@ class ValidationResult:
         return df.drop(to_drop) if to_drop else df
 
     @staticmethod
-    def _with_null_marker(full_table: nw.DataFrame, *, include_target: bool) -> nw.DataFrame:
-        """Return *full_table* with all-null ``check_ids`` (and ``targets``)."""
+    def _with_null_marker(full_table: nw.DataFrame) -> nw.DataFrame:
+        """Return *full_table* with an all-null ``check_info`` column."""
         arrow_table = full_table.to_arrow()
         n = arrow_table.num_rows
-        arrow_table = arrow_table.append_column("check_ids", pa.array([None] * n, type=pa.string()))
-        if include_target:
-            arrow_table = arrow_table.append_column("targets", pa.array([None] * n, type=pa.string()))
+        arrow_table = arrow_table.append_column("check_info", pa.array([None] * n, type=pa.string()))
         return nw.from_native(arrow_table, eager_only=True)
 
     # Preferred column order for check results output.
@@ -924,6 +969,7 @@ class ValidationResult:
         include_check_definition: bool = False,
         include_contract_definition: bool = False,
         output_mode: OutputMode | None = None,
+        check_info: CheckInfoPreset | None = None,
     ) -> ValidationResult:
         mode = output_mode if output_mode is not None else self._config.output_mode
         if mode not in ("failed_rows", "annotated", "both"):
@@ -951,7 +997,7 @@ class ValidationResult:
                 saved_files.append(str(csv_path))
 
         if mode in ("annotated", "both"):
-            out = self.get_annotated_output(include_target=True)
+            out = self.get_annotated_output(check_info=check_info)
             for schema, df in out["annotated"].items():
                 safe_key = schema.replace(", ", "_").replace(" ", "_")
                 csv_path = output_path / f"{prefix}_{safe_key}_annotated.csv"
