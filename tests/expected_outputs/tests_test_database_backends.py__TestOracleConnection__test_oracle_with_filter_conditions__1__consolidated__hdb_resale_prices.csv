@@ -1,4 +1,6 @@
-month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_id,tables_in_query
+month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_ids,tables_in_query
+2017-01,ANG MO KIO,3 ROOM,211,ANG MO KIO AVE 3,01 TO 03,67,New Generation,,59 years 03 months,325000,"columns_must_be_not_null, lease_commence_date_required_check",hdb_resale_prices
+2017-01,ANG MO KIO,3 ROOM,330,ANG MO KIO AVE 1,07 TO 09,68,New Generation,,63 years,338000,"columns_must_be_not_null, lease_commence_date_required_check",hdb_resale_prices
 2017-01,ANG MO KIO,3 ROOM,447,ANG MO KIO AVE 10,04 TO 06,68,New Generation,1979,61 years 06 months,280000,hdb_resale_prices_duplicateValues,hdb_resale_prices
 2017-01,ANG MO KIO,3 ROOM,447,ANG MO KIO AVE 10,04 TO 06,68,New Generation,1979,61 years 06 months,285000,hdb_resale_prices_duplicateValues,hdb_resale_prices
 2017-01,BEDOK,3 ROOM,42,CHAI CHEE ST,01 TO 03,67,New Generation,1985,67 years 05 months,310000,hdb_resale_prices_duplicateValues,hdb_resale_prices
