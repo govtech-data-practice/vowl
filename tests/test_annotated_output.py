@@ -576,3 +576,101 @@ class TestDuckDBIntegration:
         # The failed NULL-bearing row is annotated end-to-end, not hidden.
         assert rows[2] == "email_not_null"
         assert rows[1] is None and rows[3] is None
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: generated unique / primaryKey / duplicateValues checks now merge
+# into the annotated table instead of falling to residues.
+# ---------------------------------------------------------------------------
+
+
+class TestGeneratedChecksMergeEndToEnd:
+    def _validate(self, monkeypatch, properties, table_quality, table):
+        import ibis
+
+        import vowl.contracts.contract as contract_module
+        from vowl.adapters.ibis_adapter import IbisAdapter
+        from vowl.contracts.models import get_latest_version
+        from vowl.validate import validate_data
+
+        monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+        contract = contract_module.Contract(
+            {
+                "apiVersion": get_latest_version(),
+                "kind": "DataContract",
+                "version": "1.0.0",
+                "id": "annotated-merge",
+                "status": "active",
+                "schema": [{"name": "people", "properties": properties, "quality": table_quality or []}],
+            }
+        )
+        con = ibis.duckdb.connect()
+        con.create_table("people", table)
+        result = validate_data(contract, adapters={"people": IbisAdapter(con)})
+        return result.get_annotated_output()
+
+    @staticmethod
+    def _residue_check_names(out) -> set[str]:
+        names: set[str] = set()
+        for df in out["residues"].values():
+            names |= ValidationResult._check_names_in_entry(df)
+        return names
+
+    def test_unique_check_merges_full_rows(self, monkeypatch: pytest.MonkeyPatch):
+        # email "a@x.com" appears 3 times -> 3 participating rows tagged.
+        table = pa.table({"id": [1, 2, 3, 4], "email": ["a@x.com", "a@x.com", "a@x.com", "b@y.com"]})
+        out = self._validate(
+            monkeypatch,
+            properties=[
+                {"name": "id", "logicalType": "integer"},
+                {"name": "email", "logicalType": "string", "unique": True},
+            ],
+            table_quality=[],
+            table=table,
+        )
+        annotated = out["annotated"]["people"]
+        # Same columns as the source table (full rows merged in).
+        assert set(annotated.columns) >= {"id", "email"}
+        rows = {r["id"]: r["check_ids"] for r in annotated.to_arrow().to_pylist()}
+        assert rows[1] and "email_unique_check" in rows[1]
+        assert rows[2] and rows[3]  # all three duplicate-group members tagged
+        assert rows[4] is None  # the unique value passes
+        # The unique check is NOT left in residues.
+        assert "email_unique_check" not in self._residue_check_names(out)
+
+    def test_primary_key_check_merges_nulls_and_dups(self, monkeypatch: pytest.MonkeyPatch):
+        table = pa.table({"pk": pa.array([1, 1, 2, None], type=pa.int64())})
+        out = self._validate(
+            monkeypatch,
+            properties=[{"name": "pk", "logicalType": "integer", "primaryKey": True}],
+            table_quality=[],
+            table=table,
+        )
+        annotated = out["annotated"]["people"]
+        marked = [r for r in annotated.to_arrow().to_pylist() if r["check_ids"]]
+        # Two duplicate "1" rows + one NULL row = 3 participating rows.
+        assert len(marked) == 3
+        assert "pk_primary_key_check" not in self._residue_check_names(out)
+
+    def test_duplicate_values_table_merges(self, monkeypatch: pytest.MonkeyPatch):
+        table = pa.table({"a": ["x", "x", "y"], "b": ["1", "1", "2"]})
+        out = self._validate(
+            monkeypatch,
+            properties=[
+                {"name": "a", "logicalType": "string"},
+                {"name": "b", "logicalType": "string"},
+            ],
+            table_quality=[
+                {
+                    "type": "library",
+                    "metric": "duplicateValues",
+                    "mustBe": 0,
+                    "arguments": {"properties": ["a", "b"]},
+                }
+            ],
+            table=table,
+        )
+        annotated = out["annotated"]["people"]
+        marked = [r for r in annotated.to_arrow().to_pylist() if r["check_ids"]]
+        # The two identical (x, 1) rows are the duplicate group.
+        assert len(marked) == 2

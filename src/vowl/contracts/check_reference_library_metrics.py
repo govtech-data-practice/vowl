@@ -7,7 +7,7 @@ executed through the standard SQL executor pipeline.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import sqlglot
 from sqlglot import exp
@@ -266,6 +266,11 @@ class DuplicateValuesColumnCheckReference(_LibraryColumnMetricBase):
         col = _col_ref(col_name)
         table = _table_ref(schema_name)
 
+        # Count *participating rows* (rows whose value belongs to a duplicate
+        # group) rather than duplicate groups, so the auto-derived failed-rows
+        # query is SELECT * FROM table WHERE <pred> -- full rows that merge into
+        # the annotated table.  Verdict unchanged: 0 groups <=> 0 rows.  The
+        # percent branch is preserved (and stays non-mergeable, as before).
         dup_subquery = (
             sqlglot.select(col)
             .from_(table)
@@ -274,7 +279,7 @@ class DuplicateValuesColumnCheckReference(_LibraryColumnMetricBase):
             .having(_count_star() > exp.Literal.number(1))
         )
 
-        core = sqlglot.select(_count_star()).from_(dup_subquery.subquery("_dup"))
+        core = sqlglot.select(_count_star()).from_(table).where(exp.In(this=col, query=dup_subquery.subquery()))
 
         self._cached_ast = _wrap_percent(core, table) if self._is_percent() else core
         return self._cached_ast
@@ -318,6 +323,24 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
 
 class RowCountCheckReference(_LibraryTableMetricBase):
     """``rowCount``: total number of rows in a table."""
+
+    @property
+    def supports_row_level_output(self) -> bool:
+        """``rowCount`` is a whole-table aggregate, not a per-row check.
+
+        Its query is a bare ``SELECT COUNT(*) FROM t`` with no failure
+        predicate, so ``COUNT`` measures table cardinality rather than a
+        count of failing rows.  Treat it like ``AVG``/``MAX``/``SUM``: it has
+        no meaningful row-level output, so it is never merged into the
+        annotated table (it falls to residues) and does not contribute to the
+        summary's ``failed_rows`` total.
+        """
+        return False
+
+    def compute_failed_rows_count(self, actual_value: Any) -> int:
+        """A failing ``rowCount`` has no failing *rows* (the count is the table
+        size, not a violation count), so report zero like other aggregates."""
+        return 0
 
     def get_check(self) -> DataQuality:
         return self._contract.resolve(self._path)
@@ -372,14 +395,51 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
             )
 
         table = _table_ref(schema_name)
-        cols = [_col_ref(name) for name in prop_names]
 
-        dup_subquery = sqlglot.select(*cols).from_(table)
-        for col in cols:
-            dup_subquery = dup_subquery.where(col.is_(exp.Null()).not_())
-        dup_subquery = dup_subquery.group_by(*cols).having(_count_star() > exp.Literal.number(1))
+        # Count *participating rows* (rows whose key-tuple belongs to a
+        # duplicate group) so the auto-derived failed-rows query is
+        # SELECT * FROM table WHERE EXISTS(...) -- full rows that merge into the
+        # annotated table.  A correlated EXISTS is used instead of a tuple-IN
+        # subquery because row-value IN-subqueries do not execute on SQL Server;
+        # EXISTS renders and runs portably across all supported dialects.  The
+        # inner table is aliased ``dup_src`` (no leading underscore, to avoid
+        # Oracle alias-quoting edge cases) and correlated back to the outer
+        # table.  NULL-exclusion per column preserves the original semantics.
+        inner_alias = "dup_src"
+        inner_table = exp.Table(
+            this=exp.to_identifier(schema_name, quoted=True),
+            alias=exp.TableAlias(this=exp.to_identifier(inner_alias, quoted=True)),
+        )
 
-        core = sqlglot.select(_count_star()).from_(dup_subquery.subquery("_dup"))
+        def _inner_col(name: str) -> exp.Column:
+            return exp.Column(
+                this=exp.to_identifier(name, quoted=True),
+                table=exp.to_identifier(inner_alias, quoted=True),
+            )
+
+        def _outer_col(name: str) -> exp.Column:
+            return exp.Column(
+                this=exp.to_identifier(name, quoted=True),
+                table=exp.to_identifier(schema_name, quoted=True),
+            )
+
+        conditions: list[exp.Expression] = []
+        for name in prop_names:
+            conditions.append(exp.EQ(this=_inner_col(name), expression=_outer_col(name)))
+            conditions.append(_inner_col(name).is_(exp.Null()).not_())
+        where = conditions[0]
+        for cond in conditions[1:]:
+            where = exp.And(this=where, expression=cond)
+
+        inner = (
+            sqlglot.select(exp.Literal.number(1))
+            .from_(inner_table)
+            .where(where)
+            .group_by(*[_inner_col(name) for name in prop_names])
+            .having(_count_star() > exp.Literal.number(1))
+        )
+
+        core = sqlglot.select(_count_star()).from_(table).where(exp.Exists(this=inner))
 
         self._cached_ast = _wrap_percent(core, table) if self._is_percent() else core
         return self._cached_ast

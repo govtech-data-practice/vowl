@@ -1,0 +1,13 @@
+month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_ids,tables_in_query
+2017-01,ANG MO KIO,3 ROOM,211,ANG MO KIO AVE 3,01 TO 03,67.0,New Generation,abc,59 years 03 months,325000.0,"Year, lease_commence_date_logical_type_check",hdb_resale_prices
+2017-01,ANG MO KIO,3 ROOM,219,ANG MO KIO AVE 1,07 TO 09,67.0,New Generation,1977.0,59 years 06 months,297000.0,Year,hdb_resale_prices
+2017-01,ANG MO KIO,3 ROOM,330,ANG MO KIO AVE 1,07 TO 09,68.0,New Generation,,63 years,338000.0,"Year, lease_commence_date_logical_type_check",hdb_resale_prices
+2017-01,ANG MO KIO,3 ROOM,447,ANG MO KIO AVE 10,04 TO 06,68.0,New Generation,1979,61 years 06 months,280000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,ANG MO KIO,3 ROOM,447,ANG MO KIO AVE 10,04 TO 06,68.0,New Generation,1979,61 years 06 months,285000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,BEDOK,3 ROOM,42,CHAI CHEE ST,01 TO 03,67.0,New Generation,1985,67 years 05 months,310000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,BEDOK,3 ROOM,42,CHAI CHEE ST,01 TO 03,82.0,New Generation,1985,67 years 05 months,360000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,BEDOK,3 ROOM,709,BEDOK RESERVOIR RD,07 TO 09,68.0,New Generation,1981,63 years 06 months,310000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,BEDOK,3 ROOM,709,BEDOK RESERVOIR RD,07 TO 09,68.0,New Generation,1981,63 years 06 months,313000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,BEDOK,3 ROOM,709,BEDOK RESERVOIR RD,07 TO 09,68.0,New Generation,1981,63 years 07 months,310000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,BEDOK,3 ROOM,75,BEDOK NTH RD,07 TO 09,59.0,Improved,1978,60 years,278000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices
+2017-01,BEDOK,3 ROOM,75,BEDOK NTH RD,07 TO 09,70.0,Improved,1978,60 years 01 month,312000.0,hdb_resale_prices_duplicateValues,hdb_resale_prices

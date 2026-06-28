@@ -482,6 +482,118 @@ class TestLibraryMetricVariations:
 
 
 # ===================================================================
+# Group D2 — duplicate/unique/PK checks are annotated-mergeable
+#
+# These count *participating rows* (not duplicate groups), so their scalar
+# query stays a single top-level COUNT(*) (aggregation_type == "count") and the
+# auto-derived failed-rows query is ``SELECT * FROM table WHERE <pred>`` --
+# full rows, identical columns to the source table, hence mergeable into the
+# annotated output rather than forced into residues.
+# ===================================================================
+
+
+class TestDuplicateUniquePkMergeable:
+    def _ref(self, monkeypatch, cls, *, properties, table_quality=None):
+        contract = _make_contract(monkeypatch, properties=properties, table_quality=table_quality)
+        refs = contract.get_check_references_by_schema()["items"]
+        matches = [r for r in refs if isinstance(r, cls)]
+        assert len(matches) == 1
+        return matches[0]
+
+    def test_unique_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._ref(
+            monkeypatch,
+            UniqueCheckReference,
+            properties=[{"name": "col_a", "logicalType": "string", "unique": True}],
+        )
+        assert ref.aggregation_type == "count"
+        assert ref.supports_row_level_output is True
+        failed = ref.get_failed_rows_query("duckdb")
+        assert failed.upper().startswith("SELECT *")
+
+    def test_primary_key_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._ref(
+            monkeypatch,
+            PrimaryKeyCheckReference,
+            properties=[{"name": "col_a", "logicalType": "string", "primaryKey": True}],
+        )
+        assert ref.aggregation_type == "count"
+        assert ref.supports_row_level_output is True
+        failed = ref.get_failed_rows_query("duckdb")
+        assert failed.upper().startswith("SELECT *")
+        # PK violations = NULL keys OR duplicate-group members.
+        assert "IS NULL" in failed.upper()
+
+    def test_duplicate_values_column_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._ref(
+            monkeypatch,
+            DuplicateValuesColumnCheckReference,
+            properties=[
+                {
+                    "name": "col_a",
+                    "logicalType": "string",
+                    "quality": [{"type": "library", "metric": "duplicateValues", "mustBe": 0}],
+                }
+            ],
+        )
+        assert ref.aggregation_type == "count"
+        assert ref.supports_row_level_output is True
+        assert ref.get_failed_rows_query("duckdb").upper().startswith("SELECT *")
+
+    def test_duplicate_values_table_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._ref(
+            monkeypatch,
+            DuplicateValuesTableCheckReference,
+            properties=[
+                {"name": "col_a", "logicalType": "string"},
+                {"name": "col_b", "logicalType": "string"},
+            ],
+            table_quality=[
+                {
+                    "type": "library",
+                    "metric": "duplicateValues",
+                    "mustBe": 0,
+                    "arguments": {"properties": ["col_a", "col_b"]},
+                }
+            ],
+        )
+        assert ref.aggregation_type == "count"
+        assert ref.supports_row_level_output is True
+        failed = ref.get_failed_rows_query("duckdb")
+        assert failed.upper().startswith("SELECT *")
+        # Multi-column duplicates use a correlated EXISTS (portable to SQL Server).
+        assert "EXISTS" in failed.upper()
+
+    def test_percent_duplicate_values_stays_non_row_level(self, monkeypatch: pytest.MonkeyPatch):
+        """The percent unit wraps the count in a ratio and remains non-mergeable."""
+        ref = self._ref(
+            monkeypatch,
+            DuplicateValuesColumnCheckReference,
+            properties=[
+                {
+                    "name": "col_a",
+                    "logicalType": "string",
+                    "quality": [{"type": "library", "metric": "duplicateValues", "mustBe": 0, "unit": "percent"}],
+                }
+            ],
+        )
+        assert ref.supports_row_level_output is False
+
+    def test_row_count_is_not_row_level(self, monkeypatch: pytest.MonkeyPatch):
+        """rowCount is a whole-table aggregate: no failure predicate, so it is
+        not mergeable into the annotated table and contributes no failing rows."""
+        ref = self._ref(
+            monkeypatch,
+            RowCountCheckReference,
+            properties=[{"name": "col_a", "logicalType": "string"}],
+            table_quality=[{"type": "library", "metric": "rowCount", "mustBeGreaterThan": 0}],
+        )
+        assert ref.supports_row_level_output is False
+        # A failing rowCount reports zero failing rows (count is table size, not violations).
+        assert ref.compute_failed_rows_count(1000) == 0
+
+
+# ===================================================================
 # Group E — Auto-generated attribute checks
 # ===================================================================
 
