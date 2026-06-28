@@ -357,12 +357,15 @@ def apply_filters(
             continue
 
         subquery_alias = table.alias_or_name
+        alias_node = table.args.get("alias")
+        original_ident = alias_node.this if alias_node else table.this
+        quoted = original_ident.args.get("quoted", False)
         inner_table = table.copy()
         inner_table.set("alias", None)
         inner_select = exp.Select(expressions=[exp.Star()]).from_(inner_table).where(filter_ast)
         subquery = exp.Subquery(
             this=inner_select,
-            alias=exp.TableAlias(this=exp.to_identifier(subquery_alias)),
+            alias=exp.TableAlias(this=exp.to_identifier(subquery_alias, quoted=quoted)),
         )
         table.replace(subquery)
 

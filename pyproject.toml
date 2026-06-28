@@ -75,6 +75,7 @@ dev = [
     "datamodel-code-generator>=0.53.0",
     "ibis-framework[mssql,mysql,oracle,postgres]>=11.0.0",
     "ipykernel>=7.1.0",
+    "matplotlib>=3.10.9",
     "polars>=1.39.2",
     "pyspark>=3.0.0",
     "pytest>=9.0.2",
