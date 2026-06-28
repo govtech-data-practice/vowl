@@ -282,14 +282,32 @@ class TestAnnotation:
 
 class TestMatchCountWarning:
     def test_warns_when_failed_row_unmatched(self, caplog):
-        # Failed row that does NOT exist in the full table -> count mismatch.
+        # Failed row that does NOT exist in the full table -> under-match: fewer
+        # rows flagged than distinct failures. This should never happen (failed
+        # rows are derived from the full table), so it warns as an internal bug.
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         failed = pa.table({"id": [99], "name": ["zzz"]})
         check = _make_check("c", "orders", failed_rows=failed)
         result = _make_result([check], {"orders": _FakeAdapter(full)})
         with caplog.at_level(logging.WARNING):
             result.get_annotated_output()
-        assert any("count mismatch" in r.message for r in caplog.records)
+        warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+        assert any("Unexpected problem" in m and "report" in m for m in warnings)
+
+    def test_overmatched_duplicate_rows_logs_debug_not_warning(self, caplog):
+        # Two byte-identical rows, one distinct failure -> over-match: both
+        # copies get flagged. Normal operation, so it is DEBUG (silent by
+        # default), never a warning.
+        full = pa.table({"id": [1, 1, 2], "name": ["a", "a", "b"]})
+        failed = pa.table({"id": [1], "name": ["a"]})
+        check = _make_check("c", "orders", failed_rows=failed)
+        result = _make_result([check], {"orders": _FakeAdapter(full)})
+        with caplog.at_level(logging.DEBUG):
+            result.get_annotated_output()
+        # Nothing at INFO or above (this is normal, expected operation).
+        assert not [r for r in caplog.records if r.levelno >= logging.INFO]
+        debugs = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+        assert any("duplicate rows" in m and "nothing was missed" in m for m in debugs)
 
 
 # ---------------------------------------------------------------------------

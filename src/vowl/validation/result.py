@@ -730,15 +730,42 @@ class ValidationResult:
 
         # Match-quality / NULL-join safety net (NOT a truncation guard): the
         # distinct annotated rows must equal the distinct failed rows fed in.
+        # A mismatch can go either way, and the two directions mean very
+        # different things, so report them separately and in plain language.
         distinct_failed = len(failed_map)
-        if annotated_rows != distinct_failed:
-            logger.warning(
-                "Annotated row count mismatch for schema %r: annotated %d distinct "
-                "row(s) but %d distinct failed row(s) were provided. Some failed "
-                "rows may not have matched a full-table row.",
+        if annotated_rows > distinct_failed:
+            # More rows flagged than distinct failures: the table contains
+            # duplicate rows, and a single failure matched all of its copies.
+            # This is normal, expected operation, so it is not surfaced by
+            # default. It is kept at DEBUG only as a breadcrumb explaining why
+            # the annotated flagged-row count exceeds the summary's
+            # failed_rows_count when duplicate rows are present.
+            logger.debug(
+                "Table %r contains duplicate rows, so the annotated table "
+                "flagged %d rows for %d unique failing rows. Every copy of a "
+                "failing row is flagged. This is expected; nothing was missed.",
                 schema_name,
                 annotated_rows,
                 distinct_failed,
+            )
+        elif annotated_rows < distinct_failed:
+            # Fewer rows flagged than distinct failures. Failed rows are derived
+            # FROM the full table, so by construction every failing value-tuple
+            # should exist in it. Under-matching means the matcher itself failed
+            # (e.g. NULL/type handling differing between the failed-rows and
+            # full-table export paths). This should not happen; treat it as an
+            # internal bug and ask the user to report it.
+            logger.warning(
+                "Unexpected problem while building the annotated table for %r: "
+                "%d unique failing rows were found but only %d could be matched "
+                "back to the full table, so %d failing row(s) are missing from "
+                "the annotated output. This should not happen. Please report "
+                "this as an issue (the failed-rows output still has the complete "
+                "list of failures).",
+                schema_name,
+                distinct_failed,
+                annotated_rows,
+                distinct_failed - annotated_rows,
             )
 
         result = full_arrow
@@ -767,17 +794,22 @@ class ValidationResult:
           ``check_info`` column holds a JSON array of objects per failing row,
           shaped by the ``check_info`` preset (see :data:`CheckInfoPreset`);
           passing rows are ``null``.
-        - ``"residues"`` -- **one entry per non-mergeable check** (cross-table,
-          aggregation, column-subset, or any check on a schema with no
-          adapter).  Keyed by ``"<schema>::<check_name>"``.  Empty dict when
-          there are none.  Residues are **per-check, not grouped across
-          checks**: a check whose failed rows were annotated onto a full table
-          never reappears here, and two non-mergeable checks are never folded
-          into one entry even when they share a table and column set.  Each
-          residue carries a ``check_ids`` column (holding just that check's
-          name) and ``tables_in_query``, so in ``output_mode="annotated"``
-          annotated tables carry ``check_info`` while residues carry
-          ``check_ids`` -- an accepted, documented within-mode asymmetry.
+        - ``"residues"`` -- **one entry per non-mergeable check that still has
+          offending rows to emit** (cross-table, column-subset, or any check on
+          a schema with no adapter).  Keyed by ``"<schema>::<check_name>"``.
+          Empty dict when there are none.  A non-mergeable check with *no* rows
+          to emit -- a scalar aggregation (``AVG``/``SUM``/``MIN``/``MAX``,
+          ``rowCount``) or an errored check -- produces **no residue**; its
+          failure is recorded only in the summary, not in any CSV (see the
+          ``len(cr.failed_rows) == 0`` skip in step 2).  Residues are
+          **per-check, not grouped across checks**: a check whose failed rows
+          were annotated onto a full table never reappears here, and two
+          non-mergeable checks are never folded into one entry even when they
+          share a table and column set.  Each residue carries a ``check_ids``
+          column (holding just that check's name) and ``tables_in_query``, so
+          in ``output_mode="annotated"`` annotated tables carry ``check_info``
+          while residues carry ``check_ids`` -- an accepted, documented
+          within-mode asymmetry.
 
           (The standalone ``failed_rows``/``both`` CSVs still come from the
           grouped :meth:`get_consolidated_output_dfs` and are unchanged; only
