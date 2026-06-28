@@ -482,6 +482,127 @@ class TestLibraryMetricVariations:
 
 
 # ===================================================================
+# Group C2 — percent-unit metrics produce VALID SQL
+#
+# Regression guard: ``_wrap_percent`` once attached table aliases
+# (``AS _cnt`` / ``AS _tot``) to scalar subqueries used in an arithmetic
+# expression, which is invalid SQL in every dialect -- DuckDB raised
+# ``syntax error at or near "AS"`` and sqlglot could not even re-parse its
+# own output, so every percent check came back as ERROR instead of a real
+# verdict.  The string-only assertions above (``"100" in query``) did not
+# catch this.  These tests re-parse the rendered SQL so a malformed wrap
+# fails loudly and dialect-independently, without needing a live backend.
+# ===================================================================
+
+
+class TestPercentMetricsValidSql:
+    """Every percent-unit metric must render SQL that round-trips through sqlglot."""
+
+    def _percent_query(self, monkeypatch, *, properties=None, table_quality=None, cls):
+        contract = _make_contract(monkeypatch, properties=properties, table_quality=table_quality)
+        refs = contract.get_check_references_by_schema()["items"]
+        matches = [r for r in refs if isinstance(r, cls)]
+        assert len(matches) == 1
+        return matches[0].get_query("duckdb")
+
+    @staticmethod
+    def _assert_valid_sql(query: str) -> None:
+        import sqlglot
+
+        assert "100" in query  # the percentage wrapping is present...
+        # ...and the wrapped query is actually valid SQL (re-parses cleanly).
+        sqlglot.parse_one(query, dialect="duckdb")
+
+    def test_null_values_percent_sql_valid(self, monkeypatch: pytest.MonkeyPatch):
+        query = self._percent_query(
+            monkeypatch,
+            cls=NullValuesCheckReference,
+            properties=[
+                {
+                    "name": "col_a",
+                    "logicalType": "string",
+                    "quality": [{"type": "library", "metric": "nullValues", "mustBe": 0, "unit": "percent"}],
+                }
+            ],
+        )
+        self._assert_valid_sql(query)
+
+    def test_missing_values_percent_sql_valid(self, monkeypatch: pytest.MonkeyPatch):
+        query = self._percent_query(
+            monkeypatch,
+            cls=MissingValuesCheckReference,
+            properties=[
+                {
+                    "name": "col_a",
+                    "logicalType": "string",
+                    "quality": [
+                        {
+                            "type": "library",
+                            "metric": "missingValues",
+                            "mustBe": 0,
+                            "unit": "percent",
+                            "arguments": {"missingValues": ["N/A", None]},
+                        }
+                    ],
+                }
+            ],
+        )
+        self._assert_valid_sql(query)
+
+    def test_invalid_values_percent_sql_valid(self, monkeypatch: pytest.MonkeyPatch):
+        query = self._percent_query(
+            monkeypatch,
+            cls=InvalidValuesCheckReference,
+            properties=[
+                {
+                    "name": "col_a",
+                    "logicalType": "string",
+                    "quality": [
+                        {
+                            "type": "library",
+                            "metric": "invalidValues",
+                            "mustBe": 0,
+                            "unit": "percent",
+                            "arguments": {"validValues": ["A", "B"]},
+                        }
+                    ],
+                }
+            ],
+        )
+        self._assert_valid_sql(query)
+
+    def test_duplicate_values_column_percent_sql_valid(self, monkeypatch: pytest.MonkeyPatch):
+        query = self._percent_query(
+            monkeypatch,
+            cls=DuplicateValuesColumnCheckReference,
+            properties=[
+                {
+                    "name": "col_a",
+                    "logicalType": "string",
+                    "quality": [{"type": "library", "metric": "duplicateValues", "mustBe": 0, "unit": "percent"}],
+                }
+            ],
+        )
+        self._assert_valid_sql(query)
+
+    def test_duplicate_values_table_percent_sql_valid(self, monkeypatch: pytest.MonkeyPatch):
+        query = self._percent_query(
+            monkeypatch,
+            cls=DuplicateValuesTableCheckReference,
+            table_quality=[
+                {
+                    "type": "library",
+                    "metric": "duplicateValues",
+                    "mustBe": 0,
+                    "unit": "percent",
+                    "arguments": {"properties": ["col_a"]},
+                }
+            ],
+        )
+        self._assert_valid_sql(query)
+
+
+# ===================================================================
 # Group D2 — duplicate/unique/PK checks are annotated-mergeable
 #
 # These count *participating rows* (not duplicate groups), so their scalar

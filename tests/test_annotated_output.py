@@ -885,3 +885,93 @@ class TestGeneratedChecksMergeEndToEnd:
         marked = [r for r in annotated.to_arrow().to_pylist() if r["check_info"]]
         # The two identical (x, 1) rows are the duplicate group.
         assert len(marked) == 2
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: percent-unit library checks execute and FAIL with a ratio.
+#
+# Regression for the malformed ``_wrap_percent`` SQL (aliased scalar
+# subqueries) that made every percent check ERROR before it could run.  These
+# go through the full validate_data pipeline against a real DuckDB so a broken
+# wrap surfaces as an ERROR status here.  Percent checks are scalar verdicts:
+# they stay non-mergeable and produce no annotated rows / residues -- the point
+# is that they now reach a real FAILED verdict with the correct ratio.
+# ---------------------------------------------------------------------------
+
+
+class TestPercentChecksExecuteEndToEnd:
+    def _validate(self, monkeypatch, properties, table_quality, table):
+        import ibis
+
+        import vowl.contracts.contract as contract_module
+        from vowl.adapters.ibis_adapter import IbisAdapter
+        from vowl.contracts.models import get_latest_version
+        from vowl.validate import validate_data
+
+        monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+        contract = contract_module.Contract(
+            {
+                "apiVersion": get_latest_version(),
+                "kind": "DataContract",
+                "version": "1.0.0",
+                "id": "percent-e2e",
+                "status": "active",
+                "schema": [{"name": "people", "properties": properties, "quality": table_quality or []}],
+            }
+        )
+        con = ibis.duckdb.connect()
+        con.create_table("people", table)
+        return validate_data(contract, adapters={"people": IbisAdapter(con)})
+
+    @staticmethod
+    def _check(result, name):
+        matches = [cr for cr in result.check_results if cr.check_name == name]
+        assert len(matches) == 1, f"expected one {name!r} check, got {len(matches)}"
+        return matches[0]
+
+    def test_null_values_percent_fails_with_ratio(self, monkeypatch: pytest.MonkeyPatch):
+        # 1 NULL of 4 rows -> 25% null, mustBe 0 -> FAILED (not ERROR).
+        table = pa.table({"id": [1, 2, 3, 4], "email": ["a@x.com", "a@x.com", None, "b@y.com"]})
+        result = self._validate(
+            monkeypatch,
+            properties=[
+                {"name": "id", "logicalType": "integer"},
+                {
+                    "name": "email",
+                    "logicalType": "string",
+                    "quality": [
+                        {"type": "library", "metric": "nullValues", "mustBe": 0, "unit": "percent", "name": "null_pct"}
+                    ],
+                },
+            ],
+            table_quality=[],
+            table=table,
+        )
+        cr = self._check(result, "null_pct")
+        assert cr.status == "FAILED"
+        assert float(cr.actual_value) == 25.0
+
+    def test_duplicate_values_table_percent_fails_with_ratio(self, monkeypatch: pytest.MonkeyPatch):
+        # email "a@x.com" duplicated: 2 of 4 rows participate -> 50%.
+        table = pa.table({"id": [1, 2, 3, 4], "email": ["a@x.com", "a@x.com", None, "b@y.com"]})
+        result = self._validate(
+            monkeypatch,
+            properties=[
+                {"name": "id", "logicalType": "integer"},
+                {"name": "email", "logicalType": "string"},
+            ],
+            table_quality=[
+                {
+                    "type": "library",
+                    "metric": "duplicateValues",
+                    "mustBe": 0,
+                    "unit": "percent",
+                    "arguments": {"properties": ["email"]},
+                    "name": "dup_pct",
+                }
+            ],
+            table=table,
+        )
+        cr = self._check(result, "dup_pct")
+        assert cr.status == "FAILED"
+        assert float(cr.actual_value) == 50.0
