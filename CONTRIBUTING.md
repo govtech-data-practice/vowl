@@ -90,7 +90,7 @@ make test
 Format code:
 
 ```bash
-make format
+make format-fix
 ```
 
 Run lint checks:
