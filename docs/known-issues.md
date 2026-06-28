@@ -98,8 +98,10 @@ vowl materialises tables via Arrow instead of using DuckDB ATTACH for these reas
 ```python
 output = result.get_annotated_output()
 output["annotated"]   # {schema: full table + check_info}     <- mergeable checks
-output["residues"]    # {"<schema>::<check>": failed rows + check_ids + tables_in_query}  <- everything else
+output["residues"]    # {"<schema>::<check>": failed rows + check_ids + tables_in_query}  <- non-mergeable checks that still have offending rows
 ```
+
+Note that `residues` only holds non-mergeable checks that **still produce offending rows** (cross-table and column-subset checks). A non-mergeable check with no rows to emit (a scalar aggregation like `AVG`/`SUM`/`MIN`/`MAX`, `rowCount`, or an errored check) appears in neither dict; its verdict is recorded only in `summary.json`.
 
 The `check_info` column holds a JSON array of objects (one per failing check), shaped by the `check_info` preset (`"names"` default, `"summary"`, `"full"`). Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows and a single-name `check_ids` column (not `check_info`). Two non-mergeable checks are never grouped into one entry, and a check that was annotated onto a full table never reappears as a residue. So in `output_mode="annotated"` annotated tables carry `check_info` while residues carry `check_ids`.
 
@@ -126,7 +128,18 @@ This split is by design. A check can only be merged into the annotated table whe
 3. **It produces row-level results** (aggregation type is `count` or `none`). Checks that return a single number (like `mean` or `maximum`) can't point to specific rows.
 4. **Its failed rows have the same columns as the full table.** If a check only selects a few columns, we can't match results back to full rows.
 
-When any condition fails, the check becomes a **residue** (returned separately). The three common cases:
+When a condition fails, the check is not merged onto the annotated table. What happens next depends on _why_ it failed to merge:
+
+- **It still has offending rows** (conditions 2 or 4, i.e. cross-table or column-subset checks) → those rows are emitted as a **residue** (returned separately), keyed `"<schema>::<check_name>"`.
+- **It has no offending rows to emit** (condition 3, i.e. a scalar aggregation like `AVG`/`SUM`/`MIN`/`MAX`, or an errored check) → there is **nothing to put in a residue either**. The failure appears only in `summary.json` (status, `actual_value`, `expected_value`). It is **not** written to any CSV.
+
+> **Heads-up: a failed scalar aggregation has no CSV footprint in `annotated` mode.**
+> It tags no rows in the annotated table (its `check_info` stays `null`) and produces no
+> residue file, so the only record of the failure is `summary.json`. Always consult the
+> summary for the authoritative pass/fail verdict; the annotated CSVs alone do not surface
+> scalar-aggregation or errored-check failures.
+
+The common cases:
 
 ### 1. Cross-table checks (fails condition 2)
 
@@ -152,7 +165,7 @@ The query result might look like:
 
 This tells us 3 payroll rows have missing employee IDs, but the failure belongs to the _relationship_ between the two tables — there's no single table to annotate it onto. It goes to `residues` keyed by `"demo_employee_payroll::employee_id_exists_in_master_list"` (the check's home schema and name).
 
-### 2. Aggregation checks (fails condition 3)
+### 2. Scalar-aggregation checks (fails condition 3): no residue at all
 
 Checks that produce a single number (e.g. `AVG`, `MAX`, `SUM`) can't point to specific rows.
 
@@ -174,9 +187,9 @@ The query result is just one number:
 | --------- |
 | 483333.33 |
 
-There are no individual rows to flag — the result is a single scalar, so it can't be annotated onto the full table. It becomes a residue.
+There are no individual rows to flag: the result is a single scalar, so it can't be annotated onto the full table. Crucially, there are also no rows to put in a residue: a residue holds _offending rows_, and a scalar verdict has none. So unlike the cross-table and column-subset cases below, a failed scalar aggregation produces **neither an annotated tag nor a residue file**; the failure lives only in `summary.json`.
 
-Note: `rowCount` is an aggregate too. Its query is a bare `SELECT COUNT(*) FROM t` with no failure predicate, so the count measures table cardinality rather than a number of failing rows — there is no per-row failure to annotate. It is treated as non-row-level (fails condition 3) and goes to residues like `AVG`/`MAX`/`SUM`.
+Note: `rowCount` is an aggregate too. Its query is a bare `SELECT COUNT(*) FROM t` with no failure predicate, so the count measures table cardinality rather than a number of failing rows; there is no per-row failure to annotate. Like `AVG`/`MAX`/`SUM`, it is non-row-level (fails condition 3) and produces no residue; its verdict is summary-only.
 
 ### 3. Column-subset checks (fails condition 4)
 
@@ -227,7 +240,8 @@ If you rely solely on annotated output, always check `residues` for non-mergeabl
 - **Annotated entries exist even when nothing failed.** Every schema with an available adapter gets an annotated table — the `check_info` column is just all null.
 - **Missing adapter?** If a schema's adapter is unavailable, that schema is skipped (with a warning) and its failures appear only as residues.
 - **`max_failed_rows` raises an error for annotated output.** If you cap failed rows (`max_failed_rows >= 0`) and a mergeable check gets truncated, `get_annotated_output()` raises `ValueError` rather than silently treating un-fetched failures as passing. Use `max_failed_rows=-1` (the default) or switch to `output_mode="failed_rows"`.
-- **Duplicate rows may be over-flagged.** Matching is value-based. If two rows are byte-identical and one failed, both get annotated (the safe direction — false positives, not false negatives). A row-id-based matcher is planned.
+
+- **Identical rows are all flagged.** Rows are matched by their values. If two rows are exactly the same and one fails a check, the other will fail it too, so both are flagged. This is correct. It does mean you may see more flagged rows in the annotated table than the failure count in the summary, which only counts unique failing rows.
 
 ---
 
