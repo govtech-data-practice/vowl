@@ -640,6 +640,31 @@ class ValidationResult:
         """Collapse already-JSON-encoded items (ordered, deduped) into a JSON array."""
         return "[" + ", ".join(items) + "]"
 
+    def _build_residue_with_check_info(
+        self,
+        cr: CheckResult,
+        preset: CheckInfoPreset,
+        tables_str: str,
+    ) -> nw.DataFrame:
+        """Build a per-check residue: deduped failed rows + ``check_info`` + ``tables_in_query``.
+
+        Residues are per-check, so ``check_info`` is a single-element JSON array
+        shaped by *preset* -- the same shape the annotated table uses.  Emitting
+        ``check_info`` here (rather than the legacy ``check_ids``) keeps every
+        file produced in ``output_mode="annotated"`` uniform: annotated tables
+        and residues are read the same way.  ``tables_in_query`` is retained
+        because residues are non-mergeable (often cross-table) and the source
+        tables are useful context.
+        """
+        rows = self._strip_metadata_cols(cr.failed_rows).unique()
+        check_info = self._join_check_info_items([self._check_info_item_json(cr, preset)])
+        n = len(rows)
+        arrow_table = rows.to_arrow()
+        arrow_table = arrow_table.append_column(
+            "check_info", pa.array([check_info] * n, type=pa.string())
+        ).append_column("tables_in_query", pa.array([tables_str] * n, type=pa.string()))
+        return nw.from_native(arrow_table, eager_only=True)
+
     @classmethod
     def _group_check_ids_by_row(cls, combined: nw.DataFrame) -> nw.DataFrame:
         """Group identical data rows, collapsing per-row ``check_info_item``
@@ -672,17 +697,27 @@ class ValidationResult:
 
     @staticmethod
     def _check_names_in_entry(df: nw.DataFrame) -> set[str]:
-        """Parse the distinct check names from an entry's ``check_ids`` column.
+        """Parse the distinct check names from an entry's marker column.
 
-        Assumes check names contain no commas -- they are identifiers, so this
-        holds.  If that ever changes, ``check_ids`` needs a different delimiter.
+        Reads the ``check_info`` JSON-array column emitted by annotated tables
+        and per-check residues (``item["check_name"]`` per element).  Falls back
+        to the legacy comma-joined ``check_ids`` column for entries produced by
+        the untouched consolidated/failed-rows path.
         """
-        if "check_ids" not in df.columns:
-            return set()
         names: set[str] = set()
-        for cell in df["check_ids"].to_list():
-            if cell:
-                names.update(p.strip() for p in cell.split(",") if p.strip())
+        if "check_info" in df.columns:
+            for cell in df["check_info"].to_list():
+                if not cell:
+                    continue
+                for item in json.loads(cell):
+                    name = item.get("check_name") if isinstance(item, dict) else None
+                    if name:
+                        names.add(name)
+            return names
+        if "check_ids" in df.columns:
+            for cell in df["check_ids"].to_list():
+                if cell:
+                    names.update(p.strip() for p in cell.split(",") if p.strip())
         return names
 
     @staticmethod
@@ -785,7 +820,7 @@ class ValidationResult:
 
             {
                 "annotated": {<schema>: <full table + check_info>, ...},
-                "residues":  {<key>: <failed rows + check_ids + tables_in_query>, ...},
+                "residues":  {<key>: <failed rows + check_info + tables_in_query>, ...},
             }
 
         - ``"annotated"`` -- one entry per schema with an available adapter,
@@ -805,15 +840,16 @@ class ValidationResult:
           **per-check, not grouped across checks**: a check whose failed rows
           were annotated onto a full table never reappears here, and two
           non-mergeable checks are never folded into one entry even when they
-          share a table and column set.  Each residue carries a ``check_ids``
-          column (holding just that check's name) and ``tables_in_query``, so
-          in ``output_mode="annotated"`` annotated tables carry ``check_info``
-          while residues carry ``check_ids`` -- an accepted, documented
-          within-mode asymmetry.
+          share a table and column set.  Each residue carries a ``check_info``
+          column (a single-element JSON array shaped by the same ``check_info``
+          preset as the annotated tables) plus ``tables_in_query``, so every
+          file produced in ``output_mode="annotated"`` -- annotated tables and
+          residues alike -- is read the same way.
 
           (The standalone ``failed_rows``/``both`` CSVs still come from the
-          grouped :meth:`get_consolidated_output_dfs` and are unchanged; only
-          annotated-mode residues are per-check.)
+          grouped :meth:`get_consolidated_output_dfs`, which is unchanged and
+          keeps its legacy comma-joined ``check_ids`` column; only annotated
+          output uses ``check_info``.)
 
         Args:
             checks: Optional check-name filter.
@@ -892,7 +928,8 @@ class ValidationResult:
         # an annotated table. Per-check (never grouped across checks), so a
         # merged check can never reappear and two non-mergeable checks are never
         # folded together. Each entry is row-deduped within its own check and
-        # carries the legacy single-name check_ids + tables_in_query columns.
+        # carries the same check_info column as the annotated tables (a
+        # single-element JSON array) plus tables_in_query.
         residues: dict[str, nw.DataFrame] = {}
         for cr in self.check_results:
             if cr.status != "FAILED":
@@ -906,8 +943,7 @@ class ValidationResult:
 
             tables = get_tables_in_query(cr)
             tables_str = ", ".join(sorted(tables)) if tables else ""
-            tagged = self._append_output_metadata(cr.failed_rows, cr.check_name, tables_str)
-            residues[self._output_key(cr)] = self._consolidate_grouped_output(tagged)
+            residues[self._output_key(cr)] = self._build_residue_with_check_info(cr, preset, tables_str)
 
         return {"annotated": annotated, "residues": residues}
 

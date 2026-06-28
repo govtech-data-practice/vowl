@@ -719,9 +719,10 @@ class TestSaveModes:
 
         return pacsv.read_csv(str(path))
 
-    def test_annotated_csv_has_check_info_residue_keeps_check_ids(self, tmp_path):
+    def test_annotated_csv_and_residue_both_use_check_info(self, tmp_path):
         # A cross-table (residue) check + a mergeable check, in annotated mode:
-        # the annotated CSV carries check_info; the residue CSV keeps check_ids.
+        # both the annotated CSV and the residue CSV carry check_info (uniform),
+        # never the legacy check_ids.
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         mergeable = _make_check(
             "row_check",
@@ -742,14 +743,21 @@ class TestSaveModes:
         assert "check_info" in annotated_cols
         assert "check_ids" not in annotated_cols
 
-        # Residue CSV is per-check (keyed "<schema>::<check>") and keeps the
-        # legacy check_ids column. The mergeable check is NOT written as a residue.
+        # Residue CSV is per-check (keyed "<schema>::<check>") and carries the
+        # same check_info column (a single-element JSON array) plus
+        # tables_in_query. The mergeable check is NOT written as a residue.
         residue_csv = tmp_path / "r_orders_join_check_residue.csv"
         assert residue_csv.exists()
         assert not (tmp_path / "r_orders_row_check_residue.csv").exists()
-        residue_cols = self._read_csv(residue_csv).column_names
-        assert "check_ids" in residue_cols
-        assert "check_info" not in residue_cols
+        residue_table = self._read_csv(residue_csv)
+        residue_cols = residue_table.column_names
+        assert "check_info" in residue_cols
+        assert "tables_in_query" in residue_cols
+        assert "check_ids" not in residue_cols
+        # The check_info cell parses as a JSON array carrying the check name.
+        cell = residue_table.column("check_info")[0].as_py()
+        parsed = json.loads(cell)
+        assert [item["check_name"] for item in parsed] == ["join_check"]
 
     def test_failed_rows_csv_unchanged_legacy_check_ids(self, tmp_path):
         # failed_rows / both modes: standalone CSVs still emit legacy check_ids.

@@ -98,12 +98,12 @@ vowl materialises tables via Arrow instead of using DuckDB ATTACH for these reas
 ```python
 output = result.get_annotated_output()
 output["annotated"]   # {schema: full table + check_info}     <- mergeable checks
-output["residues"]    # {"<schema>::<check>": failed rows + check_ids + tables_in_query}  <- non-mergeable checks that still have offending rows
+output["residues"]    # {"<schema>::<check>": failed rows + check_info + tables_in_query}  <- non-mergeable checks that still have offending rows
 ```
 
 Note that `residues` only holds non-mergeable checks that **still produce offending rows** (cross-table and column-subset checks). A non-mergeable check with no rows to emit (a scalar aggregation like `AVG`/`SUM`/`MIN`/`MAX`, `rowCount`, or an errored check) appears in neither dict; its verdict is recorded only in `summary.json`.
 
-The `check_info` column holds a JSON array of objects (one per failing check), shaped by the `check_info` preset (`"names"` default, `"summary"`, `"full"`). Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows and a single-name `check_ids` column (not `check_info`). Two non-mergeable checks are never grouped into one entry, and a check that was annotated onto a full table never reappears as a residue. So in `output_mode="annotated"` annotated tables carry `check_info` while residues carry `check_ids`.
+The `check_info` column holds a JSON array of objects (one per failing check), shaped by the `check_info` preset (`"names"` default, `"summary"`, `"full"`). Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the **same `check_info` column** the annotated tables use (a single-element JSON array) and `tables_in_query`. Two non-mergeable checks are never grouped into one entry, and a check that was annotated onto a full table never reappears as a residue. So everything `get_annotated_output()` returns — annotated tables and residues alike — is read the same way. (The standalone `failed_rows`/`both` CSVs come from a separate, unchanged path and keep their legacy comma-joined `check_ids` column.)
 
 For example, suppose your full table `hdb_resale_prices` looks like this:
 
@@ -230,7 +230,7 @@ This tells us a town has an outlier, but the result only has 1 column. The full 
 
 `get_consolidated_output_dfs()` (used by `output_mode="failed_rows"`/`"both"`) **groups** failed rows by `(tables_in_query, column_set)`, deduplicating identical rows and comma-joining the check names that hit them — cross-table failures included, keyed by composite table name (e.g. `"table_a, table_b"`).
 
-`get_annotated_output()`'s `residues` instead emit **one entry per non-mergeable check**, keyed `"<schema>::<check_name>"`, never grouped across checks. So the same non-mergeable failure looks different between the two: grouped (possibly multi-check) rows in the failed-rows CSVs, vs. a single-check entry under annotated residues.
+`get_annotated_output()`'s `residues` instead emit **one entry per non-mergeable check**, keyed `"<schema>::<check_name>"`, never grouped across checks. So the same non-mergeable failure looks different between the two: grouped (possibly multi-check) rows with a comma-joined `check_ids` column in the failed-rows CSVs, vs. a single-check entry with a `check_info` JSON-array column under annotated residues.
 
 If you rely solely on annotated output, always check `residues` for non-mergeable failures.
 

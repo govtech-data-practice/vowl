@@ -11,7 +11,7 @@ from typing import Literal
 #: not independent toggles, which is why this is an enum rather than a boolean:
 #:
 #: - ``"failed_rows"``  -- existing consolidated failed-rows CSVs (default).
-#: - ``"annotated"``    -- full in-scope tables with a ``check_ids`` column
+#: - ``"annotated"``    -- full in-scope tables with a ``check_info`` column
 #:                          plus residues; no standalone failed-rows CSVs.
 #: - ``"both"``         -- failed-rows CSVs *and* annotated tables.
 OutputMode = Literal["failed_rows", "annotated", "both"]

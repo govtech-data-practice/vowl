@@ -36,7 +36,7 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 
 **Part 3 · Usage Patterns**
 
-- _Common sources_ — [Local DataFrame](#local-dataframe-pandaspolars) · [PySpark](#pyspark) · [Ibis (20+ backends)](#ibis-connections-20-backends)
+- _Common sources_ — [Local DataFrame](#local-dataframe-pandaspolars) · [PySpark](#pyspark) · [Ibis (20+ backends)](#ibis-connections-20-backends) · [Concurrent Checks](#concurrent-checks-pooledadapter)
 - _Filtering & cross-source_ — [Filter Conditions](#explicit-adapter-with-filter-conditions) · [Multi-Source](#multi-source-validation) · [Compatibility Mode](#compatibility-mode-duckdb-attach)
 - _Advanced & extending_ — [Servers in Contract](#using-servers-defined-in-data-contract) · [Custom Adapters](#custom-adapters-and-executors) · [Remote Contracts (Git/S3)](#loading-contracts-from-remote-sources-gits3)
 
@@ -505,7 +505,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 It returns a nested dict with two reserved keys:
 
 - **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and use a `check_ids` column rather than `check_info` — so in `output_mode="annotated"` the annotated tables carry `check_info` while residues carry `check_ids`.
+- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way.
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -568,7 +568,7 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead. Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus a single-name `check_ids` column and `tables_in_query`:
+When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead. Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
@@ -582,7 +582,7 @@ print("Residue keys:", list(output["residues"].keys()))
 for key, residue in output["residues"].items():
     df = residue.to_pandas()
     print(f"\nResidue '{key}': {len(df)} failed row(s)")
-    print(df[["employee_id", "payroll_id", "month", "check_ids", "tables_in_query"]])
+    print(df[["employee_id", "payroll_id", "month", "check_info", "tables_in_query"]])
 ```
 
 Residue keys: `['demo_employee_payroll::employee_id_exists_in_master_list', 'demo_employee_payroll::phone_number_exists_in_master_list']`
@@ -591,16 +591,16 @@ Each non-mergeable check gets its own entry — they are never grouped together,
 
 Residue `'demo_employee_payroll::employee_id_exists_in_master_list'`: 1 failed row(s)
 
-|     | employee_id | payroll_id                           | month   | check_ids                         | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | --------------------------------- | ----------------------------------------- |
-| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | employee_id_exists_in_master_list | demo_employee_list, demo_employee_payroll |
+|     | employee_id | payroll_id                           | month   | check_info                                            | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | ----------------------------------------------------- | ----------------------------------------- |
+| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "employee_id_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
 
 Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed row(s)
 
-|     | employee_id | payroll_id                           | month   | check_ids                          | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | ---------------------------------- | ----------------------------------------- |
-| 0   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
-| 1   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
+|     | employee_id | payroll_id                           | month   | check_info                                             | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | ------------------------------------------------------ | ----------------------------------------- |
+| 0   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
+| 1   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
 
 </details>
 
@@ -766,6 +766,33 @@ validation; it runs read-only `SELECT` queries against the active database on
 the existing connection. If you need to avoid relying on the connection's
 default database, use qualified table names such as `my_db.my_table` in your
 contract queries.
+
+### Concurrent Checks (`PooledAdapter`)
+
+When a contract has many independent checks and the backend can serve several
+queries at once, run them concurrently by wrapping a connection *factory* in a
+`PooledAdapter`. It keeps a thread-safe pool of connections (one per worker) and
+dispatches checks across them; the verdicts are identical to a sequential run.
+
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter, PooledAdapter, MultiSourceAdapter
+
+# factory: returns a fresh adapter (new connection) on each call. Called once
+# per pooled connection, so the table must be available on every connection.
+def make_adapter():
+    con = ibis.duckdb.connect("my_db.duckdb")
+    return IbisAdapter(con)
+
+pooled = PooledAdapter(factory=make_adapter, max_concurrency=4)
+
+# PooledAdapter is a connection pool, so wire it in via MultiSourceAdapter
+# (keyed by schema name) and pass it through adapters=.
+multi = MultiSourceAdapter({"my_table": pooled})
+result = validate_data("contract.yaml", adapters=multi)
+result.display_full_report()
+```
 
 ## Filtering & cross-source
 
