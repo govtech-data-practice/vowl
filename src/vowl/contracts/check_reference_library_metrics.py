@@ -40,17 +40,25 @@ def _count_star() -> exp.Count:
 
 
 def _wrap_percent(core_ast: exp.Expression, table: exp.Table) -> exp.Expression:
-    """Wrap a count query to return ``(count * 100.0) / NULLIF(total, 0)``."""
+    """Wrap a count query to return ``(count * 100.0) / NULLIF(total, 0)``.
+
+    The two count queries are used as *scalar* subqueries inside an arithmetic
+    expression, so they must be emitted **without** a table alias.  Aliasing
+    them (e.g. ``.subquery("_cnt")``) produces ``(SELECT ...) AS _cnt`` in
+    expression position, which is invalid SQL: it fails to parse in every
+    dialect (DuckDB raises ``syntax error at or near "AS"``) and even sqlglot
+    cannot round-trip it.  Pass no alias.
+    """
     total = sqlglot.select(_count_star()).from_(table)
     return sqlglot.select(
         exp.Div(
             this=exp.Mul(
-                this=exp.Paren(this=core_ast.subquery("_cnt")),
+                this=exp.Paren(this=core_ast.subquery()),
                 expression=exp.Literal.number(100.0),
             ),
             expression=exp.Anonymous(
                 this="NULLIF",
-                expressions=[total.subquery("_tot"), exp.Literal.number(0)],
+                expressions=[total.subquery(), exp.Literal.number(0)],
             ),
         )
     )

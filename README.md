@@ -36,7 +36,7 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 
 **Part 3 · Usage Patterns**
 
-- _Common sources_ — [Local DataFrame](#local-dataframe-pandaspolars) · [PySpark](#pyspark) · [Ibis (20+ backends)](#ibis-connections-20-backends)
+- _Common sources_ — [Local DataFrame](#local-dataframe-pandaspolars) · [PySpark](#pyspark) · [Ibis (20+ backends)](#ibis-connections-20-backends) · [Concurrent Checks](#concurrent-checks-pooledadapter)
 - _Filtering & cross-source_ — [Filter Conditions](#explicit-adapter-with-filter-conditions) · [Multi-Source](#multi-source-validation) · [Compatibility Mode](#compatibility-mode-duckdb-attach)
 - _Advanced & extending_ — [Servers in Contract](#using-servers-defined-in-data-contract) · [Custom Adapters](#custom-adapters-and-executors) · [Remote Contracts (Git/S3)](#loading-contracts-from-remote-sources-gits3)
 
@@ -487,35 +487,47 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 #### Core Methods
 
-| Method/Property                                                     | What It Does                                                                                                  | Returns                         |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| **`print_summary()`**                                               | Prints high-level statistics (pass/fail counts, success rate, performance)                                    | `self` (chainable)              |
-| **`show_failed_rows(max_rows=5)`**                                  | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                    | `self` (chainable)              |
-| **`display_full_report(max_rows=5)`**                               | Prints summary + shows failed rows (convenience method)                                                       | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", output_mode=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"` | `self` (chainable)              |
-| **`get_output_dfs(checks=None)`**                                   | Returns per-check failed rows as `{check_id: DataFrame}`                                                      | Dict[str, DataFrame]            |
-| **`get_consolidated_output_dfs(checks=None)`**                      | Deduplicates failed rows across checks, grouped by table                                                      | Dict[str, DataFrame]            |
-| **`get_annotated_output(checks=None, include_target=False)`**       | Returns full in-scope tables with a `check_ids` column marking failed rows                                    | Dict[str, Dict[str, DataFrame]] |
-| **`.passed`** (property)                                            | Boolean indicating if all checks passed                                                                       | `True`/`False`                  |
+| Method/Property                                                                      | What It Does                                                                                                                                                                                          | Returns                         |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                            | `self` (chainable)              |
+| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                            | `self` (chainable)              |
+| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                               | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
+| **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                              | Dict[str, DataFrame]            |
+| **`get_consolidated_output_dfs(checks=None)`**                                       | Deduplicates failed rows across checks, grouped by table                                                                                                                                              | Dict[str, DataFrame]            |
+| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) marking failed rows                                                                                                   | Dict[str, Dict[str, DataFrame]] |
+| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                               | `True`/`False`                  |
 
 #### Annotated Output
 
-`get_annotated_output()` returns the **full in-scope table** with a `check_ids` column that marks which rows failed which checks. Passing rows have `null` in the `check_ids` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
+`get_annotated_output()` returns the **full in-scope table** with a `check_info` column that marks which rows failed which checks. Passing rows have `null` in the `check_info` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
 
 It returns a nested dict with two reserved keys:
 
-- **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_ids` column. Every original row is present; `check_ids` is `null` for rows that passed everything and names the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none.
+- **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
+- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way.
 
-Passing **`include_target=True`** adds a `targets` column naming the specific column(s) behind each failure.
+The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
+
+- **`"names"`** — `[{"check_name": ...}, ...]` (just the failing check name(s)).
+- **`"summary"`** — `[{"check_name", "dimension", "tags", "target"}, ...]`.
+- **`"full"`** — `[<full check_definition> + "check_name" + "target", ...]`.
 
 ```python
+import json
+
 result = validate_data("contract.yaml", df=df)
-output = result.get_annotated_output(include_target=True)
+output = result.get_annotated_output(check_info="summary")
 
 annotated = output["annotated"]["hdb_resale_prices"].to_pandas()
-# columns: <original columns> + check_ids + targets
+# columns: <original columns> + check_info
 # output["residues"] — cross-table or non-mergeable failures (empty for single-table contracts)
+
+# check_info is a JSON string; parse it to read each failing check's dimension/tags/target.
+failing = annotated[annotated["check_info"].notna()].iloc[0]
+print(json.loads(failing["check_info"]))
+# [{"check_name": "Year", "dimension": "conformity",
+#   "tags": ["SG-DRM v5.0"], "target": "hdb_resale_prices.lease_commence_date"}]
 ```
 
 #### Annotated Table
@@ -524,39 +536,39 @@ annotated = output["annotated"]["hdb_resale_prices"].to_pandas()
 <summary><strong>Output</strong> — full table, flagged rows floated to the top (click to expand)</summary>
 
 ```python
-# Sort so flagged rows surface first; passing rows (check_ids = null) sink to the bottom.
-flagged_first = annotated.sort_values("check_ids", na_position="last").reset_index(drop=True)
+# Sort so flagged rows surface first; passing rows (check_info = null) sink to the bottom.
+flagged_first = annotated.sort_values("check_info", na_position="last").reset_index(drop=True)
 
 flagged_first[["month", "town", "block", "floor_area_sqm",
-               "lease_commence_date", "check_ids", "targets"]]
+               "lease_commence_date", "check_info"]]
 ```
 
-|     | month    | town            | block | floor_area_sqm | lease_commence_date | check_ids                        | targets                               |
-| --- | -------- | --------------- | ----- | -------------- | ------------------- | -------------------------------- | ------------------------------------- |
-| 0   | 2017-01  | BEDOK           |       | 84.0           | 1986                | AddressBlockHouseNumber          | hdb_resale_prices.block               |
-| 1   | 2017-jan | BEDOK           | 21    | 130.0          | 1972                | Month                            | hdb_resale_prices.month               |
-| 2   | 2017-jan | BISHAN          | 105   | 4.0            | 1985                | Month                            | hdb_resale_prices.month               |
-| 3   | 2017-01  | ANG MO KIO      | 219   | 67.0           | 1977.0              | Year                             | hdb_resale_prices.lease_commence_date |
-| 4   | 2017-01  | ANG MO KIO      | 211   | 67.0           | abc                 | Year                             | hdb_resale_prices.lease_commence_date |
-| 5   | 2017-06  | KALLANG/WHAMPOA | 38    | 215.0          | 1972                | floor_area_must_be_less_than_200 | hdb_resale_prices.floor_area_sqm      |
-| ... | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
-| 8   | 2017-01  | ANG MO KIO      | 406   | 73.0           | 1979                |                                  |                                       |
-| 9   | 2017-01  | ANG MO KIO      | 108   | 67.0           | 1978                |                                  |                                       |
-| 10  | 2017-01  | ANG MO KIO      | 602   | 67.0           | 1984                |                                  |                                       |
-| ... | ...      | ...             | ...   | ...            | ...                 | ...                              | ...                                   |
+|     | month    | town            | block | floor_area_sqm | lease_commence_date | check_info                                                                                                                                   |
+| --- | -------- | --------------- | ----- | -------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | 2017-01  | BEDOK           |       | 84.0           | 1986                | `[{"check_name": "AddressBlockHouseNumber", "dimension": "conformity", "tags": [...], "target": "hdb_resale_prices.block"}]`                 |
+| 1   | 2017-jan | BEDOK           | 21    | 130.0          | 1972                | `[{"check_name": "Month", "dimension": "conformity", "tags": [...], "target": "hdb_resale_prices.month"}]`                                   |
+| 2   | 2017-jan | BISHAN          | 105   | 4.0            | 1985                | `[{"check_name": "Month", "dimension": "conformity", "tags": [...], "target": "hdb_resale_prices.month"}]`                                   |
+| 3   | 2017-01  | ANG MO KIO      | 219   | 67.0           | 1977.0              | `[{"check_name": "Year", "dimension": "conformity", "tags": [...], "target": "hdb_resale_prices.lease_commence_date"}]`                      |
+| 4   | 2017-01  | ANG MO KIO      | 211   | 67.0           | abc                 | `[{"check_name": "Year", "dimension": "conformity", "tags": [...], "target": "hdb_resale_prices.lease_commence_date"}]`                      |
+| 5   | 2017-06  | KALLANG/WHAMPOA | 38    | 215.0          | 1972                | `[{"check_name": "floor_area_must_be_less_than_200", "dimension": "accuracy", "tags": [...], "target": "hdb_resale_prices.floor_area_sqm"}]` |
+| ... | ...      | ...             | ...   | ...            | ...                 | ...                                                                                                                                          |
+| 8   | 2017-01  | ANG MO KIO      | 406   | 73.0           | 1979                |                                                                                                                                              |
+| 9   | 2017-01  | ANG MO KIO      | 108   | 67.0           | 1978                |                                                                                                                                              |
+| 10  | 2017-01  | ANG MO KIO      | 602   | 67.0           | 1984                |                                                                                                                                              |
+| ... | ...      | ...             | ...   | ...            | ...                 | ...                                                                                                                                          |
 
-_201,879 rows — failed rows floated to the top, passing rows (empty `check_ids`) below._
+_201,879 rows — failed rows floated to the top, passing rows (empty `check_info`) below. Shown with `check_info="summary"`._
 
-Because the annotation lives on the full table, separating the good rows from the bad is a one-liner — filter to where `check_ids` is null and drop the annotation columns:
+Because the annotation lives on the full table, separating the good rows from the bad is a one-liner — filter to where `check_info` is null and drop the annotation column:
 
 ```python
-clean = annotated[annotated["check_ids"].isna()].drop(columns=["check_ids", "targets"])
+clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 # 201,861 clean rows of 201,879, ready for downstream use — no join back to the source needed
 ```
 
 </details>
 
-When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead — in the same shape as `get_consolidated_output_dfs()`, with `check_ids` and `tables_in_query` columns:
+When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead. Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
@@ -564,23 +576,31 @@ When a check spans more than one table (cross-table, aggregation, or column-subs
 <summary><strong>Output</strong> — residues from a cross-table (multi-source) contract (click to expand)</summary>
 
 ```python
-output = result.get_annotated_output(include_target=True)
+output = result.get_annotated_output()
 
 print("Residue keys:", list(output["residues"].keys()))
 for key, residue in output["residues"].items():
     df = residue.to_pandas()
     print(f"\nResidue '{key}': {len(df)} failed row(s)")
-    print(df[["employee_id", "payroll_id", "month", "check_ids", "tables_in_query"]])
+    print(df[["employee_id", "payroll_id", "month", "check_info", "tables_in_query"]])
 ```
 
-Residue keys: `['demo_employee_list, demo_employee_payroll']`
+Residue keys: `['demo_employee_payroll::employee_id_exists_in_master_list', 'demo_employee_payroll::phone_number_exists_in_master_list']`
 
-Residue `'demo_employee_list, demo_employee_payroll'`: 2 failed row(s)
+Each non-mergeable check gets its own entry — they are never grouped together, so a row that failed two cross-table checks appears once under each check's residue:
 
-|     | employee_id | payroll_id                           | month   | check_ids                                                             | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | --------------------------------------------------------------------- | ----------------------------------------- |
-| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | employee_id_exists_in_master_list, phone_number_exists_in_master_list | demo_employee_list, demo_employee_payroll |
-| 1   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | phone_number_exists_in_master_list                                    | demo_employee_list, demo_employee_payroll |
+Residue `'demo_employee_payroll::employee_id_exists_in_master_list'`: 1 failed row(s)
+
+|     | employee_id | payroll_id                           | month   | check_info                                              | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | ------------------------------------------------------- | ----------------------------------------- |
+| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "employee_id_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
+
+Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed row(s)
+
+|     | employee_id | payroll_id                           | month   | check_info                                               | tables_in_query                           |
+| --- | ----------- | ------------------------------------ | ------- | -------------------------------------------------------- | ----------------------------------------- |
+| 0   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
+| 1   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
 
 </details>
 
@@ -589,8 +609,11 @@ Residue `'demo_employee_list, demo_employee_payroll'`: 2 failed row(s)
 The `save()` method also supports annotated output via `output_mode`:
 
 ```python
-# Save annotated tables (full tables with check_ids marking failures)
+# Save annotated tables (full tables with check_info marking failures)
 result.save(output_mode="annotated")
+
+# Shape the check_info column: "names" (default), "summary", or "full"
+result.save(output_mode="annotated", check_info="summary")
 
 # Save both failed-rows CSVs and annotated tables
 result.save(output_mode="both")
@@ -743,6 +766,33 @@ validation; it runs read-only `SELECT` queries against the active database on
 the existing connection. If you need to avoid relying on the connection's
 default database, use qualified table names such as `my_db.my_table` in your
 contract queries.
+
+### Concurrent Checks (`PooledAdapter`)
+
+When a contract has many independent checks and the backend can serve several
+queries at once, run them concurrently by wrapping a connection _factory_ in a
+`PooledAdapter`. It keeps a thread-safe pool of connections (one per worker) and
+dispatches checks across them; the verdicts are identical to a sequential run.
+
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter, PooledAdapter, MultiSourceAdapter
+
+# factory: returns a fresh adapter (new connection) on each call. Called once
+# per pooled connection, so the table must be available on every connection.
+def make_adapter():
+    con = ibis.duckdb.connect("my_db.duckdb")
+    return IbisAdapter(con)
+
+pooled = PooledAdapter(factory=make_adapter, max_concurrency=4)
+
+# PooledAdapter is a connection pool, so wire it in via MultiSourceAdapter
+# (keyed by schema name) and pass it through adapters=.
+multi = MultiSourceAdapter({"my_table": pooled})
+result = validate_data("contract.yaml", adapters=multi)
+result.display_full_report()
+```
 
 ## Filtering & cross-source
 

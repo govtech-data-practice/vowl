@@ -10,6 +10,7 @@ Tests PooledAdapter with:
 
 from __future__ import annotations
 
+import json
 import threading
 from pathlib import Path
 
@@ -807,13 +808,13 @@ class TestPooledAdapterAnnotatedOutput:
 
         # Every row is present, and exactly the failed employee_id is marked.
         assert len(rows) == full.num_rows
-        marked = {r["employee_id"] for r in rows if r["check_ids"]}
+        marked = {r["employee_id"] for r in rows if r["check_info"]}
         assert marked == {target_id}
         for r in rows:
             if r["employee_id"] == target_id:
-                assert r["check_ids"] == "payroll_check"
+                assert json.loads(r["check_info"]) == [{"check_name": "payroll_check"}]
             else:
-                assert r["check_ids"] is None
+                assert r["check_info"] is None
 
     def test_annotated_output_pooled_respects_filter_conditions(self, employee_data):
         """Annotated full table reflects each pooled instance's filter conditions.
