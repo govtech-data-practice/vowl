@@ -21,7 +21,7 @@ description: >-
 | **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                             |
 | **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | **Custom Adapters & Executors** | Extensible architecture. Create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                              |
-| **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                             |
+| **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
 
 ## Planned
 
