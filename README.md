@@ -1071,13 +1071,13 @@ result.display_full_report()
 | ✅ **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                             |
 | ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
+| ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                             |
 
 ### Planned
 
 | Capability                       | Description                                                                  | Status  |
 | -------------------------------- | ---------------------------------------------------------------------------- | ------- |
 | 🔬 **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
-| 📅 **Parallel Check Execution**  | Run checks in parallel for faster validation across large contracts          | Planned |
 | 📅 **CLI Interface**             | Command-line interface for running validations directly from the terminal    | Planned |
 | 📅 **vowl-ui**                   | Web-based validation interface for vowl                                      | Planned |
 
