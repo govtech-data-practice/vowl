@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77.0", "setuptools-scm>=8.0", "wheel"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,8 +8,7 @@ dynamic = ["version"]
 description = "A SQL-powered data quality validation library for pandas and spark DataFrames."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
-license-files = ["LICENSE"]
+license = { text = "MIT" }
 keywords = ["data-quality", "data-validation", "data-contract", "odcs", "ibis", "sql", "pandas", "polars", "pyspark", "duckdb", "schema-validation"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -55,6 +54,9 @@ Homepage = "https://github.com/govtech-data-practice/vowl"
 Repository = "https://github.com/govtech-data-practice/vowl"
 Issues = "https://github.com/govtech-data-practice/vowl/issues"
 Documentation = "https://pypi.org/project/vowl/"
+
+[tool.setuptools]
+license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
