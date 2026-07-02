@@ -66,13 +66,17 @@ def _spark_connect_types() -> tuple[type, type] | None:
         return None
 
 
-@functools.cache
 def _spark_dataframe_types() -> tuple[type, ...]:
     """Return the tuple of recognised Spark DataFrame classes (classic + connect).
 
     Empty when pyspark is not installed. Testing membership with ``isinstance``
     against this tuple covers classic, Spark Connect, and any subclasses across
     pyspark 3.5 and 4.x.
+
+    Not cached: it only concatenates the results of the already-cached
+    :func:`_spark_types` / :func:`_spark_connect_types`, so there is nothing to
+    memoise, and caching the combined tuple would make the classic/connect types
+    impossible to override in tests (which patch ``_spark_types``).
     """
     types: tuple[type, ...] = ()
     if (classic := _spark_types()) is not None:
@@ -82,11 +86,11 @@ def _spark_dataframe_types() -> tuple[type, ...]:
     return types
 
 
-@functools.cache
 def _spark_session_types() -> tuple[type, ...]:
     """Return the tuple of recognised SparkSession classes (classic + connect).
 
-    Empty when pyspark is not installed.
+    Empty when pyspark is not installed. Not cached, for the same reason as
+    :func:`_spark_dataframe_types`.
     """
     types: tuple[type, ...] = ()
     if (classic := _spark_types()) is not None:
