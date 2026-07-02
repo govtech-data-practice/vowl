@@ -113,7 +113,6 @@ def spark_connect_session():
 def spark_connect_dataframe(spark_connect_session):
     """A small Spark Connect DataFrame built from the HDB sample data."""
     import pandas as pd
-
     from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
 
     pdf = pd.read_csv(DATA_FILE).fillna("").astype(str).head(50)
