@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Spark Connect DataFrames and Sessions (`pyspark.sql.connect.*`) are now detected. Previously detection relied on `isinstance` against the classic `pyspark.sql.DataFrame`/`SparkSession`; on pyspark 3.5 a Connect DataFrame is a separate class (not a subclass), so it fell through to `TypeError: Unsupported data source type`, and the Connect `SparkSession` was never recognised on any version. Detection now covers classic **and** Connect classes via a grpc-guarded import that leaves the classic path working when grpc is absent. An undriveable remote Connect session (e.g. Databricks Connect) now raises a clear error pointing at the `df.toPandas()` workaround instead of a cryptic failure (#39).
+- Source/git installs no longer fail on older build environments. The `pyproject.toml` `license = "MIT"` SPDX string (PEP 639) requires `setuptools>=77`, but the build-system pin allowed `setuptools>=61`; environments that resolved an older setuptools (e.g. Databricks clusters building from git) failed with `invalid pyproject.toml config: 'project.license'`. The build-system requirement is now `setuptools>=77.0`.
 
 ## [0.0.3] - 2026-06-29
 
