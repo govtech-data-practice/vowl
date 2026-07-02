@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Nil
+
+### Fixed
+- Spark Connect DataFrames and Sessions (`pyspark.sql.connect.*`) are now detected. Previously detection relied on `isinstance` against the classic `pyspark.sql.DataFrame`/`SparkSession`; on pyspark 3.5 a Connect DataFrame is a separate class (not a subclass), so it fell through to `TypeError: Unsupported data source type`, and the Connect `SparkSession` was never recognised on any version. Detection now covers classic **and** Connect classes via a grpc-guarded import that leaves the classic path working when grpc is absent. An undriveable remote Connect session (e.g. Databricks Connect) now raises a clear error pointing at the `df.toPandas()` workaround instead of a cryptic failure (#39).
 
 ## [0.0.3] - 2026-06-29
 
