@@ -3504,6 +3504,10 @@ spark = [
     { name = "ibis-framework", extra = ["pyspark"] },
     { name = "pyspark", extra = ["connect"] },
 ]
+spark-classic = [
+    { name = "ibis-framework", extra = ["pyspark"] },
+    { name = "pyspark" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -3539,17 +3543,19 @@ requires-dist = [
     { name = "ibis-framework", extras = ["duckdb"], specifier = ">=11.0.0" },
     { name = "ibis-framework", extras = ["pyspark"], marker = "extra == 'all'", specifier = ">=11.0.0" },
     { name = "ibis-framework", extras = ["pyspark"], marker = "extra == 'spark'", specifier = ">=11.0.0" },
+    { name = "ibis-framework", extras = ["pyspark"], marker = "extra == 'spark-classic'", specifier = ">=11.0.0" },
     { name = "jsonpath-ng", specifier = ">=1.7.0" },
     { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "narwhals", specifier = ">=2.17.0" },
     { name = "pyarrow", specifier = ">=14.0.0" },
+    { name = "pyspark", marker = "extra == 'spark-classic'", specifier = ">=3.0.0" },
     { name = "pyspark", extras = ["connect"], marker = "extra == 'all'", specifier = ">=3.4.0" },
     { name = "pyspark", extras = ["connect"], marker = "extra == 'spark'", specifier = ">=3.4.0" },
     { name = "pyyaml", specifier = ">=5.4.0" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "sqlglot", extras = ["c"], specifier = ">=28.6.0" },
 ]
-provides-extras = ["spark", "all"]
+provides-extras = ["spark", "spark-classic", "all"]
 
 [package.metadata.requires-dev]
 dev = [
