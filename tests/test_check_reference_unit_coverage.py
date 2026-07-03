@@ -244,6 +244,34 @@ def test_generated_column_reference_accessors_return_property_context(monkeypatc
     assert ref.is_generated() is True
 
 
+def test_error_result_renders_rendered_implementation_in_target_dialect(monkeypatch: pytest.MonkeyPatch):
+    """A check that errors during execution should still render its
+    rendered_implementation in the backend dialect (backticks for spark),
+    not the default double-quoted dialect. Regression for the error path
+    dropping ``dialect=`` when building the ERROR result."""
+    from vowl.adapters.ibis_adapter import IbisAdapter
+    from vowl.executors.ibis_sql_executor import IbisSQLExecutor
+
+    contract = _make_contract(monkeypatch)
+    check_ref = DeclaredColumnExistsCheckReference(contract, "$.schema[0].properties[1]")
+
+    class _RaisingSparkConnection:
+        name = "pyspark"
+
+        def raw_sql(self, query: str):
+            raise RuntimeError("'Column' object is not callable")
+
+    executor = IbisSQLExecutor(IbisAdapter(_RaisingSparkConnection()))
+
+    result = executor.run_single_check(check_ref)
+
+    assert result.status == "ERROR"
+    assert "'Column' object is not callable" in result.details
+    rendered = result.metadata["rendered_implementation"]
+    assert "`name`" in rendered
+    assert '"name"' not in rendered
+
+
 def test_logical_type_options_reference_rejects_unsupported_option(monkeypatch: pytest.MonkeyPatch):
     contract = _make_contract(monkeypatch)
 

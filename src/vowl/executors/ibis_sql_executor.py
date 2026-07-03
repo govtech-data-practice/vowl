@@ -197,6 +197,9 @@ class IbisSQLExecutor(SQLExecutor):
             return check_ref.build_error_result(
                 error_message=f"Error executing check: {e}",
                 execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                dialect=dialect,
+                filter_conditions=filters,
+                use_try_cast=use_try_cast,
             )
 
     def run_batch_checks(self, check_refs: list[SQLCheckReference]) -> list[CheckResult]:
