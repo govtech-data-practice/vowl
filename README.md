@@ -74,7 +74,7 @@ Or install from source:
 pip install git+https://github.com/govtech-data-practice/vowl.git
 ```
 
-Optional extras are available: `vowl[spark]`, `vowl[all]`.
+Optional extras are available: `vowl[spark]`, `vowl[all]`. `vowl[spark]` supports both classic Spark and Spark Connect (`pyspark[connect]`, requires pyspark >= 3.4). On runtimes pinned to pyspark 3.0–3.3, use `vowl[spark-classic]` for classic Spark only (no Spark Connect).
 For local development, testing, and release workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Validate in 3 lines
