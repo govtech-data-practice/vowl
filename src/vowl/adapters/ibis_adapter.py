@@ -64,6 +64,7 @@ class IbisAdapter(BaseAdapter):
         "sqlite": "sqlite",
         "postgres": "postgres",
         "pyspark": "spark",
+        "databricks": "databricks",
         "snowflake": "snowflake",
         "mysql": "mysql",
         "bigquery": "bigquery",

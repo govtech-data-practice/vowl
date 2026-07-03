@@ -5,6 +5,8 @@ from types import SimpleNamespace
 import pandas as pd
 import pyarrow as pa
 import pytest
+import sqlglot
+from sqlglot import exp
 
 from vowl.adapters.base import BaseAdapter
 from vowl.adapters.ibis_adapter import IbisAdapter
@@ -243,6 +245,39 @@ def test_ibis_adapter_get_total_rows_returns_zero_for_unsupported_result_shape()
     adapter = IbisAdapter(StubConnection(object()))
 
     assert adapter.get_total_rows("users") == 0
+
+
+@pytest.mark.parametrize(
+    ("backend_name", "expected_dialect"),
+    [
+        ("pyspark", "spark"),
+        ("databricks", "databricks"),
+        ("duckdb", "duckdb"),
+        # Unknown backends fall back to the ANSI-ish postgres dialect.
+        ("some_unknown_backend", "postgres"),
+    ],
+)
+def test_ibis_adapter_get_sql_dialect_maps_backend_name(backend_name, expected_dialect):
+    adapter = IbisAdapter(StubConnection(StubFetchOneResult((1,)), name=backend_name))
+
+    assert adapter.get_sql_dialect() == expected_dialect
+
+
+def test_ibis_adapter_generates_backtick_identifiers_for_databricks():
+    """Databricks/Spark quote identifiers with backticks, not double quotes."""
+    from vowl.contracts.check_reference_generated import DeclaredColumnExistsCheckReference
+
+    ast = sqlglot.select(exp.Count(this=exp.Star())).from_(
+        sqlglot.select(exp.Column(this=exp.to_identifier("id", quoted=True)))
+        .from_(exp.Table(this=exp.to_identifier("orders", quoted=True)))
+        .limit(0)
+        .subquery(alias="_vowl_column_exists")
+    )
+    query = DeclaredColumnExistsCheckReference._render_sql(ast, "databricks")
+
+    assert "`id`" in query
+    assert "`orders`" in query
+    assert '"id"' not in query
 
 
 def test_get_schema_raises_when_supported_schema_file_is_missing(monkeypatch: pytest.MonkeyPatch):
