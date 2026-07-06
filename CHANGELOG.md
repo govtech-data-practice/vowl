@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.4] - 2026-07-06
 
 ### Fixed
-- Spark Connect DataFrames and Sessions (`pyspark.sql.connect.*`) are now detected; previously only the classic `pyspark.sql` classes were recognised, so Connect inputs failed with `TypeError: Unsupported data source type`. The `spark` extra now bundles `pyspark[connect]` (pyspark floor raised to `>=3.4.0`), and a new `spark-classic` extra preserves the classic-only dependency set for runtimes pinned below 3.4 (#39, #40).
-- Spark Connect / Databricks validation returned `ERROR` on every check with `'Column' object is not callable` on pyspark 4.x; result-shape dispatch now guards on `callable(...)` so execution falls through to `collect()` correctly (#41).
-- `display_full_report()` raised `TypeError` for a zero-row table; a falsy `total_rows` is now rendered as `N/A` (#41).
-- The ibis Databricks backend fell through to the `postgres` default and rendered identifiers with double quotes instead of backticks; it now maps to the native sqlglot `databricks` dialect (#41).
-- `ERROR` check results rendered `rendered_implementation` in sqlglot's default dialect instead of the backend dialect; the executors now thread `dialect` through every error-result path (#41).
-- Source/git installs no longer fail on older build environments (e.g. Databricks clusters pinned to `packaging<24.2`); the license is now declared with the widely-compatible `license = { text = "MIT" }` table form instead of the PEP 639 SPDX string (#41).
+- vowl now works with Spark Connect, including on Databricks. Previously, validating a Spark Connect DataFrame failed outright; now it's detected and runs as expected. Installing with `pip install vowl[spark]` gives you Spark Connect out of the box, and a new `spark-classic` option is available for older Spark setups (#39, #40).
+- Fixed Spark Connect / Databricks validation returning an error on every check (on newer PySpark). Checks now run and return real pass/fail results (#41).
+- Fixed a crash when generating a report for an empty table; it now shows `N/A` instead (#41).
+- Generated SQL for Databricks now uses the correct Databricks syntax instead of falling back to a generic one (#41).
+- Failed checks now show their SQL in the correct database's syntax, so it's easier to read and debug (#41).
+- Installing vowl from source no longer fails on older environments such as Databricks clusters (#41).
 
 ## [0.0.3] - 2026-06-29
 
