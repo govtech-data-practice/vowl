@@ -299,6 +299,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 return check_ref.build_error_result(
                     error_message="Could not detect tables in query",
                     execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                    dialect="duckdb",
+                    multi_source=True,
                 )
 
             # --- Mode 1: delegate to the first adapter's executor -----------
@@ -364,6 +366,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
             return check_ref.build_error_result(
                 error_message=f"Error executing cross-schema check: {e}",
                 execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                dialect="duckdb",
+                multi_source=True,
             )
 
     def run_batch_checks(self, check_refs: list[SQLCheckReference]) -> list[CheckResult]:
@@ -474,6 +478,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     results[index] = ref.build_error_result(
                         error_message=(f"Materialization failed for table '{tbl}': {materialization_errors[tbl]}"),
                         execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                        dialect="duckdb",
+                        multi_source=True,
                     )
                     return
 
@@ -554,11 +560,15 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     results[index] = ref.build_error_result(
                         error_message=f"Error executing cross-schema check: {e}",
                         execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                        dialect="duckdb",
+                        multi_source=True,
                     )
             except Exception as e:
                 results[index] = ref.build_error_result(
                     error_message=f"Error executing cross-schema check: {e}",
                     execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                    dialect="duckdb",
+                    multi_source=True,
                 )
 
         with ThreadPoolExecutor(max_workers=concurrency) as pool:

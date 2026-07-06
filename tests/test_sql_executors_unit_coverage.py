@@ -260,6 +260,25 @@ class StubCollectRowsResult:
         return self._rows
 
 
+class _NonCallableColumn:
+    """Stand-in for a PySpark Column: not callable (no __call__)."""
+
+
+class StubSparkConnectResult:
+    """Mimics a Spark Connect DataFrame: __getattr__ resolves ANY unknown
+    attribute to a (non-callable) Column, so hasattr() is always True. Only
+    the real ``collect`` method should actually be used."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def collect(self):
+        return self._rows
+
+    def __getattr__(self, name):
+        return _NonCallableColumn()
+
+
 class StubIbisAdapter:
     def __init__(self, connection, *, filter_conditions=None, max_failed_rows=1000, dialect="duckdb"):
         self._connection = connection
@@ -512,6 +531,19 @@ def test_ibis_execute_query_returns_none_for_unknown_result_shape(monkeypatch: p
     monkeypatch.setattr(executor, "validate_query_security", lambda query: None)
 
     assert executor._execute_query("SELECT COUNT(*) FROM users") is None
+
+
+def test_ibis_execute_query_uses_collect_on_spark_connect_result(monkeypatch: pytest.MonkeyPatch):
+    """Spark Connect DataFrames resolve any attribute to a non-callable Column,
+    so hasattr(result, "fetchone") is True but calling it raises
+    "'Column' object is not callable". _execute_query must guard on callable()
+    and fall through to the real collect() method."""
+    result = StubSparkConnectResult(rows=[[42]])
+    executor = IbisSQLExecutor(StubIbisAdapter(StubRawSQLConnection(lambda query: result)))
+
+    monkeypatch.setattr(executor, "validate_query_security", lambda query: None)
+
+    assert executor._execute_query("SELECT COUNT(*) FROM users") == 42
 
 
 def test_ibis_run_single_check_errors_when_rendered_query_is_missing():

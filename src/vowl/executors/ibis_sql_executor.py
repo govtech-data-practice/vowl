@@ -82,15 +82,19 @@ class IbisSQLExecutor(SQLExecutor):
             #   - PySpark 4.0+: DataFrame with .toArrow()
             #   - PySpark 3.x: internal Arrow export via ._collect_as_arrow()
             #   - MySQL/MSSQL/Oracle: standard DB-API cursor with fetchall()
-            if hasattr(result, "to_arrow_table"):
+            # Spark Connect DataFrames resolve any attribute to a Column via
+            # __getattr__, so hasattr() is misleadingly True for methods that
+            # don't exist. Guard on callable() so a Column (not callable) is
+            # skipped while a real method is used.
+            if callable(getattr(result, "to_arrow_table", None)):
                 arrow_table = result.to_arrow_table()
-            elif hasattr(result, "fetch_arrow_table"):
+            elif callable(getattr(result, "fetch_arrow_table", None)):
                 arrow_table = result.fetch_arrow_table()
-            elif hasattr(result, "toArrow"):
+            elif callable(getattr(result, "toArrow", None)):
                 arrow_table = result.toArrow()
-            elif hasattr(result, "_collect_as_arrow"):
+            elif callable(getattr(result, "_collect_as_arrow", None)):
                 arrow_table = pa.Table.from_batches(result._collect_as_arrow())
-            elif hasattr(result, "fetchall") and hasattr(result, "description"):
+            elif callable(getattr(result, "fetchall", None)) and getattr(result, "description", None) is not None:
                 rows = result.fetchall()
                 columns = [desc[0] for desc in result.description]
                 arrow_table = pa.table({col: [row[i] for row in rows] for i, col in enumerate(columns)})
@@ -127,10 +131,14 @@ class IbisSQLExecutor(SQLExecutor):
         # Ibis backends return different types from raw_sql:
         #   - DuckDB/Postgres/SQLite: cursor-like with .fetchone()
         #   - PySpark: a PySpark DataFrame with .collect()
-        if hasattr(result, "fetchone"):
+        # Spark Connect DataFrames resolve *any* attribute access to a Column
+        # via __getattr__, so hasattr(result, "fetchone") is misleadingly True
+        # and calling it raises "'Column' object is not callable". Guard on
+        # callable() instead: a real method is callable, a Column is not.
+        if callable(getattr(result, "fetchone", None)):
             row = result.fetchone()
             return row[0] if row else None
-        elif hasattr(result, "collect"):
+        elif callable(getattr(result, "collect", None)):
             rows = result.collect()
             return rows[0][0] if rows else None
         return None
@@ -197,6 +205,9 @@ class IbisSQLExecutor(SQLExecutor):
             return check_ref.build_error_result(
                 error_message=f"Error executing check: {e}",
                 execution_time_ms=(time.perf_counter() - start_time) * 1000,
+                dialect=dialect,
+                filter_conditions=filters,
+                use_try_cast=use_try_cast,
             )
 
     def run_batch_checks(self, check_refs: list[SQLCheckReference]) -> list[CheckResult]:

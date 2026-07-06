@@ -64,6 +64,7 @@ class IbisAdapter(BaseAdapter):
         "sqlite": "sqlite",
         "postgres": "postgres",
         "pyspark": "spark",
+        "databricks": "databricks",
         "snowflake": "snowflake",
         "mysql": "mysql",
         "bigquery": "bigquery",
@@ -167,10 +168,13 @@ class IbisAdapter(BaseAdapter):
             validate_query_security(query, dialect=dialect)
 
             result = self._con.raw_sql(query)
-            if hasattr(result, "fetchone"):
+            # Spark Connect DataFrames resolve any attribute to a Column via
+            # __getattr__, so hasattr() is misleadingly True. Guard on
+            # callable() so a Column is skipped and the real method is used.
+            if callable(getattr(result, "fetchone", None)):
                 row = result.fetchone()
                 return int(row[0]) if row else 0
-            elif hasattr(result, "collect"):
+            elif callable(getattr(result, "collect", None)):
                 rows = result.collect()
                 return int(rows[0][0]) if rows else 0
             return 0
@@ -197,9 +201,12 @@ class IbisAdapter(BaseAdapter):
                 table.this.set("quoted", True)
             query = sqlglot.select(exp.Literal.number(1)).from_(table).limit(1).sql(dialect=self.get_sql_dialect())
             result = self._con.raw_sql(query)
-            if hasattr(result, "fetchone"):
+            # Spark Connect DataFrames resolve any attribute to a Column via
+            # __getattr__, so hasattr() is misleadingly True. Guard on
+            # callable() so a Column is skipped and the real method is used.
+            if callable(getattr(result, "fetchone", None)):
                 result.fetchone()
-            elif hasattr(result, "collect"):
+            elif callable(getattr(result, "collect", None)):
                 result.collect()
             return None
         except Exception as e:
