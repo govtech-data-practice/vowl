@@ -8,8 +8,7 @@ dynamic = ["version"]
 description = "A SQL-powered data quality validation library for pandas and spark DataFrames."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
-license-files = ["LICENSE"]
+license = { text = "MIT" }
 keywords = ["data-quality", "data-validation", "data-contract", "odcs", "ibis", "sql", "pandas", "polars", "pyspark", "duckdb", "schema-validation"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -37,8 +36,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Spark  
+# Spark (default) — Spark Connect capable.
+# pyspark[connect] adds grpcio/grpcio-status so Spark Connect DataFrames/Sessions
+# (pyspark.sql.connect.*) work out of the box, not just classic Spark (#39). The
+# [connect] extra only exists on pyspark >= 3.4, hence the higher floor.
 spark = [
+    "ibis-framework[pyspark]>=11.0.0",
+    "pyspark[connect]>=3.4.0",
+]
+
+# Classic Spark only — no Spark Connect / grpc. Use this on older runtimes
+# (e.g. managed clusters pinned to pyspark 3.0–3.3) where bumping to 3.4+ is not
+# an option. Spark Connect DataFrames are not supported under this extra.
+spark-classic = [
     "ibis-framework[pyspark]>=11.0.0",
     "pyspark>=3.0.0",
 ]
@@ -47,7 +57,7 @@ spark = [
 all = [
     "boto3>=1.42.38",
     "ibis-framework[pyspark]>=11.0.0",
-    "pyspark>=3.0.0",
+    "pyspark[connect]>=3.4.0",
 ]
 
 [project.urls]
@@ -55,6 +65,9 @@ Homepage = "https://github.com/govtech-data-practice/vowl"
 Repository = "https://github.com/govtech-data-practice/vowl"
 Issues = "https://github.com/govtech-data-practice/vowl/issues"
 Documentation = "https://pypi.org/project/vowl/"
+
+[tool.setuptools]
+license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -89,7 +102,10 @@ dev = [
 lean-ci-test = [
     "boto3>=1.42.38",
     "ibis-framework[postgres]>=11.0.0",
-    "pyspark>=3.0.0",
+    # pyspark[connect] pulls in grpcio/grpcio-status so the Spark Connect
+    # detection tests (tests/test_spark_connect_detection.py) actually run in
+    # CI instead of being skipped by their grpc importorskip guard (#39).
+    "pyspark[connect]>=3.4.0",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "setuptools>=80.10.2",

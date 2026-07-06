@@ -28,7 +28,8 @@ if TYPE_CHECKING:
 def _spark_types() -> tuple[type, type] | None:
     """Return (SparkSession, SparkDataFrame) if pyspark is installed, else None.
 
-    Cached so the import is attempted at most once per process.
+    Covers the *classic* pyspark classes only. Cached so the import is attempted
+    at most once per process.
     """
     try:
         from pyspark.sql import DataFrame as SparkDataFrame
@@ -39,16 +40,76 @@ def _spark_types() -> tuple[type, type] | None:
         return None
 
 
+@functools.cache
+def _spark_connect_types() -> tuple[type, type] | None:
+    """Return (ConnectSparkSession, ConnectDataFrame) if Spark Connect is importable, else None.
+
+    Spark Connect DataFrames/Sessions live in ``pyspark.sql.connect.*`` and are
+    *separate* classes from the classic ones:
+
+    - On pyspark 3.5 the Connect ``DataFrame`` is **not** a subclass of the classic
+      ``pyspark.sql.DataFrame``, so ``isinstance`` against the classic type misses it.
+    - The Connect ``SparkSession`` is **not** a subclass of the classic session on
+      any version.
+
+    Importing ``pyspark.sql.connect.*`` requires ``grpcio``/``grpcio-status`` and
+    fails with ImportError when they are absent, so this is guarded separately from
+    :func:`_spark_types` — the classic path must never depend on grpc being present.
+    Cached so the import is attempted at most once per process.
+    """
+    try:
+        from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
+        from pyspark.sql.connect.session import SparkSession as ConnectSparkSession
+
+        return (ConnectSparkSession, ConnectDataFrame)
+    except ImportError:
+        return None
+
+
+def _spark_dataframe_types() -> tuple[type, ...]:
+    """Return the tuple of recognised Spark DataFrame classes (classic + connect).
+
+    Empty when pyspark is not installed. Testing membership with ``isinstance``
+    against this tuple covers classic, Spark Connect, and any subclasses across
+    pyspark 3.5 and 4.x.
+
+    Not cached: it only concatenates the results of the already-cached
+    :func:`_spark_types` / :func:`_spark_connect_types`, so there is nothing to
+    memoise, and caching the combined tuple would make the classic/connect types
+    impossible to override in tests (which patch ``_spark_types``).
+    """
+    types: tuple[type, ...] = ()
+    if (classic := _spark_types()) is not None:
+        types += (classic[1],)
+    if (connect := _spark_connect_types()) is not None:
+        types += (connect[1],)
+    return types
+
+
+def _spark_session_types() -> tuple[type, ...]:
+    """Return the tuple of recognised SparkSession classes (classic + connect).
+
+    Empty when pyspark is not installed. Not cached, for the same reason as
+    :func:`_spark_dataframe_types`.
+    """
+    types: tuple[type, ...] = ()
+    if (classic := _spark_types()) is not None:
+        types += (classic[0],)
+    if (connect := _spark_connect_types()) is not None:
+        types += (connect[0],)
+    return types
+
+
 def _is_spark_dataframe(obj: Any) -> bool:
-    """Check if obj is a PySpark DataFrame without importing pyspark eagerly."""
-    types = _spark_types()
-    return types is not None and isinstance(obj, types[1])
+    """Check if obj is a PySpark DataFrame (classic or Connect) without importing pyspark eagerly."""
+    types = _spark_dataframe_types()
+    return bool(types) and isinstance(obj, types)
 
 
 def _is_spark_session(obj: Any) -> bool:
-    """Check if obj is a PySpark SparkSession without importing pyspark eagerly."""
-    types = _spark_types()
-    return types is not None and isinstance(obj, types[0])
+    """Check if obj is a PySpark SparkSession (classic or Connect) without importing pyspark eagerly."""
+    types = _spark_session_types()
+    return bool(types) and isinstance(obj, types)
 
 
 def _is_narwhals_dataframe(obj: Any) -> bool:
@@ -244,19 +305,52 @@ class DataSourceMapper:
         df: SparkDataFrame,
         table_name: str,
     ) -> IbisAdapter:
-        """Create an IbisAdapter from a PySpark DataFrame."""
-        # Register as temp view and connect via pyspark backend
-        df.createOrReplaceTempView(table_name)
-        con = ibis.pyspark.connect(df.sparkSession)
+        """Create an IbisAdapter from a PySpark DataFrame.
+
+        Works for classic Spark and *driveable* Spark Connect sessions (local, and
+        remote sessions ibis can drive). A remote Connect client that ibis cannot
+        drive (e.g. Databricks Connect, with no local JVM/SparkContext) raises a
+        clear error pointing at the pandas workaround rather than a cryptic failure.
+        """
+        try:
+            # Register as temp view and connect via pyspark backend
+            df.createOrReplaceTempView(table_name)
+            con = ibis.pyspark.connect(df.sparkSession)
+        except Exception as e:
+            raise self._undriveable_spark_connect_error(e) from e
         return IbisAdapter(con)
 
     def _create_adapter_from_spark_session(
         self,
         session: SparkSession,
     ) -> IbisAdapter:
-        """Create an IbisAdapter from a SparkSession."""
-        con = ibis.pyspark.connect(session)
+        """Create an IbisAdapter from a SparkSession.
+
+        See :meth:`_create_adapter_from_spark_df` for the remote Connect behaviour.
+        """
+        try:
+            con = ibis.pyspark.connect(session)
+        except Exception as e:
+            raise self._undriveable_spark_connect_error(e) from e
         return IbisAdapter(con)
+
+    @staticmethod
+    def _undriveable_spark_connect_error(original: Exception) -> TypeError:
+        """Build a clear error for a Spark session ibis could not drive.
+
+        A remote Spark Connect client (e.g. Databricks Connect) has no local
+        JVM/SparkContext, so ``ibis.pyspark.connect(...)`` may be unable to drive
+        it. Rather than surface a cryptic failure, point the user at the supported
+        workaround: convert to pandas and validate via the DuckDB backend.
+        """
+        return TypeError(
+            "Failed to connect to the provided Spark session via the ibis PySpark "
+            "backend. This can happen with a remote Spark Connect client (e.g. "
+            "Databricks Connect) that has no local Spark engine for ibis to drive. "
+            "Convert the DataFrame to pandas and validate via the DuckDB backend "
+            "instead, e.g. validate_data(contract, df=df.toPandas()). "
+            f"Original error: {original}"
+        )
 
     def _create_adapter_from_connection_string(
         self,
