@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-07-06
+
+### 🔌 Spark Connect & Databricks fixes
+
+This release makes vowl work out of the box on **Spark Connect** and **Databricks** runtimes — from PySpark Connect DataFrame/Session detection through dialect-correct SQL rendering — and fixes source builds on Databricks clusters pinned to older packaging tooling.
+
 ### Fixed
 - Spark Connect DataFrames and Sessions (`pyspark.sql.connect.*`) are now detected. Previously detection relied on `isinstance` against the classic `pyspark.sql.DataFrame`/`SparkSession`; on pyspark 3.5 a Connect DataFrame is a separate class (not a subclass), so it fell through to `TypeError: Unsupported data source type`, and the Connect `SparkSession` was never recognised on any version. Detection now covers classic **and** Connect classes via a grpc-guarded import that leaves the classic path working when grpc is absent. An undriveable remote Connect session (e.g. Databricks Connect) now raises a clear error pointing at the `df.toPandas()` workaround instead of a cryptic failure (#39). The `spark` (and `all`) install extra now includes `pyspark[connect]` (which raises the pyspark floor to `>=3.4.0`, where the `connect` extra first appears), so Spark Connect works out of the box for `pip install vowl[spark]` rather than requiring a separate `grpcio` install. A new `spark-classic` extra keeps the previous classic-only dependency set (`pyspark>=3.0.0`, no grpc) for runtimes pinned below 3.4 where upgrading pyspark is not an option (#39).
 - **Spark Connect / Databricks validation** returned `ERROR` on every check with `'Column' object is not callable` (pyspark 4.x). Spark Connect DataFrames resolve any attribute access to a `Column` via `__getattr__`, so `hasattr(result, "fetchone")` on a `raw_sql` result was misleadingly `True`; the result-shape dispatch now guards on `callable(...)` so execution correctly falls through to `collect()` (#39, #41).
@@ -100,7 +106,8 @@ Initial public release of **vowl**.
 - `THIRD_PARTY_NOTICES` and `LICENSE_AUDIT_REPORT.md`.
 - `CONTRIBUTING.md` with development setup and release workflow.
 
-[Unreleased]: https://github.com/govtech-data-practice/vowl/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/govtech-data-practice/vowl/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/govtech-data-practice/vowl/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/govtech-data-practice/vowl/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/govtech-data-practice/vowl/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/govtech-data-practice/vowl/releases/tag/v0.0.1
