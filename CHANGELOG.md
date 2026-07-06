@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Nil
+
+### Fixed
+- **Spark Connect / Databricks validation** returned `ERROR` on every check with `'Column' object is not callable` (pyspark 4.x). Spark Connect DataFrames resolve any attribute access to a `Column` via `__getattr__`, so `hasattr(result, "fetchone")` on a `raw_sql` result was misleadingly `True`; the result-shape dispatch now guards on `callable(...)` so execution correctly falls through to `collect()` (#39, #41).
+- `display_full_report()` raised `TypeError: unsupported operand *: NoneType and int` for a zero-row (empty or unstatted) table; a falsy `total_rows` is now rendered as `N/A` (#41).
+- The ibis **Databricks** backend (`name == "databricks"`) was missing from the dialect map and fell through to the `postgres` default, rendering identifiers with double quotes instead of backticks; it now maps to the native sqlglot `databricks` dialect (#41).
+- `ERROR` check results rendered `rendered_implementation` in sqlglot's default dialect instead of the backend dialect, producing misleading SQL. The executors now thread `dialect` through every error-result path (#41).
 
 ## [0.0.3] - 2026-06-29
 
