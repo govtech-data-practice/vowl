@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-07-06
+
 ### Fixed
-- Spark Connect DataFrames and Sessions (`pyspark.sql.connect.*`) are now detected. Previously detection relied on `isinstance` against the classic `pyspark.sql.DataFrame`/`SparkSession`; on pyspark 3.5 a Connect DataFrame is a separate class (not a subclass), so it fell through to `TypeError: Unsupported data source type`, and the Connect `SparkSession` was never recognised on any version. Detection now covers classic **and** Connect classes via a grpc-guarded import that leaves the classic path working when grpc is absent. An undriveable remote Connect session (e.g. Databricks Connect) now raises a clear error pointing at the `df.toPandas()` workaround instead of a cryptic failure (#39). The `spark` (and `all`) install extra now includes `pyspark[connect]` (which raises the pyspark floor to `>=3.4.0`, where the `connect` extra first appears), so Spark Connect works out of the box for `pip install vowl[spark]` rather than requiring a separate `grpcio` install. A new `spark-classic` extra keeps the previous classic-only dependency set (`pyspark>=3.0.0`, no grpc) for runtimes pinned below 3.4 where upgrading pyspark is not an option (#39).
-- **Spark Connect / Databricks validation** returned `ERROR` on every check with `'Column' object is not callable` (pyspark 4.x). Spark Connect DataFrames resolve any attribute access to a `Column` via `__getattr__`, so `hasattr(result, "fetchone")` on a `raw_sql` result was misleadingly `True`; the result-shape dispatch now guards on `callable(...)` so execution correctly falls through to `collect()` (#39, #41).
-- `display_full_report()` raised `TypeError: unsupported operand *: NoneType and int` for a zero-row (empty or unstatted) table; a falsy `total_rows` is now rendered as `N/A` (#41).
-- The ibis **Databricks** backend (`name == "databricks"`) was missing from the dialect map and fell through to the `postgres` default, rendering identifiers with double quotes instead of backticks; it now maps to the native sqlglot `databricks` dialect (#41).
-- `ERROR` check results rendered `rendered_implementation` in sqlglot's default dialect instead of the backend dialect, producing misleading SQL. The executors now thread `dialect` through every error-result path (#41).
-- Source/git installs no longer fail on older build environments (e.g. Databricks clusters). `pyproject.toml` declared the license via the PEP 639 SPDX string (`license = "MIT"` plus `[project] license-files`), which requires `setuptools>=77` **and** `packaging>=24.2`. On environments pinned below either — such as Databricks, which ships `packaging==24.1` under an immutable constraint — building the wheel from source failed with `invalid pyproject.toml config: 'project.license'` or `Cannot import 'packaging.licenses'`. The license is now declared with the widely-compatible `license = { text = "MIT" }` table form (with `license-files` moved under `[tool.setuptools]`), which builds on setuptools 61 through 82+ without requiring a newer `packaging`. Prebuilt wheels/PyPI installs were never affected.
+- vowl now works with Spark Connect, including on Databricks. Previously, validating a Spark Connect DataFrame failed outright; now it's detected and runs as expected. Installing with `pip install vowl[spark]` gives you Spark Connect out of the box (this raises the minimum PySpark to `3.4.0`), and a new `spark-classic` option keeps support for older setups (PySpark `3.0.0`+) (#39, #40).
+- Fixed Spark Connect / Databricks validation returning an error on every check (on PySpark 4.x). Checks now run and return real pass/fail results (#41).
+- Fixed a crash when generating a report for an empty table; it now shows `N/A` instead (#41).
+- Generated SQL now uses the correct syntax for your database (e.g. Databricks), both for the checks that run and for the SQL shown when a check fails (#41).
+- Fixed installing vowl from source failing on older environments such as Databricks clusters, caused by how the license was declared requiring newer build tools (#41).
 
 ## [0.0.3] - 2026-06-29
 
@@ -100,7 +101,8 @@ Initial public release of **vowl**.
 - `THIRD_PARTY_NOTICES` and `LICENSE_AUDIT_REPORT.md`.
 - `CONTRIBUTING.md` with development setup and release workflow.
 
-[Unreleased]: https://github.com/govtech-data-practice/vowl/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/govtech-data-practice/vowl/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/govtech-data-practice/vowl/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/govtech-data-practice/vowl/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/govtech-data-practice/vowl/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/govtech-data-practice/vowl/releases/tag/v0.0.1
