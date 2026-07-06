@@ -13,9 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - vowl now works with Spark Connect, including on Databricks. Previously, validating a Spark Connect DataFrame failed outright; now it's detected and runs as expected. Installing with `pip install vowl[spark]` gives you Spark Connect out of the box (this raises the minimum PySpark to `3.4.0`), and a new `spark-classic` option keeps support for older setups (PySpark `3.0.0`+) (#39, #40).
 - Fixed Spark Connect / Databricks validation returning an error on every check (on PySpark 4.x). Checks now run and return real pass/fail results (#41).
 - Fixed a crash when generating a report for an empty table; it now shows `N/A` instead (#41).
-- Generated SQL for Databricks now uses the correct Databricks syntax instead of falling back to a generic one (#41).
-- Failed checks now show their SQL in the correct database's syntax, so it's easier to read and debug (#41).
-- Installing vowl from source no longer fails on older environments such as Databricks clusters (#41).
+- Generated SQL now uses the correct syntax for your database (e.g. Databricks), both for the checks that run and for the SQL shown when a check fails (#41).
+- Fixed installing vowl from source failing on older environments such as Databricks clusters, caused by how the license was declared requiring newer build tools (#41).
 
 ## [0.0.3] - 2026-06-29
 
