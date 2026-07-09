@@ -267,16 +267,38 @@ schema:
           - User-Defined Quality Rule
       - name: employee_id_exists_in_master_list
         description: >-
-          Referential integrity check: Ensures all employee IDs in the payroll 
+          Referential integrity check: Ensures all employee IDs in the payroll
           table exist in the reference employee list.
         type: sql
         dimension: consistency
         query: >-
-          SELECT COUNT(*) 
+          SELECT COUNT(*)
           FROM demo_employee_payroll payroll
-          LEFT JOIN demo_employee_list ref 
+          LEFT JOIN demo_employee_list ref
             ON payroll.employee_id = ref.employee_id
           WHERE ref.employee_id IS NULL
+        mustBe: 0
+        tags:
+          - Cross-Table Validation
+      - name: orphan_payroll_rows_merge_onto_payroll
+        description: >-
+          Same referential-integrity intent as
+          employee_id_exists_in_master_list, but the failed-rows query is
+          shaped to project only the payroll (anchor) table's columns via an
+          inner ``SELECT payroll.*``. Because the failed rows match the payroll
+          schema exactly, this cross-table check MERGES onto the payroll
+          annotated table instead of becoming a residue.
+        type: sql
+        dimension: consistency
+        query: >-
+          SELECT COUNT(*)
+          FROM (
+            SELECT payroll.*
+            FROM demo_employee_payroll payroll
+            LEFT JOIN demo_employee_list ref
+              ON payroll.employee_id = ref.employee_id
+            WHERE ref.employee_id IS NULL
+          ) AS orphaned_payroll
         mustBe: 0
         tags:
           - Cross-Table Validation

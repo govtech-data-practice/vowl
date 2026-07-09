@@ -101,7 +101,7 @@ output["annotated"]   # {schema: full table + check_info}     <- mergeable check
 output["residues"]    # {"<schema>::<check>": failed rows + check_info + tables_in_query}  <- non-mergeable checks that still have offending rows
 ```
 
-Note that `residues` only holds non-mergeable checks that **still produce offending rows** (cross-table and column-subset checks). A non-mergeable check with no rows to emit (a scalar aggregation like `AVG`/`SUM`/`MIN`/`MAX`, `rowCount`, or an errored check) appears in neither dict; its verdict is recorded only in `summary.json`.
+Note that `residues` only holds non-mergeable checks that **still produce offending rows** (column-subset checks, and cross-table checks whose failed rows carry columns from more than the anchor table — see §1 below). A non-mergeable check with no rows to emit (a scalar aggregation like `AVG`/`SUM`/`MIN`/`MAX`, `rowCount`, or an errored check) appears in neither dict; its verdict is recorded only in `summary.json`.
 
 The `check_info` column holds a JSON array of objects (one per failing check), shaped by the `check_info` preset (`"names"` default, `"summary"`, `"full"`). Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the **same `check_info` column** the annotated tables use (a single-element JSON array) and `tables_in_query`. Two non-mergeable checks are never grouped into one entry, and a check that was annotated onto a full table never reappears as a residue. So everything `get_annotated_output()` returns — annotated tables and residues alike — is read the same way. (The standalone `failed_rows`/`both` CSVs come from a separate, unchanged path and keep their legacy comma-joined `check_ids` column.)
 
@@ -124,14 +124,13 @@ A **mergeable** check (e.g. a row-level check like "resale_price must be > 0") c
 This split is by design. A check can only be merged into the annotated table when **all** of the following are true:
 
 1. **The check didn't error.** An errored check has no usable failed rows.
-2. **It queries exactly one table.** A cross-table check (e.g. a JOIN between two tables) has no single table to annotate onto.
-3. **It produces row-level results** (aggregation type is `count` or `none`). Checks that return a single number (like `mean` or `maximum`) can't point to specific rows.
-4. **Its failed rows have the same columns as the full table.** If a check only selects a few columns, we can't match results back to full rows.
+2. **It produces row-level results** (aggregation type is `count` or `none`). Checks that return a single number (like `mean` or `maximum`) can't point to specific rows.
+3. **Its failed rows have the same columns as the full table.** If a check only selects a few columns, we can't match results back to full rows. This is what decides a cross-table check too (see below): the merge is driven purely by the failed-rows column set, not by how many tables the query touches.
 
 When a condition fails, the check is not merged onto the annotated table. What happens next depends on _why_ it failed to merge:
 
-- **It still has offending rows** (conditions 2 or 4, i.e. cross-table or column-subset checks) → those rows are emitted as a **residue** (returned separately), keyed `"<schema>::<check_name>"`.
-- **It has no offending rows to emit** (condition 3, i.e. a scalar aggregation like `AVG`/`SUM`/`MIN`/`MAX`, or an errored check) → there is **nothing to put in a residue either**. The failure appears only in `summary.json` (status, `actual_value`, `expected_value`). It is **not** written to any CSV.
+- **It still has offending rows** (condition 3, i.e. column-subset checks, or a cross-table check whose rows carry both tables' columns) → those rows are emitted as a **residue** (returned separately), keyed `"<schema>::<check_name>"`.
+- **It has no offending rows to emit** (condition 2, i.e. a scalar aggregation like `AVG`/`SUM`/`MIN`/`MAX`, or an errored check) → there is **nothing to put in a residue either**. The failure appears only in `summary.json` (status, `actual_value`, `expected_value`). It is **not** written to any CSV.
 
 > **Heads-up: a failed scalar aggregation has no CSV footprint in `annotated` mode.**
 > It tags no rows in the annotated table (its `check_info` stays `null`) and produces no
@@ -141,12 +140,37 @@ When a condition fails, the check is not merged onto the annotated table. What h
 
 The common cases:
 
-### 1. Cross-table checks (fails condition 2)
+### 1. Cross-table checks: mergeable when the failed rows match the home schema
 
-Checks that JOIN multiple tables have no single table to annotate onto.
+A cross-table check (one that JOINs a table against a reference table) **can** annotate onto its home schema's table — you just have to shape its failed-rows query so it projects **only that schema's columns**. Whether it merges is decided entirely by condition 3 (the failed-rows column set), not by how many tables the query touches.
+
+Every SQL check derives two queries from the single query you write: a **scalar query** (the `SELECT COUNT(*)` that decides pass/fail) and a lazy **failed-rows query** (`SELECT *` over the same `FROM`, run only when the check failed and rows are requested). The `COUNT(*)` → `SELECT *` rewrite only touches the **outer** select list, so a subquery that projects one table's columns still governs the shape of the failed rows.
+
+**Mergeable — project only the anchor table's columns via a wrapping subquery:**
 
 ```yaml
-# This check spans two tables — which table should the failure appear in?
+# Anchored to demo_employee_payroll; failed rows are payroll rows only.
+quality:
+  - type: sql
+    name: employee_id_exists_in_master_list
+    query: >-
+      SELECT COUNT(*)
+      FROM (
+        SELECT payroll.*
+        FROM demo_employee_payroll payroll
+        LEFT JOIN demo_employee_list ref
+          ON payroll.employee_id = ref.employee_id
+        WHERE ref.employee_id IS NULL
+      ) AS orphaned_payroll
+    mustBe: 0
+```
+
+The failed-rows query rewrites to `SELECT * FROM (SELECT payroll.* …)`, which returns **only `demo_employee_payroll`'s columns**. Those rows match the anchor table exactly, so the orphan payroll rows are annotated directly into `demo_employee_payroll`'s `check_info` column — no residue, no downstream mapping.
+
+**Non-mergeable — a bare JOIN returns both tables' columns:**
+
+```yaml
+# Failed rows carry columns from BOTH tables (ref.* all NULL) -> residue.
 quality:
   - type: sql
     name: employee_id_exists_in_master_list
@@ -157,15 +181,16 @@ quality:
     mustBe: 0
 ```
 
-The query result might look like:
+Here the failed-rows query rewrites to a top-level `SELECT *` over the JOIN, which returns **both** tables' columns. That column set doesn't match `demo_employee_payroll`, so the check stays a **residue** keyed `"demo_employee_payroll::employee_id_exists_in_master_list"` — the same, backward-compatible behaviour existing bare-JOIN checks already have.
 
-| count |
-| ----- |
-| 3     |
+> **The merge is decided by column structure, not intent.** A misshaped query that
+> happens to return anchor-shaped rows *will* merge — this is the same class of risk
+> single-table custom SQL checks already carry. It is mitigated by two guards: the check
+> is only ever considered against **its own declared schema** (a payroll-anchored check
+> can never merge onto an unrelated table with a coincidentally-matching shape), and the
+> failed-rows column set must match that schema's columns **exactly**.
 
-This tells us 3 payroll rows have missing employee IDs, but the failure belongs to the _relationship_ between the two tables — there's no single table to annotate it onto. It goes to `residues` keyed by `"demo_employee_payroll::employee_id_exists_in_master_list"` (the check's home schema and name).
-
-### 2. Scalar-aggregation checks (fails condition 3): no residue at all
+### 2. Scalar-aggregation checks (fails condition 2): no residue at all
 
 Checks that produce a single number (e.g. `AVG`, `MAX`, `SUM`) can't point to specific rows.
 
@@ -189,9 +214,9 @@ The query result is just one number:
 
 There are no individual rows to flag: the result is a single scalar, so it can't be annotated onto the full table. Crucially, there are also no rows to put in a residue: a residue holds _offending rows_, and a scalar verdict has none. So unlike the cross-table and column-subset cases below, a failed scalar aggregation produces **neither an annotated tag nor a residue file**; the failure lives only in `summary.json`.
 
-Note: `rowCount` is an aggregate too. Its query is a bare `SELECT COUNT(*) FROM t` with no failure predicate, so the count measures table cardinality rather than a number of failing rows; there is no per-row failure to annotate. Like `AVG`/`MAX`/`SUM`, it is non-row-level (fails condition 3) and produces no residue; its verdict is summary-only.
+Note: `rowCount` is an aggregate too. Its query is a bare `SELECT COUNT(*) FROM t` with no failure predicate, so the count measures table cardinality rather than a number of failing rows; there is no per-row failure to annotate. Like `AVG`/`MAX`/`SUM`, it is non-row-level (fails condition 2) and produces no residue; its verdict is summary-only.
 
-### 3. Column-subset checks (fails condition 4)
+### 3. Column-subset checks (fails condition 3)
 
 A check that only returns _some_ columns can't be matched back to full rows. This happens with custom SQL `query:` checks that `SELECT` (or `GROUP BY`) a subset of columns rather than whole rows:
 

@@ -505,7 +505,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 It returns a nested dict with two reserved keys:
 
 - **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way.
+- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (aggregation and column-subset checks, plus cross-table checks whose failed rows carry columns from more than the anchor table). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way. (A cross-table check *can* merge onto its home schema if you shape its failed-rows query to project only that schema's columns — see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged).)
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -568,7 +568,7 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead. Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
+Aggregation checks, column-subset checks, and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. (A cross-table check whose failed-rows query projects only its home schema's columns *is* merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
@@ -604,7 +604,7 @@ Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed 
 
 </details>
 
-> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) walks through these examples end-to-end.
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [Core Tutorial notebook](examples/1_core_tutorial/core_tutorial.ipynb) walks through these examples end-to-end.
 
 The `save()` method also supports annotated output via `output_mode`:
 
@@ -700,7 +700,7 @@ result.save()  # uses the configured output_mode
 
 # Part 3 · Usage Patterns
 
-> **Interactive demo:** Try the [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
+> **Interactive demo:** Try the [example notebooks](examples/) for a hands-on walkthrough of the examples below — start with the [Core Tutorial](examples/1_core_tutorial/core_tutorial.ipynb).
 
 The patterns are grouped from most common to most advanced:
 

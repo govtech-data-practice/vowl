@@ -582,15 +582,27 @@ class ValidationResult:
         """True when *cr*'s failed rows can be annotated onto the full table.
 
         Predicates are ordered cheapest-first so the lazy ``failed_rows`` fetch
-        (criterion 4) is only triggered for checks that pass 1-3.
+        (the column-match criterion) is only triggered for checks that pass the
+        cheaper ones.
+
+        A **cross-table** check (one that JOINs against a reference table) is
+        *not* rejected outright.  It is gated solely by the column-structure
+        match below: if the author shaped its failed-rows query to project only
+        the anchor schema's columns (e.g. ``SELECT payroll.* FROM payroll LEFT
+        JOIN ref ...``), those rows match the anchor table and merge; a bare
+        ``JOIN`` whose ``SELECT *`` returns both tables' columns does not match
+        and stays a residue.  The caller only ever evaluates a check against its
+        own ``schema_name`` full table (see ``get_annotated_output`` step 1), so
+        a cross-table check can never merge onto an unrelated schema whose shape
+        happens to coincide.
         """
         if cr.status == "ERROR":
-            return False
-        if is_cross_table_check(cr):
             return False
         if not cr.supports_row_level_output:
             return False
         # Column match -- the only fetch-triggering predicate, evaluated last.
+        # This single gate handles both single- and cross-table checks: the
+        # failed-rows column set must exactly equal the anchor table's columns.
         failed_cols = set(cr.failed_rows.columns) - set(_METADATA_COLUMNS)
         return failed_cols == full_table_columns
 
@@ -830,8 +842,13 @@ class ValidationResult:
           shaped by the ``check_info`` preset (see :data:`CheckInfoPreset`);
           passing rows are ``null``.
         - ``"residues"`` -- **one entry per non-mergeable check that still has
-          offending rows to emit** (cross-table, column-subset, or any check on
-          a schema with no adapter).  Keyed by ``"<schema>::<check_name>"``.
+          offending rows to emit** (column-subset checks, cross-table checks
+          whose failed rows carry columns beyond the anchor schema, or any check
+          on a schema with no adapter).  A cross-table check whose failed-rows
+          query projects only the anchor schema's columns is *mergeable* and
+          annotates onto that schema's table instead (see
+          :meth:`_is_mergeable_for_full_table`).  Keyed by
+          ``"<schema>::<check_name>"``.
           Empty dict when there are none.  A non-mergeable check with *no* rows
           to emit -- a scalar aggregation (``AVG``/``SUM``/``MIN``/``MAX``,
           ``rowCount``) or an errored check -- produces **no residue**; its

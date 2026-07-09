@@ -9,6 +9,7 @@ See tests/check_reference_test_plan.md for the full test matrix.
 
 from __future__ import annotations
 
+import pyarrow as pa
 import pytest
 
 from vowl.contracts.check_reference import (
@@ -712,6 +713,96 @@ class TestDuplicateUniquePkMergeable:
         assert ref.supports_row_level_output is False
         # A failing rowCount reports zero failing rows (count is table size, not violations).
         assert ref.compute_failed_rows_count(1000) == 0
+
+
+# ===================================================================
+# Group D3 — cross-table checks whose failed-rows query projects only the
+# anchor table's columns are annotated-mergeable.
+#
+# The COUNT(*) -> SELECT * rewrite only touches the OUTER select list, so a
+# subquery-wrapped ``SELECT payroll.*`` still governs the projection: the
+# failed-rows query returns payroll-only columns, matching the anchor schema.
+# A bare JOIN's ``SELECT *`` returns both tables' columns and stays a residue.
+# ===================================================================
+
+
+class TestCrossTableFailedRowsProjection:
+    _SUBQUERY_WRAPPED = (
+        "SELECT COUNT(*) FROM ("
+        "SELECT payroll.* "
+        "FROM demo_employee_payroll payroll "
+        "LEFT JOIN demo_employee_list ref ON payroll.employee_id = ref.employee_id "
+        "WHERE ref.employee_id IS NULL"
+        ") AS orphaned_payroll"
+    )
+    _BARE_JOIN = (
+        "SELECT COUNT(*) "
+        "FROM demo_employee_payroll payroll "
+        "LEFT JOIN demo_employee_list ref ON payroll.employee_id = ref.employee_id "
+        "WHERE ref.employee_id IS NULL"
+    )
+
+    def _ref(self, monkeypatch, query):
+        contract = _make_contract(
+            monkeypatch,
+            schema_name="demo_employee_payroll",
+            properties=[{"name": "employee_id", "logicalType": "string"}],
+            table_quality=[
+                {
+                    "name": "employee_id_exists_in_master_list",
+                    "type": "sql",
+                    "query": query,
+                    "dimension": "consistency",
+                    "mustBe": 0,
+                }
+            ],
+        )
+        refs = contract.get_check_references_by_schema()["demo_employee_payroll"]
+        matches = [r for r in refs if isinstance(r, SQLTableCheckReference)]
+        assert len(matches) == 1
+        return matches[0]
+
+    def test_subquery_wrapped_count_rewrites_to_select_star_over_subquery(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._ref(monkeypatch, self._SUBQUERY_WRAPPED)
+        failed = ref.get_failed_rows_query("duckdb")
+        upper = failed.upper()
+        # Outer COUNT(*) becomes SELECT *, but the inner projection is untouched.
+        assert upper.startswith("SELECT *")
+        assert "SELECT PAYROLL.*" in upper
+        assert "FROM (" in upper
+
+    def test_subquery_wrapped_failed_rows_yield_anchor_only_columns(self, monkeypatch: pytest.MonkeyPatch):
+        # Execute the rewritten failed-rows query against a real DuckDB and
+        # assert the resulting columns are exactly the payroll table's columns.
+        import ibis
+
+        ref = self._ref(monkeypatch, self._SUBQUERY_WRAPPED)
+        con = ibis.duckdb.connect()
+        con.create_table(
+            "demo_employee_payroll",
+            pa.table({"employee_id": ["e1", "e2", "e3"], "amount": [10, 20, 30]}),
+        )
+        con.create_table("demo_employee_list", pa.table({"employee_id": ["e1", "e2"]}))
+
+        failed_sql = ref.get_failed_rows_query("duckdb")
+        rows = con.sql(failed_sql).to_pyarrow()
+        # Orphan row e3 only; columns match the payroll (anchor) table exactly.
+        assert set(rows.column_names) == {"employee_id", "amount"}
+        assert rows.to_pylist() == [{"employee_id": "e3", "amount": 30}]
+
+    def test_bare_join_select_star_spans_both_tables(self, monkeypatch: pytest.MonkeyPatch):
+        # The backward-compatible case: a bare JOIN's SELECT * spans both tables,
+        # so its columns won't match the anchor schema and it stays a residue.
+        # The rewritten query is a top-level SELECT * over the JOIN (no subquery
+        # projection to constrain it), so both tables' columns are returned.
+        ref = self._ref(monkeypatch, self._BARE_JOIN)
+        failed = ref.get_failed_rows_query("duckdb")
+        upper = failed.upper()
+        assert upper.startswith("SELECT *")
+        # No wrapping subquery projection: the JOIN is at the top level.
+        assert "FROM DEMO_EMPLOYEE_PAYROLL" in upper
+        assert "LEFT JOIN DEMO_EMPLOYEE_LIST" in upper
+        assert "FROM (" not in upper
 
 
 # ===================================================================
