@@ -11,6 +11,7 @@ Tests PooledAdapter with:
 from __future__ import annotations
 
 import json
+import sqlite3
 import threading
 from pathlib import Path
 
@@ -74,7 +75,13 @@ def sqlite_adapter_factory(employee_data, tmp_path):
     def factory():
         counter["n"] += 1
         db_path = tmp_path / f"employee_{counter['n']}.db"
-        con = ibis.sqlite.connect(str(db_path))
+        # check_same_thread=False lets a pooled connection be handed off between
+        # threads. Safe here because PooledAdapter's queue hands each connection
+        # to one thread at a time, and CPython's sqlite3 is compiled serialized
+        # (threadsafety=3). ibis.sqlite.connect() gives no way to pass this flag,
+        # so build the sqlite3 connection ourselves and wrap it via from_connection.
+        raw_con = sqlite3.connect(str(db_path), check_same_thread=False)
+        con = ibis.sqlite.from_connection(raw_con)
 
         payroll_cols = ", ".join(f"{c} TEXT" for c in employee_payroll.columns)
         con.raw_sql(f"CREATE TABLE demo_employee_payroll ({payroll_cols})")
@@ -335,7 +342,12 @@ class TestPooledAdapterSQLite:
 
         assert len(results) > 0
         statuses = {r.status for r in results}
+        # Thread-safe connections (check_same_thread=False) let pooled SQLite
+        # connections cross threads, so parallel checks no longer ERROR.
         assert "ERROR" not in statuses
+        # Confirm the parallel path actually ran across multiple connections
+        # rather than silently serialising on one.
+        assert len(pooled._all_instances) <= 3
 
     def test_get_sql_dialect_returns_sqlite(self, sqlite_adapter_factory):
         """get_sql_dialect delegates to SQLite IbisAdapter."""
@@ -615,14 +627,14 @@ class TestPooledAdapterCrossBackend:
         for r in cross_table_results:
             assert r.status != "ERROR", f"Cross-backend check '{r.check_name}' errored: {r.details}"
 
-    def test_sqlite_not_thread_safe_for_export(self, employee_data, tmp_path):
-        """SQLite connections cannot be used across threads for export.
+    def test_sqlite_thread_safe_export_across_threads(self, employee_data, tmp_path):
+        """SQLite connections built with check_same_thread=False cross threads.
 
-        This documents the known limitation: SQLite PooledAdapters work for
-        single-table checks (each thread creates its own connection), but
-        Mode 2 cross-table materialization fails because export_table_as_arrow
-        is called from a thread pool worker on a connection potentially created
-        on another thread.
+        Previously documented as a limitation, but CPython's sqlite3 is compiled
+        serialized (threadsafety=3) and the connection guard is opt-out. With
+        check_same_thread=False, a pooled connection created on one thread can be
+        checked out and used by a worker thread — so export_table_as_arrow (used
+        by Mode 2 cross-table materialization) works from a thread pool worker.
         """
         employee_list, _ = employee_data
         counter = {"n": 0}
@@ -630,7 +642,8 @@ class TestPooledAdapterCrossBackend:
         def make_sqlite():
             counter["n"] += 1
             db_path = tmp_path / f"sqlite_thread_{counter['n']}.db"
-            con = ibis.sqlite.connect(str(db_path))
+            raw_con = sqlite3.connect(str(db_path), check_same_thread=False)
+            con = ibis.sqlite.from_connection(raw_con)
             cols = ", ".join(f"{c} TEXT" for c in employee_list.columns)
             con.raw_sql(f"CREATE TABLE demo_employee_list ({cols})")
             con.insert("demo_employee_list", employee_list.astype(str))
@@ -645,6 +658,18 @@ class TestPooledAdapterCrossBackend:
         # Export works from the main thread
         arrow = pooled.export_table_as_arrow("demo_employee_list")
         assert arrow.num_rows > 0
+
+        # Export also works from a worker thread on a connection created elsewhere
+        worker_result: dict = {}
+
+        def worker() -> None:
+            worker_result["arrow"] = pooled.export_table_as_arrow("demo_employee_list")
+
+        thread = threading.Thread(target=worker)
+        thread.start()
+        thread.join()
+
+        assert worker_result["arrow"].num_rows > 0
 
     def test_is_compatible_with_separate_duckdb_instances(self, employee_data):
         """PooledAdapters with separate DuckDB instances are not compatible."""
