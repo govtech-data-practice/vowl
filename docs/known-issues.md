@@ -184,7 +184,7 @@ quality:
 Here the failed-rows query rewrites to a top-level `SELECT *` over the JOIN, which returns **both** tables' columns. That column set doesn't match `demo_employee_payroll`, so the check stays a **residue** keyed `"demo_employee_payroll::employee_id_exists_in_master_list"` — the same, backward-compatible behaviour existing bare-JOIN checks already have.
 
 > **The merge is decided by column structure, not intent.** A misshaped query that
-> happens to return anchor-shaped rows *will* merge — this is the same class of risk
+> happens to return anchor-shaped rows _will_ merge — this is the same class of risk
 > single-table custom SQL checks already carry. It is mitigated by two guards: the check
 > is only ever considered against **its own declared schema** (a payroll-anchored check
 > can never merge onto an unrelated table with a coincidentally-matching shape), and the

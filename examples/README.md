@@ -8,20 +8,20 @@ runs top-to-bottom on its own.
 
 ## Notebooks
 
-| Folder                | Notebook                | Covers                                                                     |
-| --------------------- | ----------------------- | -------------------------------------------------------------------------- |
-| `1_core_tutorial/`    | `core_tutorial.ipynb`   | Setup, running a validation (pandas/Polars/adapters/filtering), and understanding the results (the `ValidationResult` object & annotated output) |
-| `2_multiple_sources/` | `multiple_sources.ipynb`| Validating one contract across multiple sources                            |
-| `3_real_databases/`   | `real_databases.ipynb`  | Server-side validation with Testcontainers (Postgres/MySQL/Spark/DuckDB ATTACH) |
+| Folder                | Notebook                 | Covers                                                                                                                                           |
+| --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `1_core_tutorial/`    | `core_tutorial.ipynb`    | Setup, running a validation (pandas/Polars/adapters/filtering), and understanding the results (the `ValidationResult` object & annotated output) |
+| `2_multiple_sources/` | `multiple_sources.ipynb` | Validating one contract across multiple sources                                                                                                  |
+| `3_real_databases/`   | `real_databases.ipynb`   | Server-side validation with Testcontainers (Postgres/MySQL/Spark/DuckDB ATTACH)                                                                  |
 
 Notebooks 1 and 2 write generated CSV/JSON artifacts into their own local `outputs/`
 folder; those folders also hold pre-generated files for reference.
 
 ## Other files
 
-| File             | Description                                                |
-| ---------------- | ---------------------------------------------------------- |
-| `basic_usage.py` | Minimal script: validate a CSV with pandas in a few lines  |
+| File             | Description                                               |
+| ---------------- | --------------------------------------------------------- |
+| `basic_usage.py` | Minimal script: validate a CSV with pandas in a few lines |
 
 ## Running Examples
 
