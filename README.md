@@ -494,7 +494,6 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                               | `self` (chainable)              |
 | **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
 | **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                              | Dict[str, DataFrame]            |
-| **`get_consolidated_output_dfs(checks=None)`**                                       | Deduplicates failed rows across checks, grouped by table                                                                                                                                              | Dict[str, DataFrame]            |
 | **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) marking failed rows                                                                                                   | Dict[str, Dict[str, DataFrame]] |
 | **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                               | `True`/`False`                  |
 
@@ -505,7 +504,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 It returns a nested dict with two reserved keys:
 
 - **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (cross-table, aggregation, and column-subset checks). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way.
+- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (aggregation and column-subset checks, plus cross-table checks whose failed rows carry columns from more than the anchor table). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its failed-rows query to project only that schema's columns — see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged).)
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -568,7 +567,7 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-When a check spans more than one table (cross-table, aggregation, or column-subset checks), its failed rows can't be folded onto a single annotated table, so they surface under `"residues"` instead. Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
+Aggregation checks, column-subset checks, and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. (A cross-table check whose failed-rows query projects only its home schema's columns _is_ merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
@@ -604,7 +603,7 @@ Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed 
 
 </details>
 
-> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) walks through these examples end-to-end.
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
 
 The `save()` method also supports annotated output via `output_mode`:
 
@@ -618,6 +617,8 @@ result.save(output_mode="annotated", check_info="summary")
 # Save both failed-rows CSVs and annotated tables
 result.save(output_mode="both")
 ```
+
+> **Deprecation:** `output_mode="failed_rows"` / `"both"` (the legacy failed-rows CSVs) are deprecated in favour of `"annotated"`. They still work but emit a `DeprecationWarning`. The `save()` default is currently `"failed_rows"` and will change to `"annotated"` in a future minor release — pass `output_mode` explicitly to pin the behaviour you want.
 
 You can also set the output mode globally via `ValidationConfig`:
 
@@ -700,7 +701,7 @@ result.save()  # uses the configured output_mode
 
 # Part 3 · Usage Patterns
 
-> **Interactive demo:** Try the [usage patterns notebook](examples/vowl_usage_patterns_demo.ipynb) for a hands-on walkthrough of the examples below.
+> **Interactive demo:** Try the [example notebooks](examples/) for a hands-on walkthrough of the examples below — start with the [Basic Tutorial](examples/1_basic_tutorial/basic_tutorial.ipynb).
 
 The patterns are grouped from most common to most advanced:
 

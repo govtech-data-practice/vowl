@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import warnings
 from pathlib import Path
 
 import narwhals as nw
@@ -718,11 +719,20 @@ class TestValidationResultAPI:
             assert "tables_in_query" in df.columns
 
     def test_get_consolidated_output_dfs(self, result):
-        consolidated = result.get_consolidated_output_dfs()
+        # The public method is deprecated and warns; it delegates to a private
+        # helper that stays quiet so internal callers (e.g. save_outputs in
+        # failed_rows mode) don't emit the warning.
+        with pytest.warns(DeprecationWarning, match="get_annotated_output"):
+            consolidated = result.get_consolidated_output_dfs()
 
         assert isinstance(consolidated, dict)
         for _table_name, df in consolidated.items():
             assert isinstance(df, nw.DataFrame)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # the private helper must not warn
+            internal = result._get_consolidated_output_dfs()
+        assert list(consolidated.keys()) == list(internal.keys())
 
     def test_get_check_results_df(self, result):
         results_df = result.get_check_results_df()
@@ -736,11 +746,23 @@ class TestValidationResultAPI:
         original_dir = os.getcwd()
         os.chdir(tmp_path)
         try:
-            chained = result.save(prefix="test_readme_results")
+            # Default output_mode is still "failed_rows" (deprecated), so calling
+            # save() with no explicit mode warns about the upcoming default flip.
+            with pytest.warns(DeprecationWarning, match="default"):
+                chained = result.save(prefix="test_readme_results")
             assert chained is result
 
             files = list(tmp_path.iterdir())
             assert len(files) >= 1
+
+            # Explicit deprecated modes each warn; the new "annotated" mode does not.
+            with pytest.warns(DeprecationWarning, match="failed_rows"):
+                result.save(prefix="fr_run", output_mode="failed_rows")
+            with pytest.warns(DeprecationWarning, match="both"):
+                result.save(prefix="both_run", output_mode="both")
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", DeprecationWarning)
+                result.save(prefix="annotated_run", output_mode="annotated")
         finally:
             os.chdir(original_dir)
 

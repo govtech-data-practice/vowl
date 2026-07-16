@@ -316,12 +316,15 @@ class TestMatchCountWarning:
 
 
 class TestEligibility:
-    def test_cross_table_check_is_residue(self):
+    def test_cross_table_check_with_extra_columns_is_residue(self):
+        # A cross-table check whose failed rows carry BOTH tables' columns
+        # (the bare-JOIN SELECT * shape) does not match the anchor schema and
+        # stays a residue -- backward-compatible behaviour.
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         check = _make_check(
             "join_check",
             "orders",
-            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            failed_rows=pa.table({"id": [2], "name": ["b"], "ref_id": [None]}),
             tables_in_query="orders, customers",
         )
         result = _make_result([check], {"orders": _FakeAdapter(full)})
@@ -378,6 +381,143 @@ class TestEligibility:
 
 
 # ---------------------------------------------------------------------------
+# Cross-table checks merge onto their home schema when the failed-rows column
+# set matches exactly (opt-in by query shape: the author projects only the
+# anchor table's columns, e.g. SELECT payroll.* FROM payroll LEFT JOIN ref ...).
+# ---------------------------------------------------------------------------
+
+
+class TestCrossTableMerge:
+    @staticmethod
+    def _residue_check_names(out) -> set[str]:
+        names: set[str] = set()
+        for df in out["residues"].values():
+            names |= ValidationResult._check_names_in_entry(df)
+        return names
+
+    def test_exact_match_merges_onto_home_schema(self):
+        # Failed rows project only the anchor (orders) columns -> merges.
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        check = _make_check(
+            "orphan_check",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([check], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+
+        rows = {r["id"]: r["check_info"] for r in _row(out["annotated"]["orders"])}
+        assert _check_names_of(rows[2]) == ["orphan_check"]
+        assert rows[1] is None and rows[3] is None
+        # Merged, so NOT duplicated into residues.
+        assert "orphan_check" not in self._residue_check_names(out)
+
+    def test_partial_columns_stays_residue(self):
+        # Failed rows carry only a subset of the anchor columns -> residue.
+        full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        check = _make_check(
+            "orphan_partial",
+            "orders",
+            failed_rows=pa.table({"id": [2]}),
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([check], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list() == [None, None]
+        assert "orphan_partial" in self._residue_check_names(out)
+
+    def test_both_tables_columns_stays_residue(self):
+        # Bare-JOIN SELECT * shape returns both tables' columns -> residue.
+        full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        check = _make_check(
+            "orphan_wide",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"], "ref_id": [None]}),
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([check], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list() == [None, None]
+        assert "orphan_wide" in self._residue_check_names(out)
+
+    def test_wrong_schema_anchor_never_merges(self):
+        # A cross-table check anchored to "orders" must never merge onto
+        # "customers", even when that table's shape coincidentally matches.
+        orders_full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        customers_full = pa.table({"id": [10, 20], "name": ["x", "y"]})
+        check = _make_check(
+            "orphan_check",
+            "orders",
+            failed_rows=pa.table({"id": [10], "name": ["x"]}),  # matches customers' rows
+            tables_in_query="orders, customers",
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(orders_full), "customers": _FakeAdapter(customers_full)},
+        )
+        out = result.get_annotated_output()
+        # customers table is untouched -- the check is not anchored there.
+        assert out["annotated"]["customers"]["check_info"].to_list() == [None, None]
+        # orders is the anchor; the failing row (10, x) isn't in orders, so it
+        # under-matches there (nothing flagged) but the check is still consumed
+        # as mergeable for its home schema and not duplicated into residues.
+        assert "orphan_check" not in self._residue_check_names(out)
+
+    def test_errored_cross_table_check_unaffected(self):
+        # An errored cross-table check is neither merged nor a residue.
+        full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        check = _make_check(
+            "errored_join",
+            "orders",
+            status="ERROR",
+            failed_rows=None,
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([check], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list() == [None, None]
+        assert out["residues"] == {}
+
+    def test_scalar_cross_table_check_stays_summary_only(self):
+        # A cross-table aggregation (single scalar) can't point to rows: it is
+        # not merged and produces no residue -- summary-only, unchanged.
+        full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        check = _make_check(
+            "cross_avg",
+            "orders",
+            failed_rows=pa.table({"cnt": [3]}),
+            supports_row_level_output=False,
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([check], {"orders": _FakeAdapter(full)})
+        out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list() == [None, None]
+        # Full-column mismatch AND non-row-level: residue holds its rows since
+        # it has offending rows (cnt col); but the merge path is not taken.
+        assert "cross_avg" in self._residue_check_names(out)
+
+    def test_truncation_guard_fires_for_merged_cross_table_check(self):
+        # A now-mergeable cross-table check whose rows were capped must raise,
+        # not silently annotate un-fetched failures as passing.
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        check = _make_check(
+            "orphan_check",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            failed_rows_count=2,
+            tables_in_query="orders, customers",
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(max_failed_rows=1),
+        )
+        with pytest.raises(ValueError, match="annotated output"):
+            result.get_annotated_output()
+
+
+# ---------------------------------------------------------------------------
 # Subsumption (the critical fix)
 # ---------------------------------------------------------------------------
 
@@ -421,10 +561,11 @@ class TestSubsumption:
 class TestPerCheckResidues:
     def test_residue_keyed_by_schema_and_check(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
+        # Cross-table failed rows carrying both tables' columns -> non-mergeable.
         check = _make_check(
             "join_check",
             "orders",
-            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            failed_rows=pa.table({"id": [2], "name": ["b"], "ref_id": [None]}),
             tables_in_query="orders, customers",
         )
         result = _make_result([check], {"orders": _FakeAdapter(full)})
@@ -434,12 +575,19 @@ class TestPerCheckResidues:
     def test_each_residue_carries_exactly_one_check_name(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         # Two non-mergeable checks that share table AND column set: under the old
-        # grouped path these collapsed into one entry; now each is its own.
+        # grouped path these collapsed into one entry; now each is its own. The
+        # extra ref_id column keeps them non-mergeable (both tables' columns).
         c1 = _make_check(
-            "join_a", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders, customers"
+            "join_a",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"], "ref_id": [None]}),
+            tables_in_query="orders, customers",
         )
         c2 = _make_check(
-            "join_b", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders, customers"
+            "join_b",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"], "ref_id": [None]}),
+            tables_in_query="orders, customers",
         )
         result = _make_result([c1, c2], {"orders": _FakeAdapter(full)})
         out = result.get_annotated_output()
@@ -733,7 +881,7 @@ class TestSaveModes:
         residue = _make_check(
             "join_check",
             "orders",
-            failed_rows=pa.table({"id": [3], "name": ["c"]}),
+            failed_rows=pa.table({"id": [3], "name": ["c"], "ref_id": [None]}),
             tables_in_query="orders, customers",
         )
         result = _make_result([mergeable, residue], {"orders": _FakeAdapter(full)})
@@ -1001,3 +1149,125 @@ class TestPercentChecksExecuteEndToEnd:
         cr = self._check(result, "dup_pct")
         assert cr.status == "FAILED"
         assert float(cr.actual_value) == 50.0
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: a cross-table referential check whose failed-rows query projects
+# only the anchor table's columns (SELECT payroll.* over a LEFT JOIN) merges
+# onto that schema's annotated table instead of falling to residues.
+# Uses the employee_payroll fixtures (tests/employee/).
+# ---------------------------------------------------------------------------
+
+
+class TestCrossTableMergeEndToEnd:
+    from pathlib import Path as _Path
+
+    _EMPLOYEE_DIR = _Path(__file__).parent / "employee"
+
+    def _validate(self, monkeypatch, *, referential_query):
+        import ibis
+        import pandas as pd
+
+        import vowl.contracts.contract as contract_module
+        from vowl.adapters.ibis_adapter import IbisAdapter
+        from vowl.contracts.models import get_latest_version
+        from vowl.validate import validate_data
+
+        monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+        contract = contract_module.Contract(
+            {
+                "apiVersion": get_latest_version(),
+                "kind": "DataContract",
+                "version": "1.0.0",
+                "id": "cross-table-merge-e2e",
+                "status": "active",
+                "schema": [
+                    {
+                        "name": "demo_employee_payroll",
+                        "properties": [
+                            {"name": "employee_id", "logicalType": "string"},
+                            {"name": "amount", "logicalType": "integer"},
+                        ],
+                        "quality": [
+                            {
+                                "name": "employee_id_exists_in_master_list",
+                                "type": "sql",
+                                "dimension": "consistency",
+                                "query": referential_query,
+                                "mustBe": 0,
+                            }
+                        ],
+                    },
+                    {
+                        "name": "demo_employee_list",
+                        "properties": [{"name": "employee_id", "logicalType": "string"}],
+                        "quality": [],
+                    },
+                ],
+            }
+        )
+        con = ibis.duckdb.connect()
+        # e939123 in payroll is absent from the master list -> one orphan row.
+        con.create_table(
+            "demo_employee_payroll",
+            pd.DataFrame(
+                {
+                    "employee_id": ["e123213", "e128903", "e939123"],
+                    "amount": [100, 200, 300],
+                }
+            ),
+        )
+        con.create_table(
+            "demo_employee_list",
+            pd.DataFrame({"employee_id": ["e123213", "e128903"]}),
+        )
+        ibis_adapter = IbisAdapter(con)
+        return validate_data(
+            contract,
+            adapters={"demo_employee_payroll": ibis_adapter, "demo_employee_list": ibis_adapter},
+        )
+
+    @staticmethod
+    def _residue_check_names(out) -> set[str]:
+        names: set[str] = set()
+        for df in out["residues"].values():
+            names |= ValidationResult._check_names_in_entry(df)
+        return names
+
+    def test_subquery_wrapped_referential_check_merges_onto_payroll(self, monkeypatch: pytest.MonkeyPatch):
+        query = (
+            "SELECT COUNT(*) FROM ("
+            "SELECT payroll.* "
+            "FROM demo_employee_payroll payroll "
+            "LEFT JOIN demo_employee_list ref ON payroll.employee_id = ref.employee_id "
+            "WHERE ref.employee_id IS NULL"
+            ") AS orphaned_payroll"
+        )
+        result = self._validate(monkeypatch, referential_query=query)
+        cr = next(c for c in result.check_results if c.check_name == "employee_id_exists_in_master_list")
+        assert cr.status == "FAILED"
+
+        out = result.get_annotated_output()
+        annotated = out["annotated"]["demo_employee_payroll"]
+        rows = {r["employee_id"]: r["check_info"] for r in annotated.to_arrow().to_pylist()}
+        # The orphan payroll row is annotated on the payroll table...
+        assert _check_names_of(rows["e939123"]) == ["employee_id_exists_in_master_list"]
+        # ...and the matched rows are clean.
+        assert rows["e123213"] is None and rows["e128903"] is None
+        # Merged, so it is NOT duplicated into residues.
+        assert "employee_id_exists_in_master_list" not in self._residue_check_names(out)
+
+    def test_bare_join_referential_check_stays_residue(self, monkeypatch: pytest.MonkeyPatch):
+        # A bare-JOIN SELECT COUNT(*) rewrites to a top-level SELECT * spanning
+        # both tables -> columns don't match the payroll anchor -> residue.
+        query = (
+            "SELECT COUNT(*) "
+            "FROM demo_employee_payroll payroll "
+            "LEFT JOIN demo_employee_list ref ON payroll.employee_id = ref.employee_id "
+            "WHERE ref.employee_id IS NULL"
+        )
+        result = self._validate(monkeypatch, referential_query=query)
+        out = result.get_annotated_output()
+        annotated = out["annotated"]["demo_employee_payroll"]
+        assert all(r["check_info"] is None for r in annotated.to_arrow().to_pylist())
+        assert "employee_id_exists_in_master_list" in self._residue_check_names(out)
