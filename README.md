@@ -494,7 +494,6 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                               | `self` (chainable)              |
 | **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
 | **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                              | Dict[str, DataFrame]            |
-| **`get_consolidated_output_dfs(checks=None)`**                                       | _Deprecated_ — use `get_annotated_output()`. Deduplicates failed rows across checks, grouped by table                                                                                                 | Dict[str, DataFrame]            |
 | **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) marking failed rows                                                                                                   | Dict[str, Dict[str, DataFrame]] |
 | **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                               | `True`/`False`                  |
 
@@ -619,7 +618,7 @@ result.save(output_mode="annotated", check_info="summary")
 result.save(output_mode="both")
 ```
 
-> **Deprecation:** `output_mode="failed_rows"` / `"both"` and `get_consolidated_output_dfs()` (the legacy consolidated failed-rows CSVs) are deprecated in favour of `"annotated"`. They still work but emit a `DeprecationWarning`. The `save()` default is currently `"failed_rows"` and will change to `"annotated"` in a future minor release — pass `output_mode` explicitly to pin the behaviour you want.
+> **Deprecation:** `output_mode="failed_rows"` / `"both"` (the legacy failed-rows CSVs) are deprecated in favour of `"annotated"`. They still work but emit a `DeprecationWarning`. The `save()` default is currently `"failed_rows"` and will change to `"annotated"` in a future minor release — pass `output_mode` explicitly to pin the behaviour you want.
 
 You can also set the output mode globally via `ValidationConfig`:
 
