@@ -794,7 +794,9 @@ def test_validation_result_consolidation_handles_no_failed_rows_and_no_data_colu
         SimpleNamespace(adapters={"users": SimpleNamespace()}),
         ["users"],
     )
-    assert empty_result.get_consolidated_output_dfs() == {}
+    # Use the private helper: the public method is deprecated and its warning is
+    # covered separately; here we're exercising the grouping behaviour.
+    assert empty_result._get_consolidated_output_dfs() == {}
 
     grouped = ValidationResult._consolidate_grouped_output(
         _nw_df({"check_id": ["rule_a", "rule_b"], "tables_in_query": ["users", "users"]})
@@ -848,7 +850,7 @@ def test_validation_result_consolidation_adds_suffix_for_same_table_different_co
         ["users"],
     )
 
-    consolidated = result.get_consolidated_output_dfs()
+    consolidated = result._get_consolidated_output_dfs()
     assert list(consolidated) == ["users__1", "users__2"]
 
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+- `ValidationResult.get_consolidated_output_dfs()` and the `output_mode="failed_rows"` / `"both"` save modes (the legacy consolidated failed-rows CSVs) are deprecated in favour of annotated output (`get_annotated_output()` / `output_mode="annotated"`). Calling them now emits a `DeprecationWarning`. The `save()` default `output_mode` is still `"failed_rows"` but will change to `"annotated"` in a future minor release — pass `output_mode` explicitly to pin the behaviour you want. Annotated output supersedes the consolidated view: it returns your full tables with failing rows flagged in place via a per-row `check_info` column, plus per-check residues.
+
 ## [0.0.4] - 2026-07-06
 
 ### Fixed

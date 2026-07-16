@@ -55,6 +55,9 @@ class ValidationConfig:
             ``"failed_rows"`` (default), ``"annotated"``, or ``"both"``.  See
             :data:`OutputMode`.  ``save(output_mode=...)`` overrides this per
             call; when its argument is ``None`` this config value is used.
+            **Deprecated:** ``"failed_rows"`` is being phased out in favour of
+            ``"annotated"``; this default will change to ``"annotated"`` in a
+            future minor release.
         annotated_check_info: Preset controlling the annotated table's
             ``check_info`` column.  One of ``"names"`` (default),
             ``"summary"``, or ``"full"``.  See :data:`CheckInfoPreset`.

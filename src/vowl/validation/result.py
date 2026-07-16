@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from pathlib import Path
@@ -470,9 +471,38 @@ class ValidationResult:
         """Group failed rows by (tables_in_query, column_set), deduplicating
         identical rows and combining their check IDs.
 
-        Unlike ``get_annotated_output``, this does **not** filter out cross-table
-        checks. They appear under their composite table key (e.g.
-        ``"table_a, table_b"``).  See docs/known-issues.md for details.
+        Cross-table checks are grouped here by their ``tables_in_query`` and
+        appear under a composite table key (e.g. ``"table_a, table_b"``),
+        regardless of column shape.  This differs from ``get_annotated_output``,
+        which routes each cross-table check individually -- merging it onto its
+        anchor table when the failed rows carry only that schema's columns, or
+        emitting a per-check residue otherwise.  See docs/known-issues.md for
+        details.
+
+        .. deprecated::
+            Prefer :meth:`get_annotated_output`, which returns your full
+            in-scope tables with failing rows flagged in place (plus per-check
+            residues for the checks that cannot be merged).  This grouped view
+            will be removed in a future release.
+        """
+        warnings.warn(
+            "get_consolidated_output_dfs() is deprecated and will be removed in a "
+            "future release. Use get_annotated_output() instead, which returns your "
+            "full tables with failing rows flagged in place plus per-check residues. "
+            "Note the output shape differs: annotated tables carry a 'check_info' "
+            "JSON-array column (per row) rather than the grouped 'check_ids' "
+            "comma-joined string, and include passing rows too.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._get_consolidated_output_dfs(checks=checks)
+
+    def _get_consolidated_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
+        """Implementation of the grouped failed-rows view.
+
+        Kept as a private method so internal callers (e.g. ``save_outputs`` in
+        ``failed_rows``/``both`` mode) can reuse the grouping without emitting the
+        public method's ``DeprecationWarning``.
         """
         per_check = self.get_output_dfs(checks=checks)
         per_check = {k: v for k, v in per_check.items() if len(v) > 0}
@@ -1073,9 +1103,64 @@ class ValidationResult:
         output_mode: OutputMode | None = None,
         check_info: CheckInfoPreset | None = None,
     ) -> ValidationResult:
+        """Write the check-results CSV, per-mode row outputs, and summary JSON.
+
+        ``output_mode`` selects the row output shape:
+
+        - ``"annotated"`` -- **recommended.** Full in-scope tables with failing
+          rows flagged in place via a per-row ``check_info`` column, plus
+          per-check residues for non-mergeable checks.
+        - ``"failed_rows"`` -- *deprecated.* The legacy consolidated CSVs
+          (failing rows only, grouped per table, comma-joined ``check_ids``).
+        - ``"both"`` -- writes annotated tables *and* the deprecated
+          failed-rows CSVs; a migration bridge.
+
+        .. deprecated::
+            ``output_mode="failed_rows"`` (and the ``"failed_rows"`` half of
+            ``"both"``) is deprecated and will be removed in a future release.
+            The default is currently ``"failed_rows"`` and will change to
+            ``"annotated"`` in a future minor release -- pass ``output_mode``
+            explicitly to pin the behaviour you want.
+        """
         mode = output_mode if output_mode is not None else self._config.output_mode
         if mode not in ("failed_rows", "annotated", "both"):
             raise ValueError(f"Unknown output_mode: {mode!r}. Expected one of 'failed_rows', 'annotated', 'both'.")
+
+        if mode in ("failed_rows", "both"):
+            if output_mode is None:
+                # Relying on the implicit default, which still writes the
+                # deprecated consolidated failed-rows CSVs. The default will
+                # change to "annotated" in a future minor release.
+                warnings.warn(
+                    "save() currently defaults to output_mode='failed_rows', which writes the "
+                    "deprecated consolidated failed-rows CSVs (grouped rows with a 'check_ids' "
+                    "column). This default will change to 'annotated' in a future release. Pass "
+                    "output_mode='annotated' now to opt in early (full tables with a per-row "
+                    "'check_info' column plus per-check residues), or output_mode='failed_rows' "
+                    "to keep the old shape explicitly and silence this warning.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            elif mode == "both":
+                # Explicitly asked for both — annotated CSVs are written too, so
+                # this is a valid migration bridge; just flag the deprecated half.
+                warnings.warn(
+                    "output_mode='both' still writes the deprecated consolidated failed-rows "
+                    "CSVs alongside the annotated tables. The failed-rows shape will be removed "
+                    "in a future release; migrate to output_mode='annotated' when ready.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            else:
+                # Explicit output_mode="failed_rows": honoured, but deprecated.
+                warnings.warn(
+                    "output_mode='failed_rows' writes the deprecated consolidated failed-rows "
+                    "CSVs (grouped rows with a 'check_ids' column) and will be removed in a "
+                    "future release. Use output_mode='annotated' instead (full tables with a "
+                    "per-row 'check_info' column plus per-check residues).",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
 
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -1092,7 +1177,7 @@ class ValidationResult:
         saved_files = [str(check_csv)]
 
         if mode in ("failed_rows", "both"):
-            for table_key, df in self.get_consolidated_output_dfs().items():
+            for table_key, df in self._get_consolidated_output_dfs().items():
                 safe_key = table_key.replace(", ", "_").replace(" ", "_")
                 csv_path = output_path / f"{prefix}_{safe_key}.csv"
                 _pa_csv.write_csv(df.to_arrow(), str(csv_path))

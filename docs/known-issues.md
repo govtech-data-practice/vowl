@@ -253,7 +253,7 @@ This tells us a town has an outlier, but the result only has 1 column. The full 
 
 ### Consolidated output groups; annotated residues are per-check
 
-`get_consolidated_output_dfs()` (used by `output_mode="failed_rows"`/`"both"`) **groups** failed rows by `(tables_in_query, column_set)`, deduplicating identical rows and comma-joining the check names that hit them — cross-table failures included, keyed by composite table name (e.g. `"table_a, table_b"`).
+`get_consolidated_output_dfs()` (used by `output_mode="failed_rows"`/`"both"`) **groups** failed rows by `(tables_in_query, column_set)`, deduplicating identical rows and comma-joining the check names that hit them — cross-table failures included, keyed by composite table name (e.g. `"table_a, table_b"`). This method is **deprecated** in favour of `get_annotated_output()` and will be removed in a future release.
 
 `get_annotated_output()`'s `residues` instead emit **one entry per non-mergeable check**, keyed `"<schema>::<check_name>"`, never grouped across checks. So the same non-mergeable failure looks different between the two: grouped (possibly multi-check) rows with a comma-joined `check_ids` column in the failed-rows CSVs, vs. a single-check entry with a `check_info` JSON-array column under annotated residues.
 
