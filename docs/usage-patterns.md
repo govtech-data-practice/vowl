@@ -5,7 +5,7 @@ description: Usage patterns for vowl — local DataFrames, PySpark, Ibis connect
 # Usage Patterns
 
 !!! tip "Interactive Demo"
-Try the [example notebooks](https://github.com/govtech-data-practice/vowl/tree/main/examples) for a hands-on walkthrough of the examples below — start with the [Core Tutorial](https://github.com/govtech-data-practice/vowl/blob/main/examples/1_core_tutorial/core_tutorial.ipynb).
+Try the [example notebooks](https://github.com/govtech-data-practice/vowl/tree/main/examples) for a hands-on walkthrough of the examples below — start with the [Basic Tutorial](https://github.com/govtech-data-practice/vowl/blob/main/examples/1_basic_tutorial/basic_tutorial.ipynb).
 
 ## Local DataFrame (Pandas/Polars)
 

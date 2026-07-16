@@ -604,7 +604,7 @@ Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed 
 
 </details>
 
-> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [Core Tutorial notebook](examples/1_core_tutorial/core_tutorial.ipynb) walks through these examples end-to-end.
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
 
 The `save()` method also supports annotated output via `output_mode`:
 
@@ -702,7 +702,7 @@ result.save()  # uses the configured output_mode
 
 # Part 3 · Usage Patterns
 
-> **Interactive demo:** Try the [example notebooks](examples/) for a hands-on walkthrough of the examples below — start with the [Core Tutorial](examples/1_core_tutorial/core_tutorial.ipynb).
+> **Interactive demo:** Try the [example notebooks](examples/) for a hands-on walkthrough of the examples below — start with the [Basic Tutorial](examples/1_basic_tutorial/basic_tutorial.ipynb).
 
 The patterns are grouped from most common to most advanced:
 
