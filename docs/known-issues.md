@@ -64,6 +64,22 @@ Oracle's SQL dialect differs from standard SQL in ways that can cause some check
 
 SQLite has no built-in regex support. vowl works around this by using a Python-side regex function (`_IBIS_REGEX_SEARCH`) that Ibis registers automatically. This works in most cases, but may behave slightly differently from server-side regex (e.g. subtle Unicode or flag differences).
 
+### SQLite: Parallel Checks Need a Thread-Safe Connection
+
+`PooledAdapter` runs checks across a thread pool, handing each pooled connection to one worker thread at a time. Python's `sqlite3` connections default to `check_same_thread=True`, which forbids using a connection on any thread other than the one that created it. So a pooled SQLite connection that gets handed to a different worker raises a thread error, which surfaces as an intermittent `ERROR` status (it depends on thread scheduling — sometimes every checkout happens to land back on its creating thread, sometimes not).
+
+The underlying SQLite library is thread-safe (CPython compiles it serialized, `sqlite3.threadsafety == 3`), so this is a Python-level guard, not a real engine limitation. To run pooled/parallel checks against SQLite, build the connection with the guard disabled and wrap it for Ibis:
+
+```python
+import sqlite3
+import ibis
+
+raw_con = sqlite3.connect("my.db", check_same_thread=False)
+con = ibis.sqlite.from_connection(raw_con)
+```
+
+This is safe with `PooledAdapter` because it hands each connection to only one thread at a time. **vowl's built-in connection-string path (`ibis.connect("sqlite://...")`) does not set this flag**, so a SQLite adapter created that way and then pooled will hit the limitation. Pass a pre-built thread-safe connection as shown above if you need parallel SQLite.
+
 ---
 
 ## Multi-Source Adapters: Data Materialisation
