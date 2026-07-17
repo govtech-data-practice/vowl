@@ -48,6 +48,7 @@ nav:
   - Data Contracts: contracts.md
   - Usage Patterns: usage-patterns.md
   - Architecture: architecture.md
+  - Design Considerations: design-considerations.md
   - Known Issues: known-issues.md
   - Roadmap: roadmap.md
 
