@@ -13,10 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cross-table merge for annotated output**: referential checks that use a subquery projection now merge onto their anchor table instead of becoming a residue, giving you a single consolidated view across tables (#45).
 - **SQL check execution design doc** (`docs/design-considerations.md`): covers the two-query model (scalar + failed-rows), automatic `COUNT(*)` ↔ `SELECT *` derivation, sqlglot-powered rewriting, and how query shape affects annotated output mergeability (#46).
 - Restructured example notebooks into three focused, self-contained tutorials: core tutorial, multiple sources, and real databases (#45).
-- Deprecation warnings for `get_consolidated_output_dfs()` and the legacy `output_mode="failed_rows"` / `"both"` save modes, guiding users toward annotated output.
-
 ### Deprecated
-- `ValidationResult.get_consolidated_output_dfs()` and the `output_mode="failed_rows"` / `"both"` save modes (the legacy consolidated failed-rows CSVs) are deprecated in favour of annotated output (`get_annotated_output()` / `output_mode="annotated"`). Calling them now emits a `DeprecationWarning`. The `save()` default `output_mode` is still `"failed_rows"` but will change to `"annotated"` in a future minor release — pass `output_mode` explicitly to pin the behaviour you want. Annotated output supersedes the consolidated view: it returns your full tables with failing rows flagged in place via a per-row `check_info` column, plus per-check residues.
+- `get_consolidated_output_dfs()` and `output_mode="failed_rows"` / `"both"` now emit a `DeprecationWarning`. Use `get_annotated_output()` / `output_mode="annotated"` instead — pass `output_mode` explicitly to pin behaviour.
 
 ### Fixed
 - Fixed flaky parallel SQLite test caused by `check_same_thread=True` default; pooled SQLite connections now use thread-safe mode (#44).
