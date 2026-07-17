@@ -4,13 +4,8 @@ title: Design Considerations
 
 # Design Considerations
 
-This page explains how vowl runs SQL checks under the hood: how a single
-check produces two queries, how the pass/fail verdict relates to individual
-failing rows, and how query shape determines whether a check can annotate
-onto a table or ends up as a residue.
-
-For the full annotated-output / residues split, see
-[Annotated Output: Not All Checks Can Be Merged](known-issues.md#annotated-output-not-all-checks-can-be-merged).
+This page explains design decisions behind vowl's internals: how checks are
+executed, how queries are derived, and how results flow into output.
 
 ## The two-query model
 
@@ -21,7 +16,7 @@ Every SQL check derives **two** queries from the single `query:` you write:
 | **Scalar query** | Produces the number that decides pass/fail | Always |
 | **Failed-rows query** | Returns the actual offending rows | Only on failure, and only when rows are requested |
 
-You only write one of them. vowl derives the other automatically.
+You only write one of them. vowl derives the other automatically:
 
 === "You write `COUNT(*)`"
 
@@ -43,8 +38,25 @@ You only write one of them. vowl derives the other automatically.
     SELECT COUNT(*) FROM (SELECT * FROM orders WHERE total < 0)
     ```
 
-The two queries are different views of the same check. The `COUNT(*)` /
-`SELECT *` rewrite keeps them in sync.
+This means a check like `COUNT(*) mustBe 0` is not limited to a single number.
+vowl can always recover the individual rows behind that number by running the
+derived failed-rows query. Consider a referential-integrity check:
+
+```sql
+SELECT COUNT(*)
+FROM demo_employee_payroll payroll
+LEFT JOIN demo_employee_list ref
+  ON payroll.employee_id = ref.employee_id
+WHERE ref.employee_id IS NULL
+```
+
+The scalar query tells you *some* payroll rows have no matching master record.
+The derived failed-rows query (`COUNT(*)` rewritten to `SELECT *`) tells you
+exactly *which* ones. The join is how you express the condition; it does not
+prevent vowl from recovering individual offending rows.
+
+This is what makes it possible to map a cross-table failure back onto a single
+table's annotated output (next section).
 
 !!! info "How the rewrite works: sqlglot, not string manipulation"
     vowl does not regex or string-replace `COUNT(*)` with `SELECT *`. It parses
@@ -59,32 +71,6 @@ The two queries are different views of the same check. The `COUNT(*)` /
     requests the rows (e.g. `get_annotated_output()`, `show_failed_rows()`, or
     `output_mode="failed_rows"`). Passing checks cost a single query.
 
-## From verdict to failing rows
-
-A common source of confusion: a check like `COUNT(*) mustBe 0` looks like it
-only gives a single number. How does vowl know *which* rows failed?
-
-Consider a referential-integrity check:
-
-```sql
-SELECT COUNT(*)
-FROM demo_employee_payroll payroll
-LEFT JOIN demo_employee_list ref
-  ON payroll.employee_id = ref.employee_id
-WHERE ref.employee_id IS NULL
-```
-
-The **verdict** is a single number over the whole table. It tells you that
-*some* payroll rows have no matching master record, but not which ones.
-
-The **failing rows** are still recoverable. Because vowl rewrites `COUNT(*)`
-into `SELECT *`, it can fetch the exact rows behind that number whenever you
-ask for them. The join is how you *express* the condition; it does not prevent
-vowl from recovering individual offending rows.
-
-This is what makes it possible to map a cross-table failure back onto a single
-table's annotated output (next section).
-
 !!! info "A note on query performance"
     The syntactic complexity vowl adds (wrapping queries in subqueries,
     rewriting between `COUNT(*)` and `SELECT *`) does not degrade execution
@@ -96,6 +82,9 @@ table's annotated output (next section).
     size.
 
 ## Making a cross-table check annotate onto a table
+
+For background on annotated output and residues, see
+[Annotated Output: Not All Checks Can Be Merged](known-issues.md#annotated-output-not-all-checks-can-be-merged).
 
 By default a cross-table check becomes a **residue**: its failed rows carry
 columns from both tables, so they don't match any single schema (see
