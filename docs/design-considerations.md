@@ -4,25 +4,24 @@ title: Design Considerations
 
 # Design Considerations
 
-This page explains how vowl actually runs your checks under the hood: how a
-single check becomes two SQL queries, why the pass/fail verdict is table-level
-while the failing rows are still recoverable, and how that shapes what ends up
-in annotated output. Understanding this makes it clear *why* some checks
-annotate onto a table and others become residues — and how you can influence
-that with the way you write a query.
+This page explains how vowl runs SQL checks under the hood: how a single
+check produces two queries, how the pass/fail verdict relates to individual
+failing rows, and how query shape determines whether a check can annotate
+onto a table or ends up as a residue.
 
-For the annotated-output / residues split itself, see
+For the full annotated-output / residues split, see
 [Annotated Output: Not All Checks Can Be Merged](known-issues.md#annotated-output-not-all-checks-can-be-merged).
 
-## How a check runs: two queries, not one
+## The two-query model
 
 Every SQL check derives **two** queries from the single `query:` you write:
 
-- a **scalar query** — produces the one number that decides pass/fail
-- a **failed-rows query** — pulls back the actual rows that failed
+| Query | Purpose | When it runs |
+| --- | --- | --- |
+| **Scalar query** | Produces the number that decides pass/fail | Always |
+| **Failed-rows query** | Returns the actual offending rows | Only on failure, and only when rows are requested |
 
-You only write one of them. vowl derives the other automatically, in whichever
-direction is needed:
+You only write one of them. vowl derives the other automatically.
 
 === "You write `COUNT(*)`"
 
@@ -30,7 +29,7 @@ direction is needed:
     -- Your query (scalar): decides pass/fail
     SELECT COUNT(*) FROM orders WHERE total < 0
 
-    -- vowl rewrites COUNT(*) -> * for the failed-rows query
+    -- vowl derives the failed-rows query by rewriting COUNT(*) to *
     SELECT * FROM orders WHERE total < 0
     ```
 
@@ -40,12 +39,12 @@ direction is needed:
     -- Your query (failed rows): lists the offending rows
     SELECT * FROM orders WHERE total < 0
 
-    -- vowl wraps it in COUNT(*) for the scalar query
+    -- vowl derives the scalar query by wrapping in COUNT(*)
     SELECT COUNT(*) FROM (SELECT * FROM orders WHERE total < 0)
     ```
 
-The two are just different views of the same check. The `COUNT(*)` / `SELECT *`
-rewrite is what keeps them in sync.
+The two queries are different views of the same check. The `COUNT(*)` /
+`SELECT *` rewrite keeps them in sync.
 
 !!! info "How the rewrite works: sqlglot, not string manipulation"
     vowl does not regex or string-replace `COUNT(*)` with `SELECT *`. It parses
@@ -55,17 +54,17 @@ rewrite is what keeps them in sync.
     without mangling your SQL.
 
 !!! note "The failed-rows query is lazy"
-    The scalar query always runs, because vowl needs it to decide the verdict.
-    The failed-rows query only runs when a check **fails** and something asks for
-    the rows (e.g. `get_annotated_output()`, `show_failed_rows()`, or
-    `output_mode="failed_rows"`). So it's *up to* two queries per check, not
-    always two — passing checks cost a single query.
+    The scalar query always runs because vowl needs it to decide the verdict.
+    The failed-rows query only runs when a check **fails** and something
+    requests the rows (e.g. `get_annotated_output()`, `show_failed_rows()`, or
+    `output_mode="failed_rows"`). Passing checks cost a single query.
 
-## Row-level or table-level?
+## From verdict to failing rows
 
-Both, at different stages — and this is the distinction that trips people up.
+A common source of confusion: a check like `COUNT(*) mustBe 0` looks like it
+only gives a single number. How does vowl know *which* rows failed?
 
-Take a referential-integrity check:
+Consider a referential-integrity check:
 
 ```sql
 SELECT COUNT(*)
@@ -75,40 +74,39 @@ LEFT JOIN demo_employee_list ref
 WHERE ref.employee_id IS NULL
 ```
 
-- The **verdict is table-level.** `COUNT(*) mustBe 0` is a single number over the
-  whole table. On its own it only tells you that *some* payroll rows have no
-  matching master record — not which ones.
-- The **failing rows are still recoverable.** Because vowl rewrites that
-  `COUNT(*)` into `SELECT *`, it can fetch the exact rows behind the number. So a
-  count-with-a-join check *can* tell you which rows failed.
+The **verdict** is a single number over the whole table. It tells you that
+*some* payroll rows have no matching master record, but not which ones.
 
-In other words, the join is just how you *express* the condition. It doesn't stop
-vowl from recovering the individual offending rows — that recovery is exactly
-what makes it possible to map a cross-table failure back onto a single table's
-annotated output (below).
+The **failing rows** are still recoverable. Because vowl rewrites `COUNT(*)`
+into `SELECT *`, it can fetch the exact rows behind that number whenever you
+ask for them. The join is how you *express* the condition; it does not prevent
+vowl from recovering individual offending rows.
 
-!!! info "How the database runs it is not your concern"
-    A `COUNT(*)` over a `LEFT JOIN` *looks* expensive, but you're describing a
-    result, not an execution plan. The database's query optimizer rewrites these
-    standard shapes into efficient plans — the `LEFT JOIN ... WHERE ref.key IS
-    NULL` anti-join is typically executed as a single-pass hash anti-join over
-    the (usually indexed/unique) join key, not a row-by-row comparison. A
-    readable, correct query is almost always the right call; if one is ever slow,
-    the fix is normally fresh table statistics or an index on the join key, not
-    hand-simplifying the SQL.
+This is what makes it possible to map a cross-table failure back onto a single
+table's annotated output (next section).
+
+!!! info "A note on query performance"
+    The syntactic complexity vowl adds (wrapping queries in subqueries,
+    rewriting between `COUNT(*)` and `SELECT *`) does not degrade execution
+    plans. Query engines flatten these standard shapes during planning. The
+    `LEFT JOIN ... WHERE ref.key IS NULL` anti-join pattern is typically
+    executed as a hash anti-join over the join key, not a row-by-row
+    comparison. Additionally, the failed-rows query only runs on failure and
+    is capped at `max_failed_rows`, so its cost is bounded regardless of table
+    size.
 
 ## Making a cross-table check annotate onto a table
 
-By default a cross-table check becomes a **residue**: it spans two tables, so
-vowl has no single table to annotate it onto (this is
-[merge condition 2](known-issues.md#annotated-output-not-all-checks-can-be-merged)).
+By default a cross-table check becomes a **residue**: its failed rows carry
+columns from both tables, so they don't match any single schema (see
+[condition 3](known-issues.md#annotated-output-not-all-checks-can-be-merged)).
 The residue still contains the offending rows and the `check_name`, just as a
 separate entry rather than a column on the annotated table.
 
-If you *want* those failures to appear in a table's `check_info` column, you can
-shape the failed-rows query so it returns **exactly the columns of the table you
-want to annotate**. The trick is to wrap the join in a subquery that selects only
-the anchor table's columns:
+If you want those failures to appear in a table's `check_info` column, shape
+the failed-rows query so it returns **exactly the columns of the table you want
+to annotate**. Wrap the join in a subquery that selects only the anchor table's
+columns:
 
 ```yaml
 - name: employee_id_exists_in_master_list
@@ -131,8 +129,8 @@ the anchor table's columns:
     - Cross-Table Validation
 ```
 
-Here's why this works. When vowl rewrites the outer `COUNT(*)` into `SELECT *`,
-it only swaps the **outer** select list — the subquery is left untouched:
+When vowl rewrites the outer `COUNT(*)` into `SELECT *`, it only swaps the
+**outer** select list. The subquery is left untouched:
 
 ```sql
 SELECT * FROM (
@@ -144,32 +142,30 @@ SELECT * FROM (
 ) AS orphaned_payroll
 ```
 
-The inner `SELECT payroll.*` is what decides the columns, so the failed rows come
-back with **only the payroll columns**, using their bare names (`employee_id`,
-`name`, `salary`, …). `payroll.*` qualifies *which* table to expand; it does not
-prefix the column names (you'd only get a `payroll_` prefix if you aliased a
-column explicitly). That column set matches `demo_employee_payroll`, so the rows
-map straight back onto its annotated table.
-
-Compare the two shapes:
+The inner `SELECT payroll.*` decides the columns, so the failed rows come back
+with **only the payroll columns** using their bare names (`employee_id`, `name`,
+`salary`, ...). `payroll.*` qualifies *which* table to expand; it does not
+prefix the column names. That column set matches `demo_employee_payroll`, so the
+rows map straight back onto its annotated table.
 
 | Query shape | Failed-rows columns | Annotates onto payroll? |
 | --- | --- | --- |
-| Bare `SELECT COUNT(*) FROM payroll LEFT JOIN ref …` | Both tables' columns (`ref.*` all NULL) | No — column set doesn't match |
+| Bare `SELECT COUNT(*) FROM payroll LEFT JOIN ref ...` | Both tables' columns (`ref.*` all NULL) | No, column set doesn't match |
 | Subquery with `SELECT payroll.*` (above) | Payroll columns only | Yes |
 
-!!! warning "This is author-driven, and the merge is by column structure"
-    vowl decides mergeability by **column structure**, not by intent. Any
-    failed-rows result whose columns match the anchor table will be merged onto
-    it — so it's on you to ensure the subquery projects the right columns
-    (`payroll.*`, not a partial column list, and not both tables' columns). Get
-    this wrong and the check either won't merge (column mismatch → residue) or
-    could merge rows you didn't intend. When in doubt, run
-    `get_annotated_output()` and inspect both `annotated` and `residues`.
+!!! warning "Mergeability is decided by column structure, not intent"
+    vowl decides mergeability by **column structure**. Any failed-rows result
+    whose columns match the anchor table will be merged onto it. It is on you
+    to ensure the subquery projects the right columns (`payroll.*`, not a
+    partial column list, and not both tables' columns). Get this wrong and the
+    check either won't merge (column mismatch = residue) or could merge rows
+    you didn't intend. When in doubt, run `get_annotated_output()` and inspect
+    both `annotated` and `residues`.
 
 !!! note "`NOT EXISTS` is an equivalent, often cleaner form"
-    The same result with no subquery wrapper — the reference table lives only in
-    the subquery, so `SELECT *` naturally resolves to payroll columns:
+    The same result with no subquery wrapper. The reference table lives only
+    inside the `WHERE NOT EXISTS (...)`, so `SELECT *` naturally resolves to
+    payroll columns:
 
     ```sql
     SELECT COUNT(*)
