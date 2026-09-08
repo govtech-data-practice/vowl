@@ -17,10 +17,17 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 
 🏆 **Official ODCS Vendor**: `vowl` is actively maintained and listed on the official [ODCS vendors list](https://github.com/bitol-io/open-data-contract-standard/blob/main/vendors.md) as a natively compatible tool.
 
+## Who it's for
+
+- Data engineers and platform teams that need declarative, standards-based data quality validation
+- Teams wanting a deterministic quality gate that guards pipelines against unreliable data, including data produced by increasingly automated or AI-assisted workflows
+- Anyone working with ODCS data contracts who wants an automated way to enforce them
+
 ## Table of Contents
 
 **Part 1 · Getting Started**
 
+- [Who it's for](#who-its-for)
 - [Features](#features)
 - [Installation](#installation)
 - [Validate in 3 lines](#validate-in-3-lines)
@@ -43,7 +50,10 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 **More**
 
 - [Roadmap](#roadmap)
+- [Status](#status)
 - [Contributing](#contributing)
+- [Owner](#owner)
+- [Security](#security)
 - [License](#license)
 
 ---
@@ -1084,9 +1094,27 @@ result.display_full_report()
 
 ---
 
+## Status
+
+**Active**. Under ongoing development, with issues and PRs monitored.
+
+---
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
+
+---
+
+## Owner
+
+Maintained by **GovTech's Data Practice** ([`govtech-data-practice`](https://github.com/govtech-data-practice)).
+
+---
+
+## Security
+
+See [`SECURITY.md`](SECURITY.md) for how to report a vulnerability and which versions are supported.
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in `vowl`, please report it through [GitHub Security Advisories](https://github.com/govtech-data-practice/Vowl/security/advisories/new).
+If you discover a security vulnerability in `vowl`, please report it through [GitHub Security Advisories](https://github.com/govtech-data-practice/vowl/security/advisories/new).
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
@@ -12,6 +12,16 @@ When reporting, please include:
 - Steps to reproduce the issue
 - The potential impact
 - Any suggested fixes (if applicable)
+
+## What to Expect
+
+- **Acknowledgement:** we aim to acknowledge your report within 7 days.
+- **Updates:** we will keep you informed as we investigate and work on a fix.
+- **Disclosure:** we follow coordinated disclosure and will agree timing with you before any public disclosure.
+
+## Supported Versions
+
+Only the latest released version of `vowl` on [PyPI](https://pypi.org/project/vowl/) receives security updates. Please upgrade to the latest release before reporting an issue.
 
 ## Security Measures
 
