@@ -315,6 +315,44 @@ def test_logical_type_options_reference_builds_queries_for_supported_options(
     assert "COUNT(*)" in check["query"]
 
 
+@pytest.mark.parametrize(
+    ("option_key", "malicious_value"),
+    [
+        ("minimum", "0) UNION SELECT password FROM secrets --"),
+        ("maximum", "1; DROP TABLE users"),
+        ("exclusiveMinimum", "0 OR 1=1"),
+        ("exclusiveMaximum", "abc"),
+        ("multipleOf", "2)) OR true --"),
+        ("minLength", "-1) UNION SELECT 1 --"),
+        ("maxLength", "5 OR 1=1"),
+    ],
+)
+def test_logical_type_options_reference_rejects_non_numeric_bounds(
+    monkeypatch: pytest.MonkeyPatch,
+    option_key: str,
+    malicious_value: str,
+):
+    """Numeric-bound options must reject non-numeric values (SQL injection guard)."""
+    contract = _make_contract(monkeypatch)
+    property_index = 1 if option_key in {"minLength", "maxLength"} else 0
+    with pytest.raises(ValueError, match="must be (numeric|an integer|non-negative|finite)"):
+        LogicalTypeOptionsCheckReference(
+            contract,
+            f"$.schema[0].properties[{property_index}]",
+            option_key,
+            malicious_value,
+        )
+
+
+def test_logical_type_options_reference_accepts_numeric_strings(monkeypatch: pytest.MonkeyPatch):
+    """Clean numeric strings are coerced and rendered as literals, not injected."""
+    contract = _make_contract(monkeypatch)
+    ref = LogicalTypeOptionsCheckReference(contract, "$.schema[0].properties[0]", "minimum", "5")
+    query = ref.get_check()["query"]
+    assert "5" in query
+    assert "UNION" not in query.upper()
+
+
 def test_logical_type_options_reference_raises_for_missing_query_implementation(
     monkeypatch: pytest.MonkeyPatch,
 ):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict
@@ -58,6 +59,30 @@ _METADATA_COLUMNS = (
     "check_info_item",
     "tables_in_query",
 )
+
+# Characters allowed in a generated output filename component. Everything else
+# (path separators, "..", NUL, etc.) is collapsed to "_" so that table/schema
+# names taken from a contract cannot escape the output directory.
+_FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
+    """Sanitize a string for use as a single output-filename component.
+
+    Replaces path separators and other unsafe characters with underscores,
+    neutralizes ``..`` parent-directory references, collapses runs of
+    underscores, and strips leading/trailing separators. The result cannot
+    traverse directories (``..``, ``/etc/...``) or be interpreted as an
+    option. Empty or all-separator inputs collapse to *fallback*.
+    """
+    cleaned = _FILENAME_SAFE_RE.sub("_", str(value))
+    # Neutralize any remaining parent-directory references.
+    cleaned = cleaned.replace("..", "_")
+    # Collapse repeated underscores and trim leading/trailing separators.
+    cleaned = re.sub(r"_+", "_", cleaned).strip("._-")
+    if not cleaned:
+        return fallback
+    return cleaned
 
 
 class ValidationResult:
@@ -1165,6 +1190,9 @@ class ValidationResult:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
+        # Sanitize the caller-supplied prefix so it cannot traverse directories.
+        prefix = _safe_filename_component(prefix, fallback="vowl_results")
+
         check_csv = output_path / f"{prefix}_check_results.csv"
         _pa_csv.write_csv(
             self.get_check_results_df(
@@ -1178,7 +1206,7 @@ class ValidationResult:
 
         if mode in ("failed_rows", "both"):
             for table_key, df in self._get_consolidated_output_dfs().items():
-                safe_key = table_key.replace(", ", "_").replace(" ", "_")
+                safe_key = _safe_filename_component(table_key.replace(", ", "_").replace(" ", "_"))
                 csv_path = output_path / f"{prefix}_{safe_key}.csv"
                 _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                 saved_files.append(str(csv_path))
@@ -1186,7 +1214,7 @@ class ValidationResult:
         if mode in ("annotated", "both"):
             out = self.get_annotated_output(check_info=check_info)
             for schema, df in out["annotated"].items():
-                safe_key = schema.replace(", ", "_").replace(" ", "_")
+                safe_key = _safe_filename_component(schema.replace(", ", "_").replace(" ", "_"))
                 csv_path = output_path / f"{prefix}_{safe_key}_annotated.csv"
                 _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                 saved_files.append(str(csv_path))
@@ -1197,7 +1225,9 @@ class ValidationResult:
             # the same rows twice in a different (per-check) shape.
             if mode == "annotated":
                 for residue_key, df in out["residues"].items():
-                    safe_key = residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_")
+                    safe_key = _safe_filename_component(
+                        residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_")
+                    )
                     csv_path = output_path / f"{prefix}_{safe_key}_residue.csv"
                     _pa_csv.write_csv(df.to_arrow(), str(csv_path))
                     saved_files.append(str(csv_path))

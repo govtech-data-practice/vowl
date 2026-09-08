@@ -52,8 +52,76 @@ FORBIDDEN_STATEMENT_TYPES = frozenset(
         # Permission management
         exp.Grant,
         exp.Revoke,
+        # File / external-database access and bulk load-unload.
+        # COPY can read from or write to local files; ATTACH/DETACH can mount
+        # arbitrary database files or remote endpoints (e.g. DuckDB ATTACH).
+        exp.Copy,
+        exp.Attach,
+        exp.Detach,
         # Other dangerous operations
-        exp.Command,  # Generic commands like TRUNCATE, etc.
+        exp.Command,  # Generic commands like TRUNCATE, INSTALL, LOAD, etc.
+    }
+)
+
+# SQL functions that can read local files or make outbound network requests.
+# Even inside a plain SELECT these bypass the read-only sandbox: DuckDB table
+# functions such as read_csv()/read_parquet() accept local paths *and* http(s)
+# URLs (arbitrary file disclosure + SSRF), and several backends expose scalar
+# file-read / remote-query helpers. Names are compared case-insensitively.
+DANGEROUS_SQL_FUNCTIONS = frozenset(
+    {
+        # DuckDB file / table functions (local file read + SSRF via httpfs)
+        "read_csv",
+        "read_csv_auto",
+        "read_parquet",
+        "parquet_scan",
+        "parquet_metadata",
+        "parquet_schema",
+        "parquet_file_metadata",
+        "parquet_kv_metadata",
+        "read_json",
+        "read_json_auto",
+        "read_json_objects",
+        "read_json_objects_auto",
+        "read_ndjson",
+        "read_ndjson_auto",
+        "read_ndjson_objects",
+        "read_text",
+        "read_blob",
+        "read_xlsx",
+        "sniff_csv",
+        "glob",
+        "delta_scan",
+        "iceberg_scan",
+        "iceberg_metadata",
+        "iceberg_snapshots",
+        # DuckDB scanners into other databases
+        "postgres_scan",
+        "postgres_query",
+        "mysql_scan",
+        "mysql_query",
+        "sqlite_scan",
+        "sqlite_query",
+        # Spatial extension file readers
+        "st_read",
+        "st_readosm",
+        "st_drivers",
+        # PostgreSQL file / remote access helpers
+        "pg_read_file",
+        "pg_read_binary_file",
+        "pg_ls_dir",
+        "pg_stat_file",
+        "lo_import",
+        "lo_export",
+        "dblink",
+        "dblink_exec",
+        # SQLite file-io / extension helpers
+        "readfile",
+        "writefile",
+        "load_extension",
+        "fsdir",
+        # MySQL / generic file read (also covered by regex patterns)
+        "load_file",
     }
 )
 
@@ -156,6 +224,10 @@ def validate_read_only_query(query: str, dialect: str = "postgres") -> None:
         # Additional check: ensure no subqueries contain write operations
         _check_for_write_subqueries(stmt, query)
 
+        # Block file-read / network table functions (e.g. DuckDB read_csv,
+        # read_parquet) that bypass the read-only sandbox even within a SELECT.
+        _check_for_dangerous_functions(stmt, query)
+
 
 def _check_for_select_side_effects(ast: exp.Expression, original_query: str) -> None:
     """Reject SELECT forms that still mutate state, such as SELECT INTO."""
@@ -186,6 +258,53 @@ def _check_for_write_subqueries(ast: exp.Expression, original_query: str) -> Non
             raise SQLSecurityError(
                 f"Write operation '{stmt_name}' found in subquery or CTE. Only read operations are allowed.",
                 violation_type="write_in_subquery",
+                query=original_query,
+            )
+
+
+def _function_name(node: exp.Expression) -> str | None:
+    """Return the lower-cased SQL function name for a function node, if any.
+
+    Handles both ``exp.Anonymous`` (functions sqlglot has no dedicated class
+    for, e.g. ``read_text``) and typed function classes (e.g. ``exp.ReadCSV``
+    whose ``sql_name()`` is ``READ_CSV``).
+    """
+    if isinstance(node, exp.Anonymous):
+        name = node.name
+        return name.lower() if name else None
+    if isinstance(node, exp.Func):
+        try:
+            return node.sql_name().lower()
+        except Exception:
+            return None
+    return None
+
+
+def _check_for_dangerous_functions(ast: exp.Expression, original_query: str) -> None:
+    """
+    Reject queries that call file-read or network table/scalar functions.
+
+    These functions (e.g. DuckDB ``read_csv``/``read_parquet``/``read_text``,
+    PostgreSQL ``pg_read_file``, SQLite ``readfile``) are valid inside a plain
+    SELECT but let an attacker read arbitrary local files or reach internal
+    network endpoints, defeating the read-only SQL sandbox.
+
+    Args:
+        ast: The parsed SQL AST to check.
+        original_query: The original query string for error reporting.
+
+    Raises:
+        SQLSecurityError: If a denied function is found anywhere in the query.
+    """
+    for node in ast.walk():
+        if not isinstance(node, exp.Func):
+            continue
+        name = _function_name(node)
+        if name and name in DANGEROUS_SQL_FUNCTIONS:
+            raise SQLSecurityError(
+                f"Function '{name}' is not allowed: it can read local files or make "
+                "network requests, which bypasses the read-only SQL sandbox.",
+                violation_type="file_or_network_function",
                 query=original_query,
             )
 

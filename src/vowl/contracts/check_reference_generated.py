@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
@@ -406,6 +407,14 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         "format",
     }
 
+    # Options whose value is emitted into generated SQL as a bare numeric
+    # literal via ``exp.Literal.number``. sqlglot renders that value verbatim
+    # (unquoted), so a non-numeric value would be injected into the query. The
+    # value is coerced to a real number at construction time to prevent SQL
+    # injection through ``logicalTypeOptions``.
+    _NON_NEGATIVE_INT_OPTIONS = frozenset({"minLength", "maxLength"})
+    _NUMERIC_OPTIONS = frozenset({"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"})
+
     def __init__(self, contract: Contract, property_path: str, option_key: str, option_value: Any):
         if option_key not in self.SUPPORTED_OPTIONS:
             warnings.warn(
@@ -418,10 +427,63 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
         super().__init__(contract, property_path, f"logicalTypeOptions.{option_key}")
         self._option_key = option_key
-        self._option_value = option_value
+        # Coerce numeric-bound options to real numbers so they cannot inject
+        # arbitrary SQL when rendered as literals in _build_ast().
+        if option_key in self._NON_NEGATIVE_INT_OPTIONS:
+            self._option_value = self._coerce_non_negative_int(option_key, option_value)
+        elif option_key in self._NUMERIC_OPTIONS:
+            self._option_value = self._coerce_number(option_key, option_value)
+        else:
+            self._option_value = option_value
 
         if option_key == "format":
             self._validate_format()
+
+    @staticmethod
+    def _coerce_number(option_key: str, value: Any) -> int | float:
+        """Return *value* as an int/float, rejecting anything non-numeric.
+
+        Accepts JSON numbers directly and strictly-numeric strings; rejects
+        booleans, NaN/inf, and any value that is not a clean number (which is
+        how SQL-injection payloads would arrive). Raises ``ValueError`` — caught
+        by the caller in ``contract.py`` and downgraded to an unsupported check.
+        """
+        # bool is an int subclass but is never a valid numeric bound.
+        if isinstance(value, bool):
+            raise ValueError(f"logicalTypeOptions '{option_key}' must be numeric, got boolean: {value!r}")
+
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            if math.isnan(value) or math.isinf(value):
+                raise ValueError(f"logicalTypeOptions '{option_key}' must be finite, got: {value!r}")
+            return value
+        if isinstance(value, str):
+            text = value.strip()
+            try:
+                num: int | float = int(text)
+            except ValueError:
+                try:
+                    num = float(text)
+                except ValueError:
+                    raise ValueError(f"logicalTypeOptions '{option_key}' must be numeric, got: {value!r}") from None
+            if isinstance(num, float) and (math.isnan(num) or math.isinf(num)):
+                raise ValueError(f"logicalTypeOptions '{option_key}' must be finite, got: {value!r}")
+            return num
+
+        raise ValueError(f"logicalTypeOptions '{option_key}' must be numeric, got: {value!r}")
+
+    @classmethod
+    def _coerce_non_negative_int(cls, option_key: str, value: Any) -> int:
+        """Return *value* as a non-negative int, rejecting anything else."""
+        num = cls._coerce_number(option_key, value)
+        if isinstance(num, float):
+            if not num.is_integer():
+                raise ValueError(f"logicalTypeOptions '{option_key}' must be an integer, got: {value!r}")
+            num = int(num)
+        if num < 0:
+            raise ValueError(f"logicalTypeOptions '{option_key}' must be non-negative, got: {value!r}")
+        return num
 
     def _validate_format(self) -> None:
         """Check that this logical_type + format combo is actionable.
