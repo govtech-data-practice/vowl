@@ -283,6 +283,62 @@ class TestValidateQuerySecurity:
         validate_query_security(query)  # Should not raise
 
 
+class TestDangerousFunctions:
+    """Tests for the file-read / network table-function guard."""
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "SELECT * FROM read_csv('/etc/passwd')",
+            "SELECT * FROM read_csv_auto('/etc/passwd')",
+            "SELECT * FROM read_parquet('http://169.254.169.254/latest/meta-data/')",
+            "SELECT read_text('/etc/passwd')",
+            "SELECT read_blob('/etc/shadow')",
+            "SELECT * FROM read_json_auto('/tmp/x.json')",
+            "SELECT * FROM glob('/etc/*')",
+            "SELECT count(*) FROM users WHERE id IN (SELECT * FROM read_csv('/etc/passwd'))",
+        ],
+    )
+    def test_duckdb_file_functions_blocked(self, query):
+        """DuckDB file/network table functions inside a SELECT must be rejected."""
+        with pytest.raises(SQLSecurityError) as exc_info:
+            validate_read_only_query(query, dialect="duckdb")
+        assert exc_info.value.violation_type == "file_or_network_function"
+
+    def test_pg_read_file_blocked(self):
+        """PostgreSQL file-read helper must be rejected."""
+        with pytest.raises(SQLSecurityError) as exc_info:
+            validate_read_only_query("SELECT pg_read_file('/etc/passwd')", dialect="postgres")
+        assert exc_info.value.violation_type == "file_or_network_function"
+
+    def test_sqlite_readfile_blocked(self):
+        """SQLite readfile() must be rejected."""
+        with pytest.raises(SQLSecurityError) as exc_info:
+            validate_read_only_query("SELECT readfile('/etc/passwd')", dialect="sqlite")
+        assert exc_info.value.violation_type == "file_or_network_function"
+
+    def test_copy_statement_blocked(self):
+        """COPY (file read/write) must be rejected."""
+        with pytest.raises(SQLSecurityError):
+            validate_read_only_query("COPY users FROM '/etc/passwd'", dialect="duckdb")
+
+    def test_attach_statement_blocked(self):
+        """ATTACH (mounting external db/file) must be rejected."""
+        with pytest.raises(SQLSecurityError):
+            validate_read_only_query("ATTACH 'evil.db' AS evil", dialect="duckdb")
+
+    def test_normal_functions_allowed(self):
+        """Ordinary scalar/aggregate functions must still pass."""
+        validate_read_only_query(
+            "SELECT COUNT(*), UPPER(name), LENGTH(email) FROM users GROUP BY name, email",
+            dialect="duckdb",
+        )
+
+    def test_column_named_like_reader_allowed(self):
+        """A column merely named similarly is not a function call and is allowed."""
+        validate_read_only_query("SELECT read_count FROM stats", dialect="duckdb")
+
+
 class TestSanitizeIdentifier:
     """Tests for identifier sanitization."""
 

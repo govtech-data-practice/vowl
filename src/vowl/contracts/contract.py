@@ -1,8 +1,10 @@
+import ipaddress
 import os
 import re
+import socket
 import warnings
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import yaml
 from jsonpath_ng import parse as jsonpath_parse
@@ -12,6 +14,72 @@ from .models.ODCS_types import DataContract, Server
 
 if TYPE_CHECKING:
     from .check_reference import CheckReference
+
+
+# Maximum number of HTTP redirects to follow when fetching a remote contract.
+_MAX_HTTP_REDIRECTS = 5
+
+
+class ContractURLError(ValueError):
+    """Raised when a contract URL is disallowed (e.g. points at an internal host)."""
+
+
+def _is_disallowed_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """Return True for IPs that must not be fetched (SSRF protection).
+
+    Blocks loopback, private (RFC1918 / ULA), link-local (incl. the cloud
+    metadata address 169.254.169.254), reserved, multicast and unspecified
+    addresses. IPv4-mapped IPv6 addresses are unwrapped and re-checked.
+    """
+    if getattr(ip, "ipv4_mapped", None) is not None:
+        ip = ip.ipv4_mapped  # type: ignore[assignment]
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+
+
+def _validate_public_http_url(url: str) -> None:
+    """Validate that *url* is an http(s) URL that resolves to a public host.
+
+    This is an SSRF guard for the unauthenticated contract-loading entry point:
+    it blocks non-http(s) schemes and any host that resolves to an internal,
+    loopback, link-local (cloud metadata) or otherwise reserved IP address.
+
+    Note: DNS is resolved here and again by the HTTP client, so a determined
+    attacker controlling DNS could still rebind between the two lookups. This
+    check stops the common cases (literal internal IPs/hostnames, metadata
+    endpoints, redirects to internal hosts) without a custom transport.
+
+    Raises:
+        ContractURLError: If the scheme or resolved address is not allowed.
+    """
+    parsed = urlparse(url)
+    scheme = (parsed.scheme or "").lower()
+    if scheme not in ("http", "https"):
+        raise ContractURLError(f"Unsupported URL scheme '{parsed.scheme}' for contract fetch: {url}")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise ContractURLError(f"Contract URL has no host: {url}")
+
+    port = parsed.port or (443 if scheme == "https" else 80)
+
+    try:
+        addrinfos = socket.getaddrinfo(hostname, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as e:
+        raise ContractURLError(f"Could not resolve contract host '{hostname}': {e}") from e
+
+    if not addrinfos:
+        raise ContractURLError(f"Could not resolve contract host '{hostname}'")
+
+    for *_, sockaddr in addrinfos:
+        try:
+            ip = ipaddress.ip_address(sockaddr[0])
+        except ValueError:
+            raise ContractURLError(f"Unexpected address for contract host '{hostname}': {sockaddr[0]}") from None
+        if _is_disallowed_ip(ip):
+            raise ContractURLError(
+                f"Refusing to fetch contract from non-public address {ip} (host '{hostname}'). "
+                "Only public HTTP(S) endpoints are allowed."
+            )
 
 
 class Contract:
@@ -76,10 +144,26 @@ class Contract:
         elif (hostname == "gitlab.com" or hostname.endswith(".gitlab.com")) and "/-/blob/" in parsed.path:
             raw_url = url.replace("/-/blob/", "/-/raw/")
 
+        # SSRF protection: validate the target (and every redirect hop) resolves
+        # to a public address before we send a request to it. Redirects are
+        # followed manually so an attacker-controlled 3xx cannot bounce us to an
+        # internal host or the cloud metadata endpoint.
         try:
-            response = requests.get(raw_url, timeout=30)
-            response.raise_for_status()
-            return response.text
+            current_url = raw_url
+            for _ in range(_MAX_HTTP_REDIRECTS + 1):
+                _validate_public_http_url(current_url)
+                response = requests.get(current_url, timeout=30, allow_redirects=False)
+                if response.is_redirect or response.is_permanent_redirect:
+                    location = response.headers.get("Location")
+                    if not location:
+                        break
+                    current_url = urljoin(current_url, location)
+                    continue
+                response.raise_for_status()
+                return response.text
+            raise OSError(f"Too many redirects fetching contract from URL {url}")
+        except ContractURLError:
+            raise
         except requests.RequestException as e:
             raise OSError(f"Error fetching contract from URL {url}: {e}") from e
 

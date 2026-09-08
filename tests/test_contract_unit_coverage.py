@@ -60,8 +60,18 @@ def postgres_server(server: str, environment: str) -> dict:
 
 
 class FakeResponse:
-    def __init__(self, text: str) -> None:
+    def __init__(
+        self,
+        text: str,
+        *,
+        is_redirect: bool = False,
+        is_permanent_redirect: bool = False,
+        headers: dict | None = None,
+    ) -> None:
         self.text = text
+        self.is_redirect = is_redirect
+        self.is_permanent_redirect = is_permanent_redirect
+        self.headers = headers or {}
 
     def raise_for_status(self) -> None:
         return None
@@ -128,14 +138,21 @@ def test_contract_load_wraps_file_read_errors(tmp_path: Path, monkeypatch: pytes
         Contract.load(str(path))
 
 
+def _allow_all_urls(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bypass the SSRF host-resolution guard for tests that run offline and
+    only exercise URL rewriting / error wrapping."""
+    monkeypatch.setattr("vowl.contracts.contract._validate_public_http_url", lambda url: None)
+
+
 def test_contract_fetches_github_blob_urls_via_raw_url(monkeypatch: pytest.MonkeyPatch):
     called_urls: list[str] = []
     payload = yaml.safe_dump(minimal_contract_data())
 
-    def fake_get(url: str, timeout: int):
+    def fake_get(url: str, timeout: int, **kwargs):
         called_urls.append(url)
         return FakeResponse(payload)
 
+    _allow_all_urls(monkeypatch)
     monkeypatch.setattr("requests.get", fake_get)
 
     contract = Contract.load("https://github.com/org/repo/blob/main/contract.yaml")
@@ -148,10 +165,11 @@ def test_contract_fetches_gitlab_blob_urls_via_raw_url(monkeypatch: pytest.Monke
     called_urls: list[str] = []
     payload = yaml.safe_dump(minimal_contract_data())
 
-    def fake_get(url: str, timeout: int):
+    def fake_get(url: str, timeout: int, **kwargs):
         called_urls.append(url)
         return FakeResponse(payload)
 
+    _allow_all_urls(monkeypatch)
     monkeypatch.setattr("requests.get", fake_get)
 
     contract = Contract.load("https://gitlab.com/org/repo/-/blob/main/contract.yaml")
@@ -164,10 +182,11 @@ def test_contract_fetches_plain_http_urls_without_rewriting(monkeypatch: pytest.
     called_urls: list[str] = []
     payload = yaml.safe_dump(minimal_contract_data())
 
-    def fake_get(url: str, timeout: int):
+    def fake_get(url: str, timeout: int, **kwargs):
         called_urls.append(url)
         return FakeResponse(payload)
 
+    _allow_all_urls(monkeypatch)
     monkeypatch.setattr("requests.get", fake_get)
 
     contract = Contract.load("https://example.com/contracts/users.yaml")
@@ -177,9 +196,10 @@ def test_contract_fetches_plain_http_urls_without_rewriting(monkeypatch: pytest.
 
 
 def test_contract_http_fetch_failures_are_wrapped_as_io_errors(monkeypatch: pytest.MonkeyPatch):
-    def fake_get(url: str, timeout: int):
+    def fake_get(url: str, timeout: int, **kwargs):
         raise requests.RequestException("network down")
 
+    _allow_all_urls(monkeypatch)
     monkeypatch.setattr("requests.get", fake_get)
 
     with pytest.raises(OSError, match="Error fetching contract from URL https://example.com/contracts/users.yaml"):
@@ -200,6 +220,109 @@ def test_contract_http_fetch_raises_import_error_when_requests_is_unavailable(
 
     with pytest.raises(ImportError, match="requests' package is required"):
         Contract._fetch_from_http_url("https://example.com/contracts/users.yaml")
+
+
+def _stub_getaddrinfo(monkeypatch: pytest.MonkeyPatch, ip: str) -> None:
+    """Force DNS resolution of any host to *ip* for SSRF-guard tests."""
+    import socket as _socket
+
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(_socket.AF_INET, _socket.SOCK_STREAM, _socket.IPPROTO_TCP, "", (ip, port or 0))]
+
+    monkeypatch.setattr("vowl.contracts.contract.socket.getaddrinfo", fake_getaddrinfo)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://169.254.169.254/latest/meta-data/",  # cloud metadata (link-local)
+        "http://127.0.0.1/contract.yaml",  # loopback
+        "http://10.0.0.5/contract.yaml",  # RFC1918 private
+        "http://192.168.1.1/contract.yaml",  # RFC1918 private
+    ],
+)
+def test_contract_http_fetch_blocks_internal_addresses(url: str):
+    from vowl.contracts.contract import ContractURLError
+
+    def fail_get(*args, **kwargs):
+        raise AssertionError("requests.get must not be called for a blocked URL")
+
+    # No DNS stub needed: these are IP literals. requests.get must never fire.
+    import vowl.contracts.contract as contract_mod
+
+    original = getattr(contract_mod, "requests", None)
+    try:
+        with pytest.raises(ContractURLError, match="non-public address"):
+            Contract._fetch_from_http_url(url)
+    finally:
+        if original is not None:
+            contract_mod.requests = original
+
+
+def test_contract_http_fetch_blocks_non_http_scheme():
+    from vowl.contracts.contract import ContractURLError
+
+    with pytest.raises(ContractURLError, match="Unsupported URL scheme"):
+        Contract._fetch_from_http_url("file:///etc/passwd")
+
+
+def test_contract_http_fetch_blocks_hostname_resolving_to_private_ip(monkeypatch: pytest.MonkeyPatch):
+    from vowl.contracts.contract import ContractURLError
+
+    # A public-looking hostname that (per our stub) resolves to a private IP.
+    _stub_getaddrinfo(monkeypatch, "10.1.2.3")
+
+    def fail_get(*args, **kwargs):
+        raise AssertionError("requests.get must not be called for a blocked URL")
+
+    monkeypatch.setattr("requests.get", fail_get)
+
+    with pytest.raises(ContractURLError, match="non-public address"):
+        Contract._fetch_from_http_url("https://internal.example.com/contract.yaml")
+
+
+def test_contract_http_fetch_blocks_redirect_to_internal_host(monkeypatch: pytest.MonkeyPatch):
+    from vowl.contracts.contract import ContractURLError
+
+    payload = yaml.safe_dump(minimal_contract_data())
+    resolved: list[str] = []
+
+    def fake_validate(url: str) -> None:
+        # Public for the first (external) hop, private for the redirect target.
+        resolved.append(url)
+        if "internal" in url:
+            raise ContractURLError("Refusing to fetch contract from non-public address 10.0.0.9")
+
+    def fake_get(url: str, timeout: int, **kwargs):
+        # First call returns a redirect to an internal host.
+        if "internal" not in url:
+            return FakeResponse(
+                "",
+                is_redirect=True,
+                headers={"Location": "https://internal.example.com/secret.yaml"},
+            )
+        return FakeResponse(payload)
+
+    monkeypatch.setattr("vowl.contracts.contract._validate_public_http_url", fake_validate)
+    monkeypatch.setattr("requests.get", fake_get)
+
+    with pytest.raises(ContractURLError, match="non-public address"):
+        Contract._fetch_from_http_url("https://example.com/contract.yaml")
+
+    assert "https://internal.example.com/secret.yaml" in resolved
+
+
+def test_contract_http_fetch_allows_public_host(monkeypatch: pytest.MonkeyPatch):
+    payload = yaml.safe_dump(minimal_contract_data())
+    _stub_getaddrinfo(monkeypatch, "93.184.216.34")  # public IP
+
+    def fake_get(url: str, timeout: int, **kwargs):
+        return FakeResponse(payload)
+
+    monkeypatch.setattr("requests.get", fake_get)
+
+    contract = Contract.load("https://example.com/contracts/users.yaml")
+    assert contract.get_schema_names() == ["users"]
 
 
 def test_contract_fetches_from_s3(monkeypatch: pytest.MonkeyPatch):
