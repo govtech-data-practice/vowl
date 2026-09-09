@@ -125,6 +125,36 @@ DANGEROUS_SQL_FUNCTIONS = frozenset(
     }
 )
 
+# File extensions DuckDB will read via a "replacement scan" when a bare string
+# is used as a table source (e.g. ``FROM 'data.parquet'``). Used to catch the
+# relative-filename form that contains no path separator or URL scheme.
+_REPLACEMENT_SCAN_EXTENSIONS = frozenset(
+    {
+        "parquet",
+        "csv",
+        "tsv",
+        "txt",
+        "json",
+        "jsonl",
+        "ndjson",
+        "arrow",
+        "ipc",
+        "feather",
+        "orc",
+        "avro",
+        "xlsx",
+        "xls",
+        "gz",
+        "zst",
+        "bz2",
+        "zip",
+        "db",
+        "sqlite",
+        "duckdb",
+        "delta",
+    }
+)
+
 # Statement type names for the allowlist approach (more restrictive)
 ALLOWED_STATEMENT_TYPES = frozenset(
     {
@@ -228,6 +258,11 @@ def validate_read_only_query(query: str, dialect: str = "postgres") -> None:
         # read_parquet) that bypass the read-only sandbox even within a SELECT.
         _check_for_dangerous_functions(stmt, query)
 
+        # Block bare file paths / URLs used as a table source, which DuckDB
+        # reads via a "replacement scan" (SELECT * FROM 'http://...'), bypassing
+        # the function denylist above since there is no function call.
+        _check_for_replacement_scan_tables(stmt, query)
+
 
 def _check_for_select_side_effects(ast: exp.Expression, original_query: str) -> None:
     """Reject SELECT forms that still mutate state, such as SELECT INTO."""
@@ -307,6 +342,52 @@ def _check_for_dangerous_functions(ast: exp.Expression, original_query: str) -> 
                 violation_type="file_or_network_function",
                 query=original_query,
             )
+
+
+def _looks_like_replacement_scan_source(name: str | None) -> bool:
+    """Return True if *name* looks like a file path or URL rather than an identifier.
+
+    DuckDB performs a "replacement scan" when a bare string is used as a table
+    source: ``SELECT * FROM 'http://host/x'`` fetches a URL and
+    ``SELECT * FROM '/etc/passwd.csv'`` reads a local file. sqlglot parses these
+    as an ``exp.Table`` wrapping a (quoted) ``exp.Identifier`` whose name is the
+    path/URL, so they slip past the function denylist. Legitimate schema/table
+    identifiers never contain path separators, a URL scheme, or a data-file
+    extension, so those markers distinguish an attack from a real identifier.
+    """
+    if not name:
+        return False
+    # Path separators (POSIX / Windows / UNC) and any URL scheme (``http:``,
+    # ``s3:``, ``file:``, a Windows drive letter, …).
+    if "/" in name or "\\" in name or ":" in name:
+        return True
+    # Bare relative data file with no separator, e.g. ``secret.parquet``.
+    _, dot, ext = name.rpartition(".")
+    return bool(dot) and ext.lower() in _REPLACEMENT_SCAN_EXTENSIONS
+
+
+def _check_for_replacement_scan_tables(ast: exp.Expression, original_query: str) -> None:
+    """Reject table sources that are file paths or URLs (DuckDB replacement scan).
+
+    Args:
+        ast: The parsed SQL AST to check.
+        original_query: The original query string for error reporting.
+
+    Raises:
+        SQLSecurityError: If any FROM/JOIN target looks like a path or URL.
+    """
+    for table in ast.find_all(exp.Table):
+        for ident in table.find_all(exp.Identifier):
+            name = ident.this if isinstance(ident.this, str) else ident.name
+            if _looks_like_replacement_scan_source(name):
+                raise SQLSecurityError(
+                    f"Table source '{name}' looks like a file path or URL. DuckDB would "
+                    "read it via a replacement scan, which can disclose local files or "
+                    "reach internal network endpoints, bypassing the read-only SQL sandbox. "
+                    "Only plain schema/table identifiers are allowed.",
+                    violation_type="replacement_scan_table",
+                    query=original_query,
+                )
 
 
 def detect_sql_injection(query: str) -> tuple[str, str] | None:

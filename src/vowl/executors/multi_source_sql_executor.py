@@ -28,10 +28,16 @@ class MultiSourceSQLExecutor(SQLExecutor):
     """
     SQL Executor for handling cross-schema queries in multi-source scenarios.
 
-    This executor handles queries that reference multiple tables/schemas:
-    - For DuckDB-compatible backends (postgres, mysql, sqlite), uses ATTACH
-      to connect directly without copying data
-    - For other backends, materializes required data into a local DuckDB instance
+    This executor handles queries that reference multiple tables/schemas via
+    two modes (see ``run_single_check``):
+    - Mode 1 (compatible adapters): when every referenced table is served by
+      the same backend *and the same connection* (``BaseAdapter.is_compatible_with``),
+      the check is delegated to that adapter's own SQL executor and runs
+      natively there — no data is copied.
+    - Mode 2 (incompatible adapters, e.g. tables spread across different
+      connections or backends): each required table is materialized into a
+      fresh local DuckDB instance via ``export_table_as_arrow`` and the query
+      runs against those copies.
 
     Filter conditions from each adapter are applied to their respective tables
     using the same subquery pattern as IbisSQLExecutor.
@@ -186,9 +192,12 @@ class MultiSourceSQLExecutor(SQLExecutor):
         local_con,
     ) -> None:
         """
-        Attach a database or materialize a table into local DuckDB.
+        Make a source table available in local DuckDB.
 
-        Prefers ATTACH for supported backends, falls back to materialization.
+        Currently this always materializes the table (pulls its rows via the
+        source adapter's ``export_table_as_arrow`` and registers the resulting
+        Arrow table in local DuckDB). DuckDB ATTACH is not yet implemented — see
+        the TODO below.
 
         Args:
             adapter: The source adapter.
@@ -198,8 +207,10 @@ class MultiSourceSQLExecutor(SQLExecutor):
         if schema_name in self._attached_sources:
             return
 
-        # TODO: Use DuckDB ATTACH for supported backends (postgres, mysql, sqlite)
-        # instead of materializing, to avoid copying data.
+        # TODO: For DuckDB-compatible backends (postgres, mysql, sqlite), use
+        # DuckDB ATTACH to stream directly from the source instead of
+        # materializing, to avoid copying data. Until then we always
+        # materialize regardless of backend.
         self._materialize_table_to_duckdb(adapter, schema_name, local_con)
         self._attached_sources.add(schema_name)
 

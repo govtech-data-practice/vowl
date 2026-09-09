@@ -1,8 +1,10 @@
+import contextvars
 import ipaddress
 import os
 import re
 import socket
 import warnings
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin, urlparse
 
@@ -36,17 +38,68 @@ def _is_disallowed_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool
     return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified
 
 
-def _validate_public_http_url(url: str) -> None:
+# Pins the IP address that the HTTP client is allowed to connect to for the
+# current fetch, keyed by hostname. Set by ``_pinned_dns`` around each request so
+# the outbound connection uses the exact address we validated, closing the
+# DNS-rebinding TOCTOU between validation and connection. Uses a ContextVar so it
+# is isolated per thread / async task and needs no global lock.
+_pinned_dns_target: contextvars.ContextVar[tuple[str, str] | None] = contextvars.ContextVar(
+    "_vowl_pinned_dns_target", default=None
+)
+_dns_pin_installed = False
+
+
+def _install_dns_pin() -> None:
+    """Install a one-time urllib3 hook that honours ``_pinned_dns_target``.
+
+    urllib3 (used by requests) resolves the hostname again at connect time. We
+    wrap its ``create_connection`` so that, whenever a pin is active for the host
+    being dialled, the socket connects to the pre-validated IP instead of a
+    freshly re-resolved (and possibly rebound) address. TLS SNI and certificate
+    verification are unaffected because the request URL still carries the
+    hostname. All other hosts pass through untouched.
+    """
+    global _dns_pin_installed
+    if _dns_pin_installed:
+        return
+    import urllib3.util.connection as _u3_connection
+
+    _original_create_connection = _u3_connection.create_connection
+
+    def _pinned_create_connection(address, *args, **kwargs):  # type: ignore[no-untyped-def]
+        pin = _pinned_dns_target.get()
+        if pin is not None:
+            host, port = address
+            if host == pin[0]:
+                address = (pin[1], port)
+        return _original_create_connection(address, *args, **kwargs)
+
+    _u3_connection.create_connection = _pinned_create_connection
+    _dns_pin_installed = True
+
+
+@contextmanager
+def _pinned_dns(hostname: str, ip: str):
+    """Pin *hostname* to *ip* for HTTP connections made within the block."""
+    _install_dns_pin()
+    token = _pinned_dns_target.set((hostname, ip))
+    try:
+        yield
+    finally:
+        _pinned_dns_target.reset(token)
+
+
+def _validate_public_http_url(url: str) -> tuple[str, str]:
     """Validate that *url* is an http(s) URL that resolves to a public host.
 
-    This is an SSRF guard for the unauthenticated contract-loading entry point:
-    it blocks non-http(s) schemes and any host that resolves to an internal,
-    loopback, link-local (cloud metadata) or otherwise reserved IP address.
+    This is an SSRF guard for the contract-loading entry point: it blocks
+    non-http(s) schemes and any host that resolves to an internal, loopback,
+    link-local (cloud metadata) or otherwise reserved IP address.
 
-    Note: DNS is resolved here and again by the HTTP client, so a determined
-    attacker controlling DNS could still rebind between the two lookups. This
-    check stops the common cases (literal internal IPs/hostnames, metadata
-    endpoints, redirects to internal hosts) without a custom transport.
+    Returns the ``(hostname, ip)`` of a validated public address so the caller
+    can pin the outbound connection to it (see ``_pinned_dns``), preventing a
+    DNS-rebinding attacker from swapping in an internal address between this
+    check and the actual request.
 
     Raises:
         ContractURLError: If the scheme or resolved address is not allowed.
@@ -70,6 +123,7 @@ def _validate_public_http_url(url: str) -> None:
     if not addrinfos:
         raise ContractURLError(f"Could not resolve contract host '{hostname}'")
 
+    validated_ip: str | None = None
     for *_, sockaddr in addrinfos:
         try:
             ip = ipaddress.ip_address(sockaddr[0])
@@ -80,6 +134,16 @@ def _validate_public_http_url(url: str) -> None:
                 f"Refusing to fetch contract from non-public address {ip} (host '{hostname}'). "
                 "Only public HTTP(S) endpoints are allowed."
             )
+        if validated_ip is None:
+            validated_ip = sockaddr[0]
+
+    # Every resolved address passed the check above; pin to the first one.
+    # (validated_ip is always set here because addrinfos is non-empty and every
+    # entry was validated, but we raise explicitly rather than assert so the
+    # invariant is enforced in optimized (-O) runs too.)
+    if validated_ip is None:  # pragma: no cover - defensive, unreachable
+        raise ContractURLError(f"Could not resolve contract host '{hostname}'")
+    return hostname, validated_ip
 
 
 class Contract:
@@ -145,14 +209,17 @@ class Contract:
             raw_url = url.replace("/-/blob/", "/-/raw/")
 
         # SSRF protection: validate the target (and every redirect hop) resolves
-        # to a public address before we send a request to it. Redirects are
+        # to a public address before we send a request to it, then pin the
+        # connection to that validated IP so a DNS-rebinding attacker cannot swap
+        # in an internal address between the check and the request. Redirects are
         # followed manually so an attacker-controlled 3xx cannot bounce us to an
         # internal host or the cloud metadata endpoint.
         try:
             current_url = raw_url
             for _ in range(_MAX_HTTP_REDIRECTS + 1):
-                _validate_public_http_url(current_url)
-                response = requests.get(current_url, timeout=30, allow_redirects=False)
+                pin_host, pin_ip = _validate_public_http_url(current_url)
+                with _pinned_dns(pin_host, pin_ip):
+                    response = requests.get(current_url, timeout=30, allow_redirects=False)
                 if response.is_redirect or response.is_permanent_redirect:
                     location = response.headers.get("Location")
                     if not location:

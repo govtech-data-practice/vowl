@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import builtins
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pandas as pd
 import pytest
@@ -140,8 +141,12 @@ def test_contract_load_wraps_file_read_errors(tmp_path: Path, monkeypatch: pytes
 
 def _allow_all_urls(monkeypatch: pytest.MonkeyPatch) -> None:
     """Bypass the SSRF host-resolution guard for tests that run offline and
-    only exercise URL rewriting / error wrapping."""
-    monkeypatch.setattr("vowl.contracts.contract._validate_public_http_url", lambda url: None)
+    only exercise URL rewriting / error wrapping. Returns a (host, ip) pair like
+    the real validator so the caller's connection-pinning still unpacks."""
+    monkeypatch.setattr(
+        "vowl.contracts.contract._validate_public_http_url",
+        lambda url: (urlparse(url).hostname or "host", "203.0.113.1"),
+    )
 
 
 def test_contract_fetches_github_blob_urls_via_raw_url(monkeypatch: pytest.MonkeyPatch):
@@ -287,11 +292,12 @@ def test_contract_http_fetch_blocks_redirect_to_internal_host(monkeypatch: pytes
     payload = yaml.safe_dump(minimal_contract_data())
     resolved: list[str] = []
 
-    def fake_validate(url: str) -> None:
+    def fake_validate(url: str):
         # Public for the first (external) hop, private for the redirect target.
         resolved.append(url)
         if "internal" in url:
             raise ContractURLError("Refusing to fetch contract from non-public address 10.0.0.9")
+        return (urlparse(url).hostname or "host", "203.0.113.1")
 
     def fake_get(url: str, timeout: int, **kwargs):
         # First call returns a redirect to an internal host.
@@ -323,6 +329,31 @@ def test_contract_http_fetch_allows_public_host(monkeypatch: pytest.MonkeyPatch)
 
     contract = Contract.load("https://example.com/contracts/users.yaml")
     assert contract.get_schema_names() == ["users"]
+
+
+def test_contract_http_fetch_pins_connection_to_validated_ip(monkeypatch: pytest.MonkeyPatch):
+    """DNS-rebinding mitigation: the outbound request must be pinned to the exact
+    IP the SSRF guard validated, so re-resolution cannot swap in an internal
+    address between validation and connection."""
+    import vowl.contracts.contract as contract_mod
+
+    payload = yaml.safe_dump(minimal_contract_data())
+    _stub_getaddrinfo(monkeypatch, "93.184.216.34")  # public IP
+
+    seen_pins: list[tuple[str, str] | None] = []
+
+    def fake_get(url: str, timeout: int, **kwargs):
+        # Capture the pin that is active while the connection would be made.
+        seen_pins.append(contract_mod._pinned_dns_target.get())
+        return FakeResponse(payload)
+
+    monkeypatch.setattr("requests.get", fake_get)
+
+    Contract.load("https://example.com/contracts/users.yaml")
+
+    assert seen_pins == [("example.com", "93.184.216.34")]
+    # Pin is cleared once the fetch completes.
+    assert contract_mod._pinned_dns_target.get() is None
 
 
 def test_contract_fetches_from_s3(monkeypatch: pytest.MonkeyPatch):
