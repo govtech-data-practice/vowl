@@ -138,7 +138,11 @@ def _validate_public_http_url(url: str) -> tuple[str, str]:
             validated_ip = sockaddr[0]
 
     # Every resolved address passed the check above; pin to the first one.
-    assert validated_ip is not None  # noqa: S101 - guaranteed by the non-empty, all-validated loop
+    # (validated_ip is always set here because addrinfos is non-empty and every
+    # entry was validated, but we raise explicitly rather than assert so the
+    # invariant is enforced in optimized (-O) runs too.)
+    if validated_ip is None:  # pragma: no cover - defensive, unreachable
+        raise ContractURLError(f"Could not resolve contract host '{hostname}'")
     return hostname, validated_ip
 
 
