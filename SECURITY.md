@@ -15,7 +15,7 @@ When reporting, please include:
 
 ## What to Expect
 
-- **Acknowledgement:** we aim to acknowledge your report within 7 days.
+- **Acknowledgement:** we aim to acknowledge your report within 5 working days.
 - **Updates:** we will keep you informed as we investigate and work on a fix.
 - **Disclosure:** we follow coordinated disclosure and will agree timing with you before any public disclosure.
 
