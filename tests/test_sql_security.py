@@ -339,6 +339,50 @@ class TestDangerousFunctions:
         validate_read_only_query("SELECT read_count FROM stats", dialect="duckdb")
 
 
+class TestReplacementScanTables:
+    """Tests for the DuckDB replacement-scan guard (file path / URL as FROM target)."""
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            # SSRF: cloud metadata / arbitrary URL as a bare table source.
+            "SELECT * FROM 'http://169.254.169.254/latest/meta-data/'",
+            "SELECT * FROM 'https://evil.example.com/exfil'",
+            "SELECT * FROM 's3://bucket/key.parquet'",
+            # Local file disclosure via absolute / relative paths.
+            "SELECT * FROM '/data/secret.parquet'",
+            "SELECT * FROM '../../etc/passwd'",
+            "SELECT * FROM 'C:\\\\secrets\\\\creds.csv'",
+            # Bare relative data file (no separator, no scheme).
+            "SELECT * FROM 'secret.parquet'",
+            # Nested inside the COUNT(*) wrapper vowl adds around custom checks.
+            "SELECT COUNT(*) FROM (SELECT * FROM 'http://evil/x.parquet')",
+            # Hidden in a subquery / IN clause.
+            "SELECT count(*) FROM users WHERE id IN (SELECT id FROM '/etc/passwd.csv')",
+        ],
+    )
+    def test_replacement_scan_source_blocked(self, query):
+        """A file path or URL used as a table source must be rejected."""
+        with pytest.raises(SQLSecurityError) as exc_info:
+            validate_read_only_query(query, dialect="duckdb")
+        assert exc_info.value.violation_type == "replacement_scan_table"
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "SELECT * FROM my_schema.my_table",
+            "SELECT id, name FROM users WHERE active = true",
+            'SELECT * FROM "order"',  # quoted reserved word, not a path
+            'SELECT * FROM "My Table"',  # quoted identifier with a space
+            "WITH cte AS (SELECT 1 AS x) SELECT * FROM cte",
+            "SELECT a.id FROM catalog.schema.table AS a",
+        ],
+    )
+    def test_plain_identifiers_allowed(self, query):
+        """Ordinary (possibly quoted / qualified) identifiers must still pass."""
+        validate_read_only_query(query, dialect="duckdb")
+
+
 class TestSanitizeIdentifier:
     """Tests for identifier sanitization."""
 
