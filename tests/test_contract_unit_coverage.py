@@ -12,6 +12,7 @@ import yaml
 from vowl import DataSourceMapper
 from vowl.contracts.check_reference import (
     DeclaredColumnExistsCheckReference,
+    EnumCheckReference,
     LogicalTypeCheckReference,
     PrimaryKeyCheckReference,
     RequiredCheckReference,
@@ -19,6 +20,7 @@ from vowl.contracts.check_reference import (
     SQLTableCheckReference,
     UniqueCheckReference,
 )
+from vowl.contracts.check_reference_unsupported import UnsupportedColumnCheckReference
 from vowl.contracts.contract import Contract
 from vowl.contracts.models import get_latest_version
 
@@ -581,6 +583,87 @@ def test_contract_get_check_references_by_schema_covers_remaining_branch_paths(
         "No type check generated for 'profile' with logicalType 'object'" in message for message in warning_messages
     )
     assert any("Unsupported logicalTypeOptions key 'unsupportedOption'" in message for message in warning_messages)
+
+
+def test_get_check_references_yields_enum_check_when_property_has_enum(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    contract = Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-contract",
+            "status": "active",
+            "schema": [
+                {
+                    "name": "orders",
+                    "properties": [
+                        {
+                            "name": "status",
+                            "logicalType": "string",
+                            "enum": [{"value": "active"}, {"value": "inactive"}],
+                        },
+                        {"name": "note", "logicalType": "string"},
+                    ],
+                }
+            ],
+        }
+    )
+
+    refs = contract.get_check_references_by_schema()["orders"]
+    enum_refs = [r for r in refs if isinstance(r, EnumCheckReference)]
+    assert len(enum_refs) == 1
+    assert enum_refs[0].get_column_name() == "status"
+
+
+def test_get_check_references_no_enum_check_when_property_has_no_enum(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    contract = Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-contract",
+            "status": "active",
+            "schema": [
+                {"name": "orders", "properties": [{"name": "status", "logicalType": "string"}]},
+            ],
+        }
+    )
+
+    refs = contract.get_check_references_by_schema()["orders"]
+    assert not any(isinstance(r, EnumCheckReference) for r in refs)
+
+
+def test_get_check_references_degrades_invalid_enum_to_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """An enum whose values cannot form a check degrades to an unsupported ref
+    instead of raising out of get_check_references_by_schema()."""
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    contract = Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-contract",
+            "status": "active",
+            "schema": [
+                {
+                    "name": "orders",
+                    "properties": [{"name": "status", "logicalType": "string", "enum": [{"value": None}]}],
+                }
+            ],
+        }
+    )
+
+    refs = contract.get_check_references_by_schema()["orders"]
+    assert not any(isinstance(r, EnumCheckReference) for r in refs)
+    assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
 
 
 def test_declared_column_exists_check_returns_error_when_input_column_is_missing(

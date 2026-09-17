@@ -462,6 +462,7 @@ class Contract:
         - Required checks: for columns with required: true (validates no NULLs)
         - Unique checks: for columns with unique: true (validates uniqueness)
         - Primary key checks: for columns with primaryKey: true (validates unique + not null)
+        - Enum checks: for columns with enum (validates values are in the allowed set)
 
         Returns:
             Dict mapping schema names to lists of CheckReference objects.
@@ -477,6 +478,7 @@ class Contract:
             LOGICAL_TYPE_TO_SQL,
             CheckReference,
             DeclaredColumnExistsCheckReference,
+            EnumCheckReference,
             LogicalTypeCheckReference,
             LogicalTypeOptionsCheckReference,
             PrimaryKeyCheckReference,
@@ -558,6 +560,15 @@ class Contract:
                                         str(exc),
                                     )
                                 )
+
+                # Enum (allowed value set) checks for columns with enum
+                if prop.get("enum"):
+                    try:
+                        refs_by_schema[schema_name].append(EnumCheckReference(self, prop_path))
+                    except ValueError as exc:
+                        refs_by_schema[schema_name].append(
+                            UnsupportedColumnCheckReference(self, f"{prop_path}.enum", str(exc))
+                        )
 
                 # Required checks for columns with required: true
                 if prop.get("required") is True:

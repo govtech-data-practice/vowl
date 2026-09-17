@@ -695,6 +695,104 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         return f"Column '{col_name}' must match format {val}"
 
 
+class EnumCheckReference(GeneratedColumnCheckReference):
+    """Reference to an auto-generated allowed-value-set (enum) check.
+
+    ODCS v3.2.0 promotes ``enum`` to a first-class property field: an explicit
+    list of allowed values for a column (each entry an ``EnumValue`` object with
+    at least a ``value``). This check flags any non-NULL row whose value is not
+    one of those allowed values. NULLs are excluded — null enforcement belongs to
+    the ``required`` check.
+    """
+
+    def __init__(self, contract: Contract, property_path: str):
+        super().__init__(contract, property_path, "enum")
+        # Extract and validate the allowed-value set eagerly so an invalid enum
+        # raises ValueError at construction time — matching how the wiring in
+        # contract.py degrades an invalid logicalTypeOptions to an unsupported
+        # check via try/except ValueError.
+        enum_list = self._contract.resolve(f"{property_path}.enum")
+        if not isinstance(enum_list, list):
+            raise ValueError(f"enum must be a list of allowed values, got: {enum_list!r}")
+
+        allowed = [e["value"] for e in enum_list if isinstance(e, dict) and "value" in e]
+        # NULL entries are excluded: the check ignores NULLs (required owns
+        # null-enforcement), so a NULL allowed value contributes nothing.
+        allowed = [v for v in allowed if v is not None]
+        if not allowed:
+            raise ValueError(f"enum at {property_path} has no usable allowed values")
+
+        # Convert each allowed value to a sqlglot literal node up front so nothing
+        # is ever string-interpolated into SQL (the values may be attacker-supplied
+        # in the contract). Reject anything that cannot be a scalar literal.
+        self._literals = [self._to_literal(v) for v in allowed]
+
+    @staticmethod
+    def _to_literal(value: Any) -> exp.Expression:
+        """Convert an allowed enum value to a safe sqlglot literal node.
+
+        Never string-interpolates: sqlglot builds and escapes the literal. Rejects
+        non-scalar values (dict/list) and non-finite numbers with ``ValueError``,
+        which the caller downgrades to an unsupported check.
+        """
+        # bool is an int subclass, so it MUST be checked before int.
+        if isinstance(value, bool):
+            return exp.Boolean(this=value)
+        if isinstance(value, int):
+            return exp.Literal.number(value)
+        if isinstance(value, float):
+            if math.isnan(value) or math.isinf(value):
+                raise ValueError(f"enum value must be finite, got: {value!r}")
+            return exp.Literal.number(value)
+        if isinstance(value, str):
+            return exp.Literal.string(value)
+        raise ValueError(f"enum value must be a scalar (str/int/float/bool), got: {value!r}")
+
+    def get_check(self) -> DataQuality:
+        if self._generated_check is None:
+            self._generated_check = self._generate_check()
+        return self._generated_check
+
+    def _build_ast(self) -> exp.Expression:
+        if self._cached_ast is not None:
+            return self._cached_ast
+
+        col_name = self.get_column_name()
+        schema_name = self.get_schema_name()
+
+        if not col_name or not schema_name:
+            warnings.warn(
+                f"Could not generate enum check at {self._path}: col_name={col_name}, schema_name={schema_name}",
+                UserWarning,
+                stacklevel=2,
+            )
+            raise ValueError(f"Cannot generate enum check for {self._path}")
+
+        col = exp.Column(this=exp.to_identifier(col_name, quoted=True))
+        table = exp.Table(this=exp.to_identifier(schema_name, quoted=True))
+        not_null = col.is_(exp.Null()).not_()
+
+        # col IS NOT NULL AND col NOT IN (<literals>). No CAST — enum values are
+        # expected to match the column's logicalType.
+        not_in = exp.Not(this=exp.In(this=col, expressions=list(self._literals)))
+
+        self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(not_null).where(not_in)
+        return self._cached_ast
+
+    def _generate_check(self) -> DataQuality:
+        col_name = self.get_column_name()
+        ast = self._build_ast()
+
+        return {
+            "name": f"{col_name}_enum_check",
+            "type": "sql",
+            "dimension": "conformity",
+            "description": f"Column '{col_name}' must be one of the allowed enum values",
+            "query": ast.sql(dialect=self._INTERNAL_DIALECT),
+            "mustBe": 0,
+        }
+
+
 class RequiredCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated required (not null) check."""
 
@@ -869,6 +967,7 @@ class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
 
 __all__ = [
     "DeclaredColumnExistsCheckReference",
+    "EnumCheckReference",
     "GeneratedColumnCheckReference",
     "GeneratedTableCheckReference",
     "LogicalTypeCheckReference",

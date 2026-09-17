@@ -12,6 +12,7 @@ from vowl.contracts.models import (
     SUPPORTED_VERSIONS,
     DataContract,
     DataQuality,
+    EnumValue,
     ValidationError,
     get_latest_version,
     get_schema,
@@ -311,6 +312,42 @@ class TestOdcs32Support:
             refs_by_schema = contract.get_check_references_by_schema()
         assert "documents" in refs_by_schema
 
+    def test_v320_enum_property_validates_and_generates_enum_check(self):
+        """A v3.2.0 contract declaring `enum` validates and auto-generates an
+        allowed-value-set check for that property."""
+        from vowl.contracts.check_reference import EnumCheckReference
+        from vowl.contracts.contract import Contract
+
+        contract_data = {
+            "apiVersion": "v3.2.0",
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-v320-enum",
+            "status": "active",
+            "schema": [
+                {
+                    "name": "orders",
+                    "properties": [
+                        {
+                            "name": "status",
+                            "logicalType": "string",
+                            "enum": [{"value": "active"}, {"value": "inactive"}],
+                        }
+                    ],
+                }
+            ],
+        }
+        # Validates against the v3.2.0 schema.
+        validate_contract(contract_data)
+
+        contract = Contract(contract_data)
+        refs = contract.get_check_references_by_schema()["orders"]
+        enum_refs = [r for r in refs if isinstance(r, EnumCheckReference)]
+        assert len(enum_refs) == 1
+        check = enum_refs[0].get_check()
+        assert check["name"] == "status_enum_check"
+        assert check["dimension"] == "conformity"
+
 
 class TestTypedDictTypes:
     """Test that TypedDict types work for type hints."""
@@ -337,6 +374,28 @@ class TestTypedDictTypes:
         }
         assert contract.get("apiVersion") == LATEST_VERSION
         assert contract.get("id") == "test"
+
+    def test_enum_value_type_hint(self):
+        """EnumValue TypedDict imports and accepts a representative dict."""
+        ev: EnumValue = {
+            "value": "active",
+            "label": "Active",
+            "id": "urn:enum:active",
+            "description": "The record is active.",
+            "tags": ["status"],
+        }
+        assert ev.get("value") == "active"
+
+    def test_schema_property_accepts_enum_field(self):
+        """SchemaProperty's `enum` field accepts a list of EnumValue dicts."""
+        from vowl.contracts.models.ODCS_types import SchemaProperty
+
+        prop: SchemaProperty = {
+            "name": "status",
+            "logicalType": "string",
+            "enum": [{"value": "active"}, {"value": "inactive"}],
+        }
+        assert [e["value"] for e in prop["enum"]] == ["active", "inactive"]
 
 
 class TestClassExplosion:

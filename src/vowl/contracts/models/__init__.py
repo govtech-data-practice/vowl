@@ -42,6 +42,7 @@ from .ODCS_types import (
     DataQualitySql,
     DataQualityText,
     Dimension,
+    EnumValue,
     Metric,
     OpenDataContractStandardODCS,
     SchemaObject,
@@ -154,6 +155,7 @@ __all__ = [
     "DataQualityBase",
     "SchemaObject",
     "SchemaProperty",
+    "EnumValue",
     # DataQuality specialized types
     "DataQualityCustom",
     "DataQualityLibrary",
