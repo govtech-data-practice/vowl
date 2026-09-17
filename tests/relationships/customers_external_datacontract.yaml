@@ -1,0 +1,31 @@
+kind: DataContract
+apiVersion: v3.2.0
+version: 1.0.0
+id: customers-external-target
+status: active
+name: Customers (External Target)
+domain: retail
+description:
+  purpose: >-
+    External target contract. Declares only the customers schema so another
+    contract can reference customers.customer_id across files via the
+    file.yaml#fragment external reference notation.
+schema:
+  - id: customers_ext_schema
+    name: customers
+    description: Customer master records; one row per customer.
+    physicalType: table
+    properties:
+      - id: customers_ext_customer_id
+        name: customer_id
+        description: Surrogate key for a customer.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
+        unique: true
+        primaryKey: true
+      - name: customer_name
+        description: Display name of the customer.
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
