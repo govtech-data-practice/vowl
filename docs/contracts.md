@@ -151,6 +151,85 @@ produces three generated check references:
 !!! note
 Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
 
+## Relationships (Foreign Keys)
+
+ODCS v3.2.0 `relationships` declare referential integrity between properties. vowl turns each `foreignKey` relationship into an **executed** anti-join check (`dimension: consistency`, `mustBe: 0`): every non-`NULL` key value must exist in the referenced target. Some ODCS tools only export relationships as documentation or dbt tests — vowl runs them against your data.
+
+### Property-level, single column
+
+Declare the relationship on the property that holds the key. The `to` target is written in **shorthand** notation — `<object>.<property>`, resolved by property `name`:
+
+```yaml
+schema:
+  - name: customers
+    properties:
+      - name: customer_id
+        logicalType: integer
+        primaryKey: true
+  - name: orders
+    properties:
+      - name: customer_id
+        logicalType: integer
+        required: false
+        relationships:
+          - type: foreignKey
+            to: customers.customer_id
+```
+
+This generates a check named `orders_customer_id_foreign_key_check`. A row whose key is `NULL` is skipped (MATCH SIMPLE semantics), so an optional foreign key is legal — only present-but-dangling values fail.
+
+### Schema-level, composite key
+
+For multi-column keys, declare the relationship at the **schema** level with parallel `from`/`to` lists. Here the target columns use **fully-qualified** notation (`/schema/<schemaId>/properties/<propertyId>`), resolved by `id`:
+
+```yaml
+schema:
+  - id: products_schema
+    name: products
+    properties:
+      - id: products_category
+        name: category
+        primaryKey: true
+        primaryKeyPosition: 1
+      - id: products_sku
+        name: sku
+        primaryKey: true
+        primaryKeyPosition: 2
+  - name: order_items
+    properties:
+      - name: category
+      - name: sku
+    relationships:
+      - type: foreignKey
+        from:
+          - order_items.category
+          - order_items.sku
+        to:
+          - /schema/products_schema/properties/products_category
+          - /schema/products_schema/properties/products_sku
+```
+
+A composite row is skipped if **any** of its key columns is `NULL`.
+
+### Reference notations
+
+| Notation        | Example                                                     | Resolves by                         |
+| --------------- | ----------------------------------------------------------- | ----------------------------------- |
+| Shorthand       | `customers.customer_id`                                     | property `name`                     |
+| Fully-qualified | `/schema/customers_schema/properties/customer_id`           | property `id`                       |
+| External file   | `customers.yaml#/schema/<schemaId>/properties/<propertyId>` | another contract file, then by `id` |
+
+External references point at a property in a **separate contract file**. The fragment after `#` must use the fully-qualified form — a shorthand fragment (e.g. `customers.yaml#customers.customer_id`) is rejected by the ODCS v3.2.0 schema. The external file is resolved relative to the referencing contract's own location (RFC 3986), so the contract must be loaded from a path (`validate_data(contract="orders.yaml", …)`) rather than built from an in-memory dict.
+
+### Execution model
+
+- **Adapters are keyed by schema `name`.** vowl does not auto-connect from `servers`; you supply an adapter per schema. When the two sides live in different sources, the check routes across them automatically.
+- **Self-referential** keys (a table referencing itself) run as a single-table check.
+- Failed rows carry only the referencing table's columns, so they merge onto that table's annotated output rather than landing in a separate residue.
+- If a reference cannot be resolved — missing target, unregistered external adapter, or a relative external path with no contract origin — the check degrades to an unsupported reference with a warning instead of raising.
+
+See [Design principles for auto-generated checks](design-considerations.md#design-principles-for-auto-generated-checks) for the rationale behind these choices.
+
 ## Format Checks
 
 The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`:
