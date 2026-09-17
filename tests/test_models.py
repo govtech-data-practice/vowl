@@ -13,6 +13,7 @@ from vowl.contracts.models import (
     DataContract,
     DataQuality,
     ValidationError,
+    get_latest_version,
     get_schema,
     validate_contract,
 )
@@ -219,6 +220,96 @@ class TestJsonSchemaValidation:
         }
         # Should not raise
         validate_contract(contract_data)
+
+
+class TestOdcs32Support:
+    """Test support for ODCS v3.2.0 (additive superset of v3.1.0)."""
+
+    def test_v320_is_registered_and_latest(self):
+        """v3.2.0 must be a supported version and the newest one."""
+        assert "v3.2.0" in SUPPORTED_VERSIONS
+        assert SUPPORTED_VERSIONS[0] == "v3.2.0"
+        assert get_latest_version() == "v3.2.0"
+
+    def test_v320_schema_loads(self):
+        """The bundled v3.2.0 schema must be retrievable and additive over 3.1.0."""
+        schema = get_schema("v3.2.0")
+        assert schema["title"].startswith("Open Data Contract Standard")
+        # 3.2.0 adds a top-level `context` block; the DataQuality engine contract is unchanged.
+        assert "context" in schema.get("properties", {})
+        assert "DataQuality" in schema.get("$defs", {})
+
+    def test_validate_contract_with_v320_only_fields(self):
+        """A contract using 3.2-only metadata validates against the v3.2.0 schema."""
+        contract_data = {
+            "apiVersion": "v3.2.0",
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-v320",
+            "status": "active",
+            # RFC-0038 AI/semantic context (new top-level block in 3.2.0)
+            "context": {
+                "instructions": "Use only for internal analytics.",
+                "constraints": [{"constraint": "Do not expose raw values externally."}],
+            },
+            "schema": [
+                {
+                    "name": "documents",
+                    # `deprecated` + `synonyms` promoted to element level in 3.2.0
+                    "deprecated": False,
+                    "synonyms": [{"synonym": "docs", "source": "glossary"}],
+                    "properties": [
+                        {
+                            "name": "status",
+                            "logicalType": "string",
+                            # `enum` + `semanticType` are new property fields in 3.2.0
+                            "enum": [
+                                {"value": "draft"},
+                                {"value": "active"},
+                                {"value": "archived"},
+                            ],
+                            "semanticType": "dimension",
+                        },
+                        {
+                            # `vector` is a new logicalType in 3.2.0
+                            "name": "embedding",
+                            "logicalType": "vector",
+                        },
+                    ],
+                }
+            ],
+        }
+        # Should not raise against the v3.2.0 schema.
+        validate_contract(contract_data)
+
+    def test_v320_contract_loads_and_builds_check_references(self):
+        """A v3.2.0 contract loads and produces check references without error.
+
+        The new `vector` logicalType has no SQL type check, so it degrades to a
+        UserWarning during auto-check generation rather than raising.
+        """
+        from vowl.contracts.contract import Contract
+
+        contract_data = {
+            "apiVersion": "v3.2.0",
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-v320-load",
+            "status": "active",
+            "schema": [
+                {
+                    "name": "documents",
+                    "properties": [
+                        {"name": "id", "logicalType": "integer", "primaryKey": True},
+                        {"name": "embedding", "logicalType": "vector"},
+                    ],
+                }
+            ],
+        }
+        contract = Contract(contract_data)
+        with pytest.warns(UserWarning, match="No type check generated"):
+            refs_by_schema = contract.get_check_references_by_schema()
+        assert "documents" in refs_by_schema
 
 
 class TestTypedDictTypes:

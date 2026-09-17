@@ -35,6 +35,7 @@ from typing import Any, Literal, TypedDict
 # =============================================================================
 
 ApiVersion = Literal[
+    "v3.2.0",
     "v3.1.0",
     "v3.0.2",
     "v3.0.1",

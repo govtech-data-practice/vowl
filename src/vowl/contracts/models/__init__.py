@@ -22,7 +22,7 @@ Usage:
     from vowl.contracts.models.ODCS_types import DataContract, DataQuality
 
 Supported Versions:
-    v3.1.0, v3.0.2, v3.0.1, v3.0.0, v2.2.2, v2.2.1
+    v3.2.0, v3.1.0, v3.0.2, v3.0.1, v3.0.0, v2.2.2, v2.2.1
 """
 
 import json
@@ -56,6 +56,7 @@ SCHEMAS_DIR = Path(__file__).parent / "schemas"
 
 # Version to schema file mapping
 SCHEMA_FILES = {
+    "v3.2.0": "odcs-json-schema-v3.2.0.json",
     "v3.1.0": "odcs-json-schema-v3.1.0.json",
     "v3.0.2": "odcs-json-schema-v3.0.2.json",
     "v3.0.1": "odcs-json-schema-v3.0.1.json",
