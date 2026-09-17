@@ -15,7 +15,7 @@ from .check_reference_sql import LOGICAL_TYPE_TO_SQL, SQLCheckReference
 if TYPE_CHECKING:
     from vowl.adapters.models import FilterCondition
 
-    from .contract import Contract
+    from .contract import Contract, ResolvedRef
     from .models.ODCS_types import DataQuality
 
     FilterConditionType = FilterCondition | list[FilterCondition] | dict[str, Any]
@@ -965,6 +965,178 @@ class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
         }
 
 
+class _ForeignKeyMixin:
+    """Shared referential-integrity (foreign-key) AST + check generation.
+
+    Mixed in *before* a ``Generated{Column,Table}CheckReference`` base so its
+    ``_build_ast``/``_generate_check``/``get_check`` implementations satisfy the
+    abstract base. Subclasses resolve their endpoints and call :meth:`_init_fk`.
+
+    The generated check counts rows in the ``from`` table whose (non-NULL) key
+    has no matching row in the ``to`` table — a ``NOT EXISTS`` anti-join. NULL
+    keys are excluded (MATCH SIMPLE semantics: a row with any NULL FK column
+    does not participate). Identifiers are always emitted as quoted sqlglot
+    nodes, never string-interpolated, so contract-supplied names are safe.
+    """
+
+    _FROM_ALIAS = "_vowl_fk_from"
+    _TO_ALIAS = "_vowl_fk_to"
+
+    # Populated by _init_fk; declared here for type-checkers.
+    _from_schema: str
+    _from_cols: list[str]
+    _to_schema: str
+    _to_cols: list[str]
+    _external: bool
+
+    def _init_fk(self, from_schema: str, from_cols: list[str], target: ResolvedRef) -> None:
+        self._from_schema = from_schema
+        self._from_cols = from_cols
+        self._to_schema = target.schema_name
+        self._to_cols = target.columns
+        self._external = target.external
+        if len(self._from_cols) != len(self._to_cols):
+            raise ValueError(
+                f"composite foreign key arity mismatch: {len(self._from_cols)} source column(s) "
+                f"vs {len(self._to_cols)} target column(s)"
+            )
+        if not target.target_unique:
+            warnings.warn(
+                f"foreign key target '{self._to_schema}({', '.join(self._to_cols)})' is not declared "
+                "unique or primaryKey; referential-integrity results may be ambiguous",
+                UserWarning,
+                stacklevel=3,
+            )
+
+    def get_check(self) -> DataQuality:
+        if self._generated_check is None:  # type: ignore[attr-defined]
+            self._generated_check = self._generate_check()  # type: ignore[attr-defined]
+        return self._generated_check  # type: ignore[attr-defined]
+
+    def _build_ast(self) -> exp.Expression:
+        if self._cached_ast is not None:  # type: ignore[attr-defined]
+            return self._cached_ast  # type: ignore[attr-defined]
+
+        f_alias, t_alias = self._FROM_ALIAS, self._TO_ALIAS
+        from_tbl = exp.Table(
+            this=exp.to_identifier(self._from_schema, quoted=True),
+            alias=exp.TableAlias(this=exp.to_identifier(f_alias, quoted=True)),
+        )
+        to_tbl = exp.Table(
+            this=exp.to_identifier(self._to_schema, quoted=True),
+            alias=exp.TableAlias(this=exp.to_identifier(t_alias, quoted=True)),
+        )
+
+        def fcol(name: str) -> exp.Expression:
+            return exp.column(name, table=f_alias, quoted=True)
+
+        def tcol(name: str) -> exp.Expression:
+            return exp.column(name, table=t_alias, quoted=True)
+
+        # Correlated equality chain: to.x_i = from.k_i
+        join_pred: exp.Expression | None = None
+        for from_col, to_col in zip(self._from_cols, self._to_cols, strict=True):
+            eq = tcol(to_col).eq(fcol(from_col))
+            join_pred = eq if join_pred is None else exp.And(this=join_pred, expression=eq)
+
+        not_exists = exp.Not(this=exp.Exists(this=sqlglot.select(exp.Literal.number(1)).from_(to_tbl).where(join_pred)))
+
+        # MATCH SIMPLE: only rows whose every FK column is non-NULL participate.
+        where: exp.Expression | None = None
+        for from_col in self._from_cols:
+            non_null = fcol(from_col).is_(exp.Null()).not_()
+            where = non_null if where is None else exp.And(this=where, expression=non_null)
+        where = exp.And(this=where, expression=not_exists) if where is not None else not_exists
+
+        self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(from_tbl).where(where)  # type: ignore[attr-defined]
+        return self._cached_ast  # type: ignore[attr-defined]
+
+    def _generate_check(self) -> DataQuality:
+        ast = self._build_ast()
+        from_cols_disp = ", ".join(self._from_cols)
+        to_cols_disp = ", ".join(self._to_cols)
+        return {
+            "name": f"{self._from_schema}_{'_'.join(self._from_cols)}_foreign_key_check",
+            "type": "sql",
+            "dimension": "consistency",
+            "description": (
+                f"Every non-null ({from_cols_disp}) in '{self._from_schema}' must exist in "
+                f"'{self._to_schema}' ({to_cols_disp})"
+            ),
+            "query": ast.sql(dialect=self._INTERNAL_DIALECT),  # type: ignore[attr-defined]
+            "mustBe": 0,
+        }
+
+
+class PropertyForeignKeyCheckReference(_ForeignKeyMixin, GeneratedColumnCheckReference):
+    """Auto-generated referential-integrity check for a property-level relationship.
+
+    A property may declare a ``relationships`` entry of ``type: foreignKey`` with
+    a ``to`` reference to another property. The owning property is the single
+    foreign-key column (property-level relationships cannot be composite).
+    """
+
+    def __init__(self, contract: Contract, property_path: str, rel_index: int):
+        super().__init__(contract, property_path, f"relationships[{rel_index}]")
+        rel = self._contract.resolve(f"{property_path}.relationships[{rel_index}]")
+        if not isinstance(rel, dict):
+            raise ValueError(f"relationship at {self._path} is not an object")
+        rel_type = rel.get("type", "foreignKey")
+        if rel_type != "foreignKey":
+            raise ValueError(f"unsupported relationship type '{rel_type}'; only 'foreignKey' is supported")
+
+        to = rel.get("to")
+        if to is None:
+            raise ValueError(f"relationship at {self._path} has no 'to' target")
+        if isinstance(to, list) and len(to) > 1:
+            raise ValueError("property-level relationship cannot be composite; use a schema-level relationship")
+
+        from_schema = self.get_schema_name()
+        from_col = self.get_column_name()
+        if not from_schema or not from_col:
+            raise ValueError(f"cannot resolve source column/schema for relationship at {self._path}")
+
+        target = self._contract.resolve_reference(to)
+        self._init_fk(from_schema=from_schema, from_cols=[from_col], target=target)
+
+
+class SchemaForeignKeyCheckReference(_ForeignKeyMixin, GeneratedTableCheckReference):
+    """Auto-generated referential-integrity check for a schema-level relationship.
+
+    A schema may declare a ``relationships`` entry of ``type: foreignKey`` with
+    both ``from`` and ``to`` references. Both may be composite (lists), in which
+    case the two sides must have equal arity and each side's columns must resolve
+    within a single schema.
+    """
+
+    def __init__(self, contract: Contract, schema_index: int, rel_index: int):
+        super().__init__(contract, f"$.schema[{schema_index}].relationships[{rel_index}]")
+        rel = self._contract.resolve(self._path)
+        if not isinstance(rel, dict):
+            raise ValueError(f"relationship at {self._path} is not an object")
+        rel_type = rel.get("type", "foreignKey")
+        if rel_type != "foreignKey":
+            raise ValueError(f"unsupported relationship type '{rel_type}'; only 'foreignKey' is supported")
+
+        frm = rel.get("from")
+        to = rel.get("to")
+        if frm is None or to is None:
+            raise ValueError(f"schema-level relationship at {self._path} requires both 'from' and 'to'")
+
+        from_ref = self._contract.resolve_reference(frm)
+        target = self._contract.resolve_reference(to)
+
+        # The 'from' side must live on the schema this relationship is declared on.
+        own_schema = self.get_schema_name()
+        if own_schema and from_ref.schema_name != own_schema:
+            raise ValueError(
+                f"schema-level relationship 'from' ({from_ref.schema_name}) does not match its "
+                f"declaring schema '{own_schema}'"
+            )
+
+        self._init_fk(from_schema=from_ref.schema_name, from_cols=from_ref.columns, target=target)
+
+
 __all__ = [
     "DeclaredColumnExistsCheckReference",
     "EnumCheckReference",
@@ -973,6 +1145,8 @@ __all__ = [
     "LogicalTypeCheckReference",
     "LogicalTypeOptionsCheckReference",
     "PrimaryKeyCheckReference",
+    "PropertyForeignKeyCheckReference",
     "RequiredCheckReference",
+    "SchemaForeignKeyCheckReference",
     "UniqueCheckReference",
 ]

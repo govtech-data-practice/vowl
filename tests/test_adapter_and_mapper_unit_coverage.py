@@ -113,6 +113,85 @@ def test_is_multi_table_check_returns_false_without_query():
     assert adapter._is_multi_table_check(StubCheckReference(query=None)) is False
 
 
+def _fk_contract(monkeypatch: pytest.MonkeyPatch, schemas: list[dict]):
+    from vowl.contracts.contract import Contract
+    from vowl.contracts.models import get_latest_version
+
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    return Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "fk-routing",
+            "status": "active",
+            "schema": schemas,
+        }
+    )
+
+
+def test_cross_table_fk_check_routes_as_multi_table(monkeypatch: pytest.MonkeyPatch):
+    """A cross-schema foreign-key check references two tables, so it routes to
+    the multi-source execution path."""
+    from vowl.contracts.check_reference_generated import PropertyForeignKeyCheckReference
+
+    contract = _fk_contract(
+        monkeypatch,
+        [
+            {"name": "customers", "properties": [{"name": "id", "logicalType": "integer", "primaryKey": True}]},
+            {
+                "name": "orders",
+                "properties": [
+                    {
+                        "name": "customer_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "customers.id"}],
+                    }
+                ],
+            },
+        ],
+    )
+    ref = next(
+        r
+        for r in contract.get_check_references_by_schema()["orders"]
+        if isinstance(r, PropertyForeignKeyCheckReference)
+    )
+    adapter = MultiSourceAdapter({"orders": StubAdapter(), "customers": StubAdapter()})
+    assert adapter._detect_tables_in_query(ref.get_check()["query"]) == {"orders", "customers"}
+    assert adapter._is_multi_table_check(ref) is True
+
+
+def test_self_referential_fk_check_stays_single_table(monkeypatch: pytest.MonkeyPatch):
+    """A self-referential foreign key references only one table (aliased twice),
+    so it stays on the single-table path."""
+    from vowl.contracts.check_reference_generated import PropertyForeignKeyCheckReference
+
+    contract = _fk_contract(
+        monkeypatch,
+        [
+            {
+                "name": "employees",
+                "properties": [
+                    {"name": "id", "logicalType": "integer", "primaryKey": True},
+                    {
+                        "name": "manager_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "employees.id"}],
+                    },
+                ],
+            }
+        ],
+    )
+    ref = next(
+        r
+        for r in contract.get_check_references_by_schema()["employees"]
+        if isinstance(r, PropertyForeignKeyCheckReference)
+    )
+    adapter = MultiSourceAdapter({"employees": StubAdapter()})
+    assert adapter._detect_tables_in_query(ref.get_check()["query"]) == {"employees"}
+    assert adapter._is_multi_table_check(ref) is False
+
+
 def test_test_connections_warns_for_inaccessible_and_accessible_unknown_tables():
     users_adapter = StubAdapter(
         connection_results={

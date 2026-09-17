@@ -25,8 +25,10 @@ from vowl.contracts.check_reference import (
     MissingValuesCheckReference,
     NullValuesCheckReference,
     PrimaryKeyCheckReference,
+    PropertyForeignKeyCheckReference,
     RequiredCheckReference,
     RowCountCheckReference,
+    SchemaForeignKeyCheckReference,
     SQLColumnCheckReference,
     SQLTableCheckReference,
     UniqueCheckReference,
@@ -1254,3 +1256,307 @@ class TestEdgeCases:
         assert NullValuesCheckReference in types_found
         assert DeclaredColumnExistsCheckReference in types_found
         assert RequiredCheckReference in types_found
+
+
+# ===================================================================
+# Group G — Foreign-key / relationship checks (ODCS v3.2.0)
+# ===================================================================
+
+
+def _make_fk_contract(monkeypatch: pytest.MonkeyPatch, schemas: list[dict]) -> Contract:
+    """Build a multi-schema contract with validation disabled, for FK tests."""
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    return Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-fk",
+            "status": "active",
+            "schema": schemas,
+        }
+    )
+
+
+def _fk_refs(contract: Contract, schema_name: str) -> list:
+    """Return only the foreign-key references filed under ``schema_name``."""
+    refs = contract.get_check_references_by_schema()[schema_name]
+    return [r for r in refs if isinstance(r, (PropertyForeignKeyCheckReference, SchemaForeignKeyCheckReference))]
+
+
+def _scalar(con, query: str) -> int:
+    rows = con.sql(query).to_pyarrow().to_pylist()
+    assert len(rows) == 1
+    return next(iter(rows[0].values()))
+
+
+class TestForeignKeyCheck:
+    """Referential-integrity checks auto-generated from ``relationships``."""
+
+    # -- property-level, single column -------------------------------------
+
+    def _orders_customers(self) -> list[dict]:
+        return [
+            {
+                "name": "customers",
+                "properties": [{"name": "id", "logicalType": "integer", "primaryKey": True}],
+            },
+            {
+                "name": "orders",
+                "properties": [
+                    {"name": "order_id", "logicalType": "integer"},
+                    {
+                        "name": "customer_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "customers.id"}],
+                    },
+                ],
+            },
+        ]
+
+    def test_property_fk_shape(self, monkeypatch: pytest.MonkeyPatch):
+        contract = _make_fk_contract(monkeypatch, self._orders_customers())
+        fks = _fk_refs(contract, "orders")
+        assert len(fks) == 1
+        ref = fks[0]
+        assert isinstance(ref, PropertyForeignKeyCheckReference)
+        check = ref.get_check()
+        assert check["name"] == "orders_customer_id_foreign_key_check"
+        assert check["dimension"] == "consistency"
+        assert check["type"] == "sql"
+        assert check["mustBe"] == 0
+        # Anti-join shape: NOT EXISTS + NULL exclusion (MATCH SIMPLE).
+        sql = ref._build_ast().sql("postgres").upper()
+        assert "NOT EXISTS" in sql
+        # MATCH SIMPLE null exclusion (postgres renders "NOT col IS NULL").
+        assert "IS NULL" in sql
+        assert "COUNT(*)" in sql
+
+    def test_property_fk_pass_and_null_skip(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+
+        contract = _make_fk_contract(monkeypatch, self._orders_customers())
+        ref = _fk_refs(contract, "orders")[0]
+
+        con = ibis.duckdb.connect()
+        con.create_table("customers", pa.table({"id": [1, 2, 3]}))
+        # Every non-null customer_id exists; the NULL row is skipped (MATCH SIMPLE).
+        con.create_table("orders", pa.table({"order_id": [10, 11, 12], "customer_id": [1, 2, None]}))
+        assert _scalar(con, ref.get_query("duckdb")) == 0
+
+    def test_property_fk_fail_on_orphan(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+
+        contract = _make_fk_contract(monkeypatch, self._orders_customers())
+        ref = _fk_refs(contract, "orders")[0]
+
+        con = ibis.duckdb.connect()
+        con.create_table("customers", pa.table({"id": [1, 2, 3]}))
+        # 99 has no matching customer -> exactly one violating row.
+        con.create_table("orders", pa.table({"order_id": [10, 11], "customer_id": [1, 99]}))
+        assert _scalar(con, ref.get_query("duckdb")) == 1
+
+        # Failed-rows projection returns only the offending from-table row.
+        assert ref.supports_row_level_output is True
+        failed_sql = ref.get_failed_rows_query("duckdb")
+        assert failed_sql.upper().startswith("SELECT *")
+        rows = con.sql(failed_sql).to_pyarrow().to_pylist()
+        assert [r["customer_id"] for r in rows] == [99]
+
+    # -- schema-level, composite -------------------------------------------
+
+    def _composite_contract(self) -> list[dict]:
+        return [
+            {
+                "name": "regions",
+                "properties": [
+                    {"name": "country", "logicalType": "string", "primaryKey": True},
+                    {"name": "zone", "logicalType": "string", "primaryKey": True},
+                ],
+            },
+            {
+                "name": "stores",
+                "properties": [
+                    {"name": "store_country", "logicalType": "string"},
+                    {"name": "store_zone", "logicalType": "string"},
+                ],
+                "relationships": [
+                    {
+                        "type": "foreignKey",
+                        "from": ["stores.store_country", "stores.store_zone"],
+                        "to": ["regions.country", "regions.zone"],
+                    }
+                ],
+            },
+        ]
+
+    def test_composite_schema_fk_pass_and_fail(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+
+        contract = _make_fk_contract(monkeypatch, self._composite_contract())
+        fks = _fk_refs(contract, "stores")
+        assert len(fks) == 1
+        ref = fks[0]
+        assert isinstance(ref, SchemaForeignKeyCheckReference)
+        assert ref.get_check()["name"] == "stores_store_country_store_zone_foreign_key_check"
+
+        con = ibis.duckdb.connect()
+        con.create_table("regions", pa.table({"country": ["SG", "MY"], "zone": ["A", "B"]}))
+        # ("SG","A") matches; the ("SG","B") pair does not.
+        con.create_table(
+            "stores",
+            pa.table({"store_country": ["SG", "SG"], "store_zone": ["A", "B"]}),
+        )
+        assert _scalar(con, ref.get_query("duckdb")) == 1
+
+    # -- self-referential --------------------------------------------------
+
+    def test_self_referential_fk(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+
+        schemas = [
+            {
+                "name": "employees",
+                "properties": [
+                    {"name": "id", "logicalType": "integer", "primaryKey": True},
+                    {
+                        "name": "manager_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "employees.id"}],
+                    },
+                ],
+            }
+        ]
+        contract = _make_fk_contract(monkeypatch, schemas)
+        ref = _fk_refs(contract, "employees")[0]
+
+        con = ibis.duckdb.connect()
+        # Row 1 is a root (NULL manager -> skipped); 2->1, 3->1 resolve.
+        con.create_table("employees", pa.table({"id": [1, 2, 3], "manager_id": [None, 1, 1]}))
+        assert _scalar(con, ref.get_query("duckdb")) == 0
+        # Break it: manager 42 does not exist.
+        con2 = ibis.duckdb.connect()
+        con2.create_table("employees", pa.table({"id": [1, 2], "manager_id": [None, 42]}))
+        assert _scalar(con2, ref.get_query("duckdb")) == 1
+
+    # -- notation equivalence ----------------------------------------------
+
+    def test_shorthand_equals_fqn(self, monkeypatch: pytest.MonkeyPatch):
+        fqn_schemas = [
+            {
+                "id": "cust_schema",
+                "name": "customers",
+                "properties": [{"id": "cust_id", "name": "id", "logicalType": "integer", "primaryKey": True}],
+            },
+            {
+                "name": "orders",
+                "properties": [
+                    {
+                        "name": "customer_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "/schema/cust_schema/properties/cust_id"}],
+                    }
+                ],
+            },
+        ]
+        contract_fqn = _make_fk_contract(monkeypatch, fqn_schemas)
+        ref_fqn = _fk_refs(contract_fqn, "orders")[0]
+
+        contract_sh = _make_fk_contract(monkeypatch, self._orders_customers())
+        ref_sh = _fk_refs(contract_sh, "orders")[0]
+
+        # Both notations resolve to the same target and thus the same SQL.
+        assert ref_fqn._build_ast().sql("postgres") == ref_sh._build_ast().sql("postgres")
+
+    # -- degrade / warning paths -------------------------------------------
+
+    def test_target_not_unique_warns_but_generates(self, monkeypatch: pytest.MonkeyPatch):
+        schemas = [
+            {"name": "customers", "properties": [{"name": "id", "logicalType": "integer"}]},
+            {
+                "name": "orders",
+                "properties": [
+                    {
+                        "name": "customer_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "customers.id"}],
+                    }
+                ],
+            },
+        ]
+        contract = _make_fk_contract(monkeypatch, schemas)
+        with pytest.warns(UserWarning, match="not declared unique or primaryKey"):
+            fks = _fk_refs(contract, "orders")
+        assert len(fks) == 1
+        assert isinstance(fks[0], PropertyForeignKeyCheckReference)
+
+    def test_unresolvable_target_degrades(self, monkeypatch: pytest.MonkeyPatch):
+        schemas = [
+            {
+                "name": "orders",
+                "properties": [
+                    {
+                        "name": "customer_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "customers.id"}],
+                    }
+                ],
+            }
+        ]
+        contract = _make_fk_contract(monkeypatch, schemas)
+        refs = contract.get_check_references_by_schema()["orders"]
+        assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
+        assert not any(isinstance(r, PropertyForeignKeyCheckReference) for r in refs)
+
+    def test_composite_property_level_degrades(self, monkeypatch: pytest.MonkeyPatch):
+        schemas = [
+            {
+                "name": "regions",
+                "properties": [
+                    {"name": "country", "logicalType": "string", "primaryKey": True},
+                    {"name": "zone", "logicalType": "string", "primaryKey": True},
+                ],
+            },
+            {
+                "name": "stores",
+                "properties": [
+                    {
+                        "name": "loc",
+                        "logicalType": "string",
+                        # Composite target on a property-level relationship is unsupported.
+                        "relationships": [{"type": "foreignKey", "to": ["regions.country", "regions.zone"]}],
+                    }
+                ],
+            },
+        ]
+        contract = _make_fk_contract(monkeypatch, schemas)
+        refs = contract.get_check_references_by_schema()["stores"]
+        assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
+
+    def test_external_ref_without_origin_degrades(self, monkeypatch: pytest.MonkeyPatch):
+        schemas = [
+            {
+                "name": "orders",
+                "properties": [
+                    {
+                        "name": "customer_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": "other.yaml#/schema/c/properties/id"}],
+                    }
+                ],
+            }
+        ]
+        # In-memory contract has origin=None -> external ref cannot resolve.
+        contract = _make_fk_contract(monkeypatch, schemas)
+        assert contract.origin is None
+        refs = contract.get_check_references_by_schema()["orders"]
+        unsup = [r for r in refs if isinstance(r, UnsupportedColumnCheckReference)]
+        assert len(unsup) == 1
+
+    def test_generated_fk_sql_is_injection_safe(self, monkeypatch: pytest.MonkeyPatch):
+        from vowl.executors.security import validate_query_security
+
+        contract = _make_fk_contract(monkeypatch, self._orders_customers())
+        ref = _fk_refs(contract, "orders")[0]
+        # The generated anti-join query passes the security validator.
+        validate_query_security(ref.get_query("duckdb"), "duckdb")

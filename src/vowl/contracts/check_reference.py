@@ -14,7 +14,9 @@ from .check_reference_generated import (
     LogicalTypeCheckReference,
     LogicalTypeOptionsCheckReference,
     PrimaryKeyCheckReference,
+    PropertyForeignKeyCheckReference,
     RequiredCheckReference,
+    SchemaForeignKeyCheckReference,
     UniqueCheckReference,
 )
 from .check_reference_library_metrics import (
@@ -56,6 +58,8 @@ __all__ = [
     "RequiredCheckReference",
     "UniqueCheckReference",
     "PrimaryKeyCheckReference",
+    "PropertyForeignKeyCheckReference",
+    "SchemaForeignKeyCheckReference",
     "LOGICAL_TYPE_TO_SQL",
     "NullValuesCheckReference",
     "MissingValuesCheckReference",

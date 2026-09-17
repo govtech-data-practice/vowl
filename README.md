@@ -63,7 +63,7 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 ## Features
 
 - **Extensible Check Engine**: Ships with a SQL check engine out of the box, with the architecture designed to support custom check types beyond SQL.
-- **Auto-Generated Rules**: Checks are automatically derived from contract metadata (`logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`) and library metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
+- **Auto-Generated Rules**: Checks are automatically derived from contract metadata (`logicalType`, `logicalTypeOptions`, `enum`, `required`, `unique`, `primaryKey`) and library metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
 - **Any DataFrame, Any Backend**: Load any [Narwhals-compatible](https://github.com/narwhals-dev/narwhals) DataFrame type (pandas, Polars, PySpark, etc.) or connect to **20+ backends** via [Ibis](https://github.com/ibis-project/ibis). SQL dialect translation is handled by [SQLGlot](https://github.com/tobymao/sqlglot).
 - **Server-Side Execution**: SQL checks run server-side through Ibis without materialising tables on the client.
 - **Multi-Source Validation**: Validate across tables in different source systems with cross-database joins.
@@ -321,9 +321,11 @@ The check types currently generated:
 | `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                              |
 | `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                    |
 | `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks))                                       |
+| `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                         |
 | `required: true`                      | Column contains no `NULL` values                                                                                |
 | `unique: true`                        | Non-null values are unique                                                                                      |
 | `primaryKey: true`                    | Values are both unique and non-null                                                                             |
+| `relationships` (`foreignKey`)        | Every non-null key value exists in the referenced target table (referential integrity)                          |
 
 For example, a property like this:
 
@@ -351,6 +353,7 @@ When a contract is loaded, `vowl` builds `CheckReference` objects for every exec
 | Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
 | Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
 | Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
 | Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
 | Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
 | Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |

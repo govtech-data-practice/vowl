@@ -348,6 +348,46 @@ class TestOdcs32Support:
         assert check["name"] == "status_enum_check"
         assert check["dimension"] == "conformity"
 
+    def test_v320_relationships_validate_and_generate_foreign_key_check(self):
+        """A v3.2.0 contract declaring a property-level `relationships` foreign
+        key validates and auto-generates a referential-integrity check."""
+        from vowl.contracts.check_reference import PropertyForeignKeyCheckReference
+        from vowl.contracts.contract import Contract
+
+        contract_data = {
+            "apiVersion": "v3.2.0",
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-v320-fk",
+            "status": "active",
+            "schema": [
+                {
+                    "name": "customers",
+                    "properties": [{"name": "id", "logicalType": "integer", "primaryKey": True}],
+                },
+                {
+                    "name": "orders",
+                    "properties": [
+                        {
+                            "name": "customer_id",
+                            "logicalType": "integer",
+                            "relationships": [{"type": "foreignKey", "to": "customers.id"}],
+                        }
+                    ],
+                },
+            ],
+        }
+        # Validates against the v3.2.0 schema.
+        validate_contract(contract_data)
+
+        contract = Contract(contract_data)
+        refs = contract.get_check_references_by_schema()["orders"]
+        fk_refs = [r for r in refs if isinstance(r, PropertyForeignKeyCheckReference)]
+        assert len(fk_refs) == 1
+        check = fk_refs[0].get_check()
+        assert check["name"] == "orders_customer_id_foreign_key_check"
+        assert check["dimension"] == "consistency"
+
 
 class TestTypedDictTypes:
     """Test that TypedDict types work for type hints."""

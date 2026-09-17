@@ -102,28 +102,33 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 | Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
 | Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
 | Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
 | Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
 | Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
 | Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
+| Property foreign-key check   | `relationships` entry on a property            | `$.schema[N].properties[M].relationships[K]`               |
+| Schema foreign-key check     | `relationships` entry on a schema              | `$.schema[N].relationships[K]`                             |
 
 ## Auto-Generated Checks
 
-| Generated from                        | What vowl validates                                                                                             |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `name`                                | Column declared in the contract exists in the source table                                                      |
-| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
-| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                |
-| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                            |
-| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                |
-| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                        |
-| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                           |
-| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                           |
-| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                              |
-| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                    |
-| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                 |
-| `required: true`                      | Column contains no `NULL` values                                                                                |
-| `unique: true`                        | Non-null values are unique                                                                                      |
-| `primaryKey: true`                    | Values are both unique and non-null                                                                             |
+| Generated from                        | What vowl validates                                                                                                                                                                                       |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                | Column declared in the contract exists in the source table                                                                                                                                                |
+| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time`                                                                                           |
+| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                                                                                                          |
+| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                                                                                                                      |
+| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                                                                                                          |
+| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                                                                                                                  |
+| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                                                                                                                     |
+| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                                                                                                                     |
+| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                                                                                                                        |
+| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                                                                                                              |
+| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                                                                                                           |
+| `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                                                                                                                   |
+| `required: true`                      | Column contains no `NULL` values                                                                                                                                                                          |
+| `unique: true`                        | Non-null values are unique                                                                                                                                                                                |
+| `primaryKey: true`                    | Values are both unique and non-null                                                                                                                                                                       |
+| `relationships` (`foreignKey`)        | Every non-null key value exists in the referenced target (referential integrity); see [Design principles for auto-generated checks](design-considerations.md#design-principles-for-auto-generated-checks) |
 
 In practice, a property like this:
 

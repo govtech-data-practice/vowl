@@ -701,3 +701,169 @@ def test_declared_column_exists_check_returns_error_when_input_column_is_missing
         results_by_name["email_column_exists_check"].metadata["check_ref_type"] == "DeclaredColumnExistsCheckReference"
     )
     assert results_by_name["email_column_exists_check"].metadata["check_path"] == "$.schema[0].properties[1].name"
+
+
+# ---------------------------------------------------------------------------
+# Foreign-key reference resolution (resolve_reference / origin / _load_external)
+# ---------------------------------------------------------------------------
+
+
+def _fk_resolver_contract(monkeypatch: pytest.MonkeyPatch, *, origin: str | None = None) -> Contract:
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    return Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "resolver-test",
+            "status": "active",
+            "schema": [
+                {
+                    "id": "cust_schema",
+                    "name": "customers",
+                    "properties": [
+                        {"id": "cust_id", "name": "id", "logicalType": "integer", "primaryKey": True},
+                        {"id": "cust_region", "name": "region", "logicalType": "string"},
+                    ],
+                },
+                {
+                    "name": "regions",
+                    "properties": [
+                        {"name": "country", "logicalType": "string", "unique": True},
+                        {"name": "zone", "logicalType": "string", "unique": True},
+                    ],
+                },
+            ],
+        },
+        origin=origin,
+    )
+
+
+def test_resolve_reference_shorthand_by_name(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    resolved = contract.resolve_reference("customers.id")
+    assert resolved.schema_name == "customers"
+    assert resolved.columns == ["id"]
+    assert resolved.target_unique is True
+    assert resolved.external is False
+
+
+def test_resolve_reference_fqn_by_id_returns_name(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    resolved = contract.resolve_reference("/schema/cust_schema/properties/cust_id")
+    assert resolved.schema_name == "customers"
+    assert resolved.columns == ["id"]
+    assert resolved.target_unique is True
+
+
+def test_resolve_reference_composite_same_schema(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    resolved = contract.resolve_reference(["regions.country", "regions.zone"])
+    assert resolved.schema_name == "regions"
+    assert resolved.columns == ["country", "zone"]
+    assert resolved.target_unique is True
+
+
+def test_resolve_reference_composite_cross_schema_raises(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    with pytest.raises(ValueError, match="spans multiple target schemas"):
+        contract.resolve_reference(["customers.id", "regions.country"])
+
+
+def test_resolve_reference_empty_list_raises(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    with pytest.raises(ValueError, match="empty"):
+        contract.resolve_reference([])
+
+
+def test_resolve_reference_nested_shorthand_unsupported(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    with pytest.raises(ValueError, match="nested/array"):
+        contract.resolve_reference("customers.address.city")
+
+
+def test_resolve_reference_unknown_property_raises(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    with pytest.raises(ValueError, match="not found"):
+        contract.resolve_reference("customers.missing")
+
+
+def test_resolve_reference_target_not_unique_flag(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    resolved = contract.resolve_reference("customers.region")
+    assert resolved.target_unique is False
+
+
+def test_origin_none_for_in_memory_contract(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch)
+    assert contract.origin is None
+
+
+def test_origin_is_absolute_path_for_local_load(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    path = write_contract(tmp_path, minimal_contract_data())
+    contract = Contract.load(str(path))
+    import os
+
+    assert contract.origin == os.path.abspath(str(path))
+
+
+def test_load_external_without_origin_raises(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch, origin=None)
+    with pytest.raises(ValueError, match="no origin"):
+        contract._load_external("other.yaml")
+
+
+def test_load_external_resolves_relative_to_local_origin(monkeypatch: pytest.MonkeyPatch):
+    import os
+
+    contract = _fk_resolver_contract(monkeypatch, origin="/data/contracts/main.yaml")
+    captured: list[str] = []
+
+    def fake_load(location: str) -> Contract:
+        captured.append(location)
+        return _fk_resolver_contract(monkeypatch)
+
+    monkeypatch.setattr(Contract, "load", staticmethod(fake_load))
+    contract._load_external("../shared/other.yaml")
+    # RFC 3986: relative ref resolves against the referring document's location.
+    assert captured == [os.path.normpath("/data/shared/other.yaml")]
+
+
+def test_load_external_resolves_relative_to_http_origin(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch, origin="https://example.com/contracts/main.yaml")
+    captured: list[str] = []
+
+    def fake_load(location: str) -> Contract:
+        captured.append(location)
+        return _fk_resolver_contract(monkeypatch)
+
+    monkeypatch.setattr(Contract, "load", staticmethod(fake_load))
+    contract._load_external("other.yaml")
+    assert captured == ["https://example.com/contracts/other.yaml"]
+
+
+def test_load_external_caches_per_reference(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch, origin="/data/main.yaml")
+    calls: list[str] = []
+
+    def fake_load(location: str) -> Contract:
+        calls.append(location)
+        return _fk_resolver_contract(monkeypatch)
+
+    monkeypatch.setattr(Contract, "load", staticmethod(fake_load))
+    first = contract._load_external("other.yaml")
+    second = contract._load_external("other.yaml")
+    assert first is second
+    assert len(calls) == 1
+
+
+def test_resolve_reference_external_fragment(monkeypatch: pytest.MonkeyPatch):
+    contract = _fk_resolver_contract(monkeypatch, origin="/data/main.yaml")
+    external = _fk_resolver_contract(monkeypatch)
+    monkeypatch.setattr(contract, "_load_external", lambda file_ref: external)
+
+    resolved = contract.resolve_reference("other.yaml#/schema/cust_schema/properties/cust_id")
+    assert resolved.external is True
+    assert resolved.schema_name == "customers"
+    assert resolved.columns == ["id"]
