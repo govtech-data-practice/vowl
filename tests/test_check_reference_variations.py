@@ -13,6 +13,7 @@ import pyarrow as pa
 import pytest
 
 from vowl.contracts.check_reference import (
+    ArrayItemsCheckReference,
     CustomColumnCheckReference,
     CustomTableCheckReference,
     DeclaredColumnExistsCheckReference,
@@ -1055,6 +1056,240 @@ class TestEnumCheck:
         # Membership test preserved across dialects as NOT(col IN (...)).
         not_in = [n for n in parsed.find_all(exp.Not) if isinstance(n.this, exp.In)]
         assert len(not_in) == 1
+
+
+# ===================================================================
+# Group E3 — Auto-generated native array checks
+# ===================================================================
+
+
+class TestArrayChecks:
+    """Native array-type auto-checks: minItems/maxItems/uniqueItems cardinality
+    (``LogicalTypeOptionsCheckReference``) and element validation via the
+    ``items`` sub-schema (``ArrayItemsCheckReference``).
+
+    Array checks are emitted only when the property declares ``logicalType:
+    array`` (a metadata gate in ``contract.py``); on a scalar column they
+    degrade to an unsupported reference rather than emit array-only SQL.
+    """
+
+    def _array_refs(self, monkeypatch, prop):
+        contract = _make_contract(monkeypatch, properties=[prop])
+        return contract.get_check_references_by_schema()["items"]
+
+    def _cardinality_ref(self, monkeypatch, option_key, option_value, *, items=None):
+        prop = {
+            "name": "tags",
+            "logicalType": "array",
+            "logicalTypeOptions": {option_key: option_value},
+        }
+        if items is not None:
+            prop["items"] = items
+        refs = self._array_refs(monkeypatch, prop)
+        matches = [
+            r
+            for r in refs
+            if isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == option_key
+        ]
+        assert len(matches) == 1
+        return matches[0]
+
+    @staticmethod
+    def _list_table(values):
+        con = __import__("ibis").duckdb.connect()
+        con.create_table("items", pa.table({"tags": pa.array(values, type=pa.list_(pa.string()))}))
+        return con
+
+    @staticmethod
+    def _count(con, query):
+        return con.sql(query).to_pyarrow().to_pylist()[0]["count_star()"]
+
+    # ---- cardinality: AST / SQL shape -----------------------------------
+
+    def test_min_items_uses_array_size(self, monkeypatch: pytest.MonkeyPatch):
+        import sqlglot
+        from sqlglot import exp
+
+        ref = self._cardinality_ref(monkeypatch, "minItems", 2)
+        parsed = sqlglot.parse_one(ref._build_ast().sql("postgres"), read="postgres")
+        assert len(list(parsed.find_all(exp.ArraySize))) == 1
+        check = ref.get_check()
+        assert check["name"] == "tags_logical_type_options_minItems_check"
+        assert check["dimension"] == "conformity"
+        assert check["mustBe"] == 0
+
+    def test_unique_items_uses_array_distinct(self, monkeypatch: pytest.MonkeyPatch):
+        import sqlglot
+        from sqlglot import exp
+
+        ref = self._cardinality_ref(monkeypatch, "uniqueItems", True)
+        parsed = sqlglot.parse_one(ref._build_ast().sql("postgres"), read="postgres")
+        assert len(list(parsed.find_all(exp.ArrayDistinct))) == 1
+
+    def test_unique_items_false_degrades_to_unsupported(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._array_refs(
+            monkeypatch,
+            {"name": "tags", "logicalType": "array", "logicalTypeOptions": {"uniqueItems": False}},
+        )
+        assert not any(isinstance(r, LogicalTypeOptionsCheckReference) for r in refs)
+        assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
+
+    # ---- cardinality: execution -----------------------------------------
+
+    def test_min_items_executes_pass_and_fail(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._cardinality_ref(monkeypatch, "minItems", 2)
+        # [] and ["x"] are under 2; ["a","b"] passes; NULL is skipped.
+        con = self._list_table([["a", "b"], ["x"], [], None])
+        assert self._count(con, ref.get_query("duckdb")) == 2
+
+    def test_max_items_executes_pass_and_fail(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._cardinality_ref(monkeypatch, "maxItems", 2)
+        con = self._list_table([["a", "b"], ["a", "b", "c"], None])
+        assert self._count(con, ref.get_query("duckdb")) == 1
+
+    def test_unique_items_executes_pass_and_fail(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._cardinality_ref(monkeypatch, "uniqueItems", True)
+        # ["dup","dup"] has a duplicate; ["a","b"] and [] are fine; NULL skipped.
+        con = self._list_table([["dup", "dup"], ["a", "b"], [], None])
+        assert self._count(con, ref.get_query("duckdb")) == 1
+
+    def test_min_items_flags_empty_array(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._cardinality_ref(monkeypatch, "minItems", 1)
+        con = self._list_table([[], ["a"], None])
+        # Empty array violates minItems: 1; the NULL row is skipped.
+        assert self._count(con, ref.get_query("duckdb")) == 1
+
+    def test_failed_rows_returns_offending_arrays(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._cardinality_ref(monkeypatch, "minItems", 2)
+        con = self._list_table([["a", "b"], ["x"], None])
+        assert ref.supports_row_level_output is True
+        failed_sql = ref.get_failed_rows_query("duckdb")
+        assert failed_sql.upper().startswith("SELECT *")
+        rows = con.sql(failed_sql).to_pyarrow().to_pylist()
+        assert [r["tags"] for r in rows] == [["x"]]
+
+    # ---- items (element) validation -------------------------------------
+
+    def _items_ref(self, monkeypatch, items, *, kind, option_key=None):
+        refs = self._array_refs(
+            monkeypatch,
+            {"name": "tags", "logicalType": "array", "items": items},
+        )
+        matches = [
+            r
+            for r in refs
+            if isinstance(r, ArrayItemsCheckReference) and r._kind == kind and r._option_key == option_key
+        ]
+        assert len(matches) == 1
+        return matches[0]
+
+    def test_items_logical_type_cast_executes(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+
+        ref = self._items_ref(monkeypatch, {"logicalType": "integer"}, kind="logicalType")
+        assert ref.get_check()["name"] == "tags_array_items_logical_type_check"
+        con = ibis.duckdb.connect()
+        # "12" casts to integer; "x" and "1.5" do not (non-integral / non-numeric).
+        con.create_table(
+            "items",
+            pa.table({"tags": pa.array([["12", "34"], ["x"], ["1.5"], None], type=pa.list_(pa.string()))}),
+        )
+        assert self._count(con, ref.get_query("duckdb")) == 2
+
+    def test_items_min_length_executes(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._items_ref(
+            monkeypatch,
+            {"logicalType": "string", "logicalTypeOptions": {"minLength": 2}},
+            kind="option",
+            option_key="minLength",
+        )
+        assert ref.get_check()["name"] == "tags_array_items_minLength_check"
+        con = self._list_table([["ab", "cd"], ["x"], [], None])
+        # ["x"] has a length-1 element; empty passes vacuously; NULL skipped.
+        assert self._count(con, ref.get_query("duckdb")) == 1
+
+    def test_items_enum_executes(self, monkeypatch: pytest.MonkeyPatch):
+        ref = self._items_ref(
+            monkeypatch,
+            {"enum": [{"value": "a"}, {"value": "b"}]},
+            kind="enum",
+        )
+        assert ref.get_check()["name"] == "tags_array_items_enum_check"
+        con = self._list_table([["a", "b"], ["a", "z"], [], None])
+        # ["a","z"] contains "z" (not allowed); empty passes; NULL skipped.
+        assert self._count(con, ref.get_query("duckdb")) == 1
+
+    def test_items_uses_unnest_exists(self, monkeypatch: pytest.MonkeyPatch):
+        import sqlglot
+        from sqlglot import exp
+
+        ref = self._items_ref(
+            monkeypatch,
+            {"logicalType": "string", "logicalTypeOptions": {"minLength": 2}},
+            kind="option",
+            option_key="minLength",
+        )
+        parsed = sqlglot.parse_one(ref._build_ast().sql("postgres"), read="postgres")
+        assert len(list(parsed.find_all(exp.Unnest))) == 1
+        assert len(list(parsed.find_all(exp.Exists))) == 1
+
+    # ---- metadata gate + degradation ------------------------------------
+
+    def test_cardinality_on_scalar_degrades_to_unsupported(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._array_refs(
+            monkeypatch,
+            {"name": "code", "logicalType": "string", "logicalTypeOptions": {"minItems": 1}},
+        )
+        # No array cardinality check on a scalar column; degrades instead.
+        assert not any(
+            isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == "minItems" for r in refs
+        )
+        unsup = [r for r in refs if isinstance(r, UnsupportedColumnCheckReference)]
+        assert any("requires logicalType: array" in r.error_message for r in unsup)
+
+    def test_items_on_scalar_degrades_to_unsupported(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._array_refs(
+            monkeypatch,
+            {"name": "code", "logicalType": "string", "items": {"logicalType": "integer"}},
+        )
+        assert not any(isinstance(r, ArrayItemsCheckReference) for r in refs)
+        unsup = [r for r in refs if isinstance(r, UnsupportedColumnCheckReference)]
+        assert any("items validation requires logicalType: array" in r.error_message for r in unsup)
+
+    def test_array_logical_type_emits_no_standalone_type_check(self, monkeypatch: pytest.MonkeyPatch):
+        import warnings as _warnings
+
+        # logicalType: array alone is silent — no cast check, no warning (unlike
+        # object, which still warns that no type check is generated).
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error")
+            refs = self._array_refs(monkeypatch, {"name": "tags", "logicalType": "array"})
+        assert not any(isinstance(r, LogicalTypeCheckReference) for r in refs)
+
+    @pytest.mark.parametrize("payload", ["1); DROP TABLE x;--", "abc", "1 OR 1=1"])
+    def test_injection_in_min_items_degrades_to_unsupported(
+        self, monkeypatch: pytest.MonkeyPatch, payload: str
+    ):
+        refs = self._array_refs(
+            monkeypatch,
+            {"name": "tags", "logicalType": "array", "logicalTypeOptions": {"minItems": payload}},
+        )
+        # A non-numeric minItems is rejected at coercion -> unsupported, never SQL.
+        assert not any(
+            isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == "minItems" for r in refs
+        )
+        assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
+
+    def test_items_unknown_logical_type_degrades(self, monkeypatch: pytest.MonkeyPatch):
+        # An element logicalType with no SQL cast check (object/array) produces
+        # no items logical-type check; it degrades to unsupported. (string, like
+        # the scalar types, does have a VARCHAR cast and would be supported.)
+        refs = self._array_refs(
+            monkeypatch,
+            {"name": "tags", "logicalType": "array", "items": {"logicalType": "object"}},
+        )
+        assert not any(isinstance(r, ArrayItemsCheckReference) for r in refs)
+        assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
 
 
 # ===================================================================

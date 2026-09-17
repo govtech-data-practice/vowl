@@ -7,6 +7,7 @@ from .check_reference_custom import (
     CustomTableCheckReference,
 )
 from .check_reference_generated import (
+    ArrayItemsCheckReference,
     DeclaredColumnExistsCheckReference,
     EnumCheckReference,
     GeneratedColumnCheckReference,
@@ -51,6 +52,7 @@ __all__ = [
     "SQLColumnCheckReference",
     "GeneratedColumnCheckReference",
     "GeneratedTableCheckReference",
+    "ArrayItemsCheckReference",
     "DeclaredColumnExistsCheckReference",
     "EnumCheckReference",
     "LogicalTypeCheckReference",

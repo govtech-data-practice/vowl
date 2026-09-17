@@ -392,8 +392,167 @@ def _jdk_format_to_regex(fmt: str) -> str | None:
     return "^" + "".join(result) + "$"
 
 
+def _validate_format(logical_type: str | None, val: Any, path: str) -> None:
+    """Check that a ``logical_type`` + ``format`` combo is actionable.
+
+    Shared by column-level ``logicalTypeOptions.format`` checks and array
+    ``items`` element-format checks. Raises ``ValueError`` (caught by the
+    caller in *contract.py* and downgraded to an unsupported check) when the
+    combination is recognised but cannot produce a SQL check.
+    """
+    # Known silent skips (metadata-only, not checkable).
+    if (logical_type, val) in _FORMAT_SKIP_SILENT:
+        raise ValueError(f"Format '{val}' is metadata-only for logical type '{logical_type}'")
+
+    # Known warn-and-skip (exceeds SQL numeric range).
+    if (logical_type, val) in _FORMAT_SKIP_WARN:
+        warnings.warn(
+            f"Format '{val}' exceeds SQL numeric range; skipping check at {path}",
+            UserWarning,
+            stacklevel=3,
+        )
+        raise ValueError(f"Format '{val}' exceeds SQL numeric range")
+
+    if logical_type == "integer":
+        if val not in _INTEGER_FORMAT_RANGES:
+            warnings.warn(
+                f"Unknown integer format '{val}' at {path}",
+                UserWarning,
+                stacklevel=3,
+            )
+            raise ValueError(f"Unknown integer format: {val}")
+
+    elif logical_type == "string":
+        if val not in _STRING_FORMAT_PATTERNS:
+            # Try interpreting as a JDK DateTimeFormatter pattern.
+            regex = _jdk_format_to_regex(val)
+            if regex is None:
+                warnings.warn(
+                    f"Unknown string format '{val}' at {path}",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                raise ValueError(f"Unknown string format: {val}")
+
+    elif logical_type in ("date", "timestamp", "time"):
+        regex = _jdk_format_to_regex(val)
+        if regex is None:
+            warnings.warn(
+                f"Could not convert JDK format '{val}' to regex at {path}",
+                UserWarning,
+                stacklevel=3,
+            )
+            raise ValueError(f"Cannot convert JDK format to regex: {val}")
+
+    elif logical_type is not None:
+        warnings.warn(
+            f"Format option not supported for logical type '{logical_type}' at {path}",
+            UserWarning,
+            stacklevel=3,
+        )
+        raise ValueError(f"Format not supported for logical type '{logical_type}'")
+
+
+def _format_violation_predicate(
+    target: exp.Expression,
+    val: Any,
+    logical_type: str | None,
+) -> exp.Expression:
+    """Return the "value is INVALID" predicate for a *validated* ``format`` option.
+
+    ``target`` is the expression under test — a column for column-level checks
+    or an unnested element for array-``items`` checks. Assumes the combination
+    of ``logical_type`` and ``val`` has already been accepted by the caller's
+    validation (see ``_validate_format``), so the RuntimeError guards here only
+    fire on a genuine internal bug.
+    """
+    if logical_type == "integer":
+        min_val, max_val = _INTEGER_FORMAT_RANGES[val]
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+        return exp.Or(
+            this=cast_col < exp.Literal.number(min_val),
+            expression=cast_col > exp.Literal.number(max_val),
+        )
+
+    if logical_type == "string":
+        pattern = _STRING_FORMAT_PATTERNS.get(val)
+        if pattern is None:
+            # Fall through to JDK format pattern (validated by _validate_format).
+            pattern = _jdk_format_to_regex(val)
+            if pattern is None:
+                raise RuntimeError(
+                    f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this"
+                )
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("VARCHAR"), safe=True)
+        return exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern)))
+
+    # date / timestamp / time — already validated by _validate_format.
+    pattern = _jdk_format_to_regex(val)
+    if pattern is None:
+        raise RuntimeError(
+            f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this"
+        )
+    cast_col = exp.TryCast(this=target, to=exp.DataType.build("VARCHAR"), safe=True)
+    return exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern)))
+
+
+def _scalar_violation_predicate(
+    target: exp.Expression,
+    key: str,
+    val: Any,
+    logical_type: str | None,
+) -> exp.Expression:
+    """Return the boolean "this value is INVALID" predicate for one scalar option.
+
+    Shared by column-level checks (``target`` is the column) and array-element
+    checks (``target`` is the unnested element), so both apply identical
+    minLength / maxLength / pattern / minimum / … / format logic. The predicate
+    is the ``NOT P`` form — TRUE for a value that *violates* the option — so a
+    caller simply counts rows where it holds. Assumes ``val`` has already been
+    coerced (and, for ``format``, validated against ``logical_type``).
+    """
+    if key == "minLength":
+        length_check = exp.Length(this=exp.TryCast(this=target, to=exp.DataType.build("VARCHAR"), safe=True))
+        return length_check < exp.Literal.number(val)
+    if key == "maxLength":
+        length_check = exp.Length(this=exp.TryCast(this=target, to=exp.DataType.build("VARCHAR"), safe=True))
+        return length_check > exp.Literal.number(val)
+    if key == "pattern":
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("VARCHAR"), safe=True)
+        return exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(val)))
+    if key == "minimum":
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+        return cast_col < exp.Literal.number(val)
+    if key == "maximum":
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+        return cast_col > exp.Literal.number(val)
+    if key == "exclusiveMinimum":
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+        return cast_col <= exp.Literal.number(val)
+    if key == "exclusiveMaximum":
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+        return cast_col >= exp.Literal.number(val)
+    if key == "multipleOf":
+        cast_col = exp.TryCast(this=target, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+        mod_check = exp.Mod(this=cast_col, expression=exp.Literal.number(val))
+        return mod_check.neq(exp.Literal.number(0))
+    if key == "format":
+        return _format_violation_predicate(target, val, logical_type)
+
+    raise ValueError(
+        f"No predicate implementation for scalar option '{key}'. "
+        f"This is a bug - please add predicate logic for '{key}' in _scalar_violation_predicate()."
+    )
+
+
 class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
     """Reference to an auto-generated logicalTypeOptions check."""
+
+    # Options that constrain the elements/cardinality of a native array column.
+    # These are only emitted when the property also declares ``logicalType:
+    # array`` (the metadata gate lives in contract.py); the SQL they generate
+    # (ARRAY_LENGTH / ARRAY_DISTINCT) is only valid on array-capable engines.
+    ARRAY_OPTION_KEYS = frozenset({"minItems", "maxItems", "uniqueItems"})
 
     SUPPORTED_OPTIONS = {
         "minLength",
@@ -405,6 +564,9 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         "exclusiveMaximum",
         "multipleOf",
         "format",
+        "minItems",
+        "maxItems",
+        "uniqueItems",
     }
 
     # Options whose value is emitted into generated SQL as a bare numeric
@@ -412,7 +574,7 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
     # (unquoted), so a non-numeric value would be injected into the query. The
     # value is coerced to a real number at construction time to prevent SQL
     # injection through ``logicalTypeOptions``.
-    _NON_NEGATIVE_INT_OPTIONS = frozenset({"minLength", "maxLength"})
+    _NON_NEGATIVE_INT_OPTIONS = frozenset({"minLength", "maxLength", "minItems", "maxItems"})
     _NUMERIC_OPTIONS = frozenset({"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"})
 
     def __init__(self, contract: Contract, property_path: str, option_key: str, option_value: Any):
@@ -438,6 +600,12 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
 
         if option_key == "format":
             self._validate_format()
+
+        # uniqueItems only imposes a constraint when true; `uniqueItems: false`
+        # is a no-op, so it degrades to an unsupported (no-check) reference
+        # rather than emitting an always-passing query.
+        if option_key == "uniqueItems" and self._option_value is not True:
+            raise ValueError("uniqueItems: false imposes no constraint; no check generated")
 
     @staticmethod
     def _coerce_number(option_key: str, value: Any) -> int | float:
@@ -491,60 +659,7 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
         Raises ``ValueError`` (caught by the caller in *contract.py*) when
         the combination is recognised but cannot produce a SQL check.
         """
-        logical_type = self.get_logical_type()
-        val = self._option_value
-
-        # Known silent skips (metadata-only, not checkable).
-        if (logical_type, val) in _FORMAT_SKIP_SILENT:
-            raise ValueError(f"Format '{val}' is metadata-only for logical type '{logical_type}'")
-
-        # Known warn-and-skip (exceeds SQL numeric range).
-        if (logical_type, val) in _FORMAT_SKIP_WARN:
-            warnings.warn(
-                f"Format '{val}' exceeds SQL numeric range; skipping check at {self._path}",
-                UserWarning,
-                stacklevel=3,
-            )
-            raise ValueError(f"Format '{val}' exceeds SQL numeric range")
-
-        if logical_type == "integer":
-            if val not in _INTEGER_FORMAT_RANGES:
-                warnings.warn(
-                    f"Unknown integer format '{val}' at {self._path}",
-                    UserWarning,
-                    stacklevel=3,
-                )
-                raise ValueError(f"Unknown integer format: {val}")
-
-        elif logical_type == "string":
-            if val not in _STRING_FORMAT_PATTERNS:
-                # Try interpreting as a JDK DateTimeFormatter pattern.
-                regex = _jdk_format_to_regex(val)
-                if regex is None:
-                    warnings.warn(
-                        f"Unknown string format '{val}' at {self._path}",
-                        UserWarning,
-                        stacklevel=3,
-                    )
-                    raise ValueError(f"Unknown string format: {val}")
-
-        elif logical_type in ("date", "timestamp", "time"):
-            regex = _jdk_format_to_regex(val)
-            if regex is None:
-                warnings.warn(
-                    f"Could not convert JDK format '{val}' to regex at {self._path}",
-                    UserWarning,
-                    stacklevel=3,
-                )
-                raise ValueError(f"Cannot convert JDK format to regex: {val}")
-
-        elif logical_type is not None:
-            warnings.warn(
-                f"Format option not supported for logical type '{logical_type}' at {self._path}",
-                UserWarning,
-                stacklevel=3,
-            )
-            raise ValueError(f"Format not supported for logical type '{logical_type}'")
+        _validate_format(self.get_logical_type(), self._option_value, self._path)
 
     def get_check(self) -> DataQuality:
         if self._generated_check is None:
@@ -594,71 +709,21 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
                 query = query.where(cond)
             return query
 
-        if key == "minLength":
-            length_check = exp.Length(this=exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True))
-            return count_where(not_null, length_check < exp.Literal.number(val))
-        elif key == "maxLength":
-            length_check = exp.Length(this=exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True))
-            return count_where(not_null, length_check > exp.Literal.number(val))
-        elif key == "pattern":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
-            pattern_check = exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(val)))
-            return count_where(not_null, pattern_check)
-        elif key == "minimum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
-            return count_where(not_null, cast_col < exp.Literal.number(val))
-        elif key == "maximum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
-            return count_where(not_null, cast_col > exp.Literal.number(val))
-        elif key == "exclusiveMinimum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
-            return count_where(not_null, cast_col <= exp.Literal.number(val))
-        elif key == "exclusiveMaximum":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
-            return count_where(not_null, cast_col >= exp.Literal.number(val))
-        elif key == "multipleOf":
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
-            mod_check = exp.Mod(this=cast_col, expression=exp.Literal.number(val))
-            return count_where(not_null, mod_check.neq(exp.Literal.number(0)))
-        elif key == "format":
-            logical_type = self.get_logical_type()
+        # Array cardinality options operate on the array column directly. The
+        # SQL (ARRAY_LENGTH / ARRAY_DISTINCT) transpiles per dialect and is only
+        # valid on array-capable engines — the metadata gate in contract.py
+        # ensures these are only emitted for logicalType: array columns.
+        if key == "minItems":
+            return count_where(not_null, exp.ArraySize(this=col) < exp.Literal.number(val))
+        if key == "maxItems":
+            return count_where(not_null, exp.ArraySize(this=col) > exp.Literal.number(val))
+        if key == "uniqueItems":
+            distinct_size = exp.ArraySize(this=exp.ArrayDistinct(this=col))
+            return count_where(not_null, distinct_size.neq(exp.ArraySize(this=col)))
 
-            if logical_type == "integer":
-                min_val, max_val = _INTEGER_FORMAT_RANGES[val]
-                cast_col = exp.TryCast(this=col, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
-                range_check = exp.Or(
-                    this=cast_col < exp.Literal.number(min_val),
-                    expression=cast_col > exp.Literal.number(max_val),
-                )
-                return count_where(not_null, range_check)
-
-            if logical_type == "string":
-                pattern = _STRING_FORMAT_PATTERNS.get(val)
-                if pattern is None:
-                    # Fall through to JDK format pattern (validated in __init__)
-                    pattern = _jdk_format_to_regex(val)
-                    if pattern is None:
-                        raise RuntimeError(
-                            f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this"
-                        )
-                cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
-                pattern_check = exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern)))
-                return count_where(not_null, pattern_check)
-
-            # date / timestamp / time — already validated in _validate_format
-            pattern = _jdk_format_to_regex(val)
-            if pattern is None:
-                raise RuntimeError(
-                    f"_jdk_format_to_regex returned None for '{val}' — _validate_format should have rejected this"
-                )
-            cast_col = exp.TryCast(this=col, to=exp.DataType.build("VARCHAR"), safe=True)
-            pattern_check = exp.Not(this=exp.RegexpLike(this=cast_col, expression=exp.Literal.string(pattern)))
-            return count_where(not_null, pattern_check)
-
-        raise ValueError(
-            f"No query implementation for logicalTypeOptions key '{key}'. "
-            f"This is a bug - please add query logic for '{key}' in _build_ast()."
-        )
+        # Scalar options (string length, numeric bounds, pattern, format) share
+        # their violation predicate with array-element (items) validation.
+        return count_where(not_null, _scalar_violation_predicate(col, key, val, self.get_logical_type()))
 
     def _build_description(self, col_name: str) -> str:
         key = self._option_key
@@ -673,6 +738,9 @@ class LogicalTypeOptionsCheckReference(GeneratedColumnCheckReference):
             "exclusiveMinimum": f"Column '{col_name}' must be > {val}",
             "exclusiveMaximum": f"Column '{col_name}' must be < {val}",
             "multipleOf": f"Column '{col_name}' must be a multiple of {val}",
+            "minItems": f"Array column '{col_name}' must contain at least {val} items",
+            "maxItems": f"Array column '{col_name}' must contain at most {val} items",
+            "uniqueItems": f"Array column '{col_name}' must contain only unique items",
         }
 
         if key == "format":
@@ -788,6 +856,192 @@ class EnumCheckReference(GeneratedColumnCheckReference):
             "type": "sql",
             "dimension": "conformity",
             "description": f"Column '{col_name}' must be one of the allowed enum values",
+            "query": ast.sql(dialect=self._INTERNAL_DIALECT),
+            "mustBe": 0,
+        }
+
+
+class ArrayItemsCheckReference(GeneratedColumnCheckReference):
+    """Reference to an auto-generated array-element (``items``) check.
+
+    ODCS lets an ``array`` property describe its element schema under ``items``
+    (element ``logicalType``, ``logicalTypeOptions``, ``enum``). This reference
+    validates every element of each non-NULL array via
+    ``EXISTS (SELECT 1 FROM UNNEST(col) AS _vowl_arr(_vowl_elem) WHERE <element
+    violates>)`` — flagging any row that contains at least one bad element.
+    NULL arrays are skipped; an empty array passes vacuously (no element can
+    violate), matching the ``required`` check owning null-enforcement.
+
+    One instance maps to a single element sub-check (one COUNT query / one
+    golden file):
+
+    - ``kind="logicalType"`` — every element casts to the declared element type
+    - ``kind="option"``      — every element satisfies one ``items`` option
+    - ``kind="enum"``        — every element is in the ``items.enum`` set
+
+    Element validation via ``UNNEST`` executes correctly on
+    duckdb/postgres/trino/bigquery; Spark/Snowflake are best-effort and
+    scalar-only engines ERROR (documented in docs/known-issues.md).
+    """
+
+    # Quoted identifiers for the unnested element and its lateral alias. Fixed
+    # internal names (never taken from the contract), so no injection surface.
+    _ELEM_IDENT = "_vowl_elem"
+    _ARR_ALIAS = "_vowl_arr"
+
+    # ``items`` may only carry *scalar* element options; array-of-array
+    # cardinality (minItems/maxItems/uniqueItems on the elements themselves) is
+    # not supported, so the array-cardinality keys are excluded here.
+    _SUPPORTED_ITEM_OPTIONS = (
+        LogicalTypeOptionsCheckReference.SUPPORTED_OPTIONS - LogicalTypeOptionsCheckReference.ARRAY_OPTION_KEYS
+    )
+
+    def __init__(
+        self,
+        contract: Contract,
+        property_path: str,
+        *,
+        kind: str,
+        option_key: str | None = None,
+    ):
+        if kind == "logicalType":
+            suffix = "items.logicalType"
+        elif kind == "enum":
+            suffix = "items.enum"
+        elif kind == "option":
+            if option_key is None:
+                raise ValueError("option_key is required when kind='option'")
+            suffix = f"items.logicalTypeOptions.{option_key}"
+        else:
+            raise ValueError(f"Unknown ArrayItemsCheckReference kind: {kind!r}")
+
+        super().__init__(contract, property_path, suffix)
+        self._kind = kind
+        self._option_key = option_key
+        # Element logical type drives cast targets and format validation. It is
+        # the *element* type (items.logicalType), not the "array" type of the
+        # column itself (which get_logical_type() returns).
+        self._item_logical_type = contract.resolve(f"{property_path}.items.logicalType")
+
+        # Validate/coerce eagerly so an unactionable items schema raises
+        # ValueError at construction — contract.py catches it and degrades to an
+        # UnsupportedColumnCheckReference (mirrors the option/enum classes).
+        if kind == "logicalType":
+            self._sql_type = LOGICAL_TYPE_TO_SQL.get(self._item_logical_type or "")
+            if not self._sql_type:
+                raise ValueError(
+                    f"items.logicalType '{self._item_logical_type}' has no SQL cast check at {self._path}"
+                )
+        elif kind == "option":
+            if option_key not in self._SUPPORTED_ITEM_OPTIONS:
+                raise ValueError(f"Unsupported items logicalTypeOptions key: {option_key}")
+            raw = contract.resolve(f"{property_path}.items.logicalTypeOptions.{option_key}")
+            self._option_value = self._coerce_item_option(option_key, raw)
+        else:  # enum
+            enum_list = contract.resolve(f"{property_path}.items.enum")
+            if not isinstance(enum_list, list):
+                raise ValueError(f"items.enum must be a list of allowed values, got: {enum_list!r}")
+            allowed = [e["value"] for e in enum_list if isinstance(e, dict) and "value" in e]
+            allowed = [v for v in allowed if v is not None]
+            if not allowed:
+                raise ValueError(f"items.enum at {self._path} has no usable allowed values")
+            # Reuse the injection-safe literal builder from the enum check.
+            self._literals = [EnumCheckReference._to_literal(v) for v in allowed]
+
+    def _coerce_item_option(self, option_key: str, value: Any) -> Any:
+        """Coerce/validate one element option, reusing the column-check logic."""
+        if option_key in LogicalTypeOptionsCheckReference._NON_NEGATIVE_INT_OPTIONS:
+            return LogicalTypeOptionsCheckReference._coerce_non_negative_int(option_key, value)
+        if option_key in LogicalTypeOptionsCheckReference._NUMERIC_OPTIONS:
+            return LogicalTypeOptionsCheckReference._coerce_number(option_key, value)
+        if option_key == "format":
+            _validate_format(self._item_logical_type, value, self._path)
+        # pattern (and validated format) pass through as their literal string.
+        return value
+
+    def get_check(self) -> DataQuality:
+        if self._generated_check is None:
+            self._generated_check = self._generate_check()
+        return self._generated_check
+
+    def _element_violation(self, elem: exp.Expression) -> exp.Expression:
+        """Return the "this element is INVALID" predicate for one element."""
+        if self._kind == "logicalType":
+            if self._item_logical_type == "integer":
+                # Mirror LogicalTypeCheckReference: a value that casts to a float
+                # but is not integral (e.g. 1.5) is an invalid integer.
+                as_double = exp.TryCast(this=elem, to=exp.DataType.build("DOUBLE PRECISION"), safe=True)
+                as_integer = exp.TryCast(this=elem, to=exp.DataType.build("BIGINT"), safe=True)
+                return as_double.is_(exp.Null()).or_(as_double.neq(as_integer))
+            return exp.TryCast(this=elem, to=exp.DataType.build(self._sql_type), safe=True).is_(exp.Null())
+        if self._kind == "option":
+            return _scalar_violation_predicate(elem, self._option_key, self._option_value, self._item_logical_type)
+        # enum: element is not in the allowed set.
+        return exp.Not(this=exp.In(this=elem, expressions=list(self._literals)))
+
+    def _build_ast(self) -> exp.Expression:
+        if self._cached_ast is not None:
+            return self._cached_ast
+
+        col_name = self.get_column_name()
+        schema_name = self.get_schema_name()
+
+        if not col_name or not schema_name:
+            warnings.warn(
+                f"Could not generate array items check at {self._path}: "
+                f"col_name={col_name}, schema_name={schema_name}",
+                UserWarning,
+                stacklevel=2,
+            )
+            raise ValueError(f"Cannot generate array items check for {self._path}")
+
+        col = exp.Column(this=exp.to_identifier(col_name, quoted=True))
+        table = exp.Table(this=exp.to_identifier(schema_name, quoted=True))
+        elem = exp.Column(this=exp.to_identifier(self._ELEM_IDENT, quoted=True))
+        not_null = col.is_(exp.Null()).not_()
+
+        # EXISTS (SELECT 1 FROM UNNEST(col) AS _vowl_arr(_vowl_elem)
+        #         WHERE <element violates>) — the row has at least one bad
+        # element. NULL arrays are excluded by the outer not_null; empty arrays
+        # produce no rows to unnest, so they pass vacuously.
+        unnest = exp.Unnest(
+            expressions=[col],
+            alias=exp.TableAlias(
+                this=exp.to_identifier(self._ARR_ALIAS, quoted=True),
+                columns=[exp.to_identifier(self._ELEM_IDENT, quoted=True)],
+            ),
+        )
+        inner = sqlglot.select(exp.Literal.number(1)).from_(unnest).where(self._element_violation(elem))
+        exists = exp.Exists(this=inner)
+
+        self._cached_ast = (
+            sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(not_null).where(exists)
+        )
+        return self._cached_ast
+
+    def _check_name(self, col_name: str) -> str:
+        if self._kind == "logicalType":
+            return f"{col_name}_array_items_logical_type_check"
+        if self._kind == "enum":
+            return f"{col_name}_array_items_enum_check"
+        return f"{col_name}_array_items_{self._option_key}_check"
+
+    def _describe(self, col_name: str) -> str:
+        if self._kind == "logicalType":
+            return f"Every element of array column '{col_name}' must be valid {self._item_logical_type}"
+        if self._kind == "enum":
+            return f"Every element of array column '{col_name}' must be one of the allowed enum values"
+        return f"Every element of array column '{col_name}' must satisfy {self._option_key}={self._option_value}"
+
+    def _generate_check(self) -> DataQuality:
+        col_name = self.get_column_name() or ""
+        ast = self._build_ast()
+
+        return {
+            "name": self._check_name(col_name),
+            "type": "sql",
+            "dimension": "conformity",
+            "description": self._describe(col_name),
             "query": ast.sql(dialect=self._INTERNAL_DIALECT),
             "mustBe": 0,
         }
@@ -1138,6 +1392,7 @@ class SchemaForeignKeyCheckReference(_ForeignKeyMixin, GeneratedTableCheckRefere
 
 
 __all__ = [
+    "ArrayItemsCheckReference",
     "DeclaredColumnExistsCheckReference",
     "EnumCheckReference",
     "GeneratedColumnCheckReference",

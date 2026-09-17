@@ -678,6 +678,7 @@ class Contract:
         """
         from .check_reference import (
             LOGICAL_TYPE_TO_SQL,
+            ArrayItemsCheckReference,
             CheckReference,
             DeclaredColumnExistsCheckReference,
             EnumCheckReference,
@@ -738,8 +739,11 @@ class Contract:
                 if logical_type:
                     if logical_type in LOGICAL_TYPE_TO_SQL:
                         refs_by_schema[schema_name].append(LogicalTypeCheckReference(self, prop_path))
-                    else:
-                        # string, object, array have no SQL type check
+                    elif logical_type != "array":
+                        # string / object have no SQL type check. `array` is
+                        # intentionally silent: it emits no standalone cast
+                        # check but enables the array option/items checks below
+                        # (the metadata gate), so it is expected, not a gap.
                         warnings.warn(
                             f"No type check generated for '{prop_name}' with logicalType '{logical_type}': "
                             f"type checks only supported for {', '.join(sorted(LOGICAL_TYPE_TO_SQL.keys()))}",
@@ -752,17 +756,76 @@ class Contract:
                 if logical_type_options:
                     for option_key, option_value in logical_type_options.items():
                         if option_value is not None:
+                            option_path = f"{prop_path}.logicalTypeOptions.{option_key}"
+                            # Metadata gate: array-cardinality options generate
+                            # ARRAY_LENGTH/ARRAY_DISTINCT SQL that is only valid
+                            # on a genuine array column. Emit them only when the
+                            # property declares logicalType: array; otherwise
+                            # degrade to an unsupported check rather than build
+                            # SQL that would error against a scalar column.
+                            if (
+                                option_key in LogicalTypeOptionsCheckReference.ARRAY_OPTION_KEYS
+                                and logical_type != "array"
+                            ):
+                                refs_by_schema[schema_name].append(
+                                    UnsupportedColumnCheckReference(
+                                        self,
+                                        option_path,
+                                        f"logicalTypeOptions '{option_key}' requires logicalType: array",
+                                    )
+                                )
+                                continue
                             try:
                                 refs_by_schema[schema_name].append(
                                     LogicalTypeOptionsCheckReference(self, prop_path, option_key, option_value)
                                 )
                             except ValueError as exc:
                                 refs_by_schema[schema_name].append(
-                                    UnsupportedColumnCheckReference(
-                                        self,
-                                        f"{prop_path}.logicalTypeOptions.{option_key}",
-                                        str(exc),
+                                    UnsupportedColumnCheckReference(self, option_path, str(exc))
+                                )
+
+                # Array element (items) checks. `items` describes the element
+                # schema of an array column; each element sub-check maps to one
+                # ArrayItemsCheckReference. Gated on logicalType: array — items
+                # on a non-array property degrades to a single unsupported check.
+                items = prop.get("items")
+                if isinstance(items, dict):
+                    items_path = f"{prop_path}.items"
+                    if logical_type != "array":
+                        refs_by_schema[schema_name].append(
+                            UnsupportedColumnCheckReference(
+                                self, items_path, "items validation requires logicalType: array"
+                            )
+                        )
+                    else:
+                        # Build one (kind, sub_path, kwargs) spec per element
+                        # sub-check, then construct each — degrading to an
+                        # unsupported check when the items schema is unactionable.
+                        item_specs: list[tuple[str, str, dict[str, object]]] = []
+                        if items.get("logicalType"):
+                            item_specs.append(("logicalType", f"{items_path}.logicalType", {}))
+                        item_options = items.get("logicalTypeOptions")
+                        if isinstance(item_options, dict):
+                            for item_key, item_value in item_options.items():
+                                if item_value is not None:
+                                    item_specs.append(
+                                        (
+                                            "option",
+                                            f"{items_path}.logicalTypeOptions.{item_key}",
+                                            {"option_key": item_key},
+                                        )
                                     )
+                        if items.get("enum"):
+                            item_specs.append(("enum", f"{items_path}.enum", {}))
+
+                        for kind, sub_path, kwargs in item_specs:
+                            try:
+                                refs_by_schema[schema_name].append(
+                                    ArrayItemsCheckReference(self, prop_path, kind=kind, **kwargs)
+                                )
+                            except ValueError as exc:
+                                refs_by_schema[schema_name].append(
+                                    UnsupportedColumnCheckReference(self, sub_path, str(exc))
                                 )
 
                 # Enum (allowed value set) checks for columns with enum

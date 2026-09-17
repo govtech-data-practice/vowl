@@ -321,6 +321,12 @@ The check types currently generated:
 | `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                              |
 | `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                    |
 | `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks))                                       |
+| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items                                   |
+| `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                           |
+| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                          |
+| `items.logicalType`                   | Every element of an array casts to the declared element type                                                    |
+| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `pattern`, `minimum`, `format`, …)                     |
+| `items.enum`                          | Every element is within the declared allowed set                                                                |
 | `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                         |
 | `required: true`                      | Column contains no `NULL` values                                                                                |
 | `unique: true`                        | Non-null values are unique                                                                                      |
@@ -353,6 +359,7 @@ When a contract is loaded, `vowl` builds `CheckReference` objects for every exec
 | Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
 | Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
 | Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Array items check            | `items` sub-schema on a `logicalType: array`   | `$.schema[N].properties[M].items.<...>`                    |
 | Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
 | Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
 | Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |

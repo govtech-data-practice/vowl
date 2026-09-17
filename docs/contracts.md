@@ -102,6 +102,7 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 | Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
 | Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
 | Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Array items check            | `items` sub-schema on a `logicalType: array`   | `$.schema[N].properties[M].items.<...>`                    |
 | Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
 | Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
 | Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
@@ -124,6 +125,12 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 | `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                                                                                                                        |
 | `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                                                                                                              |
 | `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                                                                                                           |
+| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Checks](#array-checks) below)                                                                                    |
+| `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                                                                                                                     |
+| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                                                                                                                    |
+| `items.logicalType`                   | Every element of an array casts to the declared element type                                                                                                                                              |
+| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `maxLength`, `pattern`, numeric bounds, `format`)                                                                                                 |
+| `items.enum`                          | Every element is within the declared allowed set                                                                                                                                                          |
 | `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                                                                                                                   |
 | `required: true`                      | Column contains no `NULL` values                                                                                                                                                                          |
 | `unique: true`                        | Non-null values are unique                                                                                                                                                                                |
@@ -296,6 +303,42 @@ Supported JDK tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`
   logicalTypeOptions:
     format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
 ```
+
+## Array Checks
+
+When a property declares `logicalType: array`, vowl generates checks for the array's cardinality and — via the `items` sub-schema — for its elements. Array checks are emitted **only** when `logicalType: array` is present (a metadata gate); the same `logicalTypeOptions` keys or an `items` block on a non-array property degrade to an unsupported reference rather than generating array-only SQL.
+
+```yaml
+- name: tags
+  logicalType: array
+  logicalTypeOptions:
+    minItems: 1
+    maxItems: 10
+    uniqueItems: true
+  items:
+    logicalType: string
+    logicalTypeOptions:
+      minLength: 2
+    enum:
+      - value: red
+      - value: green
+      - value: blue
+```
+
+This produces a column-exists check plus one check per array constraint:
+
+| Constraint                          | What vowl validates                                                     |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `logicalTypeOptions.minItems`       | Array has at least `minItems` elements                                  |
+| `logicalTypeOptions.maxItems`       | Array has at most `maxItems` elements                                   |
+| `logicalTypeOptions.uniqueItems`    | Array has no duplicate elements (`uniqueItems: true`; `false` is a no-op) |
+| `items.logicalType`                 | Every element casts to the element type                                 |
+| `items.logicalTypeOptions.minLength`| Every element satisfies the element option                              |
+| `items.enum`                        | Every element is one of the allowed values                              |
+
+**Semantics.** A `NULL` array is skipped by every array check (null-enforcement belongs to the `required` check). An empty array `[]` is flagged only by `minItems`; `uniqueItems` and all `items` element checks pass vacuously because there is no element to violate them.
+
+**Backend support.** Cardinality (`minItems`/`maxItems`) transpiles across engines via `ARRAY_LENGTH`. `uniqueItems` and element (`items`) validation rely on `ARRAY_DISTINCT` and `UNNEST` and are not portable everywhere — see [Known Issues](known-issues.md#native-array-checks) for the per-engine matrix. On an engine without native array support, an array check surfaces as `ERROR`, not a silent pass.
 
 ## Library Metrics (`type: library`)
 
