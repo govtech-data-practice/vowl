@@ -506,6 +506,12 @@ class TestPostgresConnection:
         if "TESTCONTAINERS_RYUK_DISABLED" not in os.environ:
             os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
 
+        # When DOCKER_HOST is a unix socket (Docker Desktop), testcontainers
+        # derives the published-port host from that URL and hands back the socket
+        # path as the container host. Pin it to localhost so the DB client
+        # connects to the mapped port.
+        os.environ.setdefault("TESTCONTAINERS_HOST_OVERRIDE", "localhost")
+
         postgres = PostgresContainer("postgres:15-alpine")
         postgres.start()
 
