@@ -368,6 +368,32 @@ So the `block` property above produces three generated check references pointing
 
 </details>
 
+### Relationships (foreign keys)
+
+`relationships` declares referential integrity between properties, and `vowl` turns each `foreignKey` into an **executed** anti-join check: every non-`NULL` key value must exist in the referenced target. This is the declarative equivalent of a hand-written cross-table SQL check — the same intent as the `employee_id_exists_in_master_list` check shown in [Residues](#residues) below, but derived from metadata instead of authored by hand.
+
+Declare the relationship on the property that holds the key; the `to` target uses shorthand `<object>.<property>` notation, resolved by property `name`:
+
+```yaml
+schema:
+  - name: demo_employee_list # the master list (referenced side)
+    properties:
+      - name: employee_id
+        logicalType: string
+        primaryKey: true
+  - name: demo_employee_payroll # references the master list
+    properties:
+      - name: employee_id
+        logicalType: string
+        relationships:
+          - type: foreignKey
+            to: demo_employee_list.employee_id
+```
+
+This auto-generates a check named `demo_employee_payroll_employee_id_foreign_key_check` (`dimension: consistency`, `mustBe: 0`). A payroll row whose `employee_id` is `NULL` is **skipped** (MATCH SIMPLE semantics), so an optional foreign key is legal — only present-but-dangling values fail. Because the failed rows carry only the referencing table's columns, this check **merges onto the `demo_employee_payroll` annotated table** rather than landing in a residue (unlike the hand-authored cross-table SQL check below, whose failed-rows query projects columns from both tables).
+
+For multi-column keys, declare the relationship at the **schema** level with parallel `from`/`to` lists; you can also reference a property in a separate contract file. See [Data Contracts: Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys) for composite keys, fully-qualified and external-file notations, cross-source routing, and the degrade-to-unsupported rules.
+
 ## Library Metrics (`type: library`)
 
 Instead of writing SQL by hand, you can declare common data quality metrics using `type: library` in your `quality` blocks. `vowl` auto-generates the appropriate SQL at runtime.
