@@ -125,11 +125,11 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 | `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                                                                                                                        |
 | `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                                                                                                              |
 | `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                                                                                                           |
-| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Checks](#array-checks) below)                                                                                    |
+| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Checks](#array-checks) below)                                                                                   |
 | `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                                                                                                                     |
-| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                                                                                                                    |
+| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                                                                                                                   |
 | `items.logicalType`                   | Every element of an array casts to the declared element type                                                                                                                                              |
-| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `maxLength`, `pattern`, numeric bounds, `format`)                                                                                                 |
+| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `maxLength`, `pattern`, numeric bounds, `format`)                                                                                                |
 | `items.enum`                          | Every element is within the declared allowed set                                                                                                                                                          |
 | `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                                                                                                                   |
 | `required: true`                      | Column contains no `NULL` values                                                                                                                                                                          |
@@ -327,14 +327,14 @@ When a property declares `logicalType: array`, vowl generates checks for the arr
 
 This produces a column-exists check plus one check per array constraint:
 
-| Constraint                          | What vowl validates                                                     |
-| ----------------------------------- | ----------------------------------------------------------------------- |
-| `logicalTypeOptions.minItems`       | Array has at least `minItems` elements                                  |
-| `logicalTypeOptions.maxItems`       | Array has at most `maxItems` elements                                   |
-| `logicalTypeOptions.uniqueItems`    | Array has no duplicate elements (`uniqueItems: true`; `false` is a no-op) |
-| `items.logicalType`                 | Every element casts to the element type                                 |
-| `items.logicalTypeOptions.minLength`| Every element satisfies the element option                              |
-| `items.enum`                        | Every element is one of the allowed values                              |
+| Constraint                           | What vowl validates                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `logicalTypeOptions.minItems`        | Array has at least `minItems` elements                                    |
+| `logicalTypeOptions.maxItems`        | Array has at most `maxItems` elements                                     |
+| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`; `false` is a no-op) |
+| `items.logicalType`                  | Every element casts to the element type                                   |
+| `items.logicalTypeOptions.minLength` | Every element satisfies the element option                                |
+| `items.enum`                         | Every element is one of the allowed values                                |
 
 **Semantics.** A `NULL` array is skipped by every array check (null-enforcement belongs to the `required` check). An empty array `[]` is flagged only by `minItems`; `uniqueItems` and all `items` element checks pass vacuously because there is no element to violate them.
 

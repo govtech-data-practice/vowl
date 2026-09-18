@@ -323,7 +323,7 @@ The check types currently generated:
 | `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks))                                       |
 | `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items                                   |
 | `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                           |
-| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                          |
+| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                         |
 | `items.logicalType`                   | Every element of an array casts to the declared element type                                                    |
 | `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `pattern`, `minimum`, `format`, …)                     |
 | `items.enum`                          | Every element is within the declared allowed set                                                                |
