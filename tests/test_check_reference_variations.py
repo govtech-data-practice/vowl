@@ -1086,11 +1086,7 @@ class TestArrayChecks:
         if items is not None:
             prop["items"] = items
         refs = self._array_refs(monkeypatch, prop)
-        matches = [
-            r
-            for r in refs
-            if isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == option_key
-        ]
+        matches = [r for r in refs if isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == option_key]
         assert len(matches) == 1
         return matches[0]
 
@@ -1241,9 +1237,7 @@ class TestArrayChecks:
             {"name": "code", "logicalType": "string", "logicalTypeOptions": {"minItems": 1}},
         )
         # No array cardinality check on a scalar column; degrades instead.
-        assert not any(
-            isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == "minItems" for r in refs
-        )
+        assert not any(isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == "minItems" for r in refs)
         unsup = [r for r in refs if isinstance(r, UnsupportedColumnCheckReference)]
         assert any("requires logicalType: array" in r.error_message for r in unsup)
 
@@ -1267,17 +1261,13 @@ class TestArrayChecks:
         assert not any(isinstance(r, LogicalTypeCheckReference) for r in refs)
 
     @pytest.mark.parametrize("payload", ["1); DROP TABLE x;--", "abc", "1 OR 1=1"])
-    def test_injection_in_min_items_degrades_to_unsupported(
-        self, monkeypatch: pytest.MonkeyPatch, payload: str
-    ):
+    def test_injection_in_min_items_degrades_to_unsupported(self, monkeypatch: pytest.MonkeyPatch, payload: str):
         refs = self._array_refs(
             monkeypatch,
             {"name": "tags", "logicalType": "array", "logicalTypeOptions": {"minItems": payload}},
         )
         # A non-numeric minItems is rejected at coercion -> unsupported, never SQL.
-        assert not any(
-            isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == "minItems" for r in refs
-        )
+        assert not any(isinstance(r, LogicalTypeOptionsCheckReference) and r._option_key == "minItems" for r in refs)
         assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
 
     def test_items_unknown_logical_type_degrades(self, monkeypatch: pytest.MonkeyPatch):

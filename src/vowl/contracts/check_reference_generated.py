@@ -929,9 +929,7 @@ class ArrayItemsCheckReference(GeneratedColumnCheckReference):
         if kind == "logicalType":
             self._sql_type = LOGICAL_TYPE_TO_SQL.get(self._item_logical_type or "")
             if not self._sql_type:
-                raise ValueError(
-                    f"items.logicalType '{self._item_logical_type}' has no SQL cast check at {self._path}"
-                )
+                raise ValueError(f"items.logicalType '{self._item_logical_type}' has no SQL cast check at {self._path}")
         elif kind == "option":
             if option_key not in self._SUPPORTED_ITEM_OPTIONS:
                 raise ValueError(f"Unsupported items logicalTypeOptions key: {option_key}")
@@ -988,8 +986,7 @@ class ArrayItemsCheckReference(GeneratedColumnCheckReference):
 
         if not col_name or not schema_name:
             warnings.warn(
-                f"Could not generate array items check at {self._path}: "
-                f"col_name={col_name}, schema_name={schema_name}",
+                f"Could not generate array items check at {self._path}: col_name={col_name}, schema_name={schema_name}",
                 UserWarning,
                 stacklevel=2,
             )
@@ -1014,9 +1011,7 @@ class ArrayItemsCheckReference(GeneratedColumnCheckReference):
         inner = sqlglot.select(exp.Literal.number(1)).from_(unnest).where(self._element_violation(elem))
         exists = exp.Exists(this=inner)
 
-        self._cached_ast = (
-            sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(not_null).where(exists)
-        )
+        self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(not_null).where(exists)
         return self._cached_ast
 
     def _check_name(self, col_name: str) -> str:
