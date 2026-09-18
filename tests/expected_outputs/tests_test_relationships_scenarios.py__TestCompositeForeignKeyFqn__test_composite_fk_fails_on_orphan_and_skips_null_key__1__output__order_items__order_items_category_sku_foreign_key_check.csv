@@ -1,0 +1,2 @@
+item_id,category,sku,qty,check_id,tables_in_query
+4,books,B9,1,order_items_category_sku_foreign_key_check,"order_items, products"

@@ -1,5 +1,5 @@
 kind: DataContract
-apiVersion: v3.1.0
+apiVersion: v3.2.0
 version: 1.0.0
 id: b6376e57-aa90-41eb-90d0-c72dca7567e6
 status: draft
@@ -51,6 +51,9 @@ schema:
           - e123213
           - e128903
           - e939123
+        relationships:
+          - type: foreignKey
+            to: demo_employee_list.employee_id
         quality:
           - type: library
             metric: nullValues

@@ -102,28 +102,40 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 | Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
 | Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
 | Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Array items check            | `items` sub-schema on a `logicalType: array`   | `$.schema[N].properties[M].items.<...>`                    |
+| Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
 | Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
 | Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
 | Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
+| Property foreign-key check   | `relationships` entry on a property            | `$.schema[N].properties[M].relationships[K]`               |
+| Schema foreign-key check     | `relationships` entry on a schema              | `$.schema[N].relationships[K]`                             |
 
 ## Auto-Generated Checks
 
-| Generated from                        | What vowl validates                                                                                             |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `name`                                | Column declared in the contract exists in the source table                                                      |
-| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time` |
-| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                |
-| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                            |
-| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                |
-| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                        |
-| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                           |
-| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                           |
-| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                              |
-| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                    |
-| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                 |
-| `required: true`                      | Column contains no `NULL` values                                                                                |
-| `unique: true`                        | Non-null values are unique                                                                                      |
-| `primaryKey: true`                    | Values are both unique and non-null                                                                             |
+| Generated from                        | What vowl validates                                                                                                                                                                                       |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                | Column declared in the contract exists in the source table                                                                                                                                                |
+| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time`                                                                                           |
+| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                                                                                                          |
+| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                                                                                                                      |
+| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                                                                                                          |
+| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                                                                                                                  |
+| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                                                                                                                     |
+| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                                                                                                                     |
+| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                                                                                                                        |
+| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                                                                                                              |
+| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                                                                                                           |
+| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Checks](#array-checks) below)                                                                                   |
+| `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                                                                                                                     |
+| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                                                                                                                   |
+| `items.logicalType`                   | Every element of an array casts to the declared element type                                                                                                                                              |
+| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `maxLength`, `pattern`, numeric bounds, `format`)                                                                                                |
+| `items.enum`                          | Every element is within the declared allowed set                                                                                                                                                          |
+| `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                                                                                                                   |
+| `required: true`                      | Column contains no `NULL` values                                                                                                                                                                          |
+| `unique: true`                        | Non-null values are unique                                                                                                                                                                                |
+| `primaryKey: true`                    | Values are both unique and non-null                                                                                                                                                                       |
+| `relationships` (`foreignKey`)        | Every non-null key value exists in the referenced target (referential integrity); see [Design principles for auto-generated checks](design-considerations.md#design-principles-for-auto-generated-checks) |
 
 In practice, a property like this:
 
@@ -145,6 +157,85 @@ produces three generated check references:
 
 !!! note
 Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
+
+## Relationships (Foreign Keys)
+
+ODCS v3.2.0 `relationships` declare referential integrity between properties. vowl turns each `foreignKey` relationship into an **executed** anti-join check (`dimension: consistency`, `mustBe: 0`): every non-`NULL` key value must exist in the referenced target. Some ODCS tools only export relationships as documentation or dbt tests — vowl runs them against your data.
+
+### Property-level, single column
+
+Declare the relationship on the property that holds the key. The `to` target is written in **shorthand** notation — `<object>.<property>`, resolved by property `name`:
+
+```yaml
+schema:
+  - name: customers
+    properties:
+      - name: customer_id
+        logicalType: integer
+        primaryKey: true
+  - name: orders
+    properties:
+      - name: customer_id
+        logicalType: integer
+        required: false
+        relationships:
+          - type: foreignKey
+            to: customers.customer_id
+```
+
+This generates a check named `orders_customer_id_foreign_key_check`. A row whose key is `NULL` is skipped (MATCH SIMPLE semantics), so an optional foreign key is legal — only present-but-dangling values fail.
+
+### Schema-level, composite key
+
+For multi-column keys, declare the relationship at the **schema** level with parallel `from`/`to` lists. Here the target columns use **fully-qualified** notation (`/schema/<schemaId>/properties/<propertyId>`), resolved by `id`:
+
+```yaml
+schema:
+  - id: products_schema
+    name: products
+    properties:
+      - id: products_category
+        name: category
+        primaryKey: true
+        primaryKeyPosition: 1
+      - id: products_sku
+        name: sku
+        primaryKey: true
+        primaryKeyPosition: 2
+  - name: order_items
+    properties:
+      - name: category
+      - name: sku
+    relationships:
+      - type: foreignKey
+        from:
+          - order_items.category
+          - order_items.sku
+        to:
+          - /schema/products_schema/properties/products_category
+          - /schema/products_schema/properties/products_sku
+```
+
+A composite row is skipped if **any** of its key columns is `NULL`.
+
+### Reference notations
+
+| Notation        | Example                                                     | Resolves by                         |
+| --------------- | ----------------------------------------------------------- | ----------------------------------- |
+| Shorthand       | `customers.customer_id`                                     | property `name`                     |
+| Fully-qualified | `/schema/customers_schema/properties/customer_id`           | property `id`                       |
+| External file   | `customers.yaml#/schema/<schemaId>/properties/<propertyId>` | another contract file, then by `id` |
+
+External references point at a property in a **separate contract file**. The fragment after `#` must use the fully-qualified form — a shorthand fragment (e.g. `customers.yaml#customers.customer_id`) is rejected by the ODCS v3.2.0 schema. The external file is resolved relative to the referencing contract's own location (RFC 3986), so the contract must be loaded from a path (`validate_data(contract="orders.yaml", …)`) rather than built from an in-memory dict.
+
+### Execution model
+
+- **Adapters are keyed by schema `name`.** vowl does not auto-connect from `servers`; you supply an adapter per schema. When the two sides live in different sources, the check routes across them automatically.
+- **Self-referential** keys (a table referencing itself) run as a single-table check.
+- Failed rows carry only the referencing table's columns, so they merge onto that table's annotated output rather than landing in a separate residue.
+- If a reference cannot be resolved — missing target, unregistered external adapter, or a relative external path with no contract origin — the check degrades to an unsupported reference with a warning instead of raising.
+
+See [Design principles for auto-generated checks](design-considerations.md#design-principles-for-auto-generated-checks) for the rationale behind these choices.
 
 ## Format Checks
 
@@ -212,6 +303,42 @@ Supported JDK tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`
   logicalTypeOptions:
     format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
 ```
+
+## Array Checks
+
+When a property declares `logicalType: array`, vowl generates checks for the array's cardinality and — via the `items` sub-schema — for its elements. Array checks are emitted **only** when `logicalType: array` is present (a metadata gate); the same `logicalTypeOptions` keys or an `items` block on a non-array property degrade to an unsupported reference rather than generating array-only SQL.
+
+```yaml
+- name: tags
+  logicalType: array
+  logicalTypeOptions:
+    minItems: 1
+    maxItems: 10
+    uniqueItems: true
+  items:
+    logicalType: string
+    logicalTypeOptions:
+      minLength: 2
+    enum:
+      - value: red
+      - value: green
+      - value: blue
+```
+
+This produces a column-exists check plus one check per array constraint:
+
+| Constraint                           | What vowl validates                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `logicalTypeOptions.minItems`        | Array has at least `minItems` elements                                    |
+| `logicalTypeOptions.maxItems`        | Array has at most `maxItems` elements                                     |
+| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`; `false` is a no-op) |
+| `items.logicalType`                  | Every element casts to the element type                                   |
+| `items.logicalTypeOptions.minLength` | Every element satisfies the element option                                |
+| `items.enum`                         | Every element is one of the allowed values                                |
+
+**Semantics.** A `NULL` array is skipped by every array check (null-enforcement belongs to the `required` check). An empty array `[]` is flagged only by `minItems`; `uniqueItems` and all `items` element checks pass vacuously because there is no element to violate them.
+
+**Backend support.** Cardinality (`minItems`/`maxItems`) transpiles across engines via `ARRAY_LENGTH`. `uniqueItems` and element (`items`) validation rely on `ARRAY_DISTINCT` and `UNNEST` and are not portable everywhere — see [Known Issues](known-issues.md#native-array-checks) for the per-engine matrix. On an engine without native array support, an array check surfaces as `ERROR`, not a silent pass.
 
 ## Library Metrics (`type: library`)
 

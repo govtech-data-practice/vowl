@@ -1,0 +1,76 @@
+kind: DataContract
+apiVersion: v3.2.0
+version: 1.0.0
+id: catalog-products-order-items
+status: active
+name: Catalog Products and Order Items
+domain: retail
+description:
+  purpose: >-
+    Composite foreign key fixture. products has a two-column primary key
+    (category, sku). order_items declares a schema-level composite foreignKey
+    whose target columns are written in fully-qualified notation
+    (/schema/<id>/properties/<id>) to exercise FQN resolution end-to-end.
+schema:
+  - id: products_schema
+    name: products
+    description: Product catalogue keyed by (category, sku).
+    physicalType: table
+    properties:
+      - id: products_category
+        name: category
+        description: Product category; part of the composite primary key.
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+        primaryKeyPosition: 1
+      - id: products_sku
+        name: sku
+        description: Stock-keeping unit; part of the composite primary key.
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+        primaryKeyPosition: 2
+      - name: product_name
+        description: Display name of the product.
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+  - name: order_items
+    description: Line items; each references a product via (category, sku).
+    physicalType: table
+    properties:
+      - name: item_id
+        description: Surrogate key for a line item.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
+        unique: true
+        primaryKey: true
+      - name: category
+        description: Product category. Part of the composite foreign key.
+        logicalType: string
+        physicalType: VARCHAR
+        required: false
+      - name: sku
+        description: >-
+          Product SKU. Part of the composite foreign key; a NULL in either key
+          column causes the row to be skipped by the referential check.
+        logicalType: string
+        physicalType: VARCHAR
+        required: false
+      - name: qty
+        description: Quantity ordered.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
+    relationships:
+      - type: foreignKey
+        from:
+          - order_items.category
+          - order_items.sku
+        to:
+          - /schema/products_schema/properties/products_category
+          - /schema/products_schema/properties/products_sku

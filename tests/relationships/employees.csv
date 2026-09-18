@@ -1,0 +1,6 @@
+employee_id,manager_id,employee_name
+1,,Root
+2,1,Second
+3,1,Third
+4,2,Fourth
+5,42,Orphan

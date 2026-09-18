@@ -1,0 +1,40 @@
+kind: DataContract
+apiVersion: v3.2.0
+version: 1.0.0
+id: org-employees-self-ref
+status: active
+name: Organisation Employees
+domain: hr
+description:
+  purpose: >-
+    Self-referential foreign key fixture. manager_id references employee_id in
+    the same table, so only one physical table is involved and the check stays
+    single-table. The NULL manager (root) is skipped; a dangling manager id
+    fails the check.
+schema:
+  - name: employees
+    description: Employee records with a self-referential manager relationship.
+    physicalType: table
+    properties:
+      - name: employee_id
+        description: Surrogate key for an employee.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
+        unique: true
+        primaryKey: true
+      - name: manager_id
+        description: >-
+          The employee's manager. Self-referential foreign key into
+          employees.employee_id; NULL marks a root node and is skipped.
+        logicalType: integer
+        physicalType: BIGINT
+        required: false
+        relationships:
+          - type: foreignKey
+            to: employees.employee_id
+      - name: employee_name
+        description: Display name of the employee.
+        logicalType: string
+        physicalType: VARCHAR
+        required: true

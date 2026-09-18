@@ -1,0 +1,2 @@
+order_id,customer_id,amount,check_ids,tables_in_query
+103,99,30,orders_customer_id_foreign_key_check,"customers, orders"

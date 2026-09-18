@@ -90,7 +90,10 @@ dev = [
     "ipykernel>=7.1.0",
     "matplotlib>=3.10.9",
     "polars>=1.39.2",
-    "pyspark>=3.0.0",
+    # pyspark[connect] pulls grpcio so the Spark Connect detection tests
+    # (tests/test_spark_connect_detection.py) run locally under `dev` instead of
+    # being skipped by their grpc importorskip guard, matching the lean-ci-test group.
+    "pyspark[connect]>=3.4.0",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.8.0",

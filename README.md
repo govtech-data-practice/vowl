@@ -63,7 +63,7 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 ## Features
 
 - **Extensible Check Engine**: Ships with a SQL check engine out of the box, with the architecture designed to support custom check types beyond SQL.
-- **Auto-Generated Rules**: Checks are automatically derived from contract metadata (`logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`) and library metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
+- **Auto-Generated Rules**: Checks are automatically derived from contract metadata (`logicalType`, `logicalTypeOptions`, `enum`, `required`, `unique`, `primaryKey`) and library metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
 - **Any DataFrame, Any Backend**: Load any [Narwhals-compatible](https://github.com/narwhals-dev/narwhals) DataFrame type (pandas, Polars, PySpark, etc.) or connect to **20+ backends** via [Ibis](https://github.com/ibis-project/ibis). SQL dialect translation is handled by [SQLGlot](https://github.com/tobymao/sqlglot).
 - **Server-Side Execution**: SQL checks run server-side through Ibis without materialising tables on the client.
 - **Multi-Source Validation**: Validate across tables in different source systems with cross-database joins.
@@ -321,9 +321,17 @@ The check types currently generated:
 | `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                              |
 | `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                    |
 | `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks))                                       |
+| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items                                   |
+| `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                           |
+| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                         |
+| `items.logicalType`                   | Every element of an array casts to the declared element type                                                    |
+| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `pattern`, `minimum`, `format`, …)                     |
+| `items.enum`                          | Every element is within the declared allowed set                                                                |
+| `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                         |
 | `required: true`                      | Column contains no `NULL` values                                                                                |
 | `unique: true`                        | Non-null values are unique                                                                                      |
 | `primaryKey: true`                    | Values are both unique and non-null                                                                             |
+| `relationships` (`foreignKey`)        | Every non-null key value exists in the referenced target table (referential integrity)                          |
 
 For example, a property like this:
 
@@ -351,6 +359,8 @@ When a contract is loaded, `vowl` builds `CheckReference` objects for every exec
 | Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
 | Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
 | Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Array items check            | `items` sub-schema on a `logicalType: array`   | `$.schema[N].properties[M].items.<...>`                    |
+| Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
 | Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
 | Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
 | Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
@@ -364,6 +374,32 @@ So the `block` property above produces three generated check references pointing
 | `$.schema[0].properties[...].required`                     | `RequiredCheckReference`             |
 
 </details>
+
+### Relationships (foreign keys)
+
+`relationships` declares referential integrity between properties, and `vowl` turns each `foreignKey` into an **executed** anti-join check: every non-`NULL` key value must exist in the referenced target. This is the declarative equivalent of a hand-written cross-table SQL check — the same intent as the `employee_id_exists_in_master_list` check shown in [Residues](#residues) below, but derived from metadata instead of authored by hand.
+
+Declare the relationship on the property that holds the key; the `to` target uses shorthand `<object>.<property>` notation, resolved by property `name`:
+
+```yaml
+schema:
+  - name: demo_employee_list # the master list (referenced side)
+    properties:
+      - name: employee_id
+        logicalType: string
+        primaryKey: true
+  - name: demo_employee_payroll # references the master list
+    properties:
+      - name: employee_id
+        logicalType: string
+        relationships:
+          - type: foreignKey
+            to: demo_employee_list.employee_id
+```
+
+This auto-generates a check named `demo_employee_payroll_employee_id_foreign_key_check` (`dimension: consistency`, `mustBe: 0`). A payroll row whose `employee_id` is `NULL` is **skipped** (MATCH SIMPLE semantics), so an optional foreign key is legal — only present-but-dangling values fail. Because the failed rows carry only the referencing table's columns, this check **merges onto the `demo_employee_payroll` annotated table** rather than landing in a residue (unlike the hand-authored cross-table SQL check below, whose failed-rows query projects columns from both tables).
+
+For multi-column keys, declare the relationship at the **schema** level with parallel `from`/`to` lists; you can also reference a property in a separate contract file. See [Data Contracts: Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys) for composite keys, fully-qualified and external-file notations, cross-source routing, and the degrade-to-unsupported rules.
 
 ## Library Metrics (`type: library`)
 

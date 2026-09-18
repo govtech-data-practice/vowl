@@ -1,5 +1,5 @@
 kind: DataContract
-apiVersion: v3.1.0
+apiVersion: v3.2.0
 version: 1.0.0
 id: c11443ee-542f-4442-b28d-2d224342be37
 status: draft
@@ -87,6 +87,14 @@ schema:
         examples:
           - 2 ROOM
           - 3 ROOM
+        enum:
+          - value: 1 ROOM
+          - value: 2 ROOM
+          - value: 3 ROOM
+          - value: 4 ROOM
+          - value: 5 ROOM
+          - value: EXECUTIVE
+          - value: MULTI-GENERATION
         quality:
           - type: library
             metric: invalidValues

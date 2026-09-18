@@ -1,0 +1,56 @@
+kind: DataContract
+apiVersion: v3.2.0
+version: 1.0.0
+id: retail-orders-customers
+status: active
+name: Retail Orders and Customers
+domain: retail
+description:
+  purpose: >-
+    Minimal orders/customers fixture used to exercise the auto-generated
+    foreignKey (relationships) check end-to-end through the public
+    validate_data API. Orders reference customers via a property-level,
+    single-column foreign key expressed in shorthand notation.
+schema:
+  - name: customers
+    description: Customer master records; one row per customer.
+    physicalType: table
+    properties:
+      - name: customer_id
+        description: Surrogate key for a customer.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
+        unique: true
+        primaryKey: true
+      - name: customer_name
+        description: Display name of the customer.
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+  - name: orders
+    description: Order records; each order references a customer.
+    physicalType: table
+    properties:
+      - name: order_id
+        description: Surrogate key for an order.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
+        unique: true
+        primaryKey: true
+      - name: customer_id
+        description: >-
+          Customer that placed the order. Foreign key into customers; NULL is
+          allowed and is skipped by the referential check (MATCH SIMPLE).
+        logicalType: integer
+        physicalType: BIGINT
+        required: false
+        relationships:
+          - type: foreignKey
+            to: customers.customer_id
+      - name: amount
+        description: Monetary amount of the order.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true

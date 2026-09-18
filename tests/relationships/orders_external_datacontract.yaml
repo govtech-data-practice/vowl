@@ -1,0 +1,41 @@
+kind: DataContract
+apiVersion: v3.2.0
+version: 1.0.0
+id: orders-external-fk
+status: active
+name: Orders with External Customer FK
+domain: retail
+description:
+  purpose: >-
+    Orders contract whose customer foreign key targets a property in a separate
+    file (customers_external_datacontract.yaml) using the external reference
+    notation file.yaml#fragment. Resolution requires this contract to have an
+    origin, so it must be loaded from disk (Contract.load / a path passed to
+    validate_data).
+schema:
+  - name: orders
+    description: Order records referencing an externally-defined customer.
+    physicalType: table
+    properties:
+      - name: order_id
+        description: Surrogate key for an order.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
+        unique: true
+        primaryKey: true
+      - name: customer_id
+        description: >-
+          Customer that placed the order. Foreign key into the customers schema
+          defined in an external file; NULL is skipped (MATCH SIMPLE).
+        logicalType: integer
+        physicalType: BIGINT
+        required: false
+        relationships:
+          - type: foreignKey
+            to: customers_external_datacontract.yaml#/schema/customers_ext_schema/properties/customers_ext_customer_id
+      - name: amount
+        description: Monetary amount of the order.
+        logicalType: integer
+        physicalType: BIGINT
+        required: true
