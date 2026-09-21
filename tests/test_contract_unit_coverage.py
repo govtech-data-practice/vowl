@@ -118,7 +118,7 @@ def test_relationship_target_schema_names_includes_same_file_target():
     )
     contract = Contract(data)
 
-    # ``users`` is the resolved FK target; ``get_schema_names`` also lists it,
+    # ``users`` is the resolved FK target. ``get_schema_names`` also lists it,
     # but the target set is what distinguishes a real target from a typo.
     assert contract.get_relationship_target_schema_names() == {"users"}
 

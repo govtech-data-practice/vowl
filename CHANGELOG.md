@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-09-21
+
+### Added
+- **ODCS v3.2.0 support**: the official v3.2.0 JSON schema is bundled and registered as the newest supported apiVersion. v3.2.0 is a strict additive superset of v3.1.0 (the DataQuality definition is unchanged), so contracts declaring `apiVersion` v3.2.0 validate and run with no engine changes. Adds coverage for 3.2-only fields (`context`, `synonyms`, `deprecated`, `enum`, `semanticType`, and the new `vector` logicalType) (#60).
+- **Enum value-set auto-check**: any property declaring `enum` (the first-class property field introduced in ODCS v3.2.0) now generates a "value must be in the allowed set" check. Non-NULL values outside the allowed set are counted (NULLs stay with the required check), and allowed values are built as SQL literals rather than interpolated (#61).
+- **Relationships / foreignKey auto-checks**: ODCS `relationships` (type `foreignKey`, available since ODCS v3.1.0) now generate executed referential-integrity checks at property and schema level, as `NOT EXISTS` anti-joins. Composite and self-referential keys, MATCH SIMPLE null semantics, and shorthand / fully-qualified / external-file reference resolution are supported. Failed rows project the referencing table's columns so they merge onto its annotated output, and an unresolvable reference surfaces as a per-check `ERROR` (carrying the reason) rather than aborting the whole run. External FK targets are recognised as valid adapter keys, so registering the adapter for a cross-file target no longer warns spuriously (#61).
+- **Native array-type auto-checks**: array properties (`logicalType: array`, available since ODCS v3.1.0) now generate cardinality checks (`minItems` / `maxItems` / `uniqueItems`) and element validation from the `items` sub-schema (element type, options, and enum). NULL arrays are skipped, and non-array properties carrying array keys degrade to an unsupported check (#61).
+
+### Docs
+- Completed the README and `SECURITY.md` governance sections (#57).
+- Updated the security acknowledgement target to 5 working days (#58).
+
+### Security
+- Closed SQL replacement-scan and DNS-rebinding SSRF gaps in contract and reference resolution (#59).
+- Remediated verified security scanner findings (#55).
+
+### Dependencies
+- Bumped `tornado` from 6.5.7 to 6.5.8 (#53).
+- Bumped `pymdown-extensions` (#52).
+- Bumped `cryptography` (#51).
+- Bumped `setuptools` from 82.0.1 to 83.0.0 (#49).
+- Bumped `pillow` from 12.2.0 to 12.3.0 (#48).
+- Bumped the `uv` dependency group with 2 updates (#50).
+
 ## [0.0.5] - 2026-07-17
 
 ### Added
