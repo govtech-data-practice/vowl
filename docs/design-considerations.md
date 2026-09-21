@@ -165,90 +165,7 @@ payroll columns:
     )
     ```
 
-## Design principles for auto-generated checks
-
-vowl derives executable checks from contract metadata (`enum`, `logicalType`,
-`required`, `unique`, `primaryKey`, `relationships`, ...) in
-`Contract.get_check_references_by_schema()`. These principles keep that
-derivation predictable, safe, and version-tolerant.
-
-### Data-driven, not version-branched
-
-Generation keys off the _presence and shape_ of a property attribute, never off
-`apiVersion`. A property carrying `enum` produces an enum check whether the
-contract declares `v3.1.0` or `v3.2.0`; a newer field simply becomes visible
-once contracts start using it. This keeps a single code path valid across the
-whole supported ODCS range and avoids a matrix of per-version branches.
-
-### Degrade, don't crash
-
-An attribute vowl cannot turn into a runnable check must never raise out of
-generation. Each generator is wrapped so a `ValueError` (unsupported shape,
-unresolvable reference, arity mismatch, missing origin) is converted into an
-`UnsupportedColumnCheckReference` / `UnsupportedTableCheckReference` plus a
-`UserWarning`. The rest of the contract still generates its checks. This mirrors
-the existing `logicalTypeOptions` and `enum` handling: a malformed corner of a
-contract downgrades that one check, it does not abort validation.
-
-### SQL is built from AST literals, never string interpolation
-
-Contract values (allowed enum values, schema and column names, reference
-targets) are attacker-controllable, so generated SQL is assembled as a
-[sqlglot](https://github.com/tobymao/sqlglot) expression tree — identifiers via
-`exp.to_identifier(..., quoted=True)`, values as `exp.Literal` nodes — and only
-then rendered with `.sql(dialect=...)`. No generated query is produced by
-f-string or `.format()` concatenation of contract text. A pathological name is
-emitted as a single quoted identifier (embedded quotes doubled), so it cannot
-break out into a statement; the executor's `validate_query_security` pass is a
-second, independent line of defence.
-
-### Dimensions come from the ODCS enum
-
-Generated checks tag themselves with a `dimension` drawn from the ODCS
-`quality.dimension` enum. Enum checks use `conformity` (values must conform to
-an allowed set). Foreign-key checks use `consistency` (the same dimension
-`unique`/`primaryKey` checks use) — deliberately **not** `integrity`, which is
-not a member of the ODCS dimension enum and would fail validation.
-
-### Foreign-key checks: `NOT EXISTS` anti-join, MATCH SIMPLE
-
-A `relationships` entry of `type: foreignKey` becomes a referential-integrity
-check counting rows in the `from` table whose key has no match in the `to`
-table:
-
-```sql
-SELECT COUNT(*)
-FROM "orders" AS "_vowl_fk_from"
-WHERE NOT "_vowl_fk_from"."customer_id" IS NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM "customers" AS "_vowl_fk_to"
-    WHERE "_vowl_fk_to"."id" = "_vowl_fk_from"."customer_id"
-  )
-```
-
-- **Anti-join, not `LEFT JOIN`.** The `to` table lives only inside the
-  `NOT EXISTS`, so the failed-rows rewrite (`COUNT(*)` → `SELECT *`) naturally
-  yields **from-table columns only** — mergeable onto the from-table's annotated
-  output without a subquery wrapper (see
-  [Making a cross-table check annotate onto a table](#making-a-cross-table-check-annotate-onto-a-table)).
-- **MATCH SIMPLE null semantics.** A row is skipped if _any_ foreign-key column
-  is `NULL` (the `IS NOT NULL` guards). This matches SQL's default composite-FK
-  behaviour: a partially-null key is not enforced.
-- **Composite keys** are supported at schema level (`from`/`to` as equal-arity
-  lists); the equality chain is `AND`-ed across column pairs. Property-level
-  relationships are single-column by definition.
-- **Self-referential keys** (from and to are the same table) work via distinct
-  aliases. Because only one physical table is referenced, such a check stays on
-  the single-table execution path; a cross-table FK auto-routes to the
-  multi-source executor.
-- **Target uniqueness is advisory.** If the target column is not declared
-  `unique`/`primaryKey`, vowl still generates the check but emits a `UserWarning`
-  — the anti-join is well-defined regardless, but a non-unique target usually
-  signals a modelling gap.
-- **Nested/array targets are deferred.** A reference into a nested or array
-  property degrades to an unsupported reference for now.
-
-### Reference resolution follows RFC 3986
+## Reference resolution for relationships
 
 `relationships` targets are resolved the way JSON Schema and OpenAPI resolve
 `$ref`, per [RFC 3986 §5](https://www.rfc-editor.org/rfc/rfc3986#section-5):
@@ -263,22 +180,4 @@ WHERE NOT "_vowl_fk_from"."customer_id" IS NULL
   than guessing a base. All external fetches reuse the SSRF-guarded load path.
 
 Shorthand and fully-qualified references that point at the same property produce
-identical SQL — the notation is a lookup convenience, not a semantic
-distinction.
-
-### Adapters are caller-supplied, keyed by schema name
-
-vowl does **not** auto-connect to a contract's `servers[]` block to reach an
-external foreign-key target. Cross-source checks reach data through adapters the
-caller registers under each schema's `name`. An unregistered target hits the
-executor's existing "no adapter" degradation. This keeps vowl's data access
-explicit and caller-controlled rather than implicitly dialling out to whatever a
-contract happens to declare.
-
-!!! note "Tradeoff: external references fetch eagerly at generation time"
-Building the anti-join needs the _names_ of the target columns, so an
-external foreign key fetches the referenced contract inside
-`get_check_references_by_schema()` (cached per reference, SSRF-guarded,
-degrading to an unsupported reference on failure). This is the one place
-check generation performs network I/O; local and same-contract references
-do not.
+identical SQL. The notation is a lookup convenience, not a semantic distinction.

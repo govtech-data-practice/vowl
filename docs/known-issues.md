@@ -82,15 +82,15 @@ This is safe with `PooledAdapter` because it hands each connection to only one t
 
 ### Native Array Checks
 
-Checks generated for `logicalType: array` properties (see [Array Checks](contracts.md#array-checks)) emit SQL that depends on native array support. vowl generates these checks from contract metadata alone — it does not inspect the physical column type — so on an engine (or column) that is not array-capable the check surfaces as `ERROR`, not a silent pass. Portability varies by construct:
+Array checks (see [Array Checks](contracts.md#array-checks)) rely on native array SQL. vowl builds them from contract metadata without inspecting the actual column type, so on an engine that doesn't support arrays the check returns `ERROR` rather than silently passing.
 
-| Array check                    | SQL construct       | Portable on                                           | ERRORs on                                                            |
-| ------------------------------ | ------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
-| `minItems` / `maxItems`        | `ARRAY_LENGTH`      | duckdb, spark, snowflake, trino, bigquery, clickhouse | scalar-only engines (sqlite, mysql, tsql, oracle)                    |
-| `uniqueItems`                  | `ARRAY_DISTINCT`    | duckdb, spark, snowflake, trino, clickhouse           | **postgres, bigquery** (no `array_distinct` builtin)                 |
-| `items.*` (element validation) | `UNNEST` + `EXISTS` | duckdb, postgres, trino, bigquery                     | clickhouse, sqlite, mysql, tsql, oracle; spark/snowflake best-effort |
+**Only DuckDB is tested.** The array checks are verified against DuckDB, where all three constructs execute correctly. For every other engine, the behaviour below is _inferred from the SQL vowl emits_ rather than observed from an actual run, so treat the table as expectations rather than guarantees. Outside DuckDB, validate against your own data or expect an `ERROR` for unsupported constructs.
 
-vowl is tested against DuckDB, where all three forms execute correctly. If you validate array contracts on another engine, confirm it supports the construct above or expect an `ERROR` status for that check.
+| Array check                    | SQL construct       | Expected to work (untested)                   | Expected to ERROR                                                     |
+| ------------------------------ | ------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| `minItems` / `maxItems`        | `ARRAY_LENGTH`      | spark, snowflake, trino, bigquery, clickhouse | scalar-only engines (sqlite, mysql, tsql, oracle)                     |
+| `uniqueItems`                  | `ARRAY_DISTINCT`    | spark, snowflake, trino, clickhouse           | **postgres, bigquery** (no `array_distinct` builtin)                  |
+| `items.*` (element validation) | `UNNEST` + `EXISTS` | postgres, trino, bigquery                     | clickhouse, sqlite, mysql, tsql, oracle (spark/snowflake best-effort) |
 
 ---
 

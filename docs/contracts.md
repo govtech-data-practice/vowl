@@ -112,30 +112,30 @@ This includes both user-authored checks in `quality` blocks and synthetic checks
 
 ## Auto-Generated Checks
 
-| Generated from                        | What vowl validates                                                                                                                                                                                       |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                                | Column declared in the contract exists in the source table                                                                                                                                                |
-| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time`                                                                                           |
-| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                                                                                                          |
-| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                                                                                                                      |
-| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                                                                                                          |
-| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                                                                                                                  |
-| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                                                                                                                     |
-| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                                                                                                                     |
-| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                                                                                                                        |
-| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                                                                                                              |
-| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                                                                                                           |
-| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Checks](#array-checks) below)                                                                                   |
-| `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                                                                                                                     |
-| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                                                                                                                   |
-| `items.logicalType`                   | Every element of an array casts to the declared element type                                                                                                                                              |
-| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `maxLength`, `pattern`, numeric bounds, `format`)                                                                                                |
-| `items.enum`                          | Every element is within the declared allowed set                                                                                                                                                          |
-| `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                                                                                                                   |
-| `required: true`                      | Column contains no `NULL` values                                                                                                                                                                          |
-| `unique: true`                        | Non-null values are unique                                                                                                                                                                                |
-| `primaryKey: true`                    | Values are both unique and non-null                                                                                                                                                                       |
-| `relationships` (`foreignKey`)        | Every non-null key value exists in the referenced target (referential integrity); see [Design principles for auto-generated checks](design-considerations.md#design-principles-for-auto-generated-checks) |
+| Generated from                        | What vowl validates                                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                | Column declared in the contract exists in the source table                                                                                        |
+| `logicalType`                         | Values can be cast to the declared SQL type for `integer`, `number`, `boolean`, `date`, `timestamp`, and `time`                                   |
+| `logicalTypeOptions.minLength`        | String length is at least the configured minimum                                                                                                  |
+| `logicalTypeOptions.maxLength`        | String length does not exceed the configured maximum                                                                                              |
+| `logicalTypeOptions.pattern`          | String values match the configured regex pattern                                                                                                  |
+| `logicalTypeOptions.minimum`          | Value is greater than or equal to the configured minimum                                                                                          |
+| `logicalTypeOptions.maximum`          | Value is less than or equal to the configured maximum                                                                                             |
+| `logicalTypeOptions.exclusiveMinimum` | Value is strictly greater than the configured minimum                                                                                             |
+| `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                                                                |
+| `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                                                      |
+| `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                                                   |
+| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Checks](#array-checks) below)                           |
+| `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                                                             |
+| `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                                                           |
+| `items.logicalType`                   | Every element of an array casts to the declared element type                                                                                      |
+| `items.logicalTypeOptions.*`          | Every element satisfies the element option (`minLength`, `maxLength`, `pattern`, numeric bounds, `format`)                                        |
+| `items.enum`                          | Every element is within the declared allowed set                                                                                                  |
+| `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                                                           |
+| `required: true`                      | Column contains no `NULL` values                                                                                                                  |
+| `unique: true`                        | Non-null values are unique                                                                                                                        |
+| `primaryKey: true`                    | Values are both unique and non-null                                                                                                               |
+| `relationships` (`foreignKey`)        | Every non-null key value exists in the referenced target (referential integrity). See [Relationships (Foreign Keys)](#relationships-foreign-keys) |
 
 In practice, a property like this:
 
@@ -160,11 +160,11 @@ Because `string` does not currently generate a SQL cast-based type check, the `l
 
 ## Relationships (Foreign Keys)
 
-ODCS v3.2.0 `relationships` declare referential integrity between properties. vowl turns each `foreignKey` relationship into an **executed** anti-join check (`dimension: consistency`, `mustBe: 0`): every non-`NULL` key value must exist in the referenced target. Some ODCS tools only export relationships as documentation or dbt tests — vowl runs them against your data.
+A `relationships` entry of type `foreignKey` requires every non-`NULL` key value to exist in the table it points to. vowl runs this as a real check (`dimension: consistency`, `mustBe: 0`).
 
 ### Property-level, single column
 
-Declare the relationship on the property that holds the key. The `to` target is written in **shorthand** notation — `<object>.<property>`, resolved by property `name`:
+Declare the relationship on the property that holds the key. The `to` target uses **shorthand** notation (`<object>.<property>`), resolved by property `name`:
 
 ```yaml
 schema:
@@ -183,7 +183,7 @@ schema:
             to: customers.customer_id
 ```
 
-This generates a check named `orders_customer_id_foreign_key_check`. A row whose key is `NULL` is skipped (MATCH SIMPLE semantics), so an optional foreign key is legal — only present-but-dangling values fail.
+This generates a check named `orders_customer_id_foreign_key_check`. Rows with a `NULL` key are skipped, so an optional foreign key is allowed. A value fails only when it is present but has no match in the target.
 
 ### Schema-level, composite key
 
@@ -226,16 +226,33 @@ A composite row is skipped if **any** of its key columns is `NULL`.
 | Fully-qualified | `/schema/customers_schema/properties/customer_id`           | property `id`                       |
 | External file   | `customers.yaml#/schema/<schemaId>/properties/<propertyId>` | another contract file, then by `id` |
 
-External references point at a property in a **separate contract file**. The fragment after `#` must use the fully-qualified form — a shorthand fragment (e.g. `customers.yaml#customers.customer_id`) is rejected by the ODCS v3.2.0 schema. The external file is resolved relative to the referencing contract's own location (RFC 3986), so the contract must be loaded from a path (`validate_data(contract="orders.yaml", …)`) rather than built from an in-memory dict.
+An external reference points at a property in **another contract file**, written as `customers.yaml#/schema/<id>/properties/<id>`. Two things to know:
+
+- The part after `#` must use the full `/schema/.../properties/...` form. Shorthand like `customers.customer_id` is fine for same-file references, but ODCS doesn't allow it after a `file.yaml#` prefix, so `customers.yaml#customers.customer_id` won't pass contract validation.
+- vowl looks for the external file **relative to the contract that references it**. When you pass a file path or URL to `validate_data` (for example `validate_data(contract="orders.yaml", …)`), vowl resolves the external file next to `orders.yaml` for you. The one case that breaks is building a `Contract` object yourself from an in-memory dict. That object has no location attached, so vowl has nothing to resolve the reference against, and the check degrades.
 
 ### Execution model
 
-- **Adapters are keyed by schema `name`.** vowl does not auto-connect from `servers`; you supply an adapter per schema. When the two sides live in different sources, the check routes across them automatically.
+- **Adapters are keyed by schema `name`.** vowl does not auto-connect from `servers`. Instead, you register one adapter per schema. When the two sides live in different sources, the check routes across them automatically.
+- **External references still need an adapter for the target schema.** Loading `customers.yaml` only tells vowl the target's schema `name` and column; it never opens a connection. You register the adapter under that schema's **`name`** as declared in the external file (not its `id`, and not the file name). Because that schema usually isn't declared in the contract you loaded, vowl warns `no schema with that name exists in the contract` — this is expected for cross-file targets, and the join still runs and gates rows. Load the referencing contract from a path or URL so it has an `origin` to resolve the external file against:
+
+  ```python
+  validate_data(
+      contract="orders.yaml",                      # loaded from a path -> has an origin
+      adapters={
+          "orders": IbisAdapter(orders_con),       # the referencing schema
+          "customers": IbisAdapter(customers_con),  # the external target, keyed by its schema `name`
+      },
+  )
+  ```
+
+  See [`examples/2_multiple_sources`](https://github.com/govtech-data-practice/vowl/blob/main/examples/2_multiple_sources/multiple_sources.ipynb) for a runnable version.
+
 - **Self-referential** keys (a table referencing itself) run as a single-table check.
 - Failed rows carry only the referencing table's columns, so they merge onto that table's annotated output rather than landing in a separate residue.
-- If a reference cannot be resolved — missing target, unregistered external adapter, or a relative external path with no contract origin — the check degrades to an unsupported reference with a warning instead of raising.
+- If a reference can't be resolved (missing target, unregistered external adapter, or an external path with no known contract location), the check degrades to an unsupported reference with a warning instead of failing the run.
 
-See [Design principles for auto-generated checks](design-considerations.md#design-principles-for-auto-generated-checks) for the rationale behind these choices.
+See [Reference resolution for relationships](design-considerations.md#reference-resolution-for-relationships) for how `relationships` targets are resolved (RFC 3986).
 
 ## Format Checks
 
@@ -306,7 +323,7 @@ Supported JDK tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`
 
 ## Array Checks
 
-When a property declares `logicalType: array`, vowl generates checks for the array's cardinality and — via the `items` sub-schema — for its elements. Array checks are emitted **only** when `logicalType: array` is present (a metadata gate); the same `logicalTypeOptions` keys or an `items` block on a non-array property degrade to an unsupported reference rather than generating array-only SQL.
+When a property declares `logicalType: array`, vowl checks the array's size, and it uses the `items` sub-schema to check the elements inside it. These checks run only when `logicalType: array` is set. On any other property, the same options or an `items` block degrade to an unsupported reference instead of generating array SQL.
 
 ```yaml
 - name: tags
@@ -331,14 +348,14 @@ This produces a column-exists check plus one check per array constraint:
 | ------------------------------------ | ------------------------------------------------------------------------- |
 | `logicalTypeOptions.minItems`        | Array has at least `minItems` elements                                    |
 | `logicalTypeOptions.maxItems`        | Array has at most `maxItems` elements                                     |
-| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`; `false` is a no-op) |
+| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`, `false` is a no-op) |
 | `items.logicalType`                  | Every element casts to the element type                                   |
 | `items.logicalTypeOptions.minLength` | Every element satisfies the element option                                |
 | `items.enum`                         | Every element is one of the allowed values                                |
 
-**Semantics.** A `NULL` array is skipped by every array check (null-enforcement belongs to the `required` check). An empty array `[]` is flagged only by `minItems`; `uniqueItems` and all `items` element checks pass vacuously because there is no element to violate them.
+**NULL vs empty.** A `NULL` array is skipped by every array check (use `required` to forbid NULLs). An empty array `[]` only fails `minItems`. With no elements, `uniqueItems` and the `items` checks have nothing to flag, so they pass.
 
-**Backend support.** Cardinality (`minItems`/`maxItems`) transpiles across engines via `ARRAY_LENGTH`. `uniqueItems` and element (`items`) validation rely on `ARRAY_DISTINCT` and `UNNEST` and are not portable everywhere — see [Known Issues](known-issues.md#native-array-checks) for the per-engine matrix. On an engine without native array support, an array check surfaces as `ERROR`, not a silent pass.
+**Backend support.** These checks are tested on DuckDB. Size checks (`minItems`/`maxItems`) emit `ARRAY_LENGTH`, which should transpile broadly, while `uniqueItems` and `items` element checks emit `ARRAY_DISTINCT` and `UNNEST`, which aren't available on every engine. On other engines the behaviour is inferred from the emitted SQL rather than verified, so see [Known Issues](known-issues.md#native-array-checks) for the per-engine expectations. Where a construct isn't supported, the check returns `ERROR` rather than silently passing.
 
 ## Library Metrics (`type: library`)
 

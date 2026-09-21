@@ -304,7 +304,7 @@ schema:
 
 ## Auto-Generated Checks
 
-You don't have to write every check by hand. When a contract is loaded, `vowl` automatically derives checks from your column metadata — so simply declaring `logicalType`, `required: true`, `unique: true`, and similar gives you validation for free. These auto-generated checks run before any explicit `quality` checks you've authored.
+You don't have to write every check by hand. When a contract is loaded, `vowl` automatically derives checks from your column metadata, so simply declaring `logicalType`, `required: true`, `unique: true`, and similar gives you validation for free. These auto-generated checks run before any explicit `quality` checks you've authored.
 
 The check types currently generated:
 
@@ -377,9 +377,9 @@ So the `block` property above produces three generated check references pointing
 
 ### Relationships (foreign keys)
 
-`relationships` declares referential integrity between properties, and `vowl` turns each `foreignKey` into an **executed** anti-join check: every non-`NULL` key value must exist in the referenced target. This is the declarative equivalent of a hand-written cross-table SQL check — the same intent as the `employee_id_exists_in_master_list` check shown in [Residues](#residues) below, but derived from metadata instead of authored by hand.
+A `relationships` entry of type `foreignKey` says every non-`NULL` value in a column must exist in another table's column. `vowl` runs this as a real check, so you get referential integrity from metadata without writing the cross-table SQL by hand (compare the `employee_id_exists_in_master_list` example under [Residues](#residues) below).
 
-Declare the relationship on the property that holds the key; the `to` target uses shorthand `<object>.<property>` notation, resolved by property `name`:
+Declare the relationship on the property that holds the key. The `to` target uses shorthand `<object>.<property>` notation, resolved by property `name`:
 
 ```yaml
 schema:
@@ -397,9 +397,9 @@ schema:
             to: demo_employee_list.employee_id
 ```
 
-This auto-generates a check named `demo_employee_payroll_employee_id_foreign_key_check` (`dimension: consistency`, `mustBe: 0`). A payroll row whose `employee_id` is `NULL` is **skipped** (MATCH SIMPLE semantics), so an optional foreign key is legal — only present-but-dangling values fail. Because the failed rows carry only the referencing table's columns, this check **merges onto the `demo_employee_payroll` annotated table** rather than landing in a residue (unlike the hand-authored cross-table SQL check below, whose failed-rows query projects columns from both tables).
+This generates a check named `demo_employee_payroll_employee_id_foreign_key_check`. A payroll row whose `employee_id` is `NULL` is **skipped**, so an optional foreign key is allowed. A value fails only when it is present but has no match in the master list. Because failed rows carry only the payroll table's columns, they appear **in the `demo_employee_payroll` annotated table** rather than a separate residue.
 
-For multi-column keys, declare the relationship at the **schema** level with parallel `from`/`to` lists; you can also reference a property in a separate contract file. See [Data Contracts: Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys) for composite keys, fully-qualified and external-file notations, cross-source routing, and the degrade-to-unsupported rules.
+Need composite keys, cross-file references, or cross-source joins? See [Data Contracts: Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys).
 
 ## Library Metrics (`type: library`)
 
