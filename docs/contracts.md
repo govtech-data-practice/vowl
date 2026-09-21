@@ -234,7 +234,7 @@ An external reference points at a property in **another contract file**, written
 ### Execution model
 
 - **Adapters are keyed by schema `name`.** vowl does not auto-connect from `servers`. Instead, you register one adapter per schema. When the two sides live in different sources, the check routes across them automatically.
-- **External references still need an adapter for the target schema.** Loading `customers.yaml` only tells vowl the target's schema `name` and column; it never opens a connection. You register the adapter under that schema's **`name`** as declared in the external file (not its `id`, and not the file name). Because that schema usually isn't declared in the contract you loaded, vowl warns `no schema with that name exists in the contract` — this is expected for cross-file targets, and the join still runs and gates rows. Load the referencing contract from a path or URL so it has an `origin` to resolve the external file against:
+- **External references still need an adapter for the target schema.** Loading `customers.yaml` only tells vowl the target's schema `name` and column; it never opens a connection. You register the adapter under that schema's **`name`** as declared in the external file (not its `id`, and not the file name). vowl treats resolved foreign-key targets as valid adapter keys even when they aren't declared in the contract you loaded, so a cross-file target doesn't trigger the "no schema with that name" warning (that warning is reserved for adapter keys that match neither a declared schema nor a resolved reference target — i.e. genuine typos). Load the referencing contract from a path or URL so it has an `origin` to resolve the external file against:
 
   ```python
   validate_data(
@@ -250,7 +250,8 @@ An external reference points at a property in **another contract file**, written
 
 - **Self-referential** keys (a table referencing itself) run as a single-table check.
 - Failed rows carry only the referencing table's columns, so they merge onto that table's annotated output rather than landing in a separate residue.
-- If a reference can't be resolved (missing target, unregistered external adapter, or an external path with no known contract location), the check degrades to an unsupported reference with a warning instead of failing the run.
+- If the **reference itself** can't be resolved (missing target property, or an external path with no known contract location to resolve against), the check degrades to an unsupported reference with a warning instead of failing the run.
+- If the reference resolves but you **don't register an adapter** for the target schema, that single foreign-key check comes back `ERROR` (`No adapter configured for table '<name>'`) — the rest of the run still executes.
 
 See [Reference resolution for relationships](design-considerations.md#reference-resolution-for-relationships) for how `relationships` targets are resolved (RFC 3986).
 

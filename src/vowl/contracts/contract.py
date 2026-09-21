@@ -1007,3 +1007,43 @@ class Contract:
         """
         schema_list = self.contract_data.get("schema", [])
         return [s.get("name") for s in schema_list if s.get("name")]
+
+    def get_relationship_target_schema_names(self) -> set[str]:
+        """Resolve the target schema ``name`` of every foreign-key relationship.
+
+        Walks property-level and schema-level ``relationships`` and resolves each
+        ``to`` reference to its target schema ``name`` (via
+        :meth:`resolve_reference`). This includes targets defined in *other*
+        contract files (external references), which are not returned by
+        :meth:`get_schema_names`.
+
+        Resolution errors are swallowed: a reference that cannot be resolved
+        (missing target, unloadable external file, unsupported shape) is simply
+        omitted rather than raising. The result is therefore a best-effort set of
+        the schema names an adapter may legitimately be keyed under, used to
+        distinguish a cross-file FK target from a mistyped adapter key.
+
+        Returns:
+            Set of resolved target schema names. Empty if the contract declares
+            no relationships or none resolve.
+        """
+        targets: set[str] = set()
+        for schema_obj in self.contract_data.get("schema", []):
+            for prop in schema_obj.get("properties", []) or []:
+                for rel in prop.get("relationships", []) or []:
+                    to = rel.get("to")
+                    if to is None:
+                        continue
+                    try:
+                        targets.add(self.resolve_reference(to).schema_name)
+                    except ValueError:
+                        continue
+            for rel in schema_obj.get("relationships", []) or []:
+                to = rel.get("to")
+                if to is None:
+                    continue
+                try:
+                    targets.add(self.resolve_reference(to).schema_name)
+                except ValueError:
+                    continue
+        return targets

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import ast
 import json
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -358,13 +359,18 @@ class TestExternalFileForeignKey:
 
         # The main contract only declares the ``orders`` schema; ``customers``
         # lives in the external target.  Supplying the extra ``customers``
-        # adapter makes it available for the resolved cross-file join but warns
-        # that no such schema exists in this contract.
-        with pytest.warns(UserWarning, match="no schema with that name"):
+        # adapter makes it available for the resolved cross-file join.  Because
+        # ``customers`` is a resolved foreign-key target it is NOT flagged as an
+        # unknown adapter key: no "no schema with that name" warning is raised.
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
             results = validate_data(
                 contract=str(ORDERS_EXTERNAL_CONTRACT),
                 adapters={"orders": adapter, "customers": adapter},
             )
+        assert not [w for w in caught if "no schema with that name" in str(w.message)], (
+            "external FK target adapter should not trigger the unknown-schema warning"
+        )
         assert_no_check_errors(results)
 
         row = _fk_row(results, self.FK_NAME)
@@ -374,6 +380,29 @@ class TestExternalFileForeignKey:
         assert row["failed_rows_count"] == 1
         assert row["schema_name"] == "orders"
         assert _tables_in_query(row["tables_in_query"]) == {"orders", "customers"}
+
+    def test_typo_adapter_key_still_warns(self):
+        """A genuinely unknown adapter key (not a schema or FK target) still
+        warns, so the check kept its typo-catching value after external targets
+        were whitelisted.
+
+        Exercised at the adapter-resolution layer so the assertion targets the
+        warning without the full-run golden-output comparison.
+        """
+        import ibis
+
+        from vowl.adapters import IbisAdapter
+        from vowl.validation.runner import ValidationRunner
+
+        adapter = IbisAdapter(ibis.duckdb.connect())
+        runner = ValidationRunner(
+            contract=str(ORDERS_EXTERNAL_CONTRACT),
+            # ``orders`` is declared, ``customers`` is a resolved external FK
+            # target, but ``custmoers`` is a typo that names neither.
+            adapters={"orders": adapter, "customers": adapter, "custmoers": adapter},
+        )
+        with pytest.warns(UserWarning, match="'custmoers' but no schema with that name"):
+            runner._resolve_adapters()
 
 
 # ============================================================================

@@ -102,6 +102,60 @@ def test_contract_loads_valid_local_yaml(tmp_path: Path):
     assert contract.get_schema_names() == ["users"]
 
 
+def test_relationship_target_schema_names_includes_same_file_target():
+    data = minimal_contract_data()
+    data["schema"].append(
+        {
+            "name": "orders",
+            "properties": [
+                {
+                    "name": "user_id",
+                    "logicalType": "integer",
+                    "relationships": [{"type": "foreignKey", "to": "users.id"}],
+                }
+            ],
+        }
+    )
+    contract = Contract(data)
+
+    # ``users`` is the resolved FK target; ``get_schema_names`` also lists it,
+    # but the target set is what distinguishes a real target from a typo.
+    assert contract.get_relationship_target_schema_names() == {"users"}
+
+
+def test_relationship_target_schema_names_empty_without_relationships():
+    contract = Contract(minimal_contract_data())
+
+    assert contract.get_relationship_target_schema_names() == set()
+
+
+def test_relationship_target_schema_names_swallows_unresolvable_external_ref():
+    data = minimal_contract_data()
+    data["schema"].append(
+        {
+            "name": "orders",
+            "properties": [
+                {
+                    "name": "customer_id",
+                    "logicalType": "integer",
+                    "relationships": [
+                        {
+                            "type": "foreignKey",
+                            # An external ref, but this contract was built from
+                            # an in-memory dict so it has no origin to resolve
+                            # against -> resolution raises and is swallowed.
+                            "to": "customers.yaml#/schema/customers_schema/properties/customer_id",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    contract = Contract(data)
+
+    assert contract.get_relationship_target_schema_names() == set()
+
+
 def test_contract_load_raises_for_missing_file(tmp_path: Path):
     missing = tmp_path / "missing.yaml"
 
