@@ -169,7 +169,7 @@ security-secrets:
 
 # Release validation
 release-check: clean
-	$(UV) pip install --python .venv/bin/python --upgrade build twine
+	$(UV) sync --group release
 	SETUPTOOLS_SCM_LOCAL_SCHEME=no-local-version $(UV) run python -m build
 	$(UV) run python -m twine check dist/*
 

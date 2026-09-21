@@ -113,6 +113,13 @@ lean-ci-test = [
     "pytest-cov>=7.0.0",
     "setuptools>=80.10.2",
 ]
+# Packaging tools used by `make release-check`. Locked here (rather than
+# installed imperatively) so the build/validate step is reproducible and
+# twine's transitive requirements (e.g. packaging) resolve coherently.
+release = [
+    "build>=1.2.0",
+    "twine>=6.1.0",
+]
 
 [tool.pytest.ini_options]
 markers = [
