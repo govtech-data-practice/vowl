@@ -386,6 +386,21 @@ Type narrowing example:
 # =============================================================================
 
 
+class EnumValue(TypedDict, total=False):
+    """An allowed value within a property's enumeration (ODCS v3.2.0+).
+
+    Required fields in schema: value
+    """
+
+    value: Any  # Required in schema
+    label: str
+    id: str
+    description: str
+    tags: list[str]
+    customProperties: list[CustomProperty]
+    authoritativeDefinitions: list[AuthoritativeDefinition]
+
+
 # Forward reference for recursive types
 class SchemaItemProperty(TypedDict, total=False):
     """Item definition for array logicalType (recursive schema structure).
@@ -399,6 +414,7 @@ class SchemaItemProperty(TypedDict, total=False):
     businessName: str
     logicalType: LogicalType
     logicalTypeOptions: dict[str, Any]
+    enum: list[EnumValue]
     physicalType: str
     physicalName: str
     primaryKey: bool
@@ -435,6 +451,7 @@ class SchemaProperty(TypedDict, total=False):
     businessName: str
     logicalType: LogicalType
     logicalTypeOptions: dict[str, Any]
+    enum: list[EnumValue]
     physicalType: str
     physicalName: str
     primaryKey: bool

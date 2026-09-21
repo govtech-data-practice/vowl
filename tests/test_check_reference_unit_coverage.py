@@ -361,7 +361,7 @@ def test_logical_type_options_reference_raises_for_missing_query_implementation(
     ref._cached_ast = None
     ref._option_key = "unexpectedOption"
 
-    with pytest.raises(ValueError, match="No query implementation for logicalTypeOptions key 'unexpectedOption'"):
+    with pytest.raises(ValueError, match="No predicate implementation for scalar option 'unexpectedOption'"):
         ref._build_ast()
 
 

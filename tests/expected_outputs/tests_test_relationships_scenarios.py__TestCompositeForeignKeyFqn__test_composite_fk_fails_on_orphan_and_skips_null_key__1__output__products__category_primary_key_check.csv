@@ -1,0 +1,3 @@
+category,sku,product_name,check_id,tables_in_query
+books,B1,Novel,category_primary_key_check,products
+books,B2,Poetry,category_primary_key_check,products

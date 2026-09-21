@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-fix typecheck check verify security-scan security-audit security-secrets release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean docs-lint docs-fix
+.PHONY: help install install-dev install-lean-ci-test install-all generate-models doxygen doxygen-open doxygen-clean clean test lint lint-fix format format-fix typecheck check verify security-scan security-audit security-secrets release-check release-upload-testpypi release-tag docs-serve docs-build docs-clean docs-lint docs-fix rerun-examples
 
 UV ?= uv
 
@@ -37,6 +37,7 @@ help:
 	@echo "  docs-serve       Start local documentation preview server"
 	@echo "  docs-build       Build documentation site"
 	@echo "  docs-clean       Remove generated documentation site"
+	@echo "  rerun-examples   Re-execute all example notebooks in-place"
 
 # Installation targets
 install:
@@ -190,6 +191,17 @@ release-tag:
 # Verify (all checks + tests)
 verify: check test
 	@echo "All checks passed!"
+
+# Example notebooks
+EXAMPLE_NOTEBOOKS := $(shell find examples -name '*.ipynb' | sort)
+
+rerun-examples:
+	@echo "Re-executing $(words $(EXAMPLE_NOTEBOOKS)) example notebook(s)..."
+	@for nb in $(EXAMPLE_NOTEBOOKS); do \
+		echo "  Running $$nb ..."; \
+		$(UV) run jupyter nbconvert --to notebook --inplace --execute "$$nb" || exit 1; \
+	done
+	@echo "All example notebooks re-executed."
 
 # Documentation (Zensical)
 docs-serve:

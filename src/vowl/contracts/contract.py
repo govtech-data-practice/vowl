@@ -5,6 +5,7 @@ import re
 import socket
 import warnings
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin, urlparse
 
@@ -146,6 +147,33 @@ def _validate_public_http_url(url: str) -> tuple[str, str]:
     return hostname, validated_ip
 
 
+# Relationship-reference classification patterns (ODCS foreign keys).
+# Shorthand references use dotted *names*, e.g. "orders.customer_id".
+_SHORTHAND_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*(?:\.[A-Za-z_][A-Za-z0-9_\-]*)+$")
+# External-file references carry a "<file>.yaml#<fragment>" form, optionally
+# prefixed with an http(s) scheme, e.g. "warehouse.yaml#/schema/dim/properties/sku".
+_EXTERNAL_REF_RE = re.compile(r"^((?:https?://)?[A-Za-z0-9._\-/]+\.ya?ml)#(.+)$")
+
+
+@dataclass(frozen=True)
+class ResolvedRef:
+    """A resolved foreign-key reference endpoint.
+
+    Attributes:
+        schema_name: ODCS ``name`` of the target schema. Doubles as the table
+            name emitted in generated SQL and as the caller-supplied adapter key.
+        columns: ODCS ``name`` of each target property, in reference order.
+        external: True when resolved from an external contract file.
+        target_unique: True when every target column is declared ``unique`` or
+            ``primaryKey`` (used only to warn about ambiguous FK targets).
+    """
+
+    schema_name: str
+    columns: list[str] = field(default_factory=list)
+    external: bool = False
+    target_unique: bool = False
+
+
 class Contract:
     """
     Represents a data quality contract that defines validation rules and schema expectations.
@@ -160,8 +188,16 @@ class Contract:
         contract_data (Dict[str, Any]): The parsed contract data from YAML or JSON
     """
 
-    def __init__(self, contract_data: dict[str, Any]):
+    def __init__(self, contract_data: dict[str, Any], *, origin: str | None = None):
         self.contract_data: DataContract = contract_data
+        # Retrieval location this contract was loaded from (local path, http(s)
+        # URL, or s3 URI); None when constructed directly from an in-memory dict.
+        # Relative external references (e.g. a foreign key pointing at
+        # ``warehouse.yaml#/...``) are resolved against this per RFC 3986 §5.
+        self._origin: str | None = origin
+        # External contracts loaded to resolve cross-file references, cached by
+        # the raw file reference string as written in this contract.
+        self._external_cache: dict[str, Contract] = {}
 
         # Validate on construction using jsonschema
         api_version = contract_data.get("apiVersion")
@@ -170,6 +206,11 @@ class Contract:
                 f"Contract does not specify an apiVersion. Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
         validate_contract(contract_data, api_version)
+
+    @property
+    def origin(self) -> str | None:
+        """The location this contract was loaded from, or None for in-memory data."""
+        return self._origin
 
     @classmethod
     def _fetch_from_http_url(cls, url: str) -> str:
@@ -303,15 +344,19 @@ class Contract:
             jsonschema.ValidationError: If the contract data is invalid
             ImportError: If required packages (requests/boto3) are not installed
         """
-        # Determine the source type and fetch content
+        # Determine the source type and fetch content. ``origin`` records the
+        # retrieval location so relative external references resolve against it.
         contract_content = None
+        origin: str | None = None
 
         # Check if it's an S3 path
         if contract_file_path.startswith("s3://"):
             contract_content = cls._fetch_from_s3_uri(contract_file_path)
+            origin = contract_file_path
         # Check if it's an HTTP(S) URL
         elif contract_file_path.startswith(("http://", "https://")):
             contract_content = cls._fetch_from_http_url(contract_file_path)
+            origin = contract_file_path
         # Otherwise, treat as local file path
         else:
             if not os.path.exists(contract_file_path):
@@ -322,6 +367,7 @@ class Contract:
                     contract_content = yaml_file.read()
             except Exception as file_reading_error:
                 raise OSError(f"Error reading {contract_file_path}: {file_reading_error}") from file_reading_error
+            origin = os.path.abspath(contract_file_path)
 
         # Parse contract content (YAML parser also accepts JSON)
         try:
@@ -333,7 +379,7 @@ class Contract:
                 f"Invalid contract YAML/JSON in {contract_file_path}: {yaml_parsing_error}"
             ) from yaml_parsing_error
 
-        return cls(contract_data)
+        return cls(contract_data, origin=origin)
 
     def get_schema_properties(self) -> dict[str, Any]:
         """
@@ -448,6 +494,160 @@ class Contract:
         remaining = parts[:-levels]
         return ".".join(remaining)
 
+    # ------------------------------------------------------------------
+    # Foreign-key / relationship reference resolution
+    # ------------------------------------------------------------------
+
+    def resolve_reference(self, ref: str | list[str]) -> ResolvedRef:
+        """Resolve a foreign-key reference endpoint to its target schema/columns.
+
+        Accepts a single reference string or a list of strings (a composite
+        key). Every entry of a composite reference must resolve to a property in
+        the *same* target schema; resolved columns preserve reference order.
+
+        Three notations are supported:
+          * Shorthand ``object.property`` — resolved by schema/property ``name``.
+          * Fully-qualified ``/schema/<id>/properties/<id>`` — matched by ``id``,
+            returning the target's ``name``.
+          * External ``file.yaml#/schema/<id>/properties/<id>`` — the file is
+            loaded (relative to this contract's origin, SSRF-guarded) and the
+            fragment resolved within it.
+
+        Raises:
+            ValueError: If the reference is malformed, unsupported (e.g. a nested
+                or array target), spans multiple target schemas, or cannot be
+                resolved to a declared schema/property.
+        """
+        if isinstance(ref, list):
+            if not ref:
+                raise ValueError("relationship reference list is empty")
+            resolved = [self._resolve_single_reference(entry) for entry in ref]
+            schema_names = {r.schema_name for r in resolved}
+            if len(schema_names) != 1:
+                raise ValueError(f"composite foreign key spans multiple target schemas: {sorted(schema_names)}")
+            columns: list[str] = []
+            for r in resolved:
+                columns.extend(r.columns)
+            return ResolvedRef(
+                schema_name=resolved[0].schema_name,
+                columns=columns,
+                external=any(r.external for r in resolved),
+                target_unique=all(r.target_unique for r in resolved),
+            )
+        return self._resolve_single_reference(ref)
+
+    def _resolve_single_reference(self, ref: str) -> ResolvedRef:
+        if not isinstance(ref, str) or not ref:
+            raise ValueError(f"relationship reference must be a non-empty string, got: {ref!r}")
+
+        external_match = _EXTERNAL_REF_RE.match(ref)
+        if external_match:
+            file_part, fragment = external_match.group(1), external_match.group(2)
+            external = self._load_external(file_part)
+            inner = external._resolve_single_reference(fragment)
+            return ResolvedRef(
+                schema_name=inner.schema_name,
+                columns=inner.columns,
+                external=True,
+                target_unique=inner.target_unique,
+            )
+
+        if _SHORTHAND_REF_RE.match(ref):
+            return self._resolve_shorthand(ref)
+
+        # Anything else is treated as a fully-qualified reference.
+        return self._resolve_fqn(ref)
+
+    def _resolve_shorthand(self, ref: str) -> ResolvedRef:
+        segments = ref.split(".")
+        if len(segments) != 2:
+            # object.property is the only supported shape; deeper paths address
+            # nested/array structures which are not yet supported.
+            raise ValueError(f"nested/array relationship targets are not yet supported: '{ref}'")
+        schema_name, prop_name = segments
+        schema = self._find_schema_by("name", schema_name)
+        if schema is None:
+            raise ValueError(f"relationship target schema '{schema_name}' not found (from '{ref}')")
+        prop = self._find_property_by(schema, "name", prop_name)
+        if prop is None:
+            raise ValueError(f"relationship target property '{ref}' not found")
+        return ResolvedRef(
+            schema_name=schema_name,
+            columns=[prop_name],
+            target_unique=bool(prop.get("unique") or prop.get("primaryKey")),
+        )
+
+    def _resolve_fqn(self, ref: str) -> ResolvedRef:
+        parts = [p for p in ref.split("/") if p != ""]
+        # Expect: <section> <schema-id> "properties" <property-id>
+        if len(parts) < 4 or parts[0] not in ("schema", "schemas") or parts[2] != "properties":
+            raise ValueError(f"unrecognized relationship reference '{ref}'")
+        if len(parts) > 4:
+            raise ValueError(f"nested/array relationship targets are not yet supported: '{ref}'")
+        schema_id, prop_id = parts[1], parts[3]
+        schema = self._find_schema_by("id", schema_id)
+        if schema is None:
+            raise ValueError(f"relationship target schema id '{schema_id}' not found (from '{ref}')")
+        prop = self._find_property_by(schema, "id", prop_id)
+        if prop is None:
+            raise ValueError(f"relationship target property '{ref}' not found")
+        schema_name = schema.get("name")
+        prop_name = prop.get("name")
+        if not schema_name or not prop_name:
+            raise ValueError(f"relationship target '{ref}' resolved to an element without a name")
+        return ResolvedRef(
+            schema_name=schema_name,
+            columns=[prop_name],
+            target_unique=bool(prop.get("unique") or prop.get("primaryKey")),
+        )
+
+    def _find_schema_by(self, key: str, value: str) -> dict[str, Any] | None:
+        for schema in self.contract_data.get("schema", []) or []:
+            if schema.get(key) == value:
+                return schema
+        return None
+
+    @staticmethod
+    def _find_property_by(schema: dict[str, Any], key: str, value: str) -> dict[str, Any] | None:
+        for prop in schema.get("properties", []) or []:
+            if prop.get(key) == value:
+                return prop
+        return None
+
+    def _load_external(self, file_ref: str) -> "Contract":
+        """Load an external contract referenced from this one.
+
+        The reference is resolved against this contract's ``origin`` (RFC 3986
+        §5 base-URI resolution) and loaded via :meth:`load`, so the existing
+        SSRF guards on the HTTP path apply. Results are cached per raw reference.
+
+        Raises:
+            ValueError: If this contract has no origin (was built from in-memory
+                data), or the external contract cannot be loaded.
+        """
+        if file_ref in self._external_cache:
+            return self._external_cache[file_ref]
+
+        parsed = urlparse(file_ref)
+        if parsed.scheme in ("http", "https"):
+            location = file_ref  # absolute URL — fetched via the SSRF-guarded path
+        elif self._origin is None:
+            raise ValueError(
+                f"cannot resolve external reference '{file_ref}': contract has no origin (loaded from in-memory data)"
+            )
+        elif self._origin.startswith(("http://", "https://", "s3://")):
+            location = urljoin(self._origin, file_ref)
+        else:
+            location = os.path.normpath(os.path.join(os.path.dirname(self._origin), file_ref))
+
+        try:
+            external = Contract.load(location)
+        except Exception as exc:
+            raise ValueError(f"could not load external contract '{file_ref}': {exc}") from exc
+
+        self._external_cache[file_ref] = external
+        return external
+
     def get_check_references_by_schema(
         self,
     ) -> dict[str, list["CheckReference"]]:
@@ -462,6 +662,9 @@ class Contract:
         - Required checks: for columns with required: true (validates no NULLs)
         - Unique checks: for columns with unique: true (validates uniqueness)
         - Primary key checks: for columns with primaryKey: true (validates unique + not null)
+        - Enum checks: for columns with enum (validates values are in the allowed set)
+        - Foreign key checks: for property- or schema-level relationships of
+          type foreignKey (validates every non-null key exists in the target)
 
         Returns:
             Dict mapping schema names to lists of CheckReference objects.
@@ -475,12 +678,16 @@ class Contract:
         """
         from .check_reference import (
             LOGICAL_TYPE_TO_SQL,
+            ArrayItemsCheckReference,
             CheckReference,
             DeclaredColumnExistsCheckReference,
+            EnumCheckReference,
             LogicalTypeCheckReference,
             LogicalTypeOptionsCheckReference,
             PrimaryKeyCheckReference,
+            PropertyForeignKeyCheckReference,
             RequiredCheckReference,
+            SchemaForeignKeyCheckReference,
             SQLColumnCheckReference,
             SQLTableCheckReference,
             UniqueCheckReference,
@@ -532,8 +739,11 @@ class Contract:
                 if logical_type:
                     if logical_type in LOGICAL_TYPE_TO_SQL:
                         refs_by_schema[schema_name].append(LogicalTypeCheckReference(self, prop_path))
-                    else:
-                        # string, object, array have no SQL type check
+                    elif logical_type != "array":
+                        # string / object have no SQL type check. `array` is
+                        # intentionally silent: it emits no standalone cast
+                        # check but enables the array option/items checks below
+                        # (the metadata gate), so it is expected, not a gap.
                         warnings.warn(
                             f"No type check generated for '{prop_name}' with logicalType '{logical_type}': "
                             f"type checks only supported for {', '.join(sorted(LOGICAL_TYPE_TO_SQL.keys()))}",
@@ -546,18 +756,86 @@ class Contract:
                 if logical_type_options:
                     for option_key, option_value in logical_type_options.items():
                         if option_value is not None:
+                            option_path = f"{prop_path}.logicalTypeOptions.{option_key}"
+                            # Metadata gate: array-cardinality options generate
+                            # ARRAY_LENGTH/ARRAY_DISTINCT SQL that is only valid
+                            # on a genuine array column. Emit them only when the
+                            # property declares logicalType: array; otherwise
+                            # degrade to an unsupported check rather than build
+                            # SQL that would error against a scalar column.
+                            if (
+                                option_key in LogicalTypeOptionsCheckReference.ARRAY_OPTION_KEYS
+                                and logical_type != "array"
+                            ):
+                                refs_by_schema[schema_name].append(
+                                    UnsupportedColumnCheckReference(
+                                        self,
+                                        option_path,
+                                        f"logicalTypeOptions '{option_key}' requires logicalType: array",
+                                    )
+                                )
+                                continue
                             try:
                                 refs_by_schema[schema_name].append(
                                     LogicalTypeOptionsCheckReference(self, prop_path, option_key, option_value)
                                 )
                             except ValueError as exc:
                                 refs_by_schema[schema_name].append(
-                                    UnsupportedColumnCheckReference(
-                                        self,
-                                        f"{prop_path}.logicalTypeOptions.{option_key}",
-                                        str(exc),
-                                    )
+                                    UnsupportedColumnCheckReference(self, option_path, str(exc))
                                 )
+
+                # Array element (items) checks. `items` describes the element
+                # schema of an array column; each element sub-check maps to one
+                # ArrayItemsCheckReference. Gated on logicalType: array — items
+                # on a non-array property degrades to a single unsupported check.
+                items = prop.get("items")
+                if isinstance(items, dict):
+                    items_path = f"{prop_path}.items"
+                    if logical_type != "array":
+                        refs_by_schema[schema_name].append(
+                            UnsupportedColumnCheckReference(
+                                self, items_path, "items validation requires logicalType: array"
+                            )
+                        )
+                    else:
+                        # Build one (kind, sub_path, kwargs) spec per element
+                        # sub-check, then construct each — degrading to an
+                        # unsupported check when the items schema is unactionable.
+                        item_specs: list[tuple[str, str, dict[str, object]]] = []
+                        if items.get("logicalType"):
+                            item_specs.append(("logicalType", f"{items_path}.logicalType", {}))
+                        item_options = items.get("logicalTypeOptions")
+                        if isinstance(item_options, dict):
+                            for item_key, item_value in item_options.items():
+                                if item_value is not None:
+                                    item_specs.append(
+                                        (
+                                            "option",
+                                            f"{items_path}.logicalTypeOptions.{item_key}",
+                                            {"option_key": item_key},
+                                        )
+                                    )
+                        if items.get("enum"):
+                            item_specs.append(("enum", f"{items_path}.enum", {}))
+
+                        for kind, sub_path, kwargs in item_specs:
+                            try:
+                                refs_by_schema[schema_name].append(
+                                    ArrayItemsCheckReference(self, prop_path, kind=kind, **kwargs)
+                                )
+                            except ValueError as exc:
+                                refs_by_schema[schema_name].append(
+                                    UnsupportedColumnCheckReference(self, sub_path, str(exc))
+                                )
+
+                # Enum (allowed value set) checks for columns with enum
+                if prop.get("enum"):
+                    try:
+                        refs_by_schema[schema_name].append(EnumCheckReference(self, prop_path))
+                    except ValueError as exc:
+                        refs_by_schema[schema_name].append(
+                            UnsupportedColumnCheckReference(self, f"{prop_path}.enum", str(exc))
+                        )
 
                 # Required checks for columns with required: true
                 if prop.get("required") is True:
@@ -570,6 +848,22 @@ class Contract:
                 # Primary key checks for columns with primaryKey: true
                 if prop.get("primaryKey") is True:
                     refs_by_schema[schema_name].append(PrimaryKeyCheckReference(self, prop_path))
+
+                # Property-level relationships (foreign keys)
+                for rel_idx, _rel in enumerate(prop.get("relationships", []) or []):
+                    rel_path = f"{prop_path}.relationships[{rel_idx}]"
+                    try:
+                        refs_by_schema[schema_name].append(PropertyForeignKeyCheckReference(self, prop_path, rel_idx))
+                    except ValueError as exc:
+                        refs_by_schema[schema_name].append(UnsupportedColumnCheckReference(self, rel_path, str(exc)))
+
+            # Schema-level relationships (foreign keys)
+            for rel_idx, _rel in enumerate(schema_obj.get("relationships", []) or []):
+                rel_path = f"$.schema[{schema_idx}].relationships[{rel_idx}]"
+                try:
+                    refs_by_schema[schema_name].append(SchemaForeignKeyCheckReference(self, schema_idx, rel_idx))
+                except ValueError as exc:
+                    refs_by_schema[schema_name].append(UnsupportedTableCheckReference(self, rel_path, str(exc)))
 
             # Table-level checks
             table_quality = schema_obj.get("quality", [])
@@ -713,3 +1007,43 @@ class Contract:
         """
         schema_list = self.contract_data.get("schema", [])
         return [s.get("name") for s in schema_list if s.get("name")]
+
+    def get_relationship_target_schema_names(self) -> set[str]:
+        """Resolve the target schema ``name`` of every foreign-key relationship.
+
+        Walks property-level and schema-level ``relationships`` and resolves each
+        ``to`` reference to its target schema ``name`` (via
+        :meth:`resolve_reference`). This includes targets defined in *other*
+        contract files (external references), which are not returned by
+        :meth:`get_schema_names`.
+
+        Resolution errors are swallowed: a reference that cannot be resolved
+        (missing target, unloadable external file, unsupported shape) is simply
+        omitted rather than raising. The result is therefore a best-effort set of
+        the schema names an adapter may legitimately be keyed under, used to
+        distinguish a cross-file FK target from a mistyped adapter key.
+
+        Returns:
+            Set of resolved target schema names. Empty if the contract declares
+            no relationships or none resolve.
+        """
+        targets: set[str] = set()
+        for schema_obj in self.contract_data.get("schema", []):
+            for prop in schema_obj.get("properties", []) or []:
+                for rel in prop.get("relationships", []) or []:
+                    to = rel.get("to")
+                    if to is None:
+                        continue
+                    try:
+                        targets.add(self.resolve_reference(to).schema_name)
+                    except ValueError:
+                        continue
+            for rel in schema_obj.get("relationships", []) or []:
+                to = rel.get("to")
+                if to is None:
+                    continue
+                try:
+                    targets.add(self.resolve_reference(to).schema_name)
+                except ValueError:
+                    continue
+        return targets

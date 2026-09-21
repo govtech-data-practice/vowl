@@ -523,3 +523,100 @@ class TestEdgeCases:
         """Queries with unicode characters should be handled."""
         query = "SELECT * FROM users WHERE name = '日本語'"
         validate_read_only_query(query)  # Should not raise
+
+
+class TestForeignKeyGeneratedSQLSafety:
+    """Auto-generated foreign-key checks must not be injectable via contract
+    values. Reference *strings* are constrained by a strict grammar (malicious
+    ones degrade to unsupported), but resolved schema/column *names* flow into
+    the AST and must be emitted as quoted identifiers, never interpolated."""
+
+    def _fk_ref(self, monkeypatch, from_name: str, to_name: str):
+        # Target is matched by a benign FQN id, so its malicious *name* is what
+        # reaches the SQL — the realistic injection surface for generated FK SQL.
+        from vowl.contracts.check_reference_generated import PropertyForeignKeyCheckReference
+        from vowl.contracts.contract import Contract
+        from vowl.contracts.models import get_latest_version
+
+        monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+        contract = Contract(
+            {
+                "apiVersion": get_latest_version(),
+                "kind": "DataContract",
+                "version": "1.0.0",
+                "id": "fk-injection",
+                "status": "active",
+                "schema": [
+                    {
+                        "id": "tschema",
+                        "name": "target_tbl",
+                        "properties": [{"id": "tprop", "name": to_name, "logicalType": "string", "primaryKey": True}],
+                    },
+                    {
+                        "name": "source_tbl",
+                        "properties": [
+                            {
+                                "name": from_name,
+                                "logicalType": "string",
+                                "relationships": [{"type": "foreignKey", "to": "/schema/tschema/properties/tprop"}],
+                            }
+                        ],
+                    },
+                ],
+            }
+        )
+        refs = contract.get_check_references_by_schema()["source_tbl"]
+        fk = [r for r in refs if isinstance(r, PropertyForeignKeyCheckReference)]
+        assert len(fk) == 1
+        return fk[0]
+
+    @pytest.mark.parametrize("dialect", ["duckdb", "postgres"])
+    def test_malicious_column_name_is_quoted_not_executed(self, monkeypatch, dialect):
+        evil = 'id"); DROP TABLE target_tbl; --'
+        ref = self._fk_ref(monkeypatch, from_name="fk", to_name=evil)
+        query = ref.get_query(dialect)
+        # Structurally inert: the payload is a single quoted identifier with the
+        # embedded double-quote escaped by doubling — not a statement boundary.
+        assert '""' in query
+        # Defence-in-depth: the security validator still rejects the pathological
+        # identifier, so such a check ERRORs rather than ever executing unguarded.
+        with pytest.raises(SQLSecurityError):
+            validate_query_security(query, dialect)
+
+    def test_malicious_reference_string_degrades_not_injects(self, monkeypatch):
+        # A reference string carrying SQL punctuation fails the strict grammar
+        # and degrades to an unsupported ref rather than reaching the AST.
+        from vowl.contracts.check_reference_generated import PropertyForeignKeyCheckReference
+        from vowl.contracts.check_reference_unsupported import UnsupportedColumnCheckReference
+        from vowl.contracts.contract import Contract
+        from vowl.contracts.models import get_latest_version
+
+        monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+        contract = Contract(
+            {
+                "apiVersion": get_latest_version(),
+                "kind": "DataContract",
+                "version": "1.0.0",
+                "id": "fk-injection-ref",
+                "status": "active",
+                "schema": [
+                    {
+                        "name": "source_tbl",
+                        "properties": [
+                            {
+                                "name": "fk",
+                                "logicalType": "string",
+                                "relationships": [{"type": "foreignKey", "to": 'x.y"); DROP TABLE t; --'}],
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+        refs = contract.get_check_references_by_schema()["source_tbl"]
+        assert not any(isinstance(r, PropertyForeignKeyCheckReference) for r in refs)
+        assert any(isinstance(r, UnsupportedColumnCheckReference) for r in refs)
+
+    def test_generated_fk_passes_query_security(self, monkeypatch):
+        ref = self._fk_ref(monkeypatch, from_name="customer_id", to_name="id")
+        validate_query_security(ref.get_query("duckdb"), "duckdb")

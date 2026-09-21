@@ -56,6 +56,10 @@ def _configure_docker_env():
         os.environ["DOCKER_HOST"] = f"unix://{docker_sock}"
     if "TESTCONTAINERS_RYUK_DISABLED" not in os.environ:
         os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
+    # When DOCKER_HOST is a unix socket (Docker Desktop), testcontainers derives
+    # the published-port host from that URL and hands back the socket path as the
+    # container host. Pin it to localhost so DB clients connect to the mapped port.
+    os.environ.setdefault("TESTCONTAINERS_HOST_OVERRIDE", "localhost")
 
 
 def _ibis_backend_available(backend_name: str) -> bool:

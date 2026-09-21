@@ -1,0 +1,2 @@
+employee_id,manager_id,employee_name,check_id,tables_in_query
+5,42,Orphan,employees_manager_id_foreign_key_check,employees

@@ -80,6 +80,18 @@ con = ibis.sqlite.from_connection(raw_con)
 
 This is safe with `PooledAdapter` because it hands each connection to only one thread at a time. **vowl's built-in connection-string path (`ibis.connect("sqlite://...")`) does not set this flag**, so a SQLite adapter created that way and then pooled will hit the limitation. Pass a pre-built thread-safe connection as shown above if you need parallel SQLite.
 
+### Native Array Checks
+
+Array checks (see [Array Checks](contracts.md#array-checks)) rely on native array SQL. vowl builds them from contract metadata without inspecting the actual column type, so on an engine that doesn't support arrays the check returns `ERROR` rather than silently passing.
+
+**Only DuckDB is tested.** The array checks are verified against DuckDB, where all three constructs execute correctly. For every other engine, the behaviour below is _inferred from the SQL vowl emits_ rather than observed from an actual run, so treat the table as expectations rather than guarantees. Outside DuckDB, validate against your own data or expect an `ERROR` for unsupported constructs.
+
+| Array check                    | SQL construct       | Expected to work (untested)                   | Expected to ERROR                                                     |
+| ------------------------------ | ------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| `minItems` / `maxItems`        | `ARRAY_LENGTH`      | spark, snowflake, trino, bigquery, clickhouse | scalar-only engines (sqlite, mysql, tsql, oracle)                     |
+| `uniqueItems`                  | `ARRAY_DISTINCT`    | spark, snowflake, trino, clickhouse           | **postgres, bigquery** (no `array_distinct` builtin)                  |
+| `items.*` (element validation) | `UNNEST` + `EXISTS` | postgres, trino, bigquery                     | clickhouse, sqlite, mysql, tsql, oracle (spark/snowflake best-effort) |
+
 ---
 
 ## Multi-Source Adapters: Data Materialisation

@@ -164,3 +164,20 @@ payroll columns:
       WHERE ref.employee_id = payroll.employee_id
     )
     ```
+
+## Reference resolution for relationships
+
+`relationships` targets are resolved the way JSON Schema and OpenAPI resolve
+`$ref`, per [RFC 3986 §5](https://www.rfc-editor.org/rfc/rfc3986#section-5):
+
+- **Shorthand** `object.property` resolves by schema/property `name`.
+- **Fully-qualified** `/schema/<id>/properties/<id>` matches by `id` and returns
+  the target's `name`.
+- **External** `file.yaml#/schema/<id>/properties/<id>` loads `file.yaml`
+  **relative to the referencing contract's own retrieval location** (its
+  `origin`), then resolves the fragment within it. A contract built from
+  in-memory data has no origin, so a relative external reference degrades rather
+  than guessing a base. All external fetches reuse the SSRF-guarded load path.
+
+Shorthand and fully-qualified references that point at the same property produce
+identical SQL. The notation is a lookup convenience, not a semantic distinction.

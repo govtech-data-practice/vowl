@@ -54,9 +54,16 @@ class ValidationRunner:
         mapper = self.mapper_cls()
         resolved: dict[str, IbisAdapter] = {}
 
+        # Adapter keys may legitimately name a foreign-key *target* schema that
+        # lives in another contract file (an external reference), which is not
+        # among this contract's declared schema names. Treat those resolved
+        # target names as known so the "no schema with that name" warning still
+        # catches genuine typos without flagging required cross-file adapters.
+        known_names = set(self._schema_names) | self._contract.get_relationship_target_schema_names()
+
         for key, adapter_input in self._adapters_input.items():
             schema_name = str(key)
-            if schema_name not in self._schema_names:
+            if schema_name not in known_names:
                 warnings.warn(
                     f"Adapter provided for '{schema_name}' but no schema with that name "
                     f"exists in the contract. Available schemas: {self._schema_names}",
