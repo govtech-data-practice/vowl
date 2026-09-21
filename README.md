@@ -1122,11 +1122,12 @@ result.display_full_report()
 
 ### Planned
 
-| Capability                       | Description                                                                  | Status  |
-| -------------------------------- | ---------------------------------------------------------------------------- | ------- |
-| 🔬 **Alternative Check Engines** | Support for dqx, dbt, Soda, Great Expectations (subject to licensing review) | Planned |
-| 📅 **CLI Interface**             | Command-line interface for running validations directly from the terminal    | Planned |
-| 📅 **vowl-ui**                   | Web-based validation interface for vowl                                      | Planned |
+| Capability                       | Description                                                               | Status  |
+| -------------------------------- | ------------------------------------------------------------------------- | ------- |
+| 🔬 **Alternative Check Engines** | Support for dqx, Soda, Great Expectations (subject to licensing review)   | Planned |
+| 📡 **OpenTelemetry Export**      | Export validation metrics, logs, and traces via OpenTelemetry (OTLP)      | Planned |
+| 📅 **CLI Interface**             | Command-line interface for running validations directly from the terminal | Planned |
+| 📅 **vowl-ui**                   | Web-based validation interface for vowl                                   | Planned |
 
 ---
 
