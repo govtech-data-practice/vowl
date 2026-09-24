@@ -85,6 +85,20 @@ def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
     return cleaned
 
 
+def _resolve_check_dimension(check_result: CheckResult) -> str:
+    """Resolve a check's DQ dimension for OTEL rollup, defaulting to ``"unknown"``.
+
+    The dimension is read exactly as the check reports it: authored ``quality``
+    rules carry the author-asserted dimension, and auto-generated checks
+    (``required`` / ``unique`` / type / column-existence) carry the dimension
+    vowl's generator assigns them (e.g. ``completeness`` for ``required``).
+    ``"unknown"`` is only used when a check genuinely reports no dimension.
+    """
+    metadata = check_result.metadata
+    definition = metadata.get("check_definition") or {}
+    return metadata.get("dimension") or definition.get("dimension") or "unknown"
+
+
 class ValidationResult:
     """Container for validation results and reporting helpers."""
 
@@ -271,6 +285,73 @@ class ValidationResult:
 
             unique_rows_by_schema[schema_name].update(iter_unique_failed_row_keys(failed_rows, relevant_columns))
         return unique_rows_by_schema
+
+    def _rejected_rows_by_dimension(self) -> dict[tuple[str, str], int]:
+        """Unique failing rows per ``(schema, dimension)``, deduped per bucket.
+
+        Reuses the row-quality eligibility and column-selection logic, but keys
+        the dedup set by ``(schema, dimension)`` so a row failing two checks in
+        the same dimension counts once for that dimension.  A check without a
+        recorded dimension falls under ``"unknown"``.  Used as the
+        ``vowl.rejected_rows`` metric numerator by the OTEL exporter.
+        """
+        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
+        if not total_rows_by_schema:
+            return {}
+
+        eligible_checks = self._get_row_quality_eligible_checks()
+        eligible_schemas = get_eligible_schema_names(eligible_checks, total_rows_by_schema)
+        if not eligible_schemas:
+            return {}
+
+        schema_columns = {schema_name: self._get_schema_column_names(schema_name) for schema_name in eligible_schemas}
+        unique_rows_by_key: dict[tuple[str, str], set[tuple[Any, ...]]] = {}
+        for check_result in eligible_checks:
+            if check_result.status != "FAILED":
+                continue
+
+            schema_name = check_result.metadata.get("schema_name")
+            if not isinstance(schema_name, str) or schema_name not in eligible_schemas:
+                continue
+
+            failed_rows = check_result.failed_rows
+            if len(failed_rows) == 0:
+                continue
+
+            relevant_columns = select_relevant_failed_row_columns(
+                schema_name,
+                failed_rows,
+                schema_columns,
+                self._ROW_QUALITY_EXCLUDED_COLUMNS,
+            )
+            if not relevant_columns:
+                continue
+
+            dimension = _resolve_check_dimension(check_result)
+            bucket = unique_rows_by_key.setdefault((schema_name, dimension), set())
+            bucket.update(iter_unique_failed_row_keys(failed_rows, relevant_columns))
+        return {key: len(rows) for key, rows in unique_rows_by_key.items()}
+
+    def _check_pass_rate_by_dimension(self) -> dict[tuple[str, str], float]:
+        """Per ``(schema, dimension)`` check pass rate in ``[0, 1]``.
+
+        A per-run convenience gauge (``vowl.dq.pass_rate``), never an
+        aggregation primitive.  Denominator is every check in the bucket that
+        carries a schema; a check without a recorded ``dimension`` defaults to
+        ``"unknown"``.
+        """
+        totals: dict[tuple[str, str], int] = {}
+        passed: dict[tuple[str, str], int] = {}
+        for check_result in self.check_results:
+            schema_name = check_result.metadata.get("schema_name")
+            if not isinstance(schema_name, str):
+                continue
+            dimension = _resolve_check_dimension(check_result)
+            key = (schema_name, dimension)
+            totals[key] = totals.get(key, 0) + 1
+            if check_result.status == "PASSED":
+                passed[key] = passed.get(key, 0) + 1
+        return {key: passed.get(key, 0) / total for key, total in totals.items() if total}
 
     def _get_schema_validation_breakdown(self) -> dict[str, SchemaValidationBreakdown]:
         if self._schema_validation_breakdown is not None:
@@ -1117,6 +1198,78 @@ class ValidationResult:
             pa.table({key: [row.get(key) for row in data] for key in ordered_keys}) if data else pa.table({}),
             eager_only=True,
         )
+
+    def export_otel(
+        self,
+        *,
+        signals: Sequence[str] = ("metrics", "traces"),
+        endpoint: str | None = None,
+        protocol: str = "grpc",
+        namespace: str = "vowl",
+        service_name: str | None = None,
+        headers: dict[str, str] | None = None,
+        resource_attributes: dict[str, Any] | None = None,
+        max_failed_rows_sample: int = 0,
+        use_global_providers: bool = False,
+        metric_provider: Any | None = None,
+        tracer_provider: Any | None = None,
+        logger_provider: Any | None = None,
+    ) -> str:
+        """Export this run's results to OpenTelemetry (metrics, traces, logs).
+
+        Requires the optional ``[otel]`` extra (``pip install vowl[otel]``).
+        Reads this finished result only; nothing is re-run against the data.
+        Returns the generated ``vowl.run.id`` so a caller can correlate an
+        artifact it saved under that id.  See docs/otel-export-design.md.
+
+        Args:
+            signals: Which signals to emit, any subset of ``"metrics"``,
+                ``"traces"``, ``"logs"``.  Default is metrics and traces; logs
+                are opt-in.
+            endpoint: OTLP endpoint.  When omitted, standard
+                ``OTEL_EXPORTER_OTLP_*`` env vars are used.
+            protocol: ``"grpc"`` (default) or ``"http/protobuf"``.
+            namespace: Prefix for metric and span **names** (default ``vowl``).
+                Resource attribute keys stay ``vowl.*`` regardless.
+            service_name: ``service.name`` resource attribute; defaults to
+                ``namespace``.
+            headers: Optional OTLP headers (e.g. auth).
+            resource_attributes: Pure pass-through attributes attached to every
+                signal.  vowl never inspects or reroutes a key.
+            max_failed_rows_sample: Max failing rows to attach per check to
+                logs/span events.  ``0`` (default) exports no cell values; a
+                positive value is also capped by the run's ``max_failed_rows``.
+            use_global_providers: Record into the process's already-configured
+                global providers instead of building OTLP exporters.  vowl then
+                owns no lifecycle (no flush/shutdown).
+            metric_provider / tracer_provider / logger_provider: Explicit
+                providers for full control; take precedence over everything else.
+
+        Raises:
+            ImportError: When the ``[otel]`` extra is not installed.
+        """
+        try:
+            from ..otel import OtelExporter
+        except ImportError as exc:
+            raise ImportError(
+                "OpenTelemetry export requires the optional 'otel' extra. Install it with:  pip install vowl[otel]"
+            ) from exc
+
+        exporter = OtelExporter(
+            signals=tuple(signals),
+            endpoint=endpoint,
+            protocol=protocol,
+            namespace=namespace,
+            service_name=service_name,
+            headers=headers,
+            resource_attributes=resource_attributes,
+            max_failed_rows_sample=max_failed_rows_sample,
+            use_global_providers=use_global_providers,
+            metric_provider=metric_provider,
+            tracer_provider=tracer_provider,
+            logger_provider=logger_provider,
+        )
+        return exporter.export(self)
 
     def save(
         self,

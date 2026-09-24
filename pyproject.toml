@@ -53,10 +53,19 @@ spark-classic = [
     "pyspark>=3.0.0",
 ]
 
-# Everything (base + spark + aws)
+# OpenTelemetry export of validation results (metrics, traces, logs). Optional;
+# `import vowl` never imports opentelemetry. See docs/otel-export-design.md.
+otel = [
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp>=1.27.0",
+]
+
+# Everything (base + spark + aws + otel)
 all = [
     "boto3>=1.42.38",
     "ibis-framework[pyspark]>=11.0.0",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
     "pyspark[connect]>=3.4.0",
 ]
 
@@ -89,6 +98,8 @@ dev = [
     "ibis-framework[mssql,mysql,oracle,postgres]>=11.0.0",
     "ipykernel>=7.1.0",
     "matplotlib>=3.10.9",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
     "polars>=1.39.2",
     # pyspark[connect] pulls grpcio so the Spark Connect detection tests
     # (tests/test_spark_connect_detection.py) run locally under `dev` instead of
