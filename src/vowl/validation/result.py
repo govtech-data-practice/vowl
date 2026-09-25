@@ -286,14 +286,14 @@ class ValidationResult:
             unique_rows_by_schema[schema_name].update(iter_unique_failed_row_keys(failed_rows, relevant_columns))
         return unique_rows_by_schema
 
-    def _rejected_rows_by_dimension(self) -> dict[tuple[str, str], int]:
+    def _failed_rows_by_dimension(self) -> dict[tuple[str, str], int]:
         """Unique failing rows per ``(schema, dimension)``, deduped per bucket.
 
         Reuses the row-quality eligibility and column-selection logic, but keys
         the dedup set by ``(schema, dimension)`` so a row failing two checks in
         the same dimension counts once for that dimension.  A check without a
         recorded dimension falls under ``"unknown"``.  Used as the
-        ``vowl.rejected_rows`` metric numerator by the OTEL exporter.
+        ``vowl.failed_rows`` metric numerator by the OTEL exporter.
         """
         total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
         if not total_rows_by_schema:
@@ -1220,7 +1220,7 @@ class ValidationResult:
         Requires the optional ``[otel]`` extra (``pip install vowl[otel]``).
         Reads this finished result only; nothing is re-run against the data.
         Returns the generated ``vowl.run.id`` so a caller can correlate an
-        artifact it saved under that id.  See docs/otel-export-design.md.
+        artifact it saved under that id.  See docs/otel-export.md.
 
         Args:
             signals: Which signals to emit, any subset of ``"metrics"``,

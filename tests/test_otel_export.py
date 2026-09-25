@@ -223,7 +223,7 @@ def test_check_attributes_resolve_dimension_and_severity_from_definition(result)
     attrs = check_attributes(_failed_check(result))
     assert attrs["dimension"] == "consistency"
     assert attrs["severity"] == "error"
-    assert attrs["schema"] == "orders"
+    assert attrs["schema_name"] == "orders"
     assert attrs["status"] == "FAILED"
 
 
@@ -232,7 +232,7 @@ def test_check_attributes_resolve_dimension_and_severity_from_definition(result)
 # --------------------------------------------------------------------------- #
 
 
-def test_metric_emitter_records_dimensioned_rejected_rows(result):
+def test_metric_emitter_records_dimensioned_failed_rows(result):
     from vowl.otel._metrics import MetricEmitter
 
     provider, reader = _meter_provider()
@@ -240,19 +240,19 @@ def test_metric_emitter_records_dimensioned_rejected_rows(result):
     points = _metric_points(reader)
 
     assert "vowl.checks" in points
-    assert "vowl.rejected_rows" in points
+    assert "vowl.failed_rows" in points
     assert "vowl.rows.total" in points
 
-    (rejected,) = points["vowl.rejected_rows"]
-    assert rejected.value == 2
-    assert rejected.attributes["schema"] == "orders"
-    assert rejected.attributes["dimension"] == "consistency"
+    (failed,) = points["vowl.failed_rows"]
+    assert failed.value == 2
+    assert failed.attributes["schema_name"] == "orders"
+    assert failed.attributes["dimension"] == "consistency"
 
     # SQL text is high-cardinality: it must never ride on a metric label.
     for point in points["vowl.checks"]:
         assert "query" not in point.attributes
 
-    total = {p.attributes["schema"]: p.value for p in points["vowl.rows.total"]}
+    total = {p.attributes["schema_name"]: p.value for p in points["vowl.rows.total"]}
     assert total["orders"] == 4
 
 
@@ -505,8 +505,8 @@ def test_export_end_to_end_with_explicit_providers(result):
     assert isinstance(run_id, str) and run_id
 
     # Metrics.
-    (rejected,) = _metric_points(reader)["vowl.rejected_rows"]
-    assert rejected.attributes["dimension"] == "consistency"
+    (failed,) = _metric_points(reader)["vowl.failed_rows"]
+    assert failed.attributes["dimension"] == "consistency"
     # Traces.
     assert any(s.name == "vowl.validate" for s in span_exporter.get_finished_spans())
     assert any(

@@ -238,7 +238,7 @@ def check_attributes(check_result: Any) -> dict[str, str | bool | int | float]:
         {
             "check_name": check_result.check_name,
             "status": check_result.status,
-            "schema": metadata.get("schema_name"),
+            "schema_name": metadata.get("schema_name"),
             "dimension": check_dimension(check_result),
             "severity": check_severity(check_result),
             "engine": metadata.get("engine"),

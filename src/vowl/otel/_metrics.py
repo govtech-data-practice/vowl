@@ -43,7 +43,7 @@ class MetricEmitter:
             metadata = check_result.metadata
             attrs = {
                 "check_name": check_result.check_name,
-                "schema": metadata.get("schema_name"),
+                "schema_name": metadata.get("schema_name"),
                 "engine": metadata.get("engine"),
             }
             duration.record(
@@ -54,16 +54,16 @@ class MetricEmitter:
     def _emit_rows(self, result: ValidationResult) -> None:
         # Numerator: unique failing rows per (schema, dimension), deduplicated so
         # a row failing two checks in one dimension counts once.
-        rejected = self._meter.create_counter(self._name("rejected_rows"), unit="{row}")
-        for (schema, dimension), count in result._rejected_rows_by_dimension().items():
+        failed = self._meter.create_counter(self._name("failed_rows"), unit="{row}")
+        for (schema, dimension), count in result._failed_rows_by_dimension().items():
             if count:
-                rejected.add(count, {"schema": schema, "dimension": dimension})
+                failed.add(count, {"schema_name": schema, "dimension": dimension})
 
         # Denominator: one contribution per schema per run.
         total = self._meter.create_counter(self._name("rows.total"), unit="{row}")
         for schema, row_count in result._vs.get("total_rows_by_schema", {}).items():
             if row_count:
-                total.add(int(row_count), {"schema": schema})
+                total.add(int(row_count), {"schema_name": schema})
 
     def _emit_run_duration(self, result: ValidationResult) -> None:
         run_duration = self._meter.create_counter(self._name("run.duration"), unit="ms")
@@ -71,11 +71,11 @@ class MetricEmitter:
 
     def _emit_gauges(self, result: ValidationResult) -> None:
         # Per-run convenience gauges. Never the aggregation primitive: windowed
-        # rates are recomputed downstream from rejected_rows / rows.total.
+        # rates are recomputed downstream from failed_rows / rows.total.
         data_quality = self._meter.create_gauge(self._name("dq.data_quality"), unit="1")
         for schema, summary in result._get_row_quality_summary_by_schema().items():
-            data_quality.set(float(summary["data_quality"]) / 100.0, {"schema": schema})
+            data_quality.set(float(summary["data_quality"]) / 100.0, {"schema_name": schema})
 
         pass_rate = self._meter.create_gauge(self._name("dq.pass_rate"), unit="1")
         for (schema, dimension), rate in result._check_pass_rate_by_dimension().items():
-            pass_rate.set(rate, {"schema": schema, "dimension": dimension})
+            pass_rate.set(rate, {"schema_name": schema, "dimension": dimension})
