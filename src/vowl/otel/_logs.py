@@ -27,11 +27,13 @@ class LogEmitter:
         namespace: str,
         span_contexts: dict[int, Any],
         sample_rows_by_check: dict[int, list[dict]],
+        context_attributes: dict[str, Any] | None = None,
     ) -> None:
         self._logger = logger_provider.get_logger("vowl")
         self._ns = namespace
         self._span_contexts = span_contexts
         self._samples = sample_rows_by_check
+        self._ctx_attrs: dict[str, Any] = context_attributes or {}
 
     def emit(self, result: ValidationResult) -> None:
         from opentelemetry.sdk._logs._internal import LogRecord
@@ -43,7 +45,8 @@ class LogEmitter:
                 continue
             severity_number, severity_text = severity
 
-            attrs = dict(check_attributes(check_result))
+            attrs = dict(self._ctx_attrs)
+            attrs.update(check_attributes(check_result))
             attrs["failed_rows_count"] = int(check_result.failed_rows_count or 0)
             query = check_query(check_result)
             if query is not None:

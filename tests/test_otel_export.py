@@ -1,7 +1,7 @@
 """Tests for the optional OpenTelemetry exporter (:mod:`vowl.otel`).
 
 These exercise each single-signal emitter against in-memory OTEL SDK readers or
-exporters, the shared resource/attribute builders as pure functions, and the
+exporters, the shared context/attribute builders as pure functions, and the
 facade's lifecycle and row-sampling behaviour.  They also guard the two
 packaging invariants: ``import vowl`` must not import ``opentelemetry``, and
 :meth:`ValidationResult.export_otel` must raise a friendly ImportError when the
@@ -43,10 +43,12 @@ def _contract_data() -> dict:
         "kind": "DataContract",
         "version": "2.0.0",
         "id": "orders-contract",
+        "name": "Orders Data Contract",
         "status": "active",
         "domain": "sales",
         "dataProduct": "orders_dp",
         "tenant": "acme",
+        "contractCreatedTs": "2026-01-15T10:30:00Z",
         "schema": [
             {
                 "name": "orders",
@@ -165,7 +167,7 @@ def test_export_otel_without_extra_raises_friendly_error(monkeypatch, result):
 # --------------------------------------------------------------------------- #
 
 
-def test_build_resource_carries_contract_and_user_attributes(result):
+def test_build_resource_carries_contract_and_custom_attributes(result):
     from vowl.otel._common import build_resource
 
     resource = build_resource(
@@ -173,17 +175,18 @@ def test_build_resource_carries_contract_and_user_attributes(result):
         service_name="dq-service",
         run_id="run-123",
         version="9.9.9",
-        user_attributes={"deployment.environment": "staging", "team": "data"},
+        custom_attributes={"deployment.environment": "staging", "team": "data"},
     )
     attrs = resource.attributes
     assert attrs["service.name"] == "dq-service"
     assert attrs["vowl.version"] == "9.9.9"
     assert attrs["vowl.run.id"] == "run-123"
     assert attrs["vowl.contract.id"] == "orders-contract"
+    assert attrs["vowl.contract.name"] == "Orders Data Contract"
     assert attrs["vowl.contract.version"] == "2.0.0"
-    # Spec version rides a distinct field, never conflated with the author version.
     assert attrs["vowl.contract.api_version"] == "v3.1.0"
     assert attrs["vowl.contract.status"] == "active"
+    assert attrs["vowl.contract.created_ts"] == "2026-01-15T10:30:00Z"
     assert attrs["vowl.domain"] == "sales"
     assert attrs["vowl.data_product"] == "orders_dp"
     assert attrs["vowl.tenant"] == "acme"
@@ -192,7 +195,7 @@ def test_build_resource_carries_contract_and_user_attributes(result):
     assert attrs["team"] == "data"
 
 
-def test_contract_resource_attributes_never_backfill_version_from_api_version():
+def test_contract_attributes_never_backfill_version_from_api_version():
     """A ``None`` author version is omitted, never replaced by the ODCS apiVersion.
 
     Every ODCS schema requires ``version``, so a validated contract always has
@@ -203,7 +206,7 @@ def test_contract_resource_attributes_never_backfill_version_from_api_version():
     """
     from types import SimpleNamespace
 
-    from vowl.otel._common import contract_resource_attributes
+    from vowl.otel._common import contract_attributes
 
     contract = SimpleNamespace(
         contract_data={},
@@ -212,7 +215,7 @@ def test_contract_resource_attributes_never_backfill_version_from_api_version():
     )
     result = SimpleNamespace(contract=contract, api_version="v3.1.0")
 
-    attrs = contract_resource_attributes(result)  # type: ignore[arg-type]
+    attrs = contract_attributes(result)  # type: ignore[arg-type]
     assert "vowl.contract.version" not in attrs
     assert attrs["vowl.contract.id"] == "orders-contract"
 
@@ -232,57 +235,123 @@ def test_check_attributes_resolve_dimension_and_severity_from_definition(result)
 # --------------------------------------------------------------------------- #
 
 
-def test_metric_emitter_records_dimensioned_failed_rows(result):
+def test_metric_emitter_check_level_metrics(result):
     from vowl.otel._metrics import MetricEmitter
 
     provider, reader = _meter_provider()
     MetricEmitter(provider, namespace="vowl").emit(result)
     points = _metric_points(reader)
 
-    assert "vowl.checks" in points
-    assert "vowl.failed_rows" in points
-    assert "vowl.rows.total" in points
-
-    (failed,) = points["vowl.failed_rows"]
-    assert failed.value == 2
-    assert failed.attributes["schema_name"] == "orders"
-    assert failed.attributes["dimension"] == "consistency"
+    assert "vowl.check.count" in points
+    assert "vowl.check.duration" in points
+    assert "vowl.check.failed_rows" in points
 
     # SQL text is high-cardinality: it must never ride on a metric label.
-    for point in points["vowl.checks"]:
+    for point in points["vowl.check.count"]:
         assert "query" not in point.attributes
 
-    total = {p.attributes["schema_name"]: p.value for p in points["vowl.rows.total"]}
-    assert total["orders"] == 4
+    # Per-check failed rows: only the failing check emits a data point.
+    (check_failed,) = points["vowl.check.failed_rows"]
+    assert check_failed.value == 2
+    assert check_failed.attributes["check_name"] == "amount_non_negative"
+    assert check_failed.attributes["dimension"] == "consistency"
+
+    # Per-check row pass rate: every check with a schema gets one.
+    check_row_rates = {
+        p.attributes["check_name"]: p.value for p in points["vowl.check.row_pass_rate"]
+    }
+    assert check_row_rates["amount_non_negative"] == 0.5  # 2 of 4 rows failed
+    assert all(v == 1.0 for k, v in check_row_rates.items() if k != "amount_non_negative")
 
 
-def test_metric_emitter_pass_rate_gauge_buckets_by_dimension(result):
+def test_metric_emitter_dimension_level_metrics(result):
     from vowl.otel._metrics import MetricEmitter
 
     provider, reader = _meter_provider()
     MetricEmitter(provider, namespace="vowl").emit(result)
     points = _metric_points(reader)
 
-    rates = {p.attributes["dimension"]: p.value for p in points["vowl.dq.pass_rate"]}
-    # Each check reports its own dimension verbatim (design decision 7). The
-    # authored consistency rule failed; the auto-generated checks pass their
-    # real dimensions through (required -> completeness, column-exists ->
-    # conformity), all passing.
-    assert rates["consistency"] == 0.0
-    assert rates["completeness"] == 1.0
-    assert rates["conformity"] == 1.0
-    assert "unknown" not in rates
+    # Dimension-level failed rows (deduplicated within each dimension).
+    (dim_failed,) = points["vowl.dimension.failed_rows"]
+    assert dim_failed.value == 2
+    assert dim_failed.attributes["schema_name"] == "orders"
+    assert dim_failed.attributes["dimension"] == "consistency"
+
+    # Check pass rate per dimension.
+    check_rates = {p.attributes["dimension"]: p.value for p in points["vowl.dimension.check_pass_rate"]}
+    assert check_rates["consistency"] == 0.0
+    assert check_rates["completeness"] == 1.0
+    assert check_rates["conformity"] == 1.0
+    assert "unknown" not in check_rates
+
+    # Row pass rate per dimension.
+    row_rates = {p.attributes["dimension"]: p.value for p in points["vowl.dimension.row_pass_rate"]}
+    assert row_rates["consistency"] == 0.5  # 2 of 4 rows failed
+    assert row_rates["completeness"] == 1.0
+    assert row_rates["conformity"] == 1.0
 
 
-def test_metric_emitter_namespace_prefixes_names(result):
+def test_metric_emitter_schema_level_metrics(result):
     from vowl.otel._metrics import MetricEmitter
 
     provider, reader = _meter_provider()
-    MetricEmitter(provider, namespace="dq").emit(result)
+    MetricEmitter(provider, namespace="vowl").emit(result)
+    points = _metric_points(reader)
+
+    # Schema-level failed rows (deduplicated across all dimensions).
+    (schema_failed,) = points["vowl.schema.failed_rows"]
+    assert schema_failed.value == 2
+    assert schema_failed.attributes["schema_name"] == "orders"
+    assert "dimension" not in schema_failed.attributes
+
+    # Total rows.
+    (total,) = points["vowl.schema.rows_total"]
+    assert total.value == 4
+    assert total.attributes["schema_name"] == "orders"
+
+    # Schema-level check pass rate.
+    (schema_check_rate,) = points["vowl.schema.check_pass_rate"]
+    assert schema_check_rate.attributes["schema_name"] == "orders"
+    assert 0.0 < schema_check_rate.value < 1.0  # some pass, some fail
+
+    # Schema-level row pass rate.
+    (schema_row_rate,) = points["vowl.schema.row_pass_rate"]
+    assert schema_row_rate.attributes["schema_name"] == "orders"
+    assert schema_row_rate.value == 0.5  # 2 of 4 rows affected
+
+
+def test_metric_names_use_vowl_prefix(result):
+    from vowl.otel._metrics import MetricEmitter
+
+    provider, reader = _meter_provider()
+    MetricEmitter(provider, namespace="vowl").emit(result)
     names = set(_metric_points(reader))
 
-    assert "dq.checks" in names
-    assert not any(name.startswith("vowl.") for name in names)
+    assert all(name.startswith("vowl.") for name in names)
+
+
+def test_context_attributes_appear_on_every_metric_point(result):
+    from vowl.otel._metrics import MetricEmitter
+
+    ctx = {"vowl.contract.id": "orders-contract", "vowl.run.id": "run-42"}
+    provider, reader = _meter_provider()
+    MetricEmitter(provider, namespace="vowl", context_attributes=ctx).emit(result)
+    for name, data_points in _metric_points(reader).items():
+        for point in data_points:
+            assert point.attributes["vowl.contract.id"] == "orders-contract", f"{name} missing contract id"
+            assert point.attributes["vowl.run.id"] == "run-42", f"{name} missing run id"
+
+
+def test_signal_specific_attrs_override_context_attrs(result):
+    """Signal-level keys like ``status`` must not be overwritten by context."""
+    from vowl.otel._metrics import MetricEmitter
+
+    ctx = {"status": "SHOULD_BE_OVERRIDDEN", "vowl.run.id": "run-42"}
+    provider, reader = _meter_provider()
+    MetricEmitter(provider, namespace="vowl", context_attributes=ctx).emit(result)
+    for point in _metric_points(reader)["vowl.check.count"]:
+        assert point.attributes["status"] in ("PASSED", "FAILED", "ERROR")
+        assert point.attributes["vowl.run.id"] == "run-42"
 
 
 # --------------------------------------------------------------------------- #
@@ -392,6 +461,17 @@ def test_trace_and_log_carry_executed_sql_query(result):
     assert record.attributes["query"] == query
 
 
+def test_context_attributes_appear_on_every_span(result):
+    from vowl.otel._traces import TraceEmitter
+
+    ctx = {"vowl.contract.id": "orders-contract", "vowl.run.id": "run-42"}
+    provider, exporter = _tracer_provider()
+    TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}, context_attributes=ctx).emit(result)
+    for span in exporter.get_finished_spans():
+        assert span.attributes["vowl.contract.id"] == "orders-contract", f"{span.name} missing contract id"
+        assert span.attributes["vowl.run.id"] == "run-42", f"{span.name} missing run id"
+
+
 def test_trace_emitter_attaches_sample_row_events(result):
     from vowl.otel._traces import TraceEmitter
 
@@ -442,6 +522,23 @@ def test_log_emitter_records_one_warn_per_failed_check_with_backlink(result):
     assert record.span_id == contexts[id(failed)].span_id
 
 
+def test_context_attributes_appear_on_log_records(result):
+    from vowl.otel._logs import LogEmitter
+    from vowl.otel._traces import TraceEmitter
+
+    ctx = {"vowl.contract.id": "orders-contract", "vowl.run.id": "run-42"}
+    tracer, _span_exporter = _tracer_provider()
+    contexts = TraceEmitter(tracer, namespace="vowl", sample_rows_by_check={}).emit(result)
+
+    provider, exporter = _logger_provider()
+    LogEmitter(provider, namespace="vowl", span_contexts=contexts, sample_rows_by_check={}, context_attributes=ctx).emit(result)
+    records = [entry.log_record for entry in exporter.get_finished_logs()]
+    assert len(records) >= 1
+    for record in records:
+        assert record.attributes["vowl.contract.id"] == "orders-contract"
+        assert record.attributes["vowl.run.id"] == "run-42"
+
+
 def test_log_emitter_is_silent_when_all_checks_pass():
     from vowl.otel._logs import LogEmitter
 
@@ -463,17 +560,19 @@ def test_exporter_rejects_invalid_arguments():
     from vowl.otel import OtelExporter
 
     with pytest.raises(ValueError, match="Unknown signal"):
-        OtelExporter(signals=("metrics", "bogus"))
+        OtelExporter(endpoint="http://localhost:4317", signals=("metrics", "bogus"))
     with pytest.raises(ValueError, match="Unknown protocol"):
-        OtelExporter(protocol="carrier-pigeon")
+        OtelExporter(endpoint="http://localhost:4317", protocol="carrier-pigeon")
     with pytest.raises(ValueError, match="max_failed_rows_sample"):
-        OtelExporter(max_failed_rows_sample=-1)
+        OtelExporter(endpoint="http://localhost:4317", max_failed_rows_sample=-1)
+    with pytest.raises(ValueError, match="No endpoint configured"):
+        OtelExporter()
 
 
 def test_collect_row_samples_off_by_default(result):
     from vowl.otel import OtelExporter
 
-    exporter = OtelExporter(max_failed_rows_sample=0)
+    exporter = OtelExporter(endpoint="http://localhost:4317", max_failed_rows_sample=0)
     assert exporter._collect_row_samples(result) == {}
 
 
@@ -481,7 +580,7 @@ def test_collect_row_samples_is_capped_by_head(result):
     from vowl.otel import OtelExporter
 
     # Two rows fail, but the head cap keeps only one, the second of the two caps.
-    exporter = OtelExporter(max_failed_rows_sample=1)
+    exporter = OtelExporter(endpoint="http://localhost:4317", max_failed_rows_sample=1)
     samples = exporter._collect_row_samples(result)
     assert len(samples) == 1
     ((_check_id, rows),) = samples.items()
@@ -501,19 +600,25 @@ def test_export_end_to_end_with_explicit_providers(result):
         metric_provider=meter,
         tracer_provider=tracer,
         logger_provider=logger,
+        custom_attributes={"deployment.environment": "test"},
     )
     assert isinstance(run_id, str) and run_id
 
-    # Metrics.
-    (failed,) = _metric_points(reader)["vowl.failed_rows"]
+    # Metrics: context attributes survive onto data points with explicit providers.
+    (failed,) = _metric_points(reader)["vowl.dimension.failed_rows"]
     assert failed.attributes["dimension"] == "consistency"
+    assert failed.attributes["vowl.contract.id"] == "orders-contract"
+    assert "deployment.environment" in failed.attributes
     # Traces.
-    assert any(s.name == "vowl.validate" for s in span_exporter.get_finished_spans())
-    assert any(
-        s.status.status_code == StatusCode.ERROR for s in span_exporter.get_finished_spans() if s.name == "vowl.check"
-    )
+    spans = span_exporter.get_finished_spans()
+    assert any(s.name == "vowl.validate" for s in spans)
+    assert any(s.status.status_code == StatusCode.ERROR for s in spans if s.name == "vowl.check")
+    for span in spans:
+        assert "vowl.contract.id" in span.attributes
     # Logs.
     assert len(log_exporter.get_finished_logs()) == 1
+    record = log_exporter.get_finished_logs()[0].log_record
+    assert record.attributes["vowl.contract.id"] == "orders-contract"
 
     # Explicit providers are not owned, so the facade must not have shut them down.
     tracer.get_tracer("probe").start_span("still-alive").end()

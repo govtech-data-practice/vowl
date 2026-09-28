@@ -61,31 +61,58 @@ def _clean_attrs(attrs: dict[str, Any]) -> dict[str, str | bool | int | float]:
     return cleaned
 
 
-def contract_resource_attributes(result: ValidationResult) -> dict[str, Any]:
-    """Resource attributes sourced from the contract, absent keys omitted.
+def contract_attributes(result: ValidationResult, prefix: str = "vowl") -> dict[str, Any]:
+    """Contract identity attributes, absent keys omitted.
 
-    Keys stay ``vowl.*`` regardless of the metric ``namespace`` because they
-    identify the producing tool, not a metric series.
+    Includes all first-level scalar fields from the contract. Fields beyond the
+    first level (nested objects, arrays) are excluded because they can have
+    unbounded cardinality; users who need them can pass them via
+    ``custom_attributes``.
     """
     contract = result.contract
     metadata = contract.get_metadata()
     contract_data = getattr(contract, "contract_data", {}) or {}
 
+    p = prefix
     attrs = {
-        "vowl.contract.id": metadata.get("id"),
-        # The contract's own revision, set by its author; omitted when unset.
-        "vowl.contract.version": contract.get_version(),
-        # The ODCS spec version the contract targets (e.g. ``v3.2.0``). A
-        # distinct field from the author's ``version`` above, kept separate so
-        # neither ever stands in for the other.
-        "vowl.contract.api_version": result.api_version,
-        "vowl.contract.status": metadata.get("status"),
-        # ODCS v3 only; omitted on v2.2.x and when absent.
-        "vowl.domain": contract_data.get("domain"),
-        "vowl.data_product": contract_data.get("dataProduct"),
-        "vowl.tenant": contract_data.get("tenant"),
+        f"{p}.contract.id": metadata.get("id"),
+        f"{p}.contract.name": contract_data.get("name"),
+        f"{p}.contract.version": contract.get_version(),
+        f"{p}.contract.api_version": result.api_version,
+        f"{p}.contract.status": metadata.get("status"),
+        f"{p}.contract.created_ts": contract_data.get("contractCreatedTs"),
+        f"{p}.domain": contract_data.get("domain"),
+        f"{p}.data_product": contract_data.get("dataProduct"),
+        f"{p}.tenant": contract_data.get("tenant"),
     }
     return {key: value for key, value in attrs.items() if value not in (None, "")}
+
+
+def build_context_attributes(
+    result: ValidationResult,
+    *,
+    service_name: str,
+    run_id: str,
+    version: str,
+    prefix: str = "vowl",
+    custom_attributes: dict[str, Any] | None,
+) -> dict[str, str | bool | int | float]:
+    """Build the context attribute dict attached to every data point.
+
+    Combines run identity (service name, version, run ID), contract identity,
+    and user-supplied ``custom_attributes``. Used for signal-level attributes
+    on every metric, span, and log record, and additionally for constructing
+    the OTEL Resource in self-contained mode.
+    """
+    attrs: dict[str, Any] = {
+        "service.name": service_name,
+        f"{prefix}.version": version,
+        f"{prefix}.run.id": run_id,
+    }
+    attrs.update(contract_attributes(result, prefix=prefix))
+    if custom_attributes:
+        attrs.update(custom_attributes)
+    return _clean_attrs(attrs)
 
 
 def build_resource(
@@ -94,24 +121,21 @@ def build_resource(
     service_name: str,
     run_id: str,
     version: str,
-    user_attributes: dict[str, Any] | None,
+    prefix: str = "vowl",
+    custom_attributes: dict[str, Any] | None,
 ) -> Any:
-    """Build the shared OTEL Resource attached to every signal.
-
-    ``user_attributes`` is pure pass-through: every key is coerced to a string
-    attribute and attached verbatim, never inspected or rerouted.
-    """
+    """Build the shared OTEL Resource attached to every signal."""
     from opentelemetry.sdk.resources import Resource
 
-    attrs: dict[str, Any] = {
-        "service.name": service_name,
-        "vowl.version": version,
-        "vowl.run.id": run_id,
-    }
-    attrs.update(contract_resource_attributes(result))
-    if user_attributes:
-        attrs.update(user_attributes)
-    return Resource.create(_clean_attrs(attrs))
+    attrs = build_context_attributes(
+        result,
+        service_name=service_name,
+        run_id=run_id,
+        version=version,
+        prefix=prefix,
+        custom_attributes=custom_attributes,
+    )
+    return Resource.create(attrs)
 
 
 def check_dimension(check_result: Any) -> str:

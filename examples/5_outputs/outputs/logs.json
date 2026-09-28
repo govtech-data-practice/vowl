@@ -1,0 +1,168 @@
+[
+  {
+    "body": "Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM",
+    "severity_number": 13,
+    "severity_text": "WARN",
+    "attributes": {
+      "check_name": "Month",
+      "status": "FAILED",
+      "schema": "hdb_resale_prices",
+      "dimension": "conformity",
+      "engine": "sql",
+      "failed_rows_count": 2,
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT REGEXP_MATCHES(TRY_CAST(month AS TEXT), '^[0-9]{4}-(0[1-9]|1[0-2])$')",
+      "check.definition.type": "sql",
+      "check.definition.name": "Month",
+      "check.definition.description": "Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM",
+      "check.definition.mustBe": 0,
+      "check.definition.query": "SELECT COUNT(*)\nFROM \"hdb_resale_prices\"\nWHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';",
+      "check.definition.tags": [
+        "SG-DRM v5.0"
+      ],
+      "check.definition.dimension": "conformity",
+      "vowl.failed_rows_sample": "[{\"month\": \"2017-jan\", \"town\": \"BEDOK\", \"flat_type\": \"5 ROOM\", \"block\": \"21\", \"street_name\": \"CHAI CHEE RD\", \"storey_range\": \"07 TO 09\", \"floor_area_sqm\": 130.0, \"flat_model\": \"Adjoined flat\", \"lease_commence_date\": \"1972\", \"remaining_lease\": \"54 years 06 months\", \"resale_price\": 530000.0}, {\"month\": \"2017-jan\", \"town\": \"BISHAN\", \"flat_type\": \"3 ROOM\", \"block\": \"105\", \"street_name\": \"BISHAN ST 12\", \"storey_range\": \"04 TO 06\", \"floor_area_sqm\": 4.0, \"flat_model\": \"Simplified\", \"lease_commence_date\": \"1985\", \"remaining_lease\": \"67 years 11 months\", \"resale_price\": 395000.0}]"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2026-09-24T12:31:52.315987Z",
+    "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
+    "span_id": "0xfbd4ee03c2228f6b",
+    "trace_flags": 1,
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    },
+    "event_name": ""
+  },
+  {
+    "body": "House number component of a street address | Alphanumeric up to 10 characters (e.g. 12, 535, 358C)",
+    "severity_number": 13,
+    "severity_text": "WARN",
+    "attributes": {
+      "check_name": "AddressBlockHouseNumber",
+      "status": "FAILED",
+      "schema": "hdb_resale_prices",
+      "dimension": "conformity",
+      "engine": "sql",
+      "failed_rows_count": 1,
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT REGEXP_MATCHES(TRY_CAST(block AS TEXT), '^[A-Za-z0-9]{1,10}$')",
+      "check.definition.type": "sql",
+      "check.definition.name": "AddressBlockHouseNumber",
+      "check.definition.description": "House number component of a street address | Alphanumeric up to 10 characters (e.g. 12, 535, 358C)",
+      "check.definition.mustBe": 0,
+      "check.definition.query": "SELECT COUNT(*)\nFROM \"hdb_resale_prices\"\nWHERE CAST(block AS TEXT) !~ '^[A-Za-z0-9]{1,10}$';",
+      "check.definition.tags": [
+        "SG-DRM v5.0"
+      ],
+      "check.definition.dimension": "conformity",
+      "vowl.failed_rows_sample": "[{\"month\": \"2017-01\", \"town\": \"BEDOK\", \"flat_type\": \"4 ROOM\", \"block\": \"\", \"street_name\": \"BEDOK RESERVOIR RD\", \"storey_range\": \"07 TO 09\", \"floor_area_sqm\": 84.0, \"flat_model\": \"Simplified\", \"lease_commence_date\": \"1986\", \"remaining_lease\": \"68 years 10 months\", \"resale_price\": 395000.0}]"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2026-09-24T12:31:52.316058Z",
+    "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
+    "span_id": "0x008c8bdb80609bb2",
+    "trace_flags": 1,
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    },
+    "event_name": ""
+  },
+  {
+    "body": "Validates that floor area must be less than 200",
+    "severity_number": 13,
+    "severity_text": "WARN",
+    "attributes": {
+      "check_name": "floor_area_must_be_less_than_200",
+      "status": "FAILED",
+      "schema": "hdb_resale_prices",
+      "dimension": "consistency",
+      "severity": "error",
+      "engine": "sql",
+      "failed_rows_count": 12,
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE TRY_CAST(floor_area_sqm AS BIGINT) >= 200",
+      "check.definition.name": "floor_area_must_be_less_than_200",
+      "check.definition.description": "Validates that floor area must be less than 200",
+      "check.definition.type": "sql",
+      "check.definition.dimension": "consistency",
+      "check.definition.severity": "error",
+      "check.definition.query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE floor_area_sqm >= 200",
+      "check.definition.mustBe": 0,
+      "check.definition.tags": [
+        "User-Defined Quality Rule"
+      ],
+      "vowl.failed_rows_sample": "[{\"month\": \"2017-06\", \"town\": \"KALLANG/WHAMPOA\", \"flat_type\": \"3 ROOM\", \"block\": \"38\", \"street_name\": \"JLN BAHAGIA\", \"storey_range\": \"01 TO 03\", \"floor_area_sqm\": 215.0, \"flat_model\": \"Terrace\", \"lease_commence_date\": \"1972\", \"remaining_lease\": \"54 years 01 month\", \"resale_price\": 830000.0}, {\"month\": \"2017-09\", \"town\": \"CHOA CHU KANG\", \"flat_type\": \"EXECUTIVE\", \"block\": \"641\", \"street_name\": \"CHOA CHU KANG ST 64\", \"storey_range\": \"16 TO 18\", \"floor_area_sqm\": 215.0, \"flat_model\": \"Premium Maisonette\", \"lease_commence_date\": \"1998\", \"remaining_lease\": \"79 years 04 months\", \"resale_price\": 888000.0}]"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2026-09-24T12:31:52.316104Z",
+    "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
+    "span_id": "0xfb29ae02e64dda20",
+    "trace_flags": 1,
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    },
+    "event_name": ""
+  },
+  {
+    "body": "Based on ISO 8601, assumed to be in UTC +8 | YYYY",
+    "severity_number": 13,
+    "severity_text": "WARN",
+    "attributes": {
+      "check_name": "Year",
+      "status": "FAILED",
+      "schema": "hdb_resale_prices",
+      "dimension": "conformity",
+      "engine": "sql",
+      "failed_rows_count": 3,
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT REGEXP_MATCHES(TRY_CAST(lease_commence_date AS TEXT), '^[0-9]{4}$')",
+      "check.definition.type": "sql",
+      "check.definition.name": "Year",
+      "check.definition.description": "Based on ISO 8601, assumed to be in UTC +8 | YYYY",
+      "check.definition.mustBe": 0,
+      "check.definition.query": "SELECT COUNT(*)\nFROM \"hdb_resale_prices\"\nWHERE CAST(lease_commence_date AS TEXT) !~ '^[0-9]{4}$';",
+      "check.definition.tags": [
+        "SG-DRM v5.0"
+      ],
+      "check.definition.dimension": "conformity",
+      "vowl.failed_rows_sample": "[{\"month\": \"2017-01\", \"town\": \"ANG MO KIO\", \"flat_type\": \"3 ROOM\", \"block\": \"219\", \"street_name\": \"ANG MO KIO AVE 1\", \"storey_range\": \"07 TO 09\", \"floor_area_sqm\": 67.0, \"flat_model\": \"New Generation\", \"lease_commence_date\": \"1977.0\", \"remaining_lease\": \"59 years 06 months\", \"resale_price\": 297000.0}, {\"month\": \"2017-01\", \"town\": \"ANG MO KIO\", \"flat_type\": \"3 ROOM\", \"block\": \"211\", \"street_name\": \"ANG MO KIO AVE 3\", \"storey_range\": \"01 TO 03\", \"floor_area_sqm\": 67.0, \"flat_model\": \"New Generation\", \"lease_commence_date\": \"abc\", \"remaining_lease\": \"59 years 03 months\", \"resale_price\": 325000.0}]"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2026-09-24T12:31:52.316146Z",
+    "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
+    "span_id": "0x869ad74692574d1e",
+    "trace_flags": 1,
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    },
+    "event_name": ""
+  }
+]

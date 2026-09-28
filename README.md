@@ -1119,13 +1119,13 @@ result.display_full_report()
 | ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
 | ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
+| ✅ **OpenTelemetry Export**        | Export validation metrics, traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                                                                |
 
 ### Planned
 
 | Capability                       | Description                                                               | Status  |
 | -------------------------------- | ------------------------------------------------------------------------- | ------- |
 | 🔬 **Alternative Check Engines** | Support for dqx, Soda, Great Expectations (subject to licensing review)   | Planned |
-| 📡 **OpenTelemetry Export**      | Export validation metrics, logs, and traces via OpenTelemetry (OTLP)      | Planned |
 | 📅 **CLI Interface**             | Command-line interface for running validations directly from the terminal | Planned |
 | 📅 **vowl-ui**                   | Web-based validation interface for vowl                                   | Planned |
 

@@ -26,10 +26,18 @@ _MS_TO_NS = 1_000_000
 class TraceEmitter:
     """Records the run/check span tree and returns per-check span contexts."""
 
-    def __init__(self, tracer_provider: Any, *, namespace: str, sample_rows_by_check: dict[int, list[dict]]) -> None:
+    def __init__(
+        self,
+        tracer_provider: Any,
+        *,
+        namespace: str,
+        sample_rows_by_check: dict[int, list[dict]],
+        context_attributes: dict[str, Any] | None = None,
+    ) -> None:
         self._tracer = tracer_provider.get_tracer("vowl")
         self._ns = namespace
         self._samples = sample_rows_by_check
+        self._ctx_attrs: dict[str, Any] = context_attributes or {}
 
     def emit(self, result: ValidationResult) -> dict[int, Any]:
         from opentelemetry.trace import SpanContext, Status, StatusCode, set_span_in_context
@@ -39,16 +47,18 @@ class TraceEmitter:
         end_ns = time.time_ns()
         start_ns = end_ns - int(total_ms * _MS_TO_NS)
 
+        root_attrs = dict(self._ctx_attrs)
+        root_attrs.update({
+            "total_checks": int(vs.get("total_checks", 0)),
+            "passed": int(vs.get("passed", 0)),
+            "failed": int(vs.get("failed", 0)),
+            "errors": int(vs.get("errors", 0)),
+            "success_rate": float(vs.get("success_rate", 0.0) or 0.0),
+        })
         root = self._tracer.start_span(
             f"{self._ns}.validate",
             start_time=start_ns,
-            attributes={
-                "total_checks": int(vs.get("total_checks", 0)),
-                "passed": int(vs.get("passed", 0)),
-                "failed": int(vs.get("failed", 0)),
-                "errors": int(vs.get("errors", 0)),
-                "success_rate": float(vs.get("success_rate", 0.0) or 0.0),
-            },
+            attributes=root_attrs,
         )
         root.set_status(Status(StatusCode.OK if result.passed else StatusCode.ERROR))
         root_ctx = set_span_in_context(root)
@@ -77,7 +87,8 @@ class TraceEmitter:
         return contexts
 
     def _check_span_attributes(self, check_result: Any) -> dict[str, Any]:
-        attrs = dict(check_attributes(check_result))
+        attrs = dict(self._ctx_attrs)
+        attrs.update(check_attributes(check_result))
         metadata = check_result.metadata
         extra = {
             "operator": metadata.get("operator"),

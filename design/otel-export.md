@@ -53,7 +53,7 @@ plumbing runs through the engine.
 | `ValidationResult.summary["validation_summary"]` | `total_checks`, `passed`, `failed`, `errors`, `success_rate`, `failed_rows`, `total_execution_time_ms`, `total_rows_by_schema` |
 | `ValidationResult._get_schema_validation_breakdown()` | Per-schema check counts, `failed_unique_rows`, `passed_row_percentage` |
 | `RowQualitySummary.data_quality` | Per-schema data-quality ratio (0 to 1), a first-class gauge |
-| `ValidationResult.contract_id` / `.api_version` | Contract identity for resource attributes |
+| `ValidationResult.contract_id` / `.api_version` | Contract identity for context attributes |
 
 ## Architecture
 
@@ -88,8 +88,8 @@ emitters. Each emitter owns exactly one OTEL signal and can be turned on or off.
 
 ### Shared concerns (owned by the façade)
 
-- **Resource attributes** attached to every signal: `service.name`,
-  `vowl.version`, the `vowl.contract.*` keys, and any user `resource_attributes`.
+- **Context attributes** attached to every data point: `service.name`,
+  `vowl.version`, the `vowl.contract.*` keys, and any user `custom_attributes`.
 - **Common check attributes** derived once per check and reused across signals:
   `schema`, `check_name`, `dimension`, `severity`, `engine`, `status`. Tags are
   normalised into a bounded attribute to avoid unbounded cardinality.
@@ -98,9 +98,12 @@ emitters. Each emitter owns exactly one OTEL signal and can be turned on or off.
 ### Emitters
 
 - **`MetricEmitter`** is the primary use case (dashboards and alerting). It
-  records the v1 instruments (`vowl.checks`, `vowl.failed_rows`,
-  `vowl.rows.total`, `vowl.check.duration`, `vowl.run.duration`,
-  `vowl.dq.pass_rate`, `vowl.dq.data_quality`).
+  records the v1 instruments (`vowl.check.count`, `vowl.check.failed_rows`,
+  `vowl.check.duration`, `vowl.dimension.failed_rows`,
+  `vowl.dimension.check_pass_rate`, `vowl.dimension.row_pass_rate`,
+  `vowl.schema.failed_rows`, `vowl.schema.rows_total`,
+  `vowl.schema.check_pass_rate`, `vowl.schema.row_pass_rate`,
+  `vowl.run.duration`).
 - **`TraceEmitter`** covers pipeline observability and correlation. It emits one
   `vowl.validate` root span per run and one `vowl.check` child span per check.
   Failed checks set span status ERROR and record `failed_rows_count`. Spans join
@@ -128,7 +131,7 @@ result.export_otel(
     namespace="vowl",                         # metric/span name prefix, default "vowl"
     service_name="orders-dq",
     max_failed_rows_sample=0,                 # default 0. no row contents leave the process
-    resource_attributes={                     # pass-through, attached to every signal
+    custom_attributes={                     # pass-through, attached to every signal
         "env": "prod",
         "vowl.artifact.uri": "s3://dq/run=0f2c9e1a/",   # optional pointer back to saved rows
     },
@@ -141,15 +144,13 @@ result.export_otel(signals=("metrics", "traces"), use_global_providers=True)
 result.export_otel(metric_provider=my_meter_provider, tracer_provider=my_tracer_provider)
 ```
 
-### Namespace
+### Prefix
 
-Instrument and span names are prefixed by `namespace`, defaulting to `vowl`, so
-out-of-the-box names match the published semantic convention and every consumer
-is interoperable. The knob exists for collision avoidance (another DQ producer
-already writing `vowl.*`, or a house convention) and is meant to be set once at
-the org level rather than per run. It changes metric and span names only.
-Resource attribute keys stay `vowl.*` because they identify the producing tool,
-which is stable regardless of the metric namespace.
+The `prefix` parameter (default `"vowl"`) applies to metric names, span names,
+and context attribute keys. Setting it to `"myorg"` changes `vowl.checks` to
+`myorg.checks`, `vowl.contract.id` to `myorg.contract.id`, etc. The knob
+exists for orgs with naming conventions for their telemetry, and is meant to be
+set once at the org level rather than per run.
 
 ### Provider resolution
 
@@ -166,15 +167,13 @@ which is stable regardless of the metric namespace.
    flush-on-exit is the key correctness detail for fire-and-forget validation
    jobs.
 
-In modes 1 and 2 the caller owns the provider, and its OTEL `Resource` is fixed
-at construction, so vowl cannot attach its resource attributes
-(`vowl.contract.id`, `vowl.run.id`, `resource_attributes`, and the rest) to a
-provider it did not build. The per-point signal attributes (`schema`,
-`dimension`, `check_name`, and so on) still attach, and the returned `run.id` is
-still available. A caller who needs the vowl resource on a shared provider sets
-those keys on the provider's own `Resource`, or uses the self-contained mode.
-Delta temporality is set on the metric reader when vowl builds the provider, and
-is the host's responsibility in the other two modes.
+Run identity attributes (`vowl.contract.id`, `vowl.run.id`,
+`custom_attributes`, and the rest) are emitted as signal-level attributes on
+every metric data point, span, and log record in all three modes (see design
+decision 11). In mode 3, the same attributes are additionally placed on the
+OTEL `Resource` for backends that surface resource metadata separately. Delta
+temporality is set on the metric reader when vowl builds the provider, and is
+the host's responsibility in the other two modes.
 
 ### How the emitters read the result
 
@@ -211,10 +210,10 @@ their rationale.
 
 1. **All three signals are supported, each toggleable.** Metrics, traces, and
    logs are independent emitters.
-2. **Metrics and traces are on by default, logs are opt-in.** When a caller does
-   not pass `signals`, they get metrics and traces. Per-failure logs can spike in
-   volume on a bad run, and many teams already have their own logging, so logs
-   are added explicitly.
+2. **All three signals are on by default.** When a caller does not pass
+   `signals`, they get metrics, traces, and logs. Logs emit only on failures
+   (FAILED or ERROR checks), so their volume is bounded by the number of failing
+   checks, which is less than traces (one span per check, passing or failing).
 3. **Log severity separates data issues from broken checks.** A FAILED check logs
    at `WARN` (a data issue, expected in normal operation) and an ERROR check logs
    at `ERROR` (the check machinery broke). Passing checks are silent. This keeps
@@ -230,7 +229,7 @@ their rationale.
    rows. Full failed-row output stays the job of `save()` /
    `get_annotated_output()`.
 5. **Custom attributes are pure pass-through on all signals.** vowl attaches every
-   `resource_attributes` key to every signal and never inspects or reroutes a key.
+   `custom_attributes` key to every signal and never inspects or reroutes a key.
    The recommended keys (`vowl.artifact.uri`, `vowl.link.<name>`) are naming
    guidance only, with no special code behaviour, so behaviour is predictable
    whether or not a caller follows the convention.
@@ -262,24 +261,48 @@ their rationale.
 10. **A CLI hook is deferred.** vowl has no CLI yet (see
     [Roadmap](../docs/roadmap.md)). Export is a Python API. When the planned CLI
     lands it can add `--otel-*` flags, but nothing in this design depends on it.
+11. **Run identity attributes are always signal-level.** Contract identity
+    (`vowl.contract.id`, `vowl.run.id`, etc.) and user-supplied
+    `custom_attributes` are attached directly to every metric data point,
+    span, and log record. This follows the pattern used by major OTEL
+    instrumentation libraries (Flask, Django, etc.) which use signal-level
+    attributes because they do not own the provider. Without this, modes 1 and
+    2 (explicit and global providers) silently lose the run identity because
+    the provider's OTEL `Resource` is immutable after creation. In mode 3
+    (self-contained), the same attributes also go on the Resource for backends
+    that surface resource metadata separately.
+
+## Context attribute methodology
+
+Context attributes describe the contract and the run. The inclusion rule is:
+**include every first-level scalar field from the contract that has a value.**
+
+Fields beyond the first level (nested objects, arrays) are excluded because
+they can have unbounded cardinality. Users who need any of these can pass them
+via `custom_attributes`. `kind` is also excluded because it is always
+`"DataContract"` and carries zero information.
+
+This rule is mechanical: when a new first-level scalar field is added to ODCS,
+it gets a `vowl.*` context attribute. No per-field judgment call needed.
 
 ## Cardinality
 
 Metric label cardinality is the main operational footgun. The defaults keep it
 bounded:
 
-- `check_name`, `schema`, `dimension`, `severity`, and `engine` are bounded by
-  the contract, so they are safe as metric attributes.
+- `check_name`, `schema_name`, `dimension`, `severity`, and `engine` are bounded
+  by the contract, so they are safe as metric attributes.
 - Row-level failed-row contents are off metrics entirely, and off all signals by
   default. An opt-in bounded sample can ride logs and span events. Full
   failed-row output stays the job of `save()` / `get_annotated_output()`.
 - High-cardinality per-event values, such as the engine-rendered `query` and the
   flattened `check.definition.*` keys, ride on spans and logs only, never on
   metric labels.
-- Per-run resource attributes (`vowl.run.id` and any custom keys) fork the metric
-  series per run. This suits the warehouse path, where each run is a row. For a
-  Prometheus/Mimir-style TSDB, drop them with an OTEL Collector relabel or
-  transform on that path.
+- Per-run identity attributes (`vowl.run.id`, `vowl.contract.id`, and any custom
+  `custom_attributes`) are signal-level attributes on every data point in all
+  provider modes. They fork the metric series per run, which suits the warehouse
+  path where each run is a row. For a Prometheus/Mimir-style TSDB, drop them
+  with an OTEL Collector relabel or transform on that path.
 
 ## Testing
 

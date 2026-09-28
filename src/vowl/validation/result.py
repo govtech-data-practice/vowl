@@ -1202,13 +1202,13 @@ class ValidationResult:
     def export_otel(
         self,
         *,
-        signals: Sequence[str] = ("metrics", "traces"),
+        signals: Sequence[str] = ("metrics", "traces", "logs"),
         endpoint: str | None = None,
         protocol: str = "grpc",
-        namespace: str = "vowl",
-        service_name: str | None = None,
+        service_name: str = "vowl",
+        prefix: str = "vowl",
         headers: dict[str, str] | None = None,
-        resource_attributes: dict[str, Any] | None = None,
+        custom_attributes: dict[str, Any] | None = None,
         max_failed_rows_sample: int = 0,
         use_global_providers: bool = False,
         metric_provider: Any | None = None,
@@ -1224,18 +1224,18 @@ class ValidationResult:
 
         Args:
             signals: Which signals to emit, any subset of ``"metrics"``,
-                ``"traces"``, ``"logs"``.  Default is metrics and traces; logs
-                are opt-in.
+                ``"traces"``, ``"logs"``.  All three are on by default.
             endpoint: OTLP endpoint.  When omitted, standard
                 ``OTEL_EXPORTER_OTLP_*`` env vars are used.
             protocol: ``"grpc"`` (default) or ``"http/protobuf"``.
-            namespace: Prefix for metric and span **names** (default ``vowl``).
-                Resource attribute keys stay ``vowl.*`` regardless.
-            service_name: ``service.name`` resource attribute; defaults to
-                ``namespace``.
+            service_name: ``service.name`` context attribute (default
+                ``"vowl"``).  Identifies where the validation is running.
+            prefix: Prefix for metric and span names (default ``"vowl"``).
+                Changes ``vowl.checks`` to ``{prefix}.checks``, etc.
             headers: Optional OTLP headers (e.g. auth).
-            resource_attributes: Pure pass-through attributes attached to every
-                signal.  vowl never inspects or reroutes a key.
+            custom_attributes: Additional attributes merged onto every data
+                point, span, and log record.  vowl never inspects or reroutes
+                a key.
             max_failed_rows_sample: Max failing rows to attach per check to
                 logs/span events.  ``0`` (default) exports no cell values; a
                 positive value is also capped by the run's ``max_failed_rows``.
@@ -1259,10 +1259,10 @@ class ValidationResult:
             signals=tuple(signals),
             endpoint=endpoint,
             protocol=protocol,
-            namespace=namespace,
             service_name=service_name,
+            prefix=prefix,
             headers=headers,
-            resource_attributes=resource_attributes,
+            custom_attributes=custom_attributes,
             max_failed_rows_sample=max_failed_rows_sample,
             use_global_providers=use_global_providers,
             metric_provider=metric_provider,

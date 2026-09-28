@@ -4,10 +4,11 @@ fans out to the enabled single-signal emitters.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 from .. import __version__
-from ._common import build_resource, new_run_id
+from ._common import build_resource, build_context_attributes, new_run_id
 from ._logs import LogEmitter
 from ._metrics import MetricEmitter
 from ._providers import resolve_providers
@@ -16,12 +17,11 @@ from ._traces import TraceEmitter
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
 
-#: Signals enabled when the caller does not pass ``signals``. Logs are opt-in
-#: because per-failure records can spike on a bad run.
-DEFAULT_SIGNALS: tuple[str, ...] = ("metrics", "traces")
+DEFAULT_SIGNALS: tuple[str, ...] = ("metrics", "traces", "logs")
 
 _VALID_SIGNALS = ("metrics", "traces", "logs")
 _VALID_PROTOCOLS = ("grpc", "http/protobuf")
+_DEFAULT_PREFIX = "vowl"
 
 
 class OtelExporter:
@@ -33,10 +33,10 @@ class OtelExporter:
         signals: tuple[str, ...] = DEFAULT_SIGNALS,
         endpoint: str | None = None,
         protocol: str = "grpc",
-        namespace: str = "vowl",
-        service_name: str | None = None,
+        service_name: str = _DEFAULT_PREFIX,
+        prefix: str = _DEFAULT_PREFIX,
         headers: dict[str, str] | None = None,
-        resource_attributes: dict[str, Any] | None = None,
+        custom_attributes: dict[str, Any] | None = None,
         max_failed_rows_sample: int = 0,
         use_global_providers: bool = False,
         metric_provider: Any | None = None,
@@ -52,13 +52,24 @@ class OtelExporter:
         if max_failed_rows_sample < 0:
             raise ValueError("max_failed_rows_sample must be >= 0.")
 
+        builds_own_providers = (
+            not use_global_providers
+            and metric_provider is None
+            and tracer_provider is None
+            and logger_provider is None
+        )
+        if builds_own_providers and endpoint is None and not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+            raise ValueError(
+                "No endpoint configured. Pass endpoint= or set the OTEL_EXPORTER_OTLP_ENDPOINT environment variable."
+            )
+
         self._signals = signals
         self._endpoint = endpoint
         self._protocol = protocol
-        self._namespace = namespace
-        self._service_name = service_name or namespace
+        self._service_name = service_name
+        self._prefix = prefix
         self._headers = headers
-        self._resource_attributes = resource_attributes
+        self._custom_attributes = custom_attributes
         self._max_failed_rows_sample = max_failed_rows_sample
         self._use_global_providers = use_global_providers
         self._metric_provider = metric_provider
@@ -73,7 +84,8 @@ class OtelExporter:
             service_name=self._service_name,
             run_id=run_id,
             version=__version__,
-            user_attributes=self._resource_attributes,
+            prefix=self._prefix,
+            custom_attributes=self._custom_attributes,
         )
         providers = resolve_providers(
             self._signals,
@@ -88,25 +100,39 @@ class OtelExporter:
         )
 
         sample_rows = self._collect_row_samples(result)
+        context_attrs = build_context_attributes(
+            result,
+            service_name=self._service_name,
+            run_id=run_id,
+            version=__version__,
+            prefix=self._prefix,
+            custom_attributes=self._custom_attributes,
+        )
 
         try:
             if providers.meter is not None:
-                MetricEmitter(providers.meter, namespace=self._namespace).emit(result)
+                MetricEmitter(
+                    providers.meter,
+                    namespace=self._prefix,
+                    context_attributes=context_attrs,
+                ).emit(result)
 
             span_contexts: dict[int, Any] = {}
             if providers.tracer is not None:
                 span_contexts = TraceEmitter(
                     providers.tracer,
-                    namespace=self._namespace,
+                    namespace=self._prefix,
                     sample_rows_by_check=sample_rows,
+                    context_attributes=context_attrs,
                 ).emit(result)
 
             if providers.logger is not None:
                 LogEmitter(
                     providers.logger,
-                    namespace=self._namespace,
+                    namespace=self._prefix,
                     span_contexts=span_contexts,
                     sample_rows_by_check=sample_rows,
+                    context_attributes=context_attrs,
                 ).emit(result)
         finally:
             providers.flush_and_shutdown()
