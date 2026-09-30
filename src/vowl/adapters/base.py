@@ -112,6 +112,12 @@ class BaseAdapter(ABC):  # noqa: B024
         from both can be executed directly on one of them without
         materializing data.  The default implementation returns ``False``;
         subclasses should override with backend-specific logic.
+
+        Filter conditions should not affect the answer. When compatible
+        adapters apply different filters to a join, the multi-source
+        executor runs it on a copy from the adapter's
+        ``with_filter_conditions(filters)`` method, if it has one, and
+        otherwise copies the tables to a local DuckDB.
         """
         return False
 

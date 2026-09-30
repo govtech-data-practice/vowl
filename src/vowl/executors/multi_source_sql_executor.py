@@ -15,6 +15,7 @@ import narwhals as nw
 import sqlglot
 from sqlglot import exp
 
+from vowl.contracts.sql_transforms import matching_filter_conditions
 from vowl.executors.base import CheckResult, SQLExecutor
 from vowl.executors.security import SQLSecurityError, sanitize_identifier
 
@@ -33,14 +34,22 @@ class MultiSourceSQLExecutor(SQLExecutor):
     - Mode 1 (compatible adapters): when every referenced table is served by
       the same backend *and the same connection* (``BaseAdapter.is_compatible_with``),
       the check is delegated to that adapter's own SQL executor and runs
-      natively there — no data is copied.
+      natively there — no data is copied. Copies of one ``PooledAdapter``
+      count as one connection. The check runs on an instance leased from
+      the pool.
     - Mode 2 (incompatible adapters, e.g. tables spread across different
       connections or backends): each required table is materialized into a
       fresh local DuckDB instance via ``export_table_as_arrow`` and the query
       runs against those copies.
 
     Filter conditions from each adapter are applied to their respective tables
-    using the same subquery pattern as IbisSQLExecutor.
+    using the same subquery pattern as IbisSQLExecutor. In mode 1 the tables'
+    filters are merged into one dict for the adapter that runs the check (see
+    ``_native_route``).
+
+    A table the contract does not declare as a schema (for example a lookup
+    table) is served by the adapter of the schema the check sits under. See
+    ``_resolve_adapter``.
 
     Example:
         >>> # Query joining orders and products from different sources
@@ -75,7 +84,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
         # ValidationConfig.use_try_cast propagates consistently.
         self._use_try_cast = getattr(multi_adapter, "use_try_cast", use_try_cast)
         self._local_duckdb_con = None  # Lazily created by _get_local_duckdb()
-        self._attached_sources: set[str] = set()  # Table names already materialized into local DuckDB
+        # Table name -> adapter it was materialized from in local DuckDB
+        self._attached_sources: dict[str, BaseAdapter] = {}
 
     @property
     def adapter(self):
@@ -106,7 +116,35 @@ class MultiSourceSQLExecutor(SQLExecutor):
             )
             return set()
 
-    def _are_backends_compatible(self, table_names: set[str]) -> bool:
+    @staticmethod
+    def _owner_schema(check_ref: SQLCheckReference) -> str | None:
+        """Return the name of the schema a check sits under, if known."""
+        get_schema_name = getattr(check_ref, "get_schema_name", None)
+        return get_schema_name() if callable(get_schema_name) else None
+
+    def _resolve_adapter(self, table_name: str, owner_schema: str | None = None) -> BaseAdapter | None:
+        """
+        Return the adapter that serves ``table_name`` for one check.
+
+        A declared schema is served by its own adapter. A table the contract
+        does not declare is served by the adapter of ``owner_schema``, the
+        schema the check sits under. That is the same connection a
+        single-table check on the table runs on, and the one the pre-flight
+        ``MultiSourceAdapter.test_connections`` tests it with.
+
+        Args:
+            table_name: Table referenced in the check's query.
+            owner_schema: Schema the check sits under.
+
+        Returns:
+            The adapter, or None if neither lookup finds one.
+        """
+        adapter = self._multi_adapter.get_adapter(table_name)
+        if adapter is None and owner_schema is not None:
+            adapter = self._multi_adapter.get_adapter(owner_schema)
+        return adapter
+
+    def _are_backends_compatible(self, table_names: set[str], owner_schema: str | None = None) -> bool:
         """
         Check if all required adapters can execute queries together directly.
 
@@ -115,18 +153,106 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
         Args:
             table_names: Set of table names that need to be queried
+            owner_schema: Schema the check sits under, used to resolve
+                tables the contract does not declare.
 
         Returns:
             True if every pair of adapters reports mutual compatibility.
         """
         adapters = []
         for table_name in table_names:
-            adapter = self._multi_adapter.get_adapter(table_name)
+            adapter = self._resolve_adapter(table_name, owner_schema)
             if adapter is None:
                 return False
             adapters.append(adapter)
 
-        return all(a.is_compatible_with(b) for i, a in enumerate(adapters) for b in adapters[i + 1 :])
+        # Ask both sides, since an adapter only knows its own kind of peer
+        return all(
+            a.is_compatible_with(b) and b.is_compatible_with(a)
+            for i, a in enumerate(adapters)
+            for b in adapters[i + 1 :]
+        )
+
+    def _native_route(
+        self, table_names: set[str], owner_schema: str | None = None
+    ) -> tuple[BaseAdapter, dict[str, list[Any]] | None] | None:
+        """
+        Return how a check runs natively, or None for mode 2.
+
+        The adapters must be compatible (see ``_are_backends_compatible``).
+        The native executor applies one filter dict to every table in the
+        query, so each table's conditions are first resolved against the
+        adapter that serves it and merged under the exact table name. That is
+        the same set of conditions a mode 2 export of the table applies. When
+        the merged dict differs from what the running adapter applies on its
+        own, the check runs on a copy of it from ``with_filter_conditions``.
+        An adapter without that method falls back to mode 2. For a
+        ``PooledAdapter`` the method is looked up on its pooled instances.
+
+        Args:
+            table_names: Tables referenced in the check's query.
+            owner_schema: Schema the check sits under, used to resolve
+                tables the contract does not declare.
+
+        Returns:
+            ``(adapter, filters)`` to run the check on ``adapter``.
+            ``filters`` is the merged dict to run it with, or None when the
+            adapter's own filters already match. None in place of the tuple
+            means copy the tables into local DuckDB.
+
+        Raises:
+            ValueError: If no adapter serves the table picked to run the check.
+        """
+        if not self._are_backends_compatible(table_names, owner_schema):
+            return None
+
+        # Prefer the owner schema's adapter, then go by name, so the choice
+        # does not depend on set order.
+        ordered = sorted(table_names, key=lambda name: (name != owner_schema, name))
+        adapter = self._resolve_adapter(ordered[0], owner_schema)
+        if adapter is None:
+            raise ValueError(f"No adapter for table '{ordered[0]}'")
+
+        own_filters = getattr(adapter, "filter_conditions", {}) or {}
+        merged: dict[str, list[Any]] = {}
+        own: dict[str, list[Any]] = {}
+        for table_name in ordered:
+            source = self._resolve_adapter(table_name, owner_schema)
+            conditions = matching_filter_conditions(table_name, getattr(source, "filter_conditions", {}) or {})
+            if conditions:
+                merged[table_name] = conditions
+            conditions = matching_filter_conditions(table_name, own_filters)
+            if conditions:
+                own[table_name] = conditions
+
+        if merged == own:
+            return adapter, None
+        from vowl.adapters.pooled_adapter import PooledAdapter
+
+        runner = adapter._primary_adapter if isinstance(adapter, PooledAdapter) else adapter
+        if not callable(getattr(runner, "with_filter_conditions", None)):
+            return None
+        return adapter, merged
+
+    def _run_native(
+        self,
+        adapter: BaseAdapter,
+        filters: dict[str, list[Any]] | None,
+        check_ref: SQLCheckReference,
+    ) -> CheckResult:
+        """Run a check on one adapter's own SQL executor (mode 1).
+
+        A ``PooledAdapter`` lends one of its instances for the check, so
+        the check never shares a connection with another thread.
+        """
+        from vowl.adapters.pooled_adapter import PooledAdapter
+
+        if isinstance(adapter, PooledAdapter):
+            with adapter._lease() as leased:
+                return self._run_native(leased, filters, check_ref)
+        if filters is not None:
+            adapter = adapter.with_filter_conditions(filters)
+        return adapter._get_executor("sql").run_single_check(check_ref)
 
     def _get_local_duckdb(self):
         """
@@ -145,6 +271,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         self,
         select_query: str | None,
         table_names: set[str],
+        owner_schema: str | None = None,
     ) -> nw.DataFrame | None:
         """
         Fetch the actual rows that failed a check.
@@ -154,6 +281,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 CheckReference.get_failed_rows_query). None if the
                 transformation was not possible.
             table_names: Tables referenced in the query
+            owner_schema: Schema the check sits under.
 
         Returns:
             DataFrame of failed rows, or None if query is None or execution fails.
@@ -167,7 +295,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
         try:
             self.validate_query_security(select_query)
-            self._ensure_tables_available(table_names)
+            self._ensure_tables_available(table_names, owner_schema)
             local_con = self._get_local_duckdb()
             result = local_con.raw_sql(select_query)
             if hasattr(result, "to_arrow_table"):
@@ -204,7 +332,10 @@ class MultiSourceSQLExecutor(SQLExecutor):
             schema_name: The schema/table name to make available.
             local_con: The local DuckDB connection.
         """
-        if schema_name in self._attached_sources:
+        # An undeclared table can resolve to a different adapter for checks
+        # under different schemas, so reuse the copy only if it came from
+        # the same adapter.
+        if self._attached_sources.get(schema_name) is adapter:
             return
 
         # TODO: For DuckDB-compatible backends (postgres, mysql, sqlite), use
@@ -212,11 +343,16 @@ class MultiSourceSQLExecutor(SQLExecutor):
         # materializing, to avoid copying data. Until then we always
         # materialize regardless of backend.
         self._materialize_table_to_duckdb(adapter, schema_name, local_con)
-        self._attached_sources.add(schema_name)
+        self._attached_sources[schema_name] = adapter
 
-    def _ensure_tables_available(self, table_names: set[str]) -> None:
+    def _ensure_tables_available(self, table_names: set[str], owner_schema: str | None = None) -> None:
         """
         Ensure all required tables are available in local DuckDB.
+
+        Args:
+            table_names: Tables referenced in the query.
+            owner_schema: Schema the check sits under, used to resolve
+                tables the contract does not declare.
 
         Raises:
             NotImplementedError: If an adapter's ``export_table_as_arrow``
@@ -226,10 +362,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         local_con = self._get_local_duckdb()
 
         for table_name in table_names:
-            if table_name in self._attached_sources:
-                continue
-
-            adapter = self._multi_adapter.get_adapter(table_name)
+            adapter = self._resolve_adapter(table_name, owner_schema)
             if adapter is None:
                 raise ValueError(f"No adapter configured for table '{table_name}'")
 
@@ -264,6 +397,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         self,
         query: str,
         table_names: set[str],
+        owner_schema: str | None = None,
     ) -> Any:
         """
         Validate and execute a SQL query on local DuckDB.
@@ -271,6 +405,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         Args:
             query: The SQL query to execute.
             table_names: Tables referenced in the query.
+            owner_schema: Schema the check sits under.
 
         Returns:
             Query result (first row).
@@ -279,7 +414,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             SQLSecurityError: If the query fails security validation.
         """
         self.validate_query_security(query)
-        self._ensure_tables_available(table_names)
+        self._ensure_tables_available(table_names, owner_schema)
         local_con = self._get_local_duckdb()
         return local_con.raw_sql(query).fetchone()
 
@@ -288,7 +423,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
         Execute a single data quality check that may span multiple schemas.
 
         For compatible adapters (mode 1) the check is delegated entirely to
-        the first adapter's own SQL executor.
+        one adapter's own SQL executor, with every table's own filters (see
+        ``_native_route``).
 
         For incompatible adapters (mode 2) the executor materializes each
         table into local DuckDB via ``export_table_as_arrow`` and runs the
@@ -305,6 +441,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         try:
             raw_query = check_ref.get_check().get("query") or ""
             table_names = self._detect_tables(raw_query) if raw_query else set()
+            owner_schema = self._owner_schema(check_ref)
 
             if not table_names:
                 return check_ref.build_error_result(
@@ -314,14 +451,10 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     multi_source=True,
                 )
 
-            # --- Mode 1: delegate to the first adapter's executor -----------
-            if self._are_backends_compatible(table_names):
-                first_table = next(iter(table_names))
-                adapter = self._multi_adapter.get_adapter(first_table)
-                if adapter is None:
-                    raise ValueError(f"No adapter for table '{first_table}'")
-                executor = adapter._get_executor("sql")
-                return executor.run_single_check(check_ref)
+            # --- Mode 1: delegate to one adapter's executor ------------------
+            route = self._native_route(table_names, owner_schema)
+            if route is not None:
+                return self._run_native(*route, check_ref)
 
             # --- Mode 2: materialize into local DuckDB ----------------------
             output_dialect = "duckdb"
@@ -342,7 +475,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 )
 
             try:
-                result = self._execute_query(scalar_query, table_names)
+                result = self._execute_query(scalar_query, table_names, owner_schema)
                 actual_value = result[0] if result else None
             except SQLSecurityError as sec_error:
                 return check_ref.build_error_result(
@@ -361,8 +494,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 use_try_cast=use_try_cast,
             )
 
-            def fetcher(q=failed_query, t=table_names):
-                return self._fetch_failed_rows(q, t)
+            def fetcher(q=failed_query, t=table_names, o=owner_schema):
+                return self._fetch_failed_rows(q, t, o)
 
             return check_ref.build_result(
                 actual_value=actual_value,
@@ -385,7 +518,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         """
         Execute multiple data quality checks.
 
-        Parallelizes Mode 2 checks when all involved adapters are PooledAdapters.
+        Parallelizes checks when all involved adapters are PooledAdapters.
         Falls back to sequential execution otherwise.
 
         Args:
@@ -406,17 +539,18 @@ class MultiSourceSQLExecutor(SQLExecutor):
         """
         from vowl.adapters.pooled_adapter import PooledAdapter
 
-        all_tables: set[str] = set()
+        all_tables: set[tuple[str, str | None]] = set()
         for ref in check_refs:
             raw_query = ref.get_check().get("query") or ""
-            all_tables |= self._detect_tables(raw_query)
+            owner_schema = self._owner_schema(ref)
+            all_tables |= {(table, owner_schema) for table in self._detect_tables(raw_query)}
 
         if not all_tables:
             return 1
 
         concurrencies: list[int] = []
-        for table_name in all_tables:
-            adapter = self._multi_adapter.get_adapter(table_name)
+        for table_name, owner_schema in all_tables:
+            adapter = self._resolve_adapter(table_name, owner_schema)
             if adapter is None:
                 return 1
             if not isinstance(adapter, PooledAdapter):
@@ -430,10 +564,12 @@ class MultiSourceSQLExecutor(SQLExecutor):
         check_refs: list[SQLCheckReference],
         concurrency: int,
     ) -> list[CheckResult]:
-        """Execute Mode 2 checks in parallel using isolated DuckDB instances.
+        """Execute checks in parallel. Every adapter involved is a PooledAdapter.
 
         Phase 1: Materialize all needed tables to Arrow in parallel.
-        Phase 2: Run checks in parallel on independent local DuckDB instances.
+        Phase 2: Run checks in parallel. Mode 2 checks run on independent
+        local DuckDB instances. Mode 1 checks run on instances leased from
+        their pool.
         """
         from concurrent.futures import ThreadPoolExecutor
 
@@ -441,37 +577,46 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
         from vowl.executors.security import SQLSecurityError, validate_query_security
 
-        # Collect table requirements per check
-        check_table_map: list[tuple[SQLCheckReference, set[str]]] = []
-        all_needed_tables: set[str] = set()
+        # Resolve each check's tables to the adapters that serve them. An
+        # undeclared table resolves through the check's own schema, so the
+        # same name can come from different adapters for different checks.
+        check_table_map: list[tuple[SQLCheckReference, set[str], dict[str, BaseAdapter | None], bool]] = []
+        needed: dict[tuple[str, int], tuple[str, BaseAdapter | None]] = {}
         for ref in check_refs:
             raw_query = ref.get_check().get("query") or ""
             tables = self._detect_tables(raw_query)
-            check_table_map.append((ref, tables))
-            all_needed_tables |= tables
+            owner_schema = self._owner_schema(ref)
+            sources = {tbl: self._resolve_adapter(tbl, owner_schema) for tbl in tables}
+            native = self._native_route(tables, owner_schema) is not None
+            check_table_map.append((ref, tables, sources, native))
+            if native:
+                # Mode 1 runs natively, so nothing to download
+                continue
+            for tbl, adapter in sources.items():
+                needed[(tbl, id(adapter))] = (tbl, adapter)
 
         # Phase 1: Materialize tables in parallel
-        arrow_tables: dict[str, Any] = {}
-        materialization_errors: dict[str, str] = {}
+        arrow_tables: dict[tuple[str, int], Any] = {}
+        materialization_errors: dict[tuple[str, int], str] = {}
 
-        def materialize_table(table_name: str) -> tuple[str, Any, str | None]:
-            adapter = self._multi_adapter.get_adapter(table_name)
+        def materialize_table(key: tuple[str, int]) -> tuple[tuple[str, int], Any, str | None]:
+            table_name, adapter = needed[key]
             if adapter is None:
-                return (table_name, None, f"No adapter configured for table '{table_name}'")
+                return (key, None, f"No adapter configured for table '{table_name}'")
             try:
                 arrow_table = adapter.export_table_as_arrow(table_name)
-                return (table_name, arrow_table, None)
+                return (key, arrow_table, None)
             except Exception as e:
-                return (table_name, None, str(e))
+                return (key, None, str(e))
 
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            futures = [pool.submit(materialize_table, tbl) for tbl in all_needed_tables]
+            futures = [pool.submit(materialize_table, key) for key in needed]
             for future in futures:
-                table_name, arrow_table, error = future.result()
+                key, arrow_table, error = future.result()
                 if error:
-                    materialization_errors[table_name] = error
+                    materialization_errors[key] = error
                 else:
-                    arrow_tables[table_name] = arrow_table
+                    arrow_tables[key] = arrow_table
 
         # Phase 2: Run checks in parallel on isolated DuckDB instances
         results: list[CheckResult | None] = [None] * len(check_refs)
@@ -480,14 +625,16 @@ class MultiSourceSQLExecutor(SQLExecutor):
             index: int,
             ref: SQLCheckReference,
             tables: set[str],
+            sources: dict[str, BaseAdapter | None],
         ) -> None:
             start_time = time.perf_counter()
 
             # Check for materialization failures
             for tbl in tables:
-                if tbl in materialization_errors:
+                key = (tbl, id(sources[tbl]))
+                if key in materialization_errors:
                     results[index] = ref.build_error_result(
-                        error_message=(f"Materialization failed for table '{tbl}': {materialization_errors[tbl]}"),
+                        error_message=(f"Materialization failed for table '{tbl}': {materialization_errors[key]}"),
                         execution_time_ms=(time.perf_counter() - start_time) * 1000,
                         dialect="duckdb",
                         multi_source=True,
@@ -501,7 +648,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
                     for tbl in tables:
                         sanitize_identifier(tbl)
-                        local_con.create_table(tbl, arrow_tables[tbl], overwrite=True)
+                        local_con.create_table(tbl, arrow_tables[(tbl, id(sources[tbl]))], overwrite=True)
 
                     output_dialect = "duckdb"
                     use_try_cast = self._use_try_cast
@@ -582,13 +729,18 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     multi_source=True,
                 )
 
+        def run_check_native(index: int, ref: SQLCheckReference) -> None:
+            # run_single_check makes the same native decision and leases a
+            # pooled instance for the check
+            results[index] = self.run_single_check(ref)
+
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
             futures = []
-            for i, (ref, tables) in enumerate(check_table_map):
-                if self._are_backends_compatible(tables):
-                    results[i] = self.run_single_check(ref)
+            for i, (ref, tables, sources, native) in enumerate(check_table_map):
+                if native:
+                    futures.append(pool.submit(run_check_native, i, ref))
                 else:
-                    futures.append(pool.submit(run_check_isolated, i, ref, tables))
+                    futures.append(pool.submit(run_check_isolated, i, ref, tables, sources))
             for future in futures:
                 future.result()
 

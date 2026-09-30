@@ -43,14 +43,17 @@ theme:
     - toc.follow
 
 nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
-  - Data Contracts: contracts.md
-  - Usage Patterns: usage-patterns.md
-  - OpenTelemetry Export: otel-export.md
-  - Architecture: architecture.md
-  - Design Considerations: design-considerations.md
-  - Known Issues: known-issues.md
+  - Get Started:
+      - Overview: index.md
+      - Installation & Quick Start: getting-started.md
+  - Guides:
+      - Writing Data Contracts: contracts.md
+      - Connecting to Your Data: usage-patterns.md
+      - Exporting to OpenTelemetry: otel-export.md
+  - How It Works:
+      - Architecture: architecture.md
+      - Design Decisions: design-considerations.md
+      - Known Issues & Caveats: known-issues.md
   - Roadmap: roadmap.md
 
 markdown_extensions:

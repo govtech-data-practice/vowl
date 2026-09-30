@@ -304,6 +304,33 @@ def apply_try_cast(query: str, dialect: str) -> tuple[str, bool]:
 # ---------------------------------------------------------------------------
 
 
+def matching_filter_conditions(
+    table_name: str,
+    filter_conditions: dict[str, FilterConditionType] | None,
+) -> list[Any]:
+    """Return the filter conditions that apply to one table.
+
+    A key matches when it equals the table name or matches it as a glob
+    pattern. Keys are visited in dict order and a list value contributes
+    each of its conditions.
+
+    Args:
+        table_name: The unqualified table name.
+        filter_conditions: Filter conditions keyed by table name or pattern.
+
+    Returns:
+        The matching conditions, empty if none match.
+    """
+    matching: list[Any] = []
+    for pattern, conditions in (filter_conditions or {}).items():
+        if pattern == table_name or fnmatch.fnmatch(table_name, pattern):
+            if isinstance(conditions, list):
+                matching.extend(conditions)
+            else:
+                matching.append(conditions)
+    return matching
+
+
 def apply_filters(
     query: str,
     dialect: str,
@@ -336,13 +363,7 @@ def apply_filters(
         if tbl_name in table_filter_ast:
             continue
 
-        matching_conditions: list[Any] = []
-        for pattern, conditions in filter_conditions.items():
-            if pattern == tbl_name or fnmatch.fnmatch(tbl_name, pattern):
-                if isinstance(conditions, list):
-                    matching_conditions.extend(conditions)
-                else:
-                    matching_conditions.append(conditions)
+        matching_conditions = matching_filter_conditions(tbl_name, filter_conditions)
 
         if not matching_conditions:
             table_filter_ast[tbl_name] = None
@@ -451,6 +472,7 @@ __all__ = [
     "infer_type_from_literal",
     "wrap_count_subquery",
     "make_safe_cast",
+    "matching_filter_conditions",
     "oracle_fix_cast_types",
     "oracle_quote_column_identifiers",
     "oracle_quote_underscore_aliases",

@@ -4,7 +4,7 @@ description: >-
   and backend-specific behaviours.
 ---
 
-# Known Issues
+# Known Issues & Caveats
 
 ## Database Backend Differences
 
@@ -96,12 +96,31 @@ Array checks (see [Array Checks](contracts.md#array-checks)) rely on native arra
 
 ## Multi-Source Adapters: Data Materialisation
 
-When using `MultiSourceAdapter` (passing `adapters={}` to `validate_data`), vowl downloads each table into a local DuckDB instance before running checks. This means:
+When you pass `adapters={...}` to `validate_data`, single-table checks run inside each table's own database. A cross-table check whose tables share one connection runs in that database too. A cross-table check across different connections can't, so vowl downloads each table it reads into a local DuckDB instance and runs the check there. This means:
 
 - **Memory usage** grows with table size, so large tables may cause out-of-memory errors.
 - **Network transfer:** the full table (or filtered subset) is pulled to the client.
 
-For large datasets, prefer the **DuckDB ATTACH** approach which queries data in-place without downloading it. See [Usage Patterns](usage-patterns.md#option-a-duckdb-attach) for details.
+For large datasets, prefer the **DuckDB ATTACH** approach. It streams the rows each check needs, and doesn't download whole tables into memory before the checks run. See [Connecting to Your Data](usage-patterns.md#option-a-duckdb-attach) for details.
+
+### PooledAdapter: Joins Across Pools Are Copied
+
+A cross-table check whose tables are all served by one `PooledAdapter` runs in the database. This includes `adapter=pooled` on a contract with several schemas. vowl takes one of the pool's connections for the check, applies each table's filter conditions, and runs the query there.
+
+vowl copies the join to a local DuckDB when its tables come from:
+
+- **Two different pools**, even if both factories open the same database.
+- **A pool and another adapter**, such as an `IbisAdapter`, even on the same connection.
+
+vowl can't tell that two factories reach the same database, so it treats each pool as its own source.
+
+- **Results are correct.** Each table keeps its adapter's filter conditions, as in any download.
+- **The cost is memory and network.** It grows with the size of the tables the join reads.
+- **Single-table checks are not affected.** They still run in the database on the pool's connections.
+
+To keep a join in the database, pass one pool for every schema it reads, for example `adapter=pooled`.
+
+Separate pools also don't share work. Schemas given the same pool run their single-table checks side by side, up to `max_concurrency`. Schemas on different pools, or on a pool and another adapter, run one schema at a time, and each pool runs its own schema's checks in parallel.
 
 ### Why Not Use DuckDB ATTACH Internally?
 
@@ -323,17 +342,17 @@ If you rely solely on annotated output, always check `residues` for non-mergeabl
 
 ### Queries Accessing Tables Outside the Contract
 
-SQL checks can reference **any** table the connection can reach, not just those declared in your contract's `schema`. For example:
+A SQL check can name a table that isn't declared in your contract's `schema`. For example, this check sits under the `hdb_resale_prices` schema but reads `audit_log`, which the contract never mentions:
 
 ```yaml
 quality:
   - type: sql
-    name: "cross_reference_check"
-    query: "SELECT COUNT(*) FROM hdb_resale_prices h JOIN audit_log a ON h.id = a.record_id WHERE a.flagged = 1"
+    name: "flagged_audit_entries"
+    query: "SELECT COUNT(*) FROM audit_log WHERE flagged = 1"
     mustBe: 0
 ```
 
-Here, `audit_log` isn't declared in the contract, but the check runs fine. vowl reports the tables involved via `tables_in_query` but does **not** block undeclared table access.
+vowl reads an undeclared table through the adapter of the schema the check sits under, on that adapter's connection. If that connection can see `audit_log`, the check runs and passes or fails like any other. If it can't, the check comes back `ERROR` with the database's own "table not found" message. vowl reports the tables involved via `tables_in_query` but does **not** block undeclared table access.
 
 **Why this matters:**
 
@@ -341,13 +360,27 @@ Here, `audit_log` isn't declared in the contract, but the check runs fine. vowl 
 - Hidden dependencies on undeclared tables aren't obvious to contract reviewers.
 - It may unintentionally expose data the contract author didn't intend to include.
 
-**Backend differences:**
+**Joins follow the same rule.** A check under `hdb_resale_prices` that joins `hdb_resale_prices` to `audit_log` reads `audit_log` through the `hdb_resale_prices` adapter:
 
-| Adapter                                | Behaviour                                                                                                              |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `IbisAdapter` (native Ibis connection) | Works: the query runs against whatever the connection can reach.                                                       |
-| `MultiSourceAdapter`                   | Works: all materialised tables are available in the local DuckDB instance.                                             |
-| DuckDB ATTACH                          | **May fail**: only explicitly attached tables are visible. References to undeclared tables give a missing table error. |
+- If every table in the join is on that one connection, the query runs there directly and nothing is copied.
+- If the join also reads a schema on another connection, vowl downloads `audit_log` from the `hdb_resale_prices` connection and joins the copies in a local DuckDB, as it does for [cross-table checks across connections](usage-patterns.md#multi-source-validation).
+- Two checks under different schemas can both name `audit_log`. Each one reads the `audit_log` on its own schema's connection, so the same name can mean two different tables in one run.
+
+**What happens in each setup.** The check sits under `hdb_resale_prices` and names `audit_log`:
+
+| Setup                                                                  | Reads only `audit_log`         | Joins `audit_log` to `hdb_resale_prices`                                   | Joins `audit_log` to a schema on another connection                                      |
+| ---------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `IbisAdapter` on one connection (`adapter=`)                           | Runs on that connection        | Runs on that connection                                                    | Not applicable, every schema shares the connection                                       |
+| `adapters={...}`, `audit_log` on the `hdb_resale_prices` connection    | Runs on that connection        | Runs on that connection, nothing copied                                    | Both tables copied to a local DuckDB, `audit_log` from the `hdb_resale_prices` connection |
+| `adapters={...}`, `audit_log` only on another schema's connection      | `ERROR`, table not found       | `ERROR`, table not found                                                   | `ERROR`, table not found                                                                 |
+| `PooledAdapter` (`adapter=pooled` or in `adapters={...}`)              | Runs on a pooled connection    | Runs on a pooled connection when both schemas share the pool, nothing copied | Both tables copied to a local DuckDB, `audit_log` from the `hdb_resale_prices` pool ([joins across pools are copied](#pooledadapter-joins-across-pools-are-copied)) |
+| DuckDB ATTACH, bare `audit_log` with no view                           | `ERROR`, table not found       | `ERROR`, table not found                                                   | Not applicable, every schema shares the connection                                       |
+| DuckDB ATTACH, attached path (`pg_sales.audit_log`) or a view          | Runs on the DuckDB connection  | Runs on the DuckDB connection                                              | Not applicable, every schema shares the connection                                       |
+
+"Table not found" is the database's own error for the connection the table was looked up on. Two more things to know:
+
+- **Filter conditions.** A join that runs on one connection still applies each table's own filter conditions. `audit_log` gets the `hdb_resale_prices` adapter's conditions that match its name, and every declared schema gets its own adapter's.
+- **Schema prefixes.** When a join is copied, vowl drops schema prefixes from table names, so a copied join that names `src1.audit_log` can't find it. Use the bare name in joins across connections.
 
 !!! warning
-Treat SQL checks that reference undeclared tables as a code smell. Declare all referenced tables in your contract's `schema`, even if they're not the primary validation target.
+    Treat SQL checks that reference undeclared tables as a code smell. Declare all referenced tables in your contract's `schema`, even if they're not the primary validation target.

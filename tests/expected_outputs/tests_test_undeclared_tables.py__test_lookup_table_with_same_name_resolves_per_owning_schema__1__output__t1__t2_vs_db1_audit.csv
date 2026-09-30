@@ -1,0 +1,2 @@
+id,record_id,flagged,check_id,tables_in_query
+3,,,t2_vs_db1_audit,"audit_log, t2"

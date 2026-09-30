@@ -2,7 +2,7 @@
 description: Learn how to define data quality rules in declarative YAML using the Open Data Contract Standard (ODCS) with vowl.
 ---
 
-# Data Contracts
+# Writing Data Contracts
 
 ## The Core Concept
 
@@ -156,7 +156,7 @@ produces three generated check references:
 | `$.schema[0].properties[...].required`                     | `RequiredCheckReference`             |
 
 !!! note
-Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
+    Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
 
 ## Relationships (Foreign Keys)
 
@@ -251,7 +251,7 @@ An external reference points at a property in **another contract file**, written
 - **Self-referential** keys (a table referencing itself) run as a single-table check.
 - Failed rows carry only the referencing table's columns, so they merge onto that table's annotated output rather than landing in a separate residue.
 - If the **reference itself** can't be resolved (missing target property, or an external path with no known contract location to resolve against), the check degrades to an unsupported reference with a warning instead of failing the run.
-- If the reference resolves but you **don't register an adapter** for the target schema, that single foreign-key check comes back `ERROR` (`No adapter configured for table '<name>'`), and the rest of the run still executes.
+- If the reference resolves to an external schema but you **don't register an adapter** for it, vowl reads the target table through the referencing schema's adapter, as it does for any [table outside the contract](known-issues.md#queries-accessing-tables-outside-the-contract). The check runs if that connection has the table. Otherwise it comes back `ERROR` with the database's "table not found" message, and the rest of the run still executes.
 
 See [Reference resolution for relationships](design-considerations.md#reference-resolution-for-relationships) for how `relationships` targets are resolved (RFC 3986).
 

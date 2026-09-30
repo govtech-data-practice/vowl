@@ -6,7 +6,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from ..adapters.ibis_adapter import IbisAdapter
+from ..adapters.base import BaseAdapter
 from ..adapters.multi_source_adapter import MultiSourceAdapter
 from ..config import ValidationConfig
 from ..contracts.contract import Contract
@@ -18,7 +18,7 @@ from .result import ValidationResult
 class ValidationRunner:
     contract_cls: type[Contract] = Contract
     mapper_cls: type[DataSourceMapper] = DataSourceMapper
-    adapter_cls: type[IbisAdapter] = IbisAdapter
+    adapter_cls: type[BaseAdapter] = BaseAdapter
     multi_adapter_cls: type[MultiSourceAdapter] = MultiSourceAdapter
     result_cls: type[ValidationResult] = ValidationResult
     config_cls: type[ValidationConfig] = ValidationConfig
@@ -52,7 +52,7 @@ class ValidationRunner:
             raise ValueError("Contract has no schemas with names defined")
 
         mapper = self.mapper_cls()
-        resolved: dict[str, IbisAdapter] = {}
+        resolved: dict[str, BaseAdapter] = {}
 
         # Adapter keys may legitimately name a foreign-key *target* schema that
         # lives in another contract file (an external reference), which is not
@@ -71,6 +71,8 @@ class ValidationRunner:
                     stacklevel=3,
                 )
 
+            # Any adapter (IbisAdapter, PooledAdapter, a custom BaseAdapter)
+            # is used as given. Raw sources go through the mapper.
             if isinstance(adapter_input, self.adapter_cls):
                 resolved[schema_name] = adapter_input
             else:

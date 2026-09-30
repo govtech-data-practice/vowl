@@ -32,7 +32,7 @@ class ValidationRunner(_ValidationRunner):
 
     contract_cls = Contract
     mapper_cls = DataSourceMapper
-    adapter_cls = IbisAdapter
+    adapter_cls = BaseAdapter
     multi_adapter_cls = MultiSourceAdapter
     result_cls = ValidationResult
     config_cls = ValidationConfig

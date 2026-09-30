@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import pyarrow as pa
@@ -109,17 +110,34 @@ class IbisAdapter(BaseAdapter):
         """Whether this adapter has any active filter conditions."""
         return bool(self._filter_conditions)
 
+    def with_filter_conditions(self, filter_conditions: dict[str, FilterConditionType] | None) -> IbisAdapter:
+        """Return a copy of this adapter that applies other filter conditions.
+
+        The copy shares this adapter's connection and settings. The
+        multi-source executor uses it to run a join natively with each
+        table's own filters.
+
+        Args:
+            filter_conditions: The filter conditions for the copy, in the
+                same form the constructor accepts.
+
+        Returns:
+            A shallow copy with its filter conditions replaced.
+        """
+        clone = copy.copy(self)
+        clone._filter_conditions = filter_conditions.copy() if filter_conditions else {}
+        return clone
+
     def is_compatible_with(self, other: BaseAdapter) -> bool:
         """Two IbisAdapters are compatible when they share the same
-        backend type and connection instance, and neither has filter
-        conditions (filters require per-adapter materialization)."""
+        backend type and connection instance.
+
+        Filter conditions do not affect compatibility. The multi-source
+        executor gives each table the filters of the adapter that serves it
+        when it runs a join on the shared connection."""
         if not isinstance(other, IbisAdapter):
             return False
-        if self._con is not other._con:
-            return False
-        if self._filter_conditions or other._filter_conditions:
-            return False
-        return True
+        return self._con is other._con
 
     def get_sql_dialect(self) -> str:
         """Return the SQL dialect name for this adapter's Ibis backend."""

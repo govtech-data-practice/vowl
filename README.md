@@ -824,7 +824,7 @@ dispatches checks across them; the verdicts are identical to a sequential run.
 ```python
 import ibis
 from vowl import validate_data
-from vowl.adapters import IbisAdapter, PooledAdapter, MultiSourceAdapter
+from vowl.adapters import IbisAdapter, PooledAdapter
 
 # factory: returns a fresh adapter (new connection) on each call. Called once
 # per pooled connection, so the table must be available on every connection.
@@ -834,12 +834,23 @@ def make_adapter():
 
 pooled = PooledAdapter(factory=make_adapter, max_concurrency=4)
 
-# PooledAdapter is a connection pool, so wire it in via MultiSourceAdapter
-# (keyed by schema name) and pass it through adapters=.
-multi = MultiSourceAdapter({"my_table": pooled})
-result = validate_data("contract.yaml", adapters=multi)
+# Pass the pool like any other adapter: adapter=pooled for every schema,
+# or adapters={"my_table": pooled, ...} to give each schema its own.
+result = validate_data("contract.yaml", adapter=pooled)
 result.display_full_report()
 ```
+
+`max_concurrency` caps the checks in flight, and so the connections open, for
+the whole run. Schemas given the same pool share that cap and run side by side.
+A join between tables on one pool runs in the database on one of the pool's
+connections. A join across two pools, or between a pool and another adapter,
+is copied to a local DuckDB. See [PooledAdapter: Joins Across Pools Are Copied](docs/known-issues.md#pooledadapter-joins-across-pools-are-copied).
+
+The pool keeps its adapters after the run, so you can pass it to another
+`validate_data` call. Call `pooled.cleanup()` when you are done with it. This
+drops the pooled adapters and calls `cleanup()` on each one that defines it. It
+does not close Ibis connections, so close those yourself if your factory opens
+ones that need closing.
 
 ## Filtering & cross-source
 
@@ -906,7 +917,7 @@ result.display_full_report()
 
 There are two ways to validate across tables in different databases.
 
-#### Option A: DuckDB ATTACH (recommended: streams data, no materialisation)
+#### Option A: DuckDB ATTACH (streams rows per check, no up-front download)
 
 ```python
 import ibis
@@ -931,9 +942,9 @@ result = validate_data("contract.yaml", adapter=IbisAdapter(con))
 result.display_full_report()
 ```
 
-> **Note:** DuckDB evaluates views dynamically at query time, so this does **not** materialise or copy data. It streams live from your attached databases; you just get cleaner, prefix-free table names in your contracts. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+> **Note:** A view is a saved query, not a copy, and it gives your contracts clean, prefix-free table names. DuckDB still runs on your machine, so each check streams the rows it reads from the attached databases, then discards them. For PostgreSQL and MySQL, simple filters are sent to the source. Joins and aggregates such as `COUNT(*)` run inside DuckDB, so the rows they read cross the network, and a table used by several checks is read once per check. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
 
-#### Option B: Multi-Source Adapters (materialises data locally)
+#### Option B: Multi-Source Adapters (downloads tables for cross-table checks)
 
 ```python
 from vowl import validate_data
@@ -952,7 +963,7 @@ result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
 
-> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). The `MultiSourceAdapter` **materialises entire tables on the client** via Arrow into a local DuckDB instance, so prefer ATTACH whenever possible. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). It also preserves a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block, and those queries succeed with `MultiSourceAdapter` (everything is materialised locally) but fail with DuckDB ATTACH (only explicitly attached tables are visible).
+> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). Single-table checks run inside each table's own database. For a cross-table check across different connections, the `MultiSourceAdapter` **downloads each table it reads in full** (after filter conditions) via Arrow into a local DuckDB instance, so prefer ATTACH for large tables when your sources support it. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). Both options share a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block. vowl reads an undeclared table through the connection of the schema the check sits under, whether the check reads it alone or joins it to other tables, and the check runs whenever that connection can see the table.
 
 ### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
 
@@ -1050,7 +1061,7 @@ executors = adapter.get_executors()
 assert "sql" in executors
 ```
 
-This section documents the extension boilerplate rather than a guaranteed drop-in `validate_data(..., adapter=...)` path for arbitrary non-Ibis adapters. For end-to-end validation in the built-in runner today, the supported runtime adapter type is `IbisAdapter`.
+`validate_data` accepts any `BaseAdapter` through `adapter=` or `adapters=`, including `IbisAdapter`, `PooledAdapter` and your own subclasses. A custom adapter runs its checks through the executors it registers. A cross-table check runs in the database only if `is_compatible_with` says the adapters can share a query. The default returns `False`, so vowl copies the tables to a local DuckDB, which needs `export_table_as_arrow`. When the tables in such a join have different filter conditions, the adapter also needs `with_filter_conditions`, or vowl copies the tables.
 
 ### Loading Contracts from Remote Sources (Git/S3)
 

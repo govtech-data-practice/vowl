@@ -370,7 +370,7 @@ def test_multisource_fetch_failed_rows_adds_limit_and_returns_dataframe(monkeypa
     executor._local_duckdb_con = local_con
 
     monkeypatch.setattr(executor, "validate_query_security", lambda query: None)
-    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names: None)
+    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names, owner_schema=None: None)
 
     result = executor._fetch_failed_rows("SELECT * FROM users", {"users"})
 
@@ -385,7 +385,7 @@ def test_multisource_fetch_failed_rows_warns_and_returns_none_on_error(monkeypat
     executor._local_duckdb_con = local_con
 
     monkeypatch.setattr(executor, "validate_query_security", lambda query: None)
-    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names: None)
+    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names, owner_schema=None: None)
 
     with pytest.warns(UserWarning, match="Failed to fetch failed rows for cross-schema check: boom"):
         assert executor._fetch_failed_rows("SELECT * FROM users", {"users"}) is None
@@ -408,7 +408,7 @@ def test_multisource_run_single_check_wraps_missing_mode1_adapter(monkeypatch: p
     check_ref = StubCheckReference()
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: True)
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: True)
 
     result = executor.run_single_check(check_ref)
 
@@ -421,7 +421,7 @@ def test_multisource_run_single_check_errors_when_rendered_query_is_missing(monk
     check_ref = StubCheckReference(rendered_query=None)
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: False)
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: False)
 
     result = executor.run_single_check(check_ref)
 
@@ -434,11 +434,11 @@ def test_multisource_run_single_check_returns_security_error_with_metadata(monke
     check_ref = StubCheckReference(column_name="employee_id", logical_type="integer")
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: False)
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: False)
     monkeypatch.setattr(
         executor,
         "_execute_query",
-        lambda query, table_names: (_ for _ in ()).throw(
+        lambda query, table_names, owner_schema=None: (_ for _ in ()).throw(
             SQLSecurityError("blocked", violation_type="write_operation", query=query)
         ),
     )
@@ -457,12 +457,14 @@ def test_multisource_run_single_check_failed_result_defaults_row_count_to_zero(m
     check_ref = StubCheckReference()
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: False)
-    monkeypatch.setattr(executor, "_execute_query", lambda query, table_names: ["not-an-int"])
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: False)
+    monkeypatch.setattr(executor, "_execute_query", lambda query, table_names, owner_schema=None: ["not-an-int"])
     monkeypatch.setattr(
         executor,
         "_fetch_failed_rows",
-        lambda query, table_names: SimpleNamespace(to_pandas=lambda: pa.table({"id": [1]}).to_pandas()),
+        lambda query, table_names, owner_schema=None: SimpleNamespace(
+            to_pandas=lambda: pa.table({"id": [1]}).to_pandas()
+        ),
     )
 
     result = executor.run_single_check(check_ref)

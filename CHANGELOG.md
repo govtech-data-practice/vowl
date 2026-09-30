@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- A cross-table check whose tables share one connection now runs in that database even when adapters have filter conditions. Each table keeps the filters of the adapter that reads it, so the answer matches a run on local copies. Previously any filter condition made vowl download every table in the join. For these checks `rendered_implementation` now shows the filter subqueries that ran. A custom adapter without `with_filter_conditions` still downloads the tables when their filters differ.
+- Schemas given the same `PooledAdapter`, such as `adapter=pooled` on a contract with several schemas, now run their single-table checks side by side through the pool, up to `max_concurrency` in total. Previously the pool ran one schema's checks at a time.
+- A cross-table check whose tables are all served by one `PooledAdapter` now runs in the database on one of the pool's connections, with each table's filter conditions. Previously vowl downloaded every table in the join. A join across two pools, or between a pool and another adapter, is still copied. See [PooledAdapter: Joins Across Pools Are Copied](docs/known-issues.md#pooledadapter-joins-across-pools-are-copied).
+- `DataSourceMapper.get_adapter` given an adapter other than `IbisAdapter` now raises a `TypeError` that says to pass the adapter to `validate_data` as it is. The old message, `Only IbisAdapter is supported`, was wrong since `validate_data` accepts any adapter.
+
+### Fixed
+- A SQL check that joins a table the contract doesn't declare, such as a lookup table, now reads it through the adapter of the schema the check sits under. That is the same connection a check reading the table alone already used. Previously such a join always failed with `No adapter configured for table '...'`, and so did a foreign key to an external table with no adapter registered. The check now runs when that connection can see the table, and otherwise errors with the database's own "table not found" message.
+- `validate_data` now accepts a `PooledAdapter` or a custom `BaseAdapter` subclass through `adapter=` or in `adapters={...}`. Previously it raised `TypeError: Unsupported adapter type: PooledAdapter` unless you wrapped the adapter in a `MultiSourceAdapter` yourself.
+- A `PooledAdapter` shared by several schemas now keeps to `max_concurrency` connections in total. Previously each schema's copy of the pool kept its own count, so the copies together could open more connections than the limit.
+- A `PooledAdapter` and an `IbisAdapter` on the same connection no longer route a join between their tables to the database through the pool, which could fail. The join is copied to a local DuckDB.
+
 ## [0.0.6] - 2026-09-21
 
 ### Added
