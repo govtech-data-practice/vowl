@@ -32,7 +32,11 @@ dependencies = [
     "pyarrow>=14.0.0",
     "pyyaml>=5.4.0",
     "requests>=2.32.5",
-    "sqlglot[c]>=28.6.0",
+    # Capped below 30.18: sqlglot 30.18.0 renamed `Drop(this=...)` to
+    # `Drop(tables=...)`, so ibis (11.x and 12.0.0) emits a nameless
+    # `DROP VIEW/TABLE IF EXISTS` from DuckDB create_table(<pyarrow Table>).
+    # Lift once ibis ships ibis-project/ibis#12104, and raise the ibis floor to it.
+    "sqlglot[c]>=28.6.0,<30.18",
 ]
 
 [project.optional-dependencies]
@@ -54,7 +58,7 @@ spark-classic = [
 ]
 
 # OpenTelemetry export of validation results (metrics, traces, logs). Optional;
-# `import vowl` never imports opentelemetry. See docs/otel-export-design.md.
+# `import vowl` never imports opentelemetry. See design/otel-export.md.
 otel = [
     "opentelemetry-sdk>=1.27.0",
     "opentelemetry-exporter-otlp>=1.27.0",

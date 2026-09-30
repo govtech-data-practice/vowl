@@ -3933,7 +3933,7 @@ requires-dist = [
     { name = "pyspark", extras = ["connect"], marker = "extra == 'spark'", specifier = ">=3.4.0" },
     { name = "pyyaml", specifier = ">=5.4.0" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "sqlglot", extras = ["c"], specifier = ">=28.6.0" },
+    { name = "sqlglot", extras = ["c"], specifier = ">=28.6.0,<30.18" },
 ]
 provides-extras = ["spark", "spark-classic", "otel", "all"]
 
