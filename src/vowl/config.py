@@ -27,6 +27,17 @@ OutputMode = Literal["failed_rows", "annotated", "both"]
 #: - ``"full"``    -- ``[<full check_definition> + check_name + target, ...]``.
 CheckInfoPreset = Literal["names", "summary", "full"]
 
+#: Which rows count as failed in the row-quality numbers:
+#:
+#: - ``"failed_checks"``  -- only rows caught by checks that FAILED (default).
+#:                           Rows caught by a check that stayed within its
+#:                           tolerance are reported separately as tolerated.
+#: - ``"all_violations"`` -- every row that breaks any check, including rows
+#:                           caught by a check that PASSED within its tolerance.
+RowIssueScope = Literal["failed_checks", "all_violations"]
+
+_ROW_ISSUE_SCOPES = ("failed_checks", "all_violations")
+
 
 @dataclass
 class ValidationConfig:
@@ -64,6 +75,10 @@ class ValidationConfig:
             ``get_annotated_output(check_info=...)`` / ``save(check_info=...)``
             override this per call; when their argument is ``None`` this config
             value is used.
+        row_issue_scope: Which rows count as failed in the row-quality
+            numbers (``print_summary``, ``get_row_quality_df``, OTEL and the
+            annotated output).  One of ``"failed_checks"`` (default) or
+            ``"all_violations"``.  See :data:`RowIssueScope`.
     """
 
     max_rows_for_statistics: int = -1
@@ -72,6 +87,13 @@ class ValidationConfig:
     use_try_cast: bool = True
     output_mode: OutputMode = "failed_rows"
     annotated_check_info: CheckInfoPreset = "names"
+    row_issue_scope: RowIssueScope = "failed_checks"
+
+    def __post_init__(self) -> None:
+        if self.row_issue_scope not in _ROW_ISSUE_SCOPES:
+            raise ValueError(
+                f"row_issue_scope must be one of {', '.join(_ROW_ISSUE_SCOPES)}, got {self.row_issue_scope!r}"
+            )
 
     def to_dict(self) -> dict:
         """Return a plain dict representation of the config."""

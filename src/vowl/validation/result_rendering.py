@@ -8,13 +8,13 @@ from collections.abc import Sequence
 import pyarrow as pa
 
 from ..executors.base import CheckResult
-from .result_models import CheckStatusSummary, SchemaValidationBreakdown, SingleTableSummary
+from .result_models import CheckStatusSummary, OverallSummary, SchemaValidationBreakdown
 
 STATUS_ORDER = ("FAILED", "ERROR", "PASSED")
 SUMMARY_LABELS = (
     "Checks Pass Rate:",
     "ERRORED Checks:",
-    "Unique Passed Rows:",
+    "Passed Rows:",
     "Non-unique Failed Rows:",
 )
 
@@ -117,16 +117,22 @@ def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | Non
     return "\n".join(lines)
 
 
-def format_unique_passed_rows(single_table: SingleTableSummary) -> str:
-    # total_rows may be 0 (empty table, or stats unavailable), in which case
-    # passed_row_percentage is None. Treat any falsy total_rows as N/A rather
-    # than feeding None into _truncate_pct.
-    if not single_table.total_rows or single_table.passed_row_percentage is None:
-        return f"{single_table.passed_unique_rows:,} / {single_table.total_rows or 0:,} (N/A)"
-    return (
-        f"{single_table.passed_unique_rows:,} / {single_table.total_rows:,} "
-        f"({_truncate_pct(single_table.passed_row_percentage)})"
-    )
+def format_passed_rows(overall: OverallSummary) -> str:
+    """Format a schema's passed rows as ``passed / total (percent)``.
+
+    ``N/A`` stands in for numbers that are unavailable: no check was counted,
+    row statistics are off, or the table is empty. ``(approx.)`` marks numbers
+    that are not exact.
+    """
+    if overall.passed_rows is None:
+        return "N/A"
+    suffix = "" if overall.exact else " (approx.)"
+    # total_rows may be 0 (empty table), in which case passed_row_percentage
+    # is None. Treat any falsy total_rows as N/A rather than feeding None into
+    # _truncate_pct.
+    if not overall.total_rows or overall.passed_row_percentage is None:
+        return f"{overall.passed_rows:,} / {overall.total_rows or 0:,} (N/A){suffix}"
+    return f"{overall.passed_rows:,} / {overall.total_rows:,} ({_truncate_pct(overall.passed_row_percentage)}){suffix}"
 
 
 def _check_status_lines(
@@ -160,19 +166,12 @@ def build_schema_summary_lines(
     w = summary_metric_width
 
     lines = [f"   {schema_name}:"]
-    lines += ["     Overall:"] + _check_status_lines(overall, w)
     lines += (
-        ["     Single Table:"]
-        + _check_status_lines(single_table, w)
-        + [
-            format_summary_metric(
-                "       ",
-                "Unique Passed Rows:",
-                format_unique_passed_rows(single_table),
-                w,
-            ),
-        ]
+        ["     Overall:"]
+        + _check_status_lines(overall, w)
+        + [format_summary_metric("       ", "Passed Rows:", format_passed_rows(overall), w)]
     )
+    lines += ["     Single Table:"] + _check_status_lines(single_table, w)
     lines += (
         ["     Multi Table:"]
         + _check_status_lines(multi_table, w)

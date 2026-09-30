@@ -1,0 +1,7177 @@
+{
+  "schema_version": 1,
+  "run": {
+    "vowl.version": "0.0.7.dev3",
+    "vowl.run.id": "b5651366-c2e7-48da-8eaa-c717ff2c1af0",
+    "vowl.contract.id": "b6376e57-aa90-41eb-90d0-c72dca7567e6",
+    "vowl.contract.name": "Employee Payroll Records",
+    "vowl.contract.version": "1.0.0",
+    "vowl.contract.api_version": "v3.2.0",
+    "vowl.contract.status": "draft",
+    "vowl.domain": "hr"
+  },
+  "run_started_at": "2026-09-30T09:12:26.399103+00:00",
+  "run_finished_at": "2026-09-30T09:12:29.633677+00:00",
+  "points": [
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "month_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "month_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_start_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_start_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_start_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_start_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_start_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_start_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_end_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_end_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_end_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "payroll_end_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_end_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_end_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employer_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employer_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_employee_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_employee_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_employee_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_cpf_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_gross_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_gross_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_gross_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_employee_equals_gross_plus_cpf",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_equals_gross_plus_cpf",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_equals_gross_plus_cpf",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "demo_employee_payroll_rowCount",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_rowCount",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_rowCount",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_nullValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_nullValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_nullValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "month_invalidValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_invalidValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_invalidValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 2,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "total_amt_missingValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_missingValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_missingValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_last_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_last_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_last_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_first_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_first_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_first_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "current_title_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "current_title_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "current_title_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "current_title_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "current_title_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "current_title_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 2,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "TelephoneNumber",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "TelephoneNumber",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "TelephoneNumber",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "orphan_payroll_rows_merge_onto_payroll",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "orphan_payroll_rows_merge_onto_payroll",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "orphan_payroll_rows_merge_onto_payroll",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.692083000009006,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.357957999829523,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 30.865000000176224,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 30.041625000194472,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 30.97037499992439,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.737333000273793,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 5.961374999969848,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.178709000072558,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.440582999905018,
+      "attributes": {
+        "check_name": "payroll_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 71.98312499986059,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 30.33620799988057,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 31.22666700028276,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 30.05316699955074,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.260458999851835,
+      "attributes": {
+        "check_name": "payroll_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 5.36637499999415,
+      "attributes": {
+        "check_name": "payroll_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.994500000066182,
+      "attributes": {
+        "check_name": "payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.305250000015803,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.703249999645777,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 27.966958999968483,
+      "attributes": {
+        "check_name": "month_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.121665999718971,
+      "attributes": {
+        "check_name": "month_required_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.353124999852298,
+      "attributes": {
+        "check_name": "payroll_start_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.005707999724109,
+      "attributes": {
+        "check_name": "payroll_start_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.278666999653069,
+      "attributes": {
+        "check_name": "payroll_end_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.697416999941197,
+      "attributes": {
+        "check_name": "payroll_end_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 5.723624999973254,
+      "attributes": {
+        "check_name": "total_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.199333999778901,
+      "attributes": {
+        "check_name": "total_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 79.62112499990326,
+      "attributes": {
+        "check_name": "employer_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.204333000117913,
+      "attributes": {
+        "check_name": "employer_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.362749999927473,
+      "attributes": {
+        "check_name": "total_amt_employee_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.955500000003667,
+      "attributes": {
+        "check_name": "total_amt_employee_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.2784170000231825,
+      "attributes": {
+        "check_name": "total_amt_employee_required_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.163417000199843,
+      "attributes": {
+        "check_name": "employee_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.656750000274769,
+      "attributes": {
+        "check_name": "employee_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.166666000401165,
+      "attributes": {
+        "check_name": "employee_cpf_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.2785420000654995,
+      "attributes": {
+        "check_name": "employee_gross_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 8.258500000010827,
+      "attributes": {
+        "check_name": "employee_gross_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.160500000125467,
+      "attributes": {
+        "check_name": "employee_gross_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.3956250001429,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.226624999930209,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 29.604792000100133,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 29.6709579997696,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 29.41762499995093,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 11.880540999754885,
+      "attributes": {
+        "check_name": "total_amt_employee_equals_gross_plus_cpf",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 8.360999999695196,
+      "attributes": {
+        "check_name": "demo_employee_payroll_rowCount",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 11.0618329999852,
+      "attributes": {
+        "check_name": "employee_id_nullValues",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 14.387499999884312,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 16.171750000012253,
+      "attributes": {
+        "check_name": "month_invalidValues",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 15.423833000113518,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 15.17908300002091,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 11.772457999995822,
+      "attributes": {
+        "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 16.20199999979377,
+      "attributes": {
+        "check_name": "total_amt_missingValues",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.314709000027506,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 8.890249999694788,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 29.400750000149856,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 59.48674999990544,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 32.19291699997484,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.666249999900174,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.276040999840916,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 5.703708000055485,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.292958999893017,
+      "attributes": {
+        "check_name": "employee_last_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.3855839996213035,
+      "attributes": {
+        "check_name": "employee_last_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.441999999926338,
+      "attributes": {
+        "check_name": "employee_last_name_required_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.50041699969006,
+      "attributes": {
+        "check_name": "employee_first_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 10.625916999742913,
+      "attributes": {
+        "check_name": "employee_first_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.310332999921229,
+      "attributes": {
+        "check_name": "employee_first_name_required_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.608624999898893,
+      "attributes": {
+        "check_name": "current_title_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.100249999894004,
+      "attributes": {
+        "check_name": "current_title_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.550624999865249,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 7.615791999796784,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 33.88204199973188,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 5.876749999970343,
+      "attributes": {
+        "check_name": "phone_number_unique_check",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 119.23674999979994,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 16.771666999829904,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 16.824124999857304,
+      "attributes": {
+        "check_name": "TelephoneNumber",
+        "schema_name": "demo_employee_list",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 5.377707999741688,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 11.91541700018206,
+      "attributes": {
+        "check_name": "employee_id_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 12.217791999773908,
+      "attributes": {
+        "check_name": "orphan_payroll_rows_merge_onto_payroll",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 12.020249999750376,
+      "attributes": {
+        "check_name": "phone_number_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "month_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "month_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_start_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_start_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_start_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_start_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_end_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_end_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "payroll_end_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "payroll_end_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employer_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employer_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_employee_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_employee_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_employee_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_cpf_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_gross_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_gross_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_gross_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_gross_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_employee_equals_gross_plus_cpf",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_employee_equals_gross_plus_cpf",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "employee_id_nullValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_nullValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "month_invalidValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_invalidValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "total_amt_missingValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "total_amt_missingValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_last_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_last_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_last_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_last_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_first_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_first_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_first_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "employee_first_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "current_title_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "current_title_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "current_title_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "current_title_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "phone_number_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "phone_number_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "TelephoneNumber",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "TelephoneNumber",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 1,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "employee_id_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 1,
+      "attributes": {
+        "check_name": "employee_id_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "orphan_payroll_rows_merge_onto_payroll",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 1,
+      "attributes": {
+        "check_name": "orphan_payroll_rows_merge_onto_payroll",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 1,
+      "attributes": {
+        "check_name": "phone_number_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "phone_number_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_unique_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_start_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_start_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_end_dt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "payroll_end_dt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employer_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_employee_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_employee_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_employee_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_cpf_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_gross_amt_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_gross_amt_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_gross_amt_required_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_employee_equals_gross_plus_cpf",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_nullValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_invalidValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "check_name": "Date With Timezone",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "total_amt_missingValues",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_minLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_logical_type_options_maxLength_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_id_primary_key_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_last_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_last_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_last_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_first_name_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_first_name_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "employee_first_name_required_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "current_title_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "current_title_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "phone_number_column_exists_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "check_name": "phone_number_logical_type_options_pattern_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "phone_number_unique_check",
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "PersonName",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "TelephoneNumber",
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.6666666666666666,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.6666666666666666,
+      "attributes": {
+        "check_name": "employee_id_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.6666666666666666,
+      "attributes": {
+        "check_name": "orphan_payroll_rows_merge_onto_payroll",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.3333333333333333,
+      "attributes": {
+        "check_name": "phone_number_exists_in_master_list",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 33,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 3,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 9,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 6,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 4,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 16,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 3,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 3,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9166666666666666,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.6,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9411764705882353,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 1,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.3333333333333333,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "completeness",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "conformity",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "dimension": "consistency",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 48,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 7,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 22,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.schema.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.8727272727272727,
+      "attributes": {
+        "schema_name": "demo_employee_payroll"
+      }
+    },
+    {
+      "name": "vowl.schema.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9565217391304348,
+      "attributes": {
+        "schema_name": "demo_employee_list"
+      }
+    },
+    {
+      "name": "vowl.schema.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.schema.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.schema.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.schema.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.schema.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "schema_name": "demo_employee_payroll",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.schema.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "schema_name": "demo_employee_list",
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.run.schema.count",
+      "type": "counter",
+      "unit": "{schema}",
+      "value": 0,
+      "attributes": {
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.run.schema.count",
+      "type": "counter",
+      "unit": "{schema}",
+      "value": 2,
+      "attributes": {
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.run.schema.count",
+      "type": "counter",
+      "unit": "{schema}",
+      "value": 0,
+      "attributes": {
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.run.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 70,
+      "attributes": {
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.run.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 8,
+      "attributes": {
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.run.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.run.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.8974358974358975,
+      "attributes": {}
+    },
+    {
+      "name": "vowl.run.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "vowl.row_quality.exact": true,
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.run.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 5,
+      "attributes": {
+        "vowl.row_quality.exact": true,
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.run.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.0,
+      "attributes": {
+        "vowl.row_quality.exact": true
+      }
+    },
+    {
+      "name": "vowl.run.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 3234.574,
+      "attributes": {}
+    }
+  ]
+}

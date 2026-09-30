@@ -258,3 +258,62 @@ class IbisAdapter(BaseAdapter):
         validate_query_security(query, dialect=dialect)
 
         return self._con.sql(query).to_pyarrow()
+
+    def _filtered_table_query(self, schema_name: str) -> str:
+        """Return ``SELECT * FROM <table>`` with this adapter's filters applied."""
+        from vowl.contracts.check_reference import SQLCheckReference
+        from vowl.executors.security import to_table_expression
+
+        dialect = self.get_sql_dialect()
+        query = sqlglot.select(exp.Star()).from_(to_table_expression(schema_name)).sql(dialect=dialect)
+        if self.filter_conditions:
+            query = SQLCheckReference.apply_filters(query, dialect, self.filter_conditions)
+        return query
+
+    def run_arrow_query(self, sql: str) -> pa.Table:
+        """Run a read-only query and return its rows as a PyArrow table.
+
+        Used by the row-quality component to run its pushdown statements. The
+        query passes the same security validation as every check query.
+
+        Args:
+            sql: A SELECT query in this adapter's dialect.
+
+        Returns:
+            The query result as a PyArrow table.
+
+        Raises:
+            RuntimeError: If the backend returned a result of unknown shape.
+        """
+        from vowl.executors.ibis_sql_executor import raw_result_to_arrow
+        from vowl.executors.security import validate_query_security
+
+        validate_query_security(sql, dialect=self.get_sql_dialect())
+        # raw_sql, not con.sql: con.sql infers the result schema first, which
+        # fails on SQLite for computed columns of an empty result.
+        table = raw_result_to_arrow(self._con.raw_sql(sql))
+        if table is None:
+            raise RuntimeError(f"{type(self._con).__name__}.raw_sql returned a result vowl cannot read as Arrow")
+        return table
+
+    def get_column_types(self, schema_name: str) -> dict[str, Any]:
+        """Return the column names and Ibis data types of a table.
+
+        Args:
+            schema_name: The logical table name.
+
+        Returns:
+            An ordered mapping of column name to Ibis data type. The type is
+            None when the backend cannot infer it, for example an untyped
+            SQLite column.
+        """
+        from vowl.executors.security import validate_query_security
+
+        query = self._filtered_table_query(schema_name)
+        validate_query_security(query, dialect=self.get_sql_dialect())
+        try:
+            return dict(self._con.sql(query).schema().items())
+        except Exception:
+            # Fall back to the column names alone, read from an empty result.
+            probe = f"SELECT * FROM ({query}) AS _vowl_p WHERE 1 = 0"
+            return dict.fromkeys(self.run_arrow_query(probe).column_names)

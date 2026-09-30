@@ -250,12 +250,12 @@ def test_metric_emitter_check_level_metrics(result):
     MetricEmitter(provider, namespace="vowl").emit(result)
     points = _metric_points(reader)
 
-    assert "vowl.check.count" in points
+    assert "vowl.check.check.count" in points
     assert "vowl.check.duration" in points
     assert "vowl.check.row.count" in points
 
     # SQL text is high-cardinality: it must never ride on a metric label.
-    for point in points["vowl.check.count"]:
+    for point in points["vowl.check.check.count"]:
         assert "query" not in point.attributes
 
     # Per-check row counts: a PASSED and a FAILED point for every row-level
@@ -274,7 +274,7 @@ def test_metric_emitter_check_level_metrics(result):
     assert failing.attributes["schema_name"] == "orders"
 
     # Per-check row pass rate: every row-level check with a schema gets one.
-    check_row_rates = {p.attributes["check_name"]: p.value for p in points["vowl.check.row_pass_rate"]}
+    check_row_rates = {p.attributes["check_name"]: p.value for p in points["vowl.check.row.pass_rate"]}
     assert check_row_rates["amount_non_negative"] == 0.5  # 2 of 4 rows failed
     assert all(v == 1.0 for k, v in check_row_rates.items() if k != "amount_non_negative")
 
@@ -294,14 +294,14 @@ def test_metric_emitter_dimension_level_metrics(result):
     assert all(p.attributes["schema_name"] == "orders" for p in points["vowl.dimension.row.count"])
 
     # Check pass rate per dimension.
-    check_rates = {p.attributes["dimension"]: p.value for p in points["vowl.dimension.check_pass_rate"]}
+    check_rates = {p.attributes["dimension"]: p.value for p in points["vowl.dimension.check.pass_rate"]}
     assert check_rates["consistency"] == 0.0
     assert check_rates["completeness"] == 1.0
     assert check_rates["conformity"] == 1.0
     assert "unknown" not in check_rates
 
     # Row pass rate per dimension.
-    row_rates = {p.attributes["dimension"]: p.value for p in points["vowl.dimension.row_pass_rate"]}
+    row_rates = {p.attributes["dimension"]: p.value for p in points["vowl.dimension.row.pass_rate"]}
     assert row_rates["consistency"] == 0.5  # 2 of 4 rows failed
     assert row_rates["completeness"] == 1.0
     assert row_rates["conformity"] == 1.0
@@ -320,19 +320,23 @@ def test_metric_emitter_schema_level_metrics(result):
     assert all("dimension" not in p.attributes for p in points["vowl.schema.row.count"])
 
     # Schema-level check pass rate.
-    (schema_check_rate,) = points["vowl.schema.check_pass_rate"]
+    (schema_check_rate,) = points["vowl.schema.check.pass_rate"]
     assert schema_check_rate.attributes["schema_name"] == "orders"
     assert 0.0 < schema_check_rate.value < 1.0  # some pass, some fail
 
     # Schema-level row pass rate.
-    (schema_row_rate,) = points["vowl.schema.row_pass_rate"]
+    (schema_row_rate,) = points["vowl.schema.row.pass_rate"]
     assert schema_row_rate.attributes["schema_name"] == "orders"
     assert schema_row_rate.value == 0.5  # 2 of 4 rows affected
 
 
-def test_row_counts_are_gauges_and_the_check_count_is_a_counter(result):
-    """Row counts are not additive across checks or runs, so they must be gauges."""
-    from opentelemetry.sdk.metrics.export import Gauge, Sum
+_LEVELS = ("check", "dimension", "schema", "run")
+
+
+def test_additive_counts_are_counters_and_the_rest_are_gauges(result):
+    """Check and schema counts add up, so they are counters. Row counts and
+    pass rates do not, so they are gauges."""
+    from opentelemetry.sdk.metrics.export import Gauge, Histogram, Sum
 
     from vowl.otel._metrics import MetricEmitter
 
@@ -344,9 +348,145 @@ def test_row_counts_are_gauges_and_the_check_count_is_a_counter(result):
         for scope_metrics in resource_metrics.scope_metrics
         for metric in scope_metrics.metrics
     }
-    for name in ("vowl.check.row.count", "vowl.dimension.row.count", "vowl.schema.row.count"):
-        assert types[name] is Gauge, name
-    assert types["vowl.check.count"] is Sum
+    for level in _LEVELS:
+        assert types[f"vowl.{level}.check.count"] is Sum, level
+        assert types[f"vowl.{level}.row.count"] is Gauge, level
+        assert types[f"vowl.{level}.row.pass_rate"] is Gauge, level
+    for level in ("dimension", "schema", "run"):
+        assert types[f"vowl.{level}.check.pass_rate"] is Gauge, level
+    assert types["vowl.run.schema.count"] is Sum
+    assert types["vowl.check.duration"] is Histogram
+    assert types["vowl.run.duration"] is Histogram
+
+
+def _check_counts(points, *keys):
+    """Group ``*.check.count`` points into ``{(attr, ...): {status: value}}``."""
+    grouped: dict[tuple, dict[str, int]] = {}
+    for point in points:
+        grouped.setdefault(tuple(point.attributes[k] for k in keys), {})[point.attributes["status"]] = point.value
+    return grouped
+
+
+def test_check_counts_at_every_level_send_every_status(result):
+    """Each check count sends PASSED, FAILED and ERROR, zeros included, and
+    the counts add up from one level to the next."""
+    from vowl.otel._metrics import MetricEmitter
+
+    provider, reader = _meter_provider()
+    MetricEmitter(provider, namespace="vowl").emit(result)
+    points = _metric_points(reader)
+
+    per_check = _check_counts(points["vowl.check.check.count"], "check_name")
+    assert per_check[("amount_non_negative",)] == {"PASSED": 0, "FAILED": 1, "ERROR": 0}
+    assert all(sum(counts.values()) == 1 for counts in per_check.values())
+
+    per_dimension = _check_counts(points["vowl.dimension.check.count"], "schema_name", "dimension")
+    assert per_dimension[("orders", "consistency")] == {"PASSED": 0, "FAILED": 1, "ERROR": 0}
+    assert per_dimension[("orders", "conformity")] == {"PASSED": 2, "FAILED": 0, "ERROR": 0}
+
+    (per_schema,) = _check_counts(points["vowl.schema.check.count"], "schema_name").values()
+    assert per_schema == {"PASSED": 3, "FAILED": 1, "ERROR": 0}
+
+    (per_run,) = _check_counts(points["vowl.run.check.count"]).values()
+    assert per_run == per_schema
+
+    # Checks add up across levels: every level sums to the same totals.
+    for name in ("vowl.check.check.count", "vowl.dimension.check.count", "vowl.schema.check.count"):
+        totals = {status: sum(p.value for p in points[name] if p.attributes["status"] == status) for status in per_run}
+        assert totals == per_run, name
+
+
+def test_run_level_metrics(result):
+    from vowl.otel._metrics import MetricEmitter
+
+    provider, reader = _meter_provider()
+    MetricEmitter(provider, namespace="vowl").emit(result)
+    points = _metric_points(reader)
+
+    (schemas,) = _check_counts(points["vowl.run.schema.count"]).values()
+    assert schemas == {"PASSED": 0, "FAILED": 1, "ERROR": 0}
+    (check_rate,) = points["vowl.run.check.pass_rate"]
+    assert check_rate.value == 0.75  # 3 of 4 checks passed
+
+    (rows,) = _check_counts(points["vowl.run.row.count"]).values()
+    assert rows == {"PASSED": 2, "FAILED": 2}
+    (row_rate,) = points["vowl.run.row.pass_rate"]
+    assert row_rate.value == 0.5
+    assert row_rate.attributes["vowl.row_quality.exact"] is True
+
+
+@pytest.fixture
+def two_schema_result():
+    """Two tables: ``orders`` (2 of 4 rows fail) and ``refunds`` (1 of 2 fails)."""
+    data = _contract_data()
+    data["schema"].append(
+        {
+            "name": "refunds",
+            "properties": [
+                {
+                    "name": "amount",
+                    "quality": [
+                        {
+                            "name": "refund_positive",
+                            "type": "sql",
+                            "dimension": "consistency",
+                            "query": 'SELECT COUNT(*) FROM "refunds" WHERE amount <= 0',
+                            "mustBe": 0,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    orders = pd.DataFrame({"order_id": [1, 2, 3, 4], "amount": [10.0, -5.0, 20.0, -1.0]})
+    refunds = pd.DataFrame({"amount": [3.0, 0.0]})
+    return _run_validation(contract=Contract(data), adapters={"orders": orders, "refunds": refunds})
+
+
+def test_run_row_counts_add_up_the_schemas(two_schema_result):
+    """Tables hold different rows, so the run's row count is the sum of the schemas'."""
+    from vowl.otel._metrics import MetricEmitter
+
+    provider, reader = _meter_provider()
+    MetricEmitter(provider, namespace="vowl").emit(two_schema_result)
+    points = _metric_points(reader)
+
+    schemas = _row_counts(points["vowl.schema.row.count"], "schema_name")
+    assert schemas == {"orders": {"PASSED": 2, "FAILED": 2}, "refunds": {"PASSED": 1, "FAILED": 1}}
+    (run_rows,) = _check_counts(points["vowl.run.row.count"]).values()
+    assert run_rows == {"PASSED": 3, "FAILED": 3}
+    (run_rate,) = points["vowl.run.row.pass_rate"]
+    assert run_rate.value == 0.5  # 3 of 6 rows, weighted by table size
+    (schema_count,) = _check_counts(points["vowl.run.schema.count"]).values()
+    assert schema_count == {"PASSED": 0, "FAILED": 2, "ERROR": 0}
+
+
+@pytest.mark.parametrize("duplicate_check", [False, True])
+def test_otel_metrics_match_the_dq_metrics_document(result, duplicate_check):
+    """Both outputs read one computation, so every point matches exactly,
+    also when two checks share a name and attributes."""
+    from vowl.otel._metrics import MetricEmitter
+
+    if duplicate_check:
+        result.check_results.append(next(cr for cr in result.check_results if cr.status == "FAILED"))
+    provider, reader = _meter_provider()
+    MetricEmitter(provider, namespace="vowl").emit(result)
+
+    def key(name, attrs):
+        return name, tuple(sorted(attrs.items()))
+
+    otel = {}
+    for name, data_points in _metric_points(reader).items():
+        for point in data_points:
+            value = point.sum if hasattr(point, "bucket_counts") else point.value
+            otel[key(name, dict(point.attributes))] = value
+    document = {}
+    for p in result.get_dq_metrics()["points"]:
+        k = key(p["name"], p["attributes"])
+        # An OTel histogram point holds the sum of its readings.
+        document[k] = document.get(k, 0) + p["value"] if p["type"] == "histogram" else p["value"]
+
+    assert otel == pytest.approx(document)
 
 
 def test_clean_run_sends_zero_failed_rows():
@@ -394,7 +534,7 @@ def test_signal_specific_attrs_override_context_attrs(result):
     ctx = {"status": "SHOULD_BE_OVERRIDDEN", "vowl.run.id": "run-42"}
     provider, reader = _meter_provider()
     MetricEmitter(provider, namespace="vowl", context_attributes=ctx).emit(result)
-    for point in _metric_points(reader)["vowl.check.count"]:
+    for point in _metric_points(reader)["vowl.check.check.count"]:
         assert point.attributes["status"] in ("PASSED", "FAILED", "ERROR")
         assert point.attributes["vowl.run.id"] == "run-42"
 
@@ -972,6 +1112,29 @@ def test_caller_supplied_run_id_is_used_and_returned(result):
 
     assert run_id == "nightly-2026-09-29"
     assert all(s.attributes["vowl.run.id"] == run_id for s in span_exporter.get_finished_spans())
+
+
+def test_export_uses_the_result_run_id(result):
+    """Export and dq_metrics.json agree on the id without the caller passing one."""
+    run_id, _reader, span_exporter, _logs = _explicit_export(result)
+    assert run_id == result.run_id == result.get_dq_metrics()["run"]["vowl.run.id"]
+    assert all(s.attributes["vowl.run.id"] == result.run_id for s in span_exporter.get_finished_spans())
+
+
+def test_root_span_carries_the_run_check_numbers(result):
+    """The run span uses the run-level metric vocabulary, pass rate from 0 to 1."""
+    from vowl.otel._traces import TraceEmitter
+
+    provider, exporter = _tracer_provider()
+    TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(result)
+    (root,) = [s for s in exporter.get_finished_spans() if s.name == "vowl.validate"]
+
+    assert root.attributes["check.count.passed"] == 3
+    assert root.attributes["check.count.failed"] == 1
+    assert root.attributes["check.count.error"] == 0
+    assert root.attributes["check.pass_rate"] == 0.75
+    for old in ("total_checks", "passed", "failed", "errors", "success_rate"):
+        assert old not in root.attributes
 
 
 def test_run_duration_is_a_histogram_of_the_run_window(result):

@@ -7,12 +7,44 @@ from typing import TYPE_CHECKING, Any
 import narwhals as nw
 import pyarrow as pa
 
-from vowl.executors.base import CheckResult, SQLExecutor
+from vowl.executors.base import CheckResult, RowSource, SQLExecutor
 from vowl.executors.security import SQLSecurityError
 
 if TYPE_CHECKING:
     from vowl.adapters.ibis_adapter import IbisAdapter
     from vowl.contracts.check_reference import SQLCheckReference
+
+
+def raw_result_to_arrow(result: Any) -> pa.Table | None:
+    """Resolve an Arrow table from whatever an Ibis backend's ``raw_sql`` returns.
+
+    - DuckDB/Postgres/SQLite: cursor-like with .fetch_arrow_table()
+      (DuckDB >= 1.3 renamed it to .to_arrow_table())
+    - PySpark 4.0+: DataFrame with .toArrow()
+    - PySpark 3.x: internal Arrow export via ._collect_as_arrow()
+    - MySQL/MSSQL/Oracle/SQLite: standard DB-API cursor with fetchall()
+
+    Spark Connect DataFrames resolve any attribute to a Column via
+    __getattr__, so hasattr() is misleadingly True for methods that don't
+    exist. Guard on callable() so a Column (not callable) is skipped while a
+    real method is used.
+
+    Returns:
+        The rows as an Arrow table, or None when the result has no known shape.
+    """
+    if callable(getattr(result, "to_arrow_table", None)):
+        return result.to_arrow_table()
+    if callable(getattr(result, "fetch_arrow_table", None)):
+        return result.fetch_arrow_table()
+    if callable(getattr(result, "toArrow", None)):
+        return result.toArrow()
+    if callable(getattr(result, "_collect_as_arrow", None)):
+        return pa.Table.from_batches(result._collect_as_arrow())
+    if callable(getattr(result, "fetchall", None)) and getattr(result, "description", None) is not None:
+        rows = result.fetchall()
+        columns = [desc[0] for desc in result.description]
+        return pa.table({col: [row[i] for row in rows] for i, col in enumerate(columns)})
+    return None
 
 
 class IbisSQLExecutor(SQLExecutor):
@@ -74,30 +106,8 @@ class IbisSQLExecutor(SQLExecutor):
             self.validate_query_security(select_query)
 
             con = self._adapter.get_connection()
-            result = con.raw_sql(select_query)
-            # Resolve an Arrow table from whatever the backend returns:
-            #   - DuckDB/Postgres/SQLite: cursor-like with .fetch_arrow_table()
-            #     (DuckDB >= 1.3 renamed to .to_arrow_table())
-            #   - PySpark 4.0+: DataFrame with .toArrow()
-            #   - PySpark 3.x: internal Arrow export via ._collect_as_arrow()
-            #   - MySQL/MSSQL/Oracle: standard DB-API cursor with fetchall()
-            # Spark Connect DataFrames resolve any attribute to a Column via
-            # __getattr__, so hasattr() is misleadingly True for methods that
-            # don't exist. Guard on callable() so a Column (not callable) is
-            # skipped while a real method is used.
-            if callable(getattr(result, "to_arrow_table", None)):
-                arrow_table = result.to_arrow_table()
-            elif callable(getattr(result, "fetch_arrow_table", None)):
-                arrow_table = result.fetch_arrow_table()
-            elif callable(getattr(result, "toArrow", None)):
-                arrow_table = result.toArrow()
-            elif callable(getattr(result, "_collect_as_arrow", None)):
-                arrow_table = pa.Table.from_batches(result._collect_as_arrow())
-            elif callable(getattr(result, "fetchall", None)) and getattr(result, "description", None) is not None:
-                rows = result.fetchall()
-                columns = [desc[0] for desc in result.description]
-                arrow_table = pa.table({col: [row[i] for row in rows] for i, col in enumerate(columns)})
-            else:
+            arrow_table = raw_result_to_arrow(con.raw_sql(select_query))
+            if arrow_table is None:
                 return None
             arrow_table = self._deduplicate_arrow_columns(arrow_table)
             return nw.from_native(arrow_table, eager_only=True)
@@ -191,7 +201,7 @@ class IbisSQLExecutor(SQLExecutor):
             def fetcher(q=failed_query):
                 return self._fetch_failed_rows(q)
 
-            return check_ref.build_result(
+            result = check_ref.build_result(
                 actual_value=actual_value,
                 execution_time_ms=(time.perf_counter() - start_time) * 1000,
                 failed_rows_fetcher=fetcher,
@@ -199,6 +209,19 @@ class IbisSQLExecutor(SQLExecutor):
                 filter_conditions=filters,
                 use_try_cast=use_try_cast,
             )
+            if result.status != "ERROR":
+                # A PASSED result carries no fetcher, but a tolerated PASSED
+                # check still has rows the row-quality component may count.
+                result.row_source = RowSource(
+                    check_ref=check_ref,
+                    dialect=dialect,
+                    filter_conditions=filters,
+                    use_try_cast=use_try_cast,
+                    adapter=self._adapter,
+                    failed_rows_query=failed_query,
+                    fetch=fetcher,
+                )
+            return result
 
         except Exception as e:
             return check_ref.build_error_result(

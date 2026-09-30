@@ -51,6 +51,9 @@ class _FakeContract:
     def get_api_version(self) -> str:
         return "v1"
 
+    def get_version(self) -> str:
+        return "1.0.0"
+
     def get_metadata(self) -> dict:
         return {"id": "test-contract"}
 

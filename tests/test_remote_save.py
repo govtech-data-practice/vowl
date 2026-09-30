@@ -87,6 +87,7 @@ def test_save_to_s3_uri_writes_into_the_remote_filesystem(result, mock_s3, tmp_p
         "bucket/run1/dq_check_results.csv",
         "bucket/run1/dq_orders_annotated.csv",
         "bucket/run1/dq_summary.json",
+        "bucket/run1/dq_dq_metrics.json",
     }
     summary = json.loads(_read_text(mock_s3.fs, "bucket/run1/dq_summary.json"))
     assert summary == json.loads(json.dumps(result.summary, default=str))

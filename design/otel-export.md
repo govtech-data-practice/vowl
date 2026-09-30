@@ -10,8 +10,10 @@ status: Implemented
 
 Internal design record for `ValidationResult.export_otel(...)`. It captures why
 the exporter is built the way it is. The user-facing guide, with the full
-attribute reference and a worked example, is `docs/otel-export.md`. This
-document does not repeat that catalogue.
+attribute reference, is `docs/dq-metrics/otel-export.md`. The metric
+vocabulary shared with `dq_metrics.json`, with the full metric list and a
+worked example, is `docs/dq-metrics/index.md`. This document does not repeat
+those catalogues.
 
 ## Goal
 
@@ -43,16 +45,18 @@ with SQL. The properties that make that rollup work are recorded in
 
 ## Why it fits cleanly
 
-Everything the exporter needs is already computed on the result object, so no new
-plumbing runs through the engine.
+Everything the exporter needs is already on the result object, so no new
+plumbing runs through the engine. `vowl.validation.dq_metrics.compute_points()`
+reads these sources once, and both `MetricEmitter` and `dq_metrics.json` use
+its points.
 
 | Source | What it provides |
-| --- | --- |
-| [`CheckResult`](https://github.com/govtech-data-practice/vowl/blob/main/src/vowl/executors/base.py) | Per-check `status`, `failed_rows_count`, `execution_time_ms`, and a `metadata` dict (`schema_name`, `engine`, `target`, `dimension`, `severity`, `tags`, `type`, `logical_type`, `operator`, and more) |
-| `ValidationResult.summary["validation_summary"]` | `total_checks`, `passed`, `failed`, `errors`, `success_rate`, `failed_rows`, `total_execution_time_ms`, `total_rows_by_schema` |
-| `ValidationResult._get_schema_validation_breakdown()` | Per-schema check counts, `failed_unique_rows`, `passed_row_percentage` |
-| `RowQualitySummary.data_quality` | Per-schema data-quality percentage (0 to 100), exported as the 0 to 1 `vowl.schema.row_pass_rate` gauge |
-| `ValidationResult.contract_id` / `.api_version` | Contract identity for context attributes |
+| ------ | ---------------- |
+| [`CheckResult`](https://github.com/govtech-data-practice/vowl/blob/main/src/vowl/executors/base.py) | Per-check `status`, `failed_rows_count`, `execution_time_ms`, and a `metadata` dict (`schema_name`, `engine`, `target`, `dimension`, `severity`, `tags`, `type`, `logical_type`, `operator`, and more). The check counts at every level are counted from these. |
+| `ValidationResult._row_quality_report()` | Per-schema and per-dimension failed rows, total rows, pass rates and `exact`, exported as the row-count and row pass-rate gauges. The run level adds up the schemas. See [Row-Quality Statistics](row-quality-statistics.md). |
+| `ValidationResult._run_started_ns` / `._run_finished_ns` | The run's start and end, for `vowl.run.duration` and the span timestamps |
+| `ValidationResult.run_id` | The run ID, set when the run is made |
+| `ValidationResult.contract` / `.api_version` | Contract identity for context attributes: id, name, version, status, domain and more |
 
 ## Architecture
 
@@ -98,15 +102,14 @@ emitters. Each emitter owns exactly one OTEL signal and can be turned on or off.
 ### Emitters
 
 - **`MetricEmitter`** is the primary use case (dashboards and alerting). It
-  records the v1 instruments (`vowl.check.count`, `vowl.check.row.count`,
-  `vowl.check.row_pass_rate`, `vowl.check.duration`,
-  `vowl.dimension.row.count`, `vowl.dimension.check_pass_rate`,
-  `vowl.dimension.row_pass_rate`, `vowl.schema.row.count`,
-  `vowl.schema.check_pass_rate`, `vowl.schema.row_pass_rate`,
-  `vowl.run.duration`). `vowl.check.count` is the only counter, because a
-  count of checks run is the only value that adds up across runs. Row counts
-  and rates are per-run gauges (see design decision 7). The two durations are
-  histograms because a duration is a timing, not something to sum.
+  does no arithmetic of its own. It replays the points of
+  `vowl.validation.dq_metrics.compute_points` into OTEL instruments, creating
+  one instrument per metric name (see design decision 16). The points are the
+  DQ metrics, named `vowl.<level>.<unit>.<measure>` at check, dimension,
+  schema and run level. Check and schema counts are counters, because they
+  add up across levels and across runs. Row counts and pass rates are per-run
+  gauges (see design decision 7). The two durations are histograms because a
+  duration is a timing, not something to sum.
 - **`TraceEmitter`** covers pipeline observability and correlation. It emits one
   `vowl.validate` root span per run and one `vowl.check` child span per check.
   Only errored checks set span status ERROR, and so does the root span when
@@ -136,7 +139,7 @@ result.export_otel(
     protocol=None,                            # None reads OTEL_EXPORTER_OTLP_PROTOCOL, else "grpc"
     prefix="vowl",                            # metric/span name prefix, default "vowl"
     service_name="orders-dq",
-    run_id="nightly-2026-09-29",              # optional. Default is a fresh UUID
+    run_id="nightly-2026-09-29",              # optional. Default is result.run_id
     max_failed_rows_sample=0,                 # default 0. No row contents leave the process
     custom_attributes={                       # pass-through, attached to every signal
         "env": "prod",
@@ -154,8 +157,8 @@ result.export_otel(metric_provider=my_meter_provider, tracer_provider=my_tracer_
 ### Prefix
 
 The `prefix` parameter (default `"vowl"`) applies to metric names, span names,
-and context attribute keys. Setting it to `"myorg"` changes `vowl.check.count` to
-`myorg.check.count`, `vowl.contract.id` to `myorg.contract.id`, and so on. The knob
+and context attribute keys. Setting it to `"myorg"` changes `vowl.check.check.count` to
+`myorg.check.check.count`, `vowl.contract.id` to `myorg.contract.id`, and so on. The knob
 exists for orgs with naming conventions for their telemetry, and is meant to be
 set once at the org level rather than per run.
 
@@ -193,7 +196,7 @@ in the other two modes.
 
 Each emitter walks the finished `ValidationResult` read-only and records into
 OTEL instruments. Nothing new runs against the data source. The metric emitter,
-for instance, adds one `vowl.check.count` point per check and sets
+for instance, adds one `vowl.check.check.count` point per check and sets
 `vowl.dimension.row.count` to the deduplicated passing and failing rows per
 `(schema_name, dimension)`. The OTEL SDK batches the
 points and ships them over OTLP to a collector or backend. vowl never talks to a
@@ -248,7 +251,7 @@ their rationale.
    guidance only, with no special code behaviour, so behaviour is predictable
    whether or not a caller follows the convention.
 6. **Additive metrics use delta temporality.** Batch validation runs are
-   discrete events, so `vowl.check.count` and the duration histograms report
+   discrete events, so the check and schema counters and the duration histograms report
    "this run had N", and summing over a time range gives the total for the
    runs in that range. Cumulative temporality assumes a continuous process and
    resets per run, which is painful to unpick downstream. Gauges have no
@@ -258,7 +261,7 @@ their rationale.
    `sum()` over every attribute make sense. Row counts fail both tests. A row
    that fails two checks is counted under each, and a run that re-validates a
    whole table counts the same rows every run. So each level has one gauge,
-   `vowl.{check,dimension,schema}.row.count`, with a `PASSED` and a `FAILED`
+   `vowl.{check,dimension,schema,run}.row.count`, with a `PASSED` and a `FAILED`
    point per run. The two points sum to the table's row count, which serves as
    the denominator, so no separate total metric is needed. Both points are
    always sent, zeros included, so a latest-value panel never keeps a failure
@@ -337,23 +340,50 @@ their rationale.
     root span follows the same rule. This matches the log severities, where
     FAILED is WARN and ERROR is ERROR, so teams alerting on span error rates
     are not paged for ordinary data problems.
+16. **One computation feeds the OTEL metrics and `dq_metrics.json`.**
+    `vowl.validation.dq_metrics` builds every metric point, with its name,
+    type, unit, value and attributes, and imports no OpenTelemetry.
+    `MetricEmitter` records those points into instruments, and
+    `ValidationResult.save` writes them to `<prefix>_dq_metrics.json`. The
+    attribute helpers (`check_attributes`, `contract_attributes`,
+    `run_identity_attributes`) live there too and `_common` re-exports them.
+    So there is one version of every number to maintain, and a test asserts
+    the two outputs match point for point. The run span's check numbers
+    (`check.count.passed`, `check.count.failed`, `check.count.error`,
+    `check.pass_rate`) use the same helpers, named like the run-level metrics
+    without the level.
+17. **Check counts are counters at every level, and every status is sent.**
+    Each check sits in exactly one dimension and one schema, so check counts
+    add up from check to run level and across runs, which is what a counter
+    is for. The cost is that "failed checks in the latest run" needs
+    `increase()` on a cumulative backend. Each reading sends `PASSED`,
+    `FAILED` and `ERROR`, zeros included (`add(0)`), so each status series
+    exists from the first run. The check pass rates keep `ERROR` in the
+    denominator, and `vowl.run.schema.count` gives a schema `FAILED` if any
+    check failed, else `ERROR` if any errored, else `PASSED`.
+18. **The run id is made when the run runs, not when it is exported.**
+    `ValidationResult.run_id` is a UUID set when the result is built at the
+    end of a run. `export_otel` and `dq_metrics.json` both default to it, so
+    the saved files and the telemetry of one run share an id without the
+    caller choosing one first. `export_otel(run_id=...)` still overrides it
+    for one export. Setting `result.run_id` changes it for every output.
 
 ## Context attribute methodology
 
 Context attributes describe the contract and the run. vowl includes a fixed
 list of contract fields, each only when it has a value:
 
-| Contract field | Attribute |
-| --- | --- |
-| `id` | `vowl.contract.id` |
-| `name` | `vowl.contract.name` |
-| `version` | `vowl.contract.version` |
-| `apiVersion` | `vowl.contract.api_version` |
-| `status` | `vowl.contract.status` |
-| `contractCreatedTs` | `vowl.contract.created_ts` |
-| `domain` | `vowl.domain` |
-| `dataProduct` | `vowl.data_product` |
-| `tenant` | `vowl.tenant` |
+| Contract field      | Attribute                   |
+| ------------------- | --------------------------- |
+| `id`                | `vowl.contract.id`          |
+| `name`              | `vowl.contract.name`        |
+| `version`           | `vowl.contract.version`     |
+| `apiVersion`        | `vowl.contract.api_version` |
+| `status`            | `vowl.contract.status`      |
+| `contractCreatedTs` | `vowl.contract.created_ts`  |
+| `domain`            | `vowl.domain`               |
+| `dataProduct`       | `vowl.data_product`         |
+| `tenant`            | `vowl.tenant`               |
 
 The list is fixed rather than "every top-level field" on purpose. These fields
 identify the contract and do not change from run to run, so they are safe to
@@ -362,7 +392,7 @@ field ODCS adds, including free text, without anyone checking what it does to
 metric cardinality. Nested objects and arrays are left out. `kind` is left out
 because it is always `"DataContract"`. Users who need another field can pass it
 via `custom_attributes`. Adding a field to the list is a deliberate change to
-`contract_attributes` in `src/vowl/otel/_common.py`.
+`contract_attributes` in `src/vowl/validation/dq_metrics.py`.
 
 ## Cardinality
 
@@ -396,8 +426,12 @@ All in `tests/test_otel_export.py`:
   (`InMemoryMetricReader`, `InMemorySpanExporter`, and the in-memory log
   exporter), asserting instrument names, types, values, and attributes against
   a `ValidationResult` from a real run.
-- Instrument-type tests assert that row counts are gauges and `vowl.check.count`
-  is a counter, and that a clean run still sends `FAILED` row-count points of 0.
+- Instrument-type tests assert that check and schema counts are counters and
+  row counts and pass rates are gauges at every level, that every check status
+  is sent, and that a clean run still sends `FAILED` row-count points of 0.
+- A parity test asserts that the OTEL metric points equal the
+  `dq_metrics.json` points. `tests/test_dq_metrics.py` covers the computation
+  and the file without OpenTelemetry installed.
 - A guard test asserts that core `import vowl` does not import `opentelemetry`.
 - A test asserts the missing-extra path raises the friendly install error.
 - Lifecycle tests assert that only vowl-owned providers are flushed and shut
@@ -411,7 +445,8 @@ All in `tests/test_otel_export.py`:
   per-signal endpoint env vars, the per-signal endpoint check, and the
   `RuntimeWarning` on a failed delivery (using stub exporters, no network).
 - Identity tests assert that `vowl.run.id` is on spans and logs but not
-  metrics, and that a caller-supplied `run_id` is used and returned.
+  metrics, that it defaults to `result.run_id`, and that a caller-supplied
+  `run_id` is used and returned.
 - Row-sample tests assert that the default exports no row contents, and that a
   positive `max_failed_rows_sample` is capped by both the flag and the run's
   `max_failed_rows`.

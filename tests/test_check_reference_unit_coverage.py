@@ -128,6 +128,14 @@ def test_check_reference_navigation_and_defaults(monkeypatch: pytest.MonkeyPatch
         ("DELETE FROM users", None),
         ("SELECT id FROM users", "SELECT id FROM users"),
         ("SELECT COUNT(*) FROM users WHERE id > 1", "SELECT * FROM users WHERE id > 1"),
+        ("SELECT COUNT(*) AS n FROM users WHERE id > 1", "SELECT * FROM users WHERE id > 1"),
+        ("SELECT COUNT(1) FROM users", "SELECT * FROM users"),
+        ("SELECT COUNT(name) FROM users", "SELECT * FROM users WHERE NOT name IS NULL"),
+        (
+            "SELECT COUNT(name) AS n FROM users WHERE id > 1 OR id IS NULL",
+            "SELECT * FROM users WHERE (id > 1 OR id IS NULL) AND NOT name IS NULL",
+        ),
+        ("SELECT COUNT(*) + 1 FROM users", None),
         ("SELECT AVG(price) FROM products", None),
     ],
 )

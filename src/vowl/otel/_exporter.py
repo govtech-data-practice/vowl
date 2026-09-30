@@ -95,7 +95,9 @@ class OtelExporter:
 
     def export(self, result: ValidationResult) -> str:
         """Emit the enabled signals for *result*. Returns the run id."""
-        run_id = self._run_id or new_run_id()
+        # The result's own id by default, so dq_metrics.json and the telemetry
+        # of one run share it. A result built without the runner may lack one.
+        run_id = self._run_id or getattr(result, "run_id", None) or new_run_id()
         identity = {
             "service_name": self._service_name,
             "run_id": run_id,

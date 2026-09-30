@@ -16,7 +16,7 @@ import sqlglot
 from sqlglot import exp
 
 from vowl.contracts.sql_transforms import matching_filter_conditions
-from vowl.executors.base import CheckResult, SQLExecutor
+from vowl.executors.base import CheckResult, RowSource, SQLExecutor
 from vowl.executors.security import SQLSecurityError, sanitize_identifier
 
 if TYPE_CHECKING:
@@ -496,7 +496,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             def fetcher(q=failed_query, t=table_names, o=owner_schema):
                 return self._fetch_failed_rows(q, t, o)
 
-            return check_ref.build_result(
+            result = check_ref.build_result(
                 actual_value=actual_value,
                 execution_time_ms=(time.perf_counter() - start_time) * 1000,
                 failed_rows_fetcher=fetcher,
@@ -504,6 +504,19 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 filter_conditions=query_filters,
                 use_try_cast=use_try_cast,
             )
+            if result.status != "ERROR":
+                # The tables live in a local copy, so the row-quality
+                # component can only use this check's fetched rows.
+                result.row_source = RowSource(
+                    check_ref=check_ref,
+                    dialect=output_dialect,
+                    filter_conditions=query_filters,
+                    use_try_cast=use_try_cast,
+                    failed_rows_query=failed_query,
+                    fetch=fetcher,
+                    cross_source=True,
+                )
+            return result
 
         except Exception as e:
             return check_ref.build_error_result(
@@ -704,7 +717,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                         except Exception:
                             return None
 
-                    results[index] = ref.build_result(
+                    built = ref.build_result(
                         actual_value=actual_value,
                         execution_time_ms=(time.perf_counter() - start_time) * 1000,
                         failed_rows_fetcher=fetcher,
@@ -712,6 +725,16 @@ class MultiSourceSQLExecutor(SQLExecutor):
                         filter_conditions=None,
                         use_try_cast=use_try_cast,
                     )
+                    if built.status != "ERROR":
+                        built.row_source = RowSource(
+                            check_ref=ref,
+                            dialect=output_dialect,
+                            use_try_cast=use_try_cast,
+                            failed_rows_query=failed_query,
+                            fetch=fetcher,
+                            cross_source=True,
+                        )
+                    results[index] = built
                 except Exception as e:
                     results[index] = ref.build_error_result(
                         error_message=f"Error executing cross-schema check: {e}",

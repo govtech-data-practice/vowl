@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 
+from ..validation.dq_metrics import check_pass_rate, check_status_counts
 from ._common import check_attributes, check_query, coerce_attr, flatten_check_definition
 
 if TYPE_CHECKING:
@@ -43,28 +44,25 @@ class TraceEmitter:
     def emit(self, result: ValidationResult) -> dict[int, Any]:
         from opentelemetry.trace import SpanContext, Status, StatusCode, set_span_in_context
 
-        vs = result._vs
         start_ns, end_ns = self._run_window(result)
 
+        # The run-level check numbers, named like vowl.run.check.count and
+        # vowl.run.check.pass_rate without the level (the span is the run).
+        counts = check_status_counts(result.check_results)
         root_attrs = dict(self._ctx_attrs)
-        root_attrs.update(
-            {
-                "total_checks": int(vs.get("total_checks", 0)),
-                "passed": int(vs.get("passed", 0)),
-                "failed": int(vs.get("failed", 0)),
-                "errors": int(vs.get("errors", 0)),
-                "success_rate": float(vs.get("success_rate", 0.0) or 0.0),
-            }
-        )
+        root_attrs.update({f"check.count.{status.lower()}": count for status, count in counts.items()})
+        pass_rate = check_pass_rate(counts)
+        if pass_rate is not None:
+            root_attrs["check.pass_rate"] = pass_rate
         root = self._tracer.start_span(
             f"{self._ns}.validate",
             start_time=start_ns,
             attributes=root_attrs,
         )
         # ERROR only if a check could not run. A FAILED check did its job, so
-        # it stays OK and shows up through the ``failed`` count instead. This
+        # it stays OK and shows up through ``check.count.failed`` instead. This
         # keeps span error rates about broken checks, not bad data.
-        run_ok = int(vs.get("errors", 0)) == 0
+        run_ok = counts["ERROR"] == 0
         root.set_status(Status(StatusCode.OK if run_ok else StatusCode.ERROR))
         root_ctx = set_span_in_context(root)
 

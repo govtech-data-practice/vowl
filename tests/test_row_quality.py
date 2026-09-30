@@ -1,0 +1,1075 @@
+"""Tests for the row-quality component (``vowl.validation.row_quality``).
+
+Every number is compared with a truth computed directly on the connection, for
+example ``SELECT COUNT(*) FROM t WHERE p1 OR p2``. See
+design/row-quality-statistics.md.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+import conftest as test_conftest
+import ibis
+import pyarrow as pa
+import pytest
+import sqlglot
+
+import vowl.contracts.contract as contract_module
+from vowl.adapters.ibis_adapter import IbisAdapter
+from vowl.config import ValidationConfig
+from vowl.contracts.models import get_latest_version
+from vowl.validation.row_quality import pushdown
+from vowl.validation.row_quality.certify import certify_failed_rows_query, certify_scalar_query
+from vowl.validation.row_quality.selection import (
+    REASON_CROSS_SOURCE,
+    REASON_ERROR,
+    REASON_NOT_MERGEABLE,
+    REASON_NOT_ROW_LEVEL,
+    REASON_OPERATOR,
+    REASON_PROBE_FAILURE,
+    REASON_TOLERATED_NOT_FETCHED,
+    REASON_TRUNCATED,
+    identifies_bad_rows,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+# These tests assert each number against its truth, so they skip the golden
+# file comparison the conftest wraps around validate_data.
+_run_validation = test_conftest._ORIGINAL_VALIDATE_DATA
+
+
+def _connect(backend: str):
+    return ibis.duckdb.connect() if backend == "duckdb" else ibis.sqlite.connect()
+
+
+def _contract(schemas: list[dict]) -> contract_module.Contract:
+    return contract_module.Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "row-quality",
+            "status": "active",
+            "schema": schemas,
+        }
+    )
+
+
+def _schema(name: str, checks: list[dict], properties: list[dict] | None = None) -> dict:
+    return {
+        "name": name,
+        "properties": properties if properties is not None else [{"name": "id"}, {"name": "c"}],
+        "quality": [{"type": "sql", **check} for check in checks],
+    }
+
+
+def _check(name: str, where: str, *, table: str = "t", dimension: str = "validity", **operator) -> dict:
+    return {
+        "name": name,
+        "dimension": dimension,
+        "query": f"SELECT COUNT(*) FROM {table} WHERE {where}",
+        **(operator or {"mustBe": 0}),
+    }
+
+
+def _count(con, sql: str) -> int:
+    return int(con.raw_sql(sql).fetchone()[0])
+
+
+def _truth(con, predicates: list[str], table: str = "t") -> int:
+    where = " OR ".join(f"({p})" for p in predicates)
+    return _count(con, f"SELECT COUNT(*) FROM {table} WHERE {where}")
+
+
+def _validate(con, schemas: list[dict], config: ValidationConfig | None = None, adapters=None):
+    adapters = adapters or {schema["name"]: IbisAdapter(con) for schema in schemas}
+    return _run_validation(_contract(schemas), adapters=adapters, config=config)
+
+
+def _schema_row(result, schema: str = "t") -> dict:
+    rows = result.get_row_quality_df(by="schema").to_arrow().to_pylist()
+    return next(row for row in rows if row["schema_name"] == schema)
+
+
+def _dimension_rows(result, schema: str = "t") -> dict[str, dict]:
+    rows = result.get_row_quality_df(by="dimension").to_arrow().to_pylist()
+    return {row["dimension"]: row for row in rows if row["schema_name"] == schema}
+
+
+def _check_rows(result) -> dict[str, dict]:
+    return {row["check_name"]: row for row in result.get_row_quality_df(by="check").to_arrow().to_pylist()}
+
+
+@pytest.fixture(autouse=True)
+def _skip_contract_validation(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+
+
+_ROWS = "(1,-1),(1,-1),(2,6),(3,2),(3,2),(3,2),(4,3),(5,1),(6,-2),(7,NULL),(7,NULL)"
+
+_MIXED_CHECKS = [
+    _check("negative", "c < 0"),
+    _check("too_big", "c > 5", mustBeLessThan=1),
+    {
+        "name": "twos_distinct",
+        "dimension": "uniqueness",
+        "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c = 2) AS s",
+        "mustBe": 0,
+    },
+    _check("threes_tolerated", "c = 3", dimension="completeness", mustBeLessThan=100),
+    _check("ones_inverted", "c = 1", mustBeGreaterThan=100),
+    _check("null_c", "c IS NULL", dimension="completeness"),
+]
+
+
+def _mixed(backend: str, config: ValidationConfig | None = None):
+    con = _connect(backend)
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql(f"INSERT INTO t VALUES {_ROWS}")
+    return con, _validate(con, [_schema("t", _MIXED_CHECKS)], config)
+
+
+# ---------------------------------------------------------------------------
+# Truth
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
+def test_counts_match_the_truth_per_schema_and_dimension(backend: str):
+    con, result = _mixed(backend)
+
+    schema = _schema_row(result)
+    assert schema["total_rows"] == 11
+    assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"]) == 9
+    assert schema["tolerated_rows"] == 1
+    assert schema["passed_rows"] == 2
+    assert schema["pass_rate"] == pytest.approx(2 / 11)
+    assert schema["exact"] is True
+
+    dimensions = _dimension_rows(result)
+    assert dimensions["validity"]["failed_rows"] == _truth(con, ["c < 0", "c > 5"])
+    assert dimensions["uniqueness"]["failed_rows"] == 3
+    assert dimensions["completeness"]["failed_rows"] == 2
+    assert dimensions["completeness"]["tolerated_rows"] == 1
+
+    checks = _check_rows(result)
+    assert checks["negative"]["route"] == "pushdown"
+    assert checks["negative"]["failed_rows"] == 3
+    # DISTINCT returns one row for three copies, so it goes by table match.
+    assert checks["twos_distinct"]["route"] == "table_match"
+    assert checks["twos_distinct"]["reason"] == "not certified for pushdown: uses a FROM that is not the table itself"
+    assert checks["twos_distinct"]["failed_rows"] == 3
+    assert checks["ones_inverted"]["counted"] is False
+    assert checks["ones_inverted"]["reason"] == REASON_OPERATOR
+    assert checks["threes_tolerated"]["tolerated"] is True
+
+
+def test_all_violations_counts_tolerated_rows_as_failed():
+    con, result = _mixed("duckdb", ValidationConfig(row_issue_scope="all_violations"))
+
+    schema = _schema_row(result)
+    assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL", "c = 3"]) == 10
+    assert schema["tolerated_rows"] == 1
+
+
+def test_print_summary_reports_the_same_numbers(capsys: pytest.CaptureFixture[str]):
+    _, result = _mixed("duckdb")
+
+    result.print_summary()
+
+    assert "Passed Rows:            2 / 11 (18.1%)" in capsys.readouterr().out
+
+
+def test_get_check_results_df_has_the_resolved_dimension():
+    _, result = _mixed("duckdb")
+
+    rows = {row["check_name"]: row for row in result.get_check_results_df().to_arrow().to_pylist()}
+
+    assert rows["twos_distinct"]["dimension"] == "uniqueness"
+    assert rows["id_column_exists_check"]["dimension"] == "conformity"
+
+
+def test_get_row_quality_df_rejects_an_unknown_grouping():
+    _, result = _mixed("duckdb")
+
+    with pytest.raises(ValueError, match="by must be one of"):
+        result.get_row_quality_df(by="table")
+
+
+# ---------------------------------------------------------------------------
+# Adversarial fixtures: every one must match its truth
+# ---------------------------------------------------------------------------
+
+
+def test_duckdb_negative_zero_and_nan_are_kept_apart():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c DOUBLE)")
+    con.raw_sql("INSERT INTO t VALUES (1, -0.0), (1, 0.0), (2, 'NaN'), (2, 'NaN'), (3, 1.5)")
+    checks = [
+        _check("neg_zero", "CAST(c AS VARCHAR) = '-0.0'"),
+        _check("pos_zero", "CAST(c AS VARCHAR) = '0.0'"),
+        _check("nan", "isnan(c)"),
+    ]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert _schema_row(result)["failed_rows"] == 4
+
+
+def test_duckdb_nested_and_blob_columns():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER[], s STRUCT(a VARCHAR), b BLOB)")
+    con.raw_sql(
+        "INSERT INTO t VALUES "
+        "(1, [1, 2], {'a': 'x, y'}, 'q'::BLOB), (1, [1, 2], {'a': 'x, y'}, 'q'::BLOB), "
+        "(2, [3], {'a': 'x'}, 'r'::BLOB), (3, [], {'a': 'y'}, NULL)"
+    )
+    checks = [_check("first", "len(c) = 2"), _check("second", "s.a = 'x'"), _check("third", "b IS NULL")]
+    properties = [{"name": "id"}, {"name": "c"}, {"name": "s"}, {"name": "b"}]
+
+    result = _validate(con, [_schema("t", checks, properties)])
+
+    assert _schema_row(result)["failed_rows"] == 4
+    assert _schema_row(result)["exact"] is True
+
+
+def test_duckdb_data_columns_named_like_vowl_aliases_do_not_collide():
+    con = _connect("duckdb")
+    con.raw_sql('CREATE TABLE t ("_vowl_copies" INTEGER, "_vowl_c0" INTEGER)')
+    con.raw_sql("INSERT INTO t VALUES (10, 1), (10, 1), (10, 1), (5, 2)")
+    checks = [_check("big", '"_vowl_copies" > 5'), _check("one", '"_vowl_c0" = 1')]
+
+    result = _validate(con, [_schema("t", checks, [{"name": "_vowl_copies"}, {"name": "_vowl_c0"}])])
+
+    assert _schema_row(result)["failed_rows"] == 3
+
+
+def test_sqlite_nocase_values_caught_by_different_checks_stay_apart():
+    con = _connect("sqlite")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c TEXT COLLATE NOCASE)")
+    con.raw_sql("INSERT INTO t VALUES (1, 'a'), (1, 'A'), (1, 'a '), (1, 'a')")
+    checks = [
+        _check("lower", "unicode(c) = 97 AND length(c) = 1"),
+        _check("upper", "unicode(c) = 65"),
+        _check("padded", "length(c) = 2"),
+    ]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert _schema_row(result)["failed_rows"] == 4
+
+
+def test_sqlite_rtrim_values_caught_by_different_checks_stay_apart():
+    con = _connect("sqlite")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c TEXT COLLATE RTRIM)")
+    con.raw_sql("INSERT INTO t VALUES (1, 'a'), (1, 'a '), (1, 'a  '), (1, 'a')")
+    checks = [
+        _check("bare", "length(c) = 1"),
+        _check("one_space", "length(c) = 2"),
+        _check("two_spaces", "length(c) = 3"),
+    ]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert all(row["route"] == "pushdown" for row in _check_rows(result).values() if row["status"] == "FAILED")
+    assert _schema_row(result)["failed_rows"] == 4
+
+
+def test_duckdb_interval_and_bit_columns_are_counted_without_an_annotated_table():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTERVAL, b BIT)")
+    con.raw_sql(
+        "INSERT INTO t VALUES (1, INTERVAL 1 DAY, '101'::BIT), (1, INTERVAL 1 DAY, '101'::BIT), "
+        "(2, INTERVAL 2 DAY, '1'::BIT), (3, INTERVAL 3 DAY, '0'::BIT)"
+    )
+    checks = [_check("one_day", "c = INTERVAL 1 DAY"), _check("zero", "b = '0'::BIT")]
+    properties = [{"name": "id"}, {"name": "c"}, {"name": "b"}]
+
+    result = _validate(con, [_schema("t", checks, properties)])
+
+    assert _check_rows(result)["one_day"]["route"] == "pushdown"
+    assert _schema_row(result)["failed_rows"] == 3
+    assert _schema_row(result)["exact"] is True
+    # Arrow cannot export INTERVAL, so annotated output keeps the checks as residues.
+    output = result.get_annotated_output()
+    assert "t" not in output["annotated"]
+    assert {"t::one_day", "t::zero"} <= set(output["residues"])
+
+
+def test_sqlite_mixed_types_in_one_column_stay_apart():
+    con = _connect("sqlite")
+    con.raw_sql("CREATE TABLE t (id, c)")
+    con.raw_sql("INSERT INTO t VALUES (1, 1), (1, 1.0), (1, '1'), (1, 1), (2, 0.30000000000000004), (2, 0.3)")
+    checks = [
+        _check("integer", "typeof(c) = 'integer'"),
+        _check("real", "typeof(c) = 'real' AND c > 0.9"),
+        _check("text", "typeof(c) = 'text'"),
+        _check("close_to_point_three", "typeof(c) = 'real' AND c < 0.30000000000000003"),
+        _check("point_three", "typeof(c) = 'real' AND c > 0.3 AND c < 0.5"),
+    ]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert _schema_row(result)["failed_rows"] == 6
+
+
+def test_duplicates_count_once_per_copy_not_once_per_check():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, 1), (1, 1), (1, 1), (2, 2)")
+    checks = [_check("a", "c = 1"), _check("b", "id = 1"), _check("c", "c < 2")]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert _schema_row(result)["failed_rows"] == 3
+    assert {row["failed_rows"] for row in _check_rows(result).values() if row["counted"] and row["route"]} == {3}
+
+
+# ---------------------------------------------------------------------------
+# Certification
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "SELECT * FROM t WHERE c > 1",
+        "SELECT t.* FROM t WHERE c IS NULL",
+        "SELECT * FROM t",
+        "SELECT * FROM t AS a WHERE a.c IN (SELECT c FROM t WHERE c IS NOT NULL GROUP BY c HAVING COUNT(*) > 1)",
+        "SELECT * FROM t AS f WHERE NOT EXISTS (SELECT 1 FROM u WHERE u.id = f.id)",
+    ],
+)
+def test_certification_accepts_pure_row_filters(query: str):
+    assert certify_failed_rows_query(query, "t", "duckdb") == (True, "")
+
+
+@pytest.mark.parametrize(
+    ("query", "rule"),
+    [
+        ("SELECT DISTINCT * FROM t", "DISTINCT"),
+        ("SELECT * FROM t GROUP BY c", "GROUP BY"),
+        ("SELECT * FROM t LIMIT 5", "LIMIT"),
+        ("SELECT * FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY c) = 1", "QUALIFY"),
+        ("SELECT * FROM t JOIN u ON t.id = u.id", "a join"),
+        ("SELECT * FROM t, u", "a join"),
+        ("SELECT * FROM t UNION ALL SELECT * FROM t", "a set operation"),
+        ("WITH x AS (SELECT * FROM t) SELECT * FROM x", "WITH"),
+        ("SELECT c FROM t", "a select list that is not *"),
+        ("SELECT * FROM u", "a FROM that is not the table itself"),
+        ("SELECT * FROM t WHERE random() < 0.5", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE c < now()", "a nondeterministic function"),
+        ("SELECT * FROM t TABLESAMPLE 10%", "TABLESAMPLE"),
+        ("SELECT * FROM t HAVING COUNT(*) > 1", "HAVING"),
+        ("SELECT * FROM t OFFSET 5", "LIMIT"),
+        ("SELECT * FROM t ORDER BY ROW_NUMBER() OVER ()", "a window function"),
+        ("SELECT * FROM t ORDER BY (SELECT 1)", "a subquery outside WHERE"),
+        ("SELECT * FROM t, LATERAL (SELECT 1) AS x", "a join"),
+        ("SELECT * FROM t PIVOT (SUM(c) FOR k IN (1, 2))", "PIVOT"),
+        ("SELECT * FROM other.t", "a FROM that is not the table itself"),
+    ],
+)
+def test_certification_rejects_other_shapes(query: str, rule: str):
+    assert certify_failed_rows_query(query, "t", "duckdb") == (False, rule)
+
+
+@pytest.mark.parametrize(
+    ("query", "dialect"),
+    [("SELECT TOP 5 * FROM t", "tsql"), ("SELECT * FROM t FETCH FIRST 5 ROWS ONLY", "postgres")],
+)
+def test_certification_rejects_top_and_fetch(query: str, dialect: str):
+    assert certify_failed_rows_query(query, "t", dialect) == (False, "LIMIT")
+
+
+def test_certification_matches_the_qualifiers_the_query_writes():
+    assert certify_failed_rows_query("SELECT * FROM t", "db.t", "duckdb") == (True, "")
+    assert certify_failed_rows_query("SELECT * FROM db.t", "db.t", "duckdb") == (True, "")
+    assert certify_failed_rows_query("SELECT * FROM x.t", "db.t", "duckdb")[0] is False
+
+
+def test_certification_accepts_a_single_count():
+    assert certify_scalar_query("SELECT COUNT(*) FROM t", "count", "duckdb") == (True, "")
+    assert certify_scalar_query("SELECT COUNT(1) FROM t", "count", "duckdb") == (True, "")
+    assert certify_scalar_query("SELECT COUNT(c) FROM t", "count", "duckdb") == (True, "")
+    assert certify_scalar_query("SELECT COUNT(*) AS n FROM t", "count", "duckdb") == (True, "")
+    assert certify_scalar_query("SELECT COUNT(*) + COUNT(c) FROM t", "count", "duckdb") == (
+        False,
+        "more than one COUNT",
+    )
+    assert certify_scalar_query("SELECT * FROM t", "none", "duckdb") == (True, "")
+
+
+def test_count_of_an_expression_skips_null_rows_and_is_pushed_down():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, 1), (2, NULL), (3, 5), (4, 2)")
+    checks = [{"name": "count_c", "query": "SELECT COUNT(c) FROM t WHERE c < 3 OR c IS NULL", "mustBe": 0}]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    row = _check_rows(result)["count_c"]
+    assert row["route"] == "pushdown"
+    assert row["failed_rows"] == 2
+    assert _schema_row(result)["failed_rows"] == 2
+    assert _schema_row(result)["exact"] is True
+    annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+    assert sorted(row["id"] for row in annotated if row["check_info"]) == [1, 4]
+
+
+def test_aliased_count_is_counted_and_annotated():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, 3), (3, -5)")
+    checks = [{"name": "negative", "query": "SELECT COUNT(*) AS n FROM t WHERE c < 0", "mustBe": 0}]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    row = _check_rows(result)["negative"]
+    assert row["route"] == "pushdown"
+    assert row["failed_rows"] == 2
+    assert _schema_row(result)["exact"] is True
+    output = result.get_annotated_output()
+    assert "t::negative" not in output["residues"]
+    annotated = output["annotated"]["t"].to_arrow().to_pylist()
+    assert sorted(row["id"] for row in annotated if row["check_info"]) == [1, 3]
+
+
+def test_every_generated_check_is_certified():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c VARCHAR, r INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, 'a', 1), (1, NULL, 9), (2, 'zz', 3)")
+    properties = [
+        {"name": "id", "logicalType": "integer", "unique": True},
+        {
+            "name": "c",
+            "logicalType": "string",
+            "required": True,
+            "logicalTypeOptions": {"maxLength": 1},
+            "quality": [
+                {"type": "library", "metric": "invalidValues", "arguments": {"validValues": ["a"]}, "mustBe": 0}
+            ],
+        },
+        {"name": "r", "logicalType": "integer"},
+    ]
+
+    result = _validate(con, [_schema("t", [], properties)])
+
+    failed = [row for row in _check_rows(result).values() if row["status"] == "FAILED"]
+    assert failed
+    assert all(row["route"] == "pushdown" for row in failed), failed
+    assert _schema_row(result)["failed_rows"] == _truth(con, ["id = 1", "c IS NULL", "length(c) > 1"])
+
+
+# ---------------------------------------------------------------------------
+# Chunking, probe and scale
+# ---------------------------------------------------------------------------
+
+
+def _many_checks(con, count: int, rows: int) -> list[dict]:
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    values = ", ".join(f"({i}, {i % (count + 5)})" for i in range(rows))
+    con.raw_sql(f"INSERT INTO t VALUES {values}")
+    # Every row twice, so duplicates spread across chunks.
+    con.raw_sql("INSERT INTO t SELECT * FROM t")
+    return [_check(f"c_is_{k}", f"c = {k} OR c = {(k + 1) % count}") for k in range(count)]
+
+
+@pytest.mark.parametrize("max_branches", [1, 63, 64, 250])
+def test_chunk_size_does_not_change_the_numbers(monkeypatch: pytest.MonkeyPatch, max_branches: int):
+    monkeypatch.setattr(pushdown, "MAX_BRANCHES", max_branches)
+    con = _connect("duckdb")
+    checks = _many_checks(con, 70, 200)
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert _schema_row(result)["failed_rows"] == _count(con, "SELECT COUNT(*) FROM t WHERE c < 70")
+    assert _schema_row(result)["exact"] is True
+    counts = {cr.check_name: cr.failed_rows_count for cr in result.check_results}
+    assert all(row["failed_rows"] == counts[name] for name, row in _check_rows(result).items() if row["route"])
+
+
+def test_more_than_five_hundred_checks_on_sqlite():
+    # SQLite rejects more than 500 terms in one compound SELECT.
+    con = _connect("sqlite")
+    checks = _many_checks(con, 510, 1100)
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert _schema_row(result)["failed_rows"] == _count(con, "SELECT COUNT(*) FROM t WHERE c < 510")
+    assert _schema_row(result)["exact"] is True
+
+
+def test_a_branch_that_fails_is_dropped_alone(monkeypatch: pytest.MonkeyPatch):
+    original = IbisAdapter.run_arrow_query
+
+    def failing(self, sql: str):
+        if "777" in sql:
+            raise RuntimeError("simulated invalid branch")
+        return original(self, sql)
+
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", failing)
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, 777), (3, 9)")
+    checks = [_check("negative", "c < 0"), _check("marker", "c = 777"), _check("nine", "c = 9")]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    checks_df = _check_rows(result)
+    assert checks_df["marker"]["counted"] is False
+    assert checks_df["marker"]["reason"] == REASON_PROBE_FAILURE
+    assert checks_df["marker"]["exact"] is False
+    schema = _schema_row(result)
+    assert schema["failed_rows"] == 2
+    assert schema["exact"] is False
+    assert schema["checks_not_counted"] == 1
+
+
+def test_single_scan_form_matches_the_union_form(monkeypatch: pytest.MonkeyPatch):
+    statements: list[str] = []
+    original = IbisAdapter.run_arrow_query
+
+    def spy(self, sql: str):
+        statements.append(sql)
+        return original(self, sql)
+
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", spy)
+    monkeypatch.setattr(pushdown, "SINGLE_SCAN_DIALECTS", {"duckdb"})
+    con, result = _mixed("duckdb")
+
+    assert _schema_row(result)["failed_rows"] == 9
+    assert _dimension_rows(result)["validity"]["failed_rows"] == 4
+    assert any("_vowl_scan" in sql for sql in statements)
+
+
+# ---------------------------------------------------------------------------
+# Cap independence, routes and keys
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("cap", [-1, 0, 1])
+def test_max_failed_rows_does_not_change_pushdown_numbers(cap: int):
+    _, result = _mixed("duckdb", ValidationConfig(max_failed_rows=cap))
+
+    assert _schema_row(result)["failed_rows"] == 9
+    assert _schema_row(result)["exact"] is True
+
+
+def _two_sources(config: ValidationConfig | None = None):
+    """t and u on separate connections, so a check that reads both runs in Mode 2."""
+    t_con, u_con = _connect("duckdb"), _connect("duckdb")
+    t_con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    t_con.raw_sql("INSERT INTO t VALUES (1, -1), (2, 2), (2, 2), (3, 2), (4, 5), (4, 5), (9, 0)")
+    u_con.raw_sql("CREATE TABLE u (id INTEGER)")
+    u_con.raw_sql("INSERT INTO u VALUES (1), (2), (3)")
+    checks = [
+        _check("negative", "c < 0"),
+        {
+            "name": "twos_distinct",
+            "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c = 2) AS s",
+            "mustBe": 0,
+        },
+        {
+            "name": "id_in_u",
+            "dimension": "consistency",
+            "query": "SELECT COUNT(*) FROM t WHERE NOT EXISTS (SELECT 1 FROM u WHERE u.id = t.id)",
+            "mustBe": 0,
+        },
+    ]
+    schemas = [_schema("t", checks), _schema("u", [], [{"name": "id"}])]
+    adapters = {"t": IbisAdapter(t_con), "u": IbisAdapter(u_con)}
+    return t_con, _run_validation(_contract(schemas), adapters=adapters, config=config)
+
+
+def test_pushdown_table_match_and_cross_source_rows_merge():
+    con, result = _two_sources()
+
+    checks = _check_rows(result)
+    assert checks["negative"]["route"] == "pushdown"
+    assert checks["twos_distinct"]["route"] == "table_match"
+    assert checks["id_in_u"]["route"] == "fetched_rows"
+    assert checks["id_in_u"]["reason"] == REASON_CROSS_SOURCE
+    # Rows (4, 5) twice and (9, 0) have no match in u. (2, 2) and (3, 2) have one.
+    assert _schema_row(result)["failed_rows"] == _truth(con, ["c < 0", "c = 2", "id NOT IN (1, 2, 3)"]) == 7
+    assert _schema_row(result)["exact"] is True
+
+
+def test_join_fan_out_counts_each_table_row_once():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -2), (3, -3), (4, 4)")
+    con.raw_sql("CREATE TABLE l (id INTEGER, k INTEGER)")
+    con.raw_sql("INSERT INTO l VALUES (1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)")
+    checks = [{"name": "fan", "query": "SELECT t.* FROM t JOIN l ON t.id = l.id WHERE t.c < 0", "mustBe": 0}]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    row = _check_rows(result)["fan"]
+    assert row["route"] == "table_match"
+    assert row["failed_rows"] == 3
+    assert _schema_row(result)["failed_rows"] == _truth(con, ["c < 0"]) == 3
+    annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+    assert sorted(row["id"] for row in annotated if row["check_info"]) == [1, 2, 3]
+
+
+def test_a_truncated_fetched_check_is_not_exact():
+    _, result = _two_sources(ValidationConfig(max_failed_rows=1))
+
+    row = _check_rows(result)["id_in_u"]
+    assert row["reason"] == REASON_TRUNCATED
+    assert row["exact"] is False
+    assert _schema_row(result)["exact"] is False
+
+
+def test_primary_key_lets_a_column_subset_check_merge():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -2), (3, 3), (4, 9)")
+    subset = {"name": "ids_negative", "query": "SELECT COUNT(*) FROM (SELECT id FROM t WHERE c < 0) AS s", "mustBe": 0}
+    checks = [subset, _check("nine", "c = 9")]
+    with_pk = [{"name": "id", "primaryKey": True, "primaryKeyPosition": 1}, {"name": "c"}]
+
+    keyed = _validate(con, [_schema("t", checks, with_pk)])
+    unkeyed = _validate(con, [_schema("t", checks)])
+
+    assert _check_rows(keyed)["ids_negative"]["route"] == "table_match"
+    assert _schema_row(keyed)["failed_rows"] == 3
+    assert _check_rows(unkeyed)["ids_negative"]["reason"] == REASON_NOT_MERGEABLE
+    assert _schema_row(unkeyed)["failed_rows"] == 1
+
+    # Annotated output merges the same checks on the same key.
+    keyed_output = keyed.get_annotated_output()
+    assert "t::ids_negative" not in keyed_output["residues"]
+    flagged = {
+        row["id"]: {item["check_name"] for item in json.loads(row["check_info"])}
+        for row in keyed_output["annotated"]["t"].to_arrow().to_pylist()
+        if row["check_info"]
+    }
+    assert flagged == {1: {"ids_negative"}, 2: {"ids_negative"}, 4: {"nine"}}
+    unkeyed_output = unkeyed.get_annotated_output()
+    assert "t::ids_negative" in unkeyed_output["residues"]
+    assert sum(1 for row in unkeyed_output["annotated"]["t"].to_arrow().to_pylist() if row["check_info"]) == 1
+
+
+def test_a_duplicated_primary_key_is_not_trusted():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (1, 3)")
+    subset = {"name": "ids_negative", "query": "SELECT COUNT(*) FROM (SELECT id FROM t WHERE c < 0) AS s", "mustBe": 0}
+    with_pk = [{"name": "id", "primaryKey": True}, {"name": "c"}]
+
+    result = _validate(con, [_schema("t", [subset], with_pk)])
+
+    assert _check_rows(result)["ids_negative"]["reason"] == REASON_NOT_MERGEABLE
+    assert "t::ids_negative" in result.get_annotated_output()["residues"]
+
+
+def test_filter_conditions_apply_to_the_total_and_the_rows():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -2), (3, 3), (10, -5), (11, 5)")
+    adapter = IbisAdapter(con, filter_conditions={"t": {"field": "id", "operator": "<", "value": 10}})
+    distinct = {
+        "name": "distinct",
+        "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c < 0) s",
+        "mustBe": 0,
+    }
+    checks = [_check("negative", "c < 0"), distinct]
+
+    result = _run_validation(_contract([_schema("t", checks)]), adapters={"t": adapter})
+
+    schema = _schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"]) == (3, 2)
+
+
+# ---------------------------------------------------------------------------
+# Operator rule, tolerance and trust metadata
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("operator", "expected", "counted"),
+    [
+        (None, None, True),
+        ("mustBeLessThan", 5, True),
+        ("mustBeLessOrEqualTo", 5, True),
+        ("mustBe", 0, True),
+        ("mustBe", 3, False),
+        ("mustBeBetween", [0, 5], True),
+        ("mustBeBetween", [1, 5], False),
+        ("mustNotBe", 0, False),
+        ("mustNotBeBetween", [0, 5], False),
+        ("mustBeGreaterThan", 0, False),
+        ("mustBeGreaterOrEqualTo", 1, False),
+        ("unknown", 0, False),
+    ],
+)
+def test_operator_rule(operator, expected, counted: bool):
+    assert identifies_bad_rows(operator, expected) is counted
+
+
+@pytest.mark.parametrize("scope", ["failed_checks", "all_violations"])
+def test_tolerated_rows_in_annotated_output(scope: str):
+    _, result = _mixed("duckdb", ValidationConfig(row_issue_scope=scope))
+
+    annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+    items = [item for row in annotated if row["check_info"] for item in json.loads(row["check_info"])]
+    tolerated = [item for item in items if item["check_name"] == "threes_tolerated"]
+    if scope == "all_violations":
+        assert tolerated == [{"check_name": "threes_tolerated", "tolerated": True}]
+    else:
+        assert tolerated == []
+    # The inverted check's matched rows are the good rows: never flagged.
+    assert not any(item["check_name"] == "ones_inverted" for item in items)
+    assert "t::ones_inverted" not in result.get_annotated_output()["residues"]
+
+
+def test_annotated_flagged_rows_equal_failed_rows():
+    _, result = _mixed("duckdb")
+
+    annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+
+    assert sum(1 for row in annotated if row["check_info"]) == _schema_row(result)["failed_rows"]
+
+
+def test_a_tolerated_check_without_pushdown_is_skipped_under_failed_checks():
+    class NoPushdown(IbisAdapter):
+        def run_arrow_query(self, sql: str):
+            raise NotImplementedError
+
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql(f"INSERT INTO t VALUES {_ROWS}")
+    result = _run_validation(_contract([_schema("t", _MIXED_CHECKS)]), adapters={"t": NoPushdown(con)})
+
+    checks = _check_rows(result)
+    assert checks["threes_tolerated"]["reason"] == REASON_TOLERATED_NOT_FETCHED
+    assert checks["negative"]["route"] == "fetched_rows"
+    schema = _schema_row(result)
+    assert schema["tolerated_rows"] is None
+    assert schema["failed_rows"] == 7  # the DISTINCT check's fetched rows lost two copies
+    assert schema["exact"] is False
+
+
+def test_error_check_makes_the_numbers_inexact():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, 3)")
+    checks = [_check("negative", "c < 0"), _check("broken", "missing_column > 0", dimension="accuracy")]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    rows = _check_rows(result)
+    assert rows["broken"]["reason"] == REASON_ERROR
+    schema = _schema_row(result)
+    assert (schema["failed_rows"], schema["exact"]) == (1, False)
+    dimensions = _dimension_rows(result)
+    # accuracy has no counted check: no pass rate, not 100%.
+    assert dimensions["accuracy"]["pass_rate"] is None
+    assert dimensions["accuracy"]["exact"] is False
+    assert dimensions["validity"]["exact"] is True
+
+
+def test_a_dimension_with_only_excluded_checks_has_no_pass_rate():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, 1)")
+    result = _validate(con, [_schema("t", [_check("inverted", "c = 1", dimension="accuracy", mustBeGreaterThan=5)])])
+
+    accuracy = _dimension_rows(result)["accuracy"]
+    assert (accuracy["failed_rows"], accuracy["pass_rate"], accuracy["checks_counted"]) == (None, None, 0)
+    assert accuracy["checks_not_counted"] == 1
+
+
+def test_an_empty_table_has_no_pass_rate():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+
+    result = _validate(con, [_schema("t", [_check("negative", "c < 0")])])
+
+    schema = _schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"], schema["pass_rate"]) == (0, 0, None)
+
+
+def test_non_row_level_checks_are_not_counted():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, 1), (2, 5)")
+    checks = [{"name": "average", "query": "SELECT AVG(c) FROM t", "mustBeLessThan": 1}]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    assert _check_rows(result)["average"]["reason"] == REASON_NOT_ROW_LEVEL
+
+
+def test_statistics_turned_off(capsys: pytest.CaptureFixture[str]):
+    _, result = _mixed("duckdb", ValidationConfig(enable_additional_schema_statistics=False))
+
+    schema = _schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"], schema["pass_rate"]) == (None, None, None)
+    result.print_summary()
+    assert "Passed Rows:            N/A" in capsys.readouterr().out
+
+
+def test_capped_statistics_no_longer_cap_the_total():
+    _, result = _mixed("duckdb", ValidationConfig(max_rows_for_statistics=2))
+
+    assert _schema_row(result)["total_rows"] == 11
+    assert _schema_row(result)["exact"] is True
+
+
+def test_the_report_is_computed_once(monkeypatch: pytest.MonkeyPatch):
+    _, result = _mixed("duckdb")
+    calls: list[str] = []
+    original = IbisAdapter.run_arrow_query
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", lambda self, sql: calls.append(sql) or original(self, sql))
+
+    result.get_row_quality_df()
+    first = len(calls)
+    result.get_row_quality_df(by="dimension")
+    result.print_summary()
+
+    assert first > 0
+    assert len(calls) == first
+
+
+def test_otel_row_gauges_carry_the_exact_attribute():
+    pytest.importorskip("opentelemetry.sdk")
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+    _, result = _mixed("duckdb")
+    reader = InMemoryMetricReader()
+    result.export_otel(signals=("metrics",), metric_provider=MeterProvider(metric_readers=[reader]))
+
+    points = {}
+    for resource_metrics in reader.get_metrics_data().resource_metrics:
+        for scope in resource_metrics.scope_metrics:
+            for metric in scope.metrics:
+                if metric.name.endswith((".row.count", ".row.pass_rate")):
+                    points[metric.name] = [(dict(p.attributes), p.value) for p in metric.data.data_points]
+    failed = [value for attrs, value in points["vowl.schema.row.count"] if attrs["status"] == "FAILED"]
+    assert failed == [9]
+    assert all(attrs["vowl.row_quality.exact"] is True for attrs, _ in points["vowl.schema.row.count"])
+
+
+# ---------------------------------------------------------------------------
+# Spark
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def spark_session():
+    if "JAVA_HOME" not in os.environ:
+        homebrew_java = Path("/opt/homebrew/opt/openjdk@17")
+        if homebrew_java.exists():
+            os.environ["JAVA_HOME"] = str(homebrew_java)
+    pytest.importorskip("pyspark", reason="PySpark not installed")
+    from pyspark.sql import SparkSession
+
+    try:
+        spark = (
+            SparkSession.builder.master("local[1]")
+            .appName("test_row_quality")
+            .config("spark.driver.memory", "512m")
+            .config("spark.sql.shuffle.partitions", "1")
+            .getOrCreate()
+        )
+    except Exception as exc:
+        pytest.skip(f"PySpark could not start: {exc}")
+    yield spark
+    spark.stop()
+
+
+def test_spark_single_scan_keeps_negative_zero_and_nan_apart(spark_session):
+    rows = [(1, -0.0), (1, 0.0), (2, float("nan")), (2, float("nan")), (3, 1.5), (3, 1.5), (4, -1.0)]
+    spark_session.createDataFrame(rows, "id INT, c DOUBLE").createOrReplaceTempView("t")
+    con = ibis.pyspark.connect(session=spark_session)
+    checks = [
+        _check("neg_zero", "CAST(c AS STRING) = '-0.0'"),
+        _check("pos_zero", "CAST(c AS STRING) = '0.0'"),
+        _check("nan", "isnan(c)"),
+        _check("negative", "c < 0"),
+        {
+            "name": "distinct",
+            "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c > 1.2 AND NOT isnan(c)) AS s",
+            "mustBe": 0,
+        },
+    ]
+
+    result = _run_validation(_contract([_schema("t", checks)]), adapters={"t": IbisAdapter(con)})
+
+    schema = _schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (7, 7, True)
+    rows_by_check = _check_rows(result)
+    assert rows_by_check["neg_zero"]["route"] == "pushdown"
+    assert rows_by_check["distinct"]["route"] == "table_match"
+    assert rows_by_check["distinct"]["failed_rows"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Statement shapes
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("dialect", ["duckdb", "sqlite", "spark", "postgres"])
+def test_statements_are_single_selects_the_validator_accepts(dialect: str):
+    from vowl.executors.security import validate_query_security
+
+    spec = pushdown.KeySpec(dialect, "SELECT * FROM t", ["id", "c"], [None, None])
+    branches = [
+        pushdown.Branch(0, "pushdown", "SELECT * FROM t WHERE c < 0"),
+        pushdown.Branch(1, "table_match", "SELECT DISTINCT * FROM t WHERE c = 2"),
+    ]
+    chunk = pushdown.Chunk(branches)
+    for sql in (
+        pushdown.per_row_statement(spec, chunk),
+        pushdown.histogram_statement(spec, chunk),
+        pushdown.preflight_statement(spec),
+        pushdown.duplicate_key_statement(spec),
+        pushdown.count_statement(spec.anchor_sql, dialect),
+    ):
+        validate_query_security(sql, dialect=dialect)
+        assert isinstance(sqlglot.parse_one(sql, dialect=dialect), sqlglot.exp.Select)
+    # The preflight also groups on the keys, so an ungroupable type fails it.
+    assert "GROUP BY" in pushdown.preflight_statement(spec)
+
+
+def test_mysql_casts_use_its_own_type_names():
+    spec = pushdown.KeySpec("mysql", "SELECT * FROM t", ["id"], [None])
+    chunk = pushdown.Chunk([pushdown.Branch(0, "pushdown", "SELECT * FROM t WHERE id < 0")])
+
+    sql = pushdown.histogram_statement(spec, chunk)
+
+    assert "AS BIGINT" not in sql
+    assert "AS SIGNED" in sql
+
+
+def test_chunks_stay_within_the_byte_budget(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(pushdown, "MAX_SQL_BYTES", 20_000)
+    columns = [f"column_{i}" for i in range(32)]
+    spec = pushdown.KeySpec("duckdb", "SELECT * FROM t", columns, [None] * 32)
+    branches = [
+        pushdown.Branch(i, "table_match" if i % 2 else "pushdown", f"SELECT * FROM t WHERE column_{i % 32} > {i}")
+        for i in range(60)
+    ]
+
+    chunks = pushdown.plan_chunks(spec, branches)
+
+    assert len(chunks) > 1
+    assert sum(len(chunk.branches) for chunk in chunks) == 60
+    for chunk in chunks:
+        assert len(pushdown.histogram_statement(spec, chunk).encode()) <= 20_000
+
+
+def test_a_small_byte_budget_does_not_change_the_numbers(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(pushdown, "MAX_SQL_BYTES", 3_000)
+    con, result = _mixed("duckdb")
+
+    assert _schema_row(result)["failed_rows"] == 9
+    assert _schema_row(result)["exact"] is True
+
+
+def test_an_ungroupable_key_sends_the_schema_to_fetched_rows(monkeypatch: pytest.MonkeyPatch):
+    original = IbisAdapter.run_arrow_query
+
+    def reject_grouped_keys(self, sql: str):
+        if 'AS "_vowl_k" GROUP BY' in sql:
+            raise RuntimeError("simulated: key type cannot be grouped")
+        return original(self, sql)
+
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", reject_grouped_keys)
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (1, -1), (2, 3)")
+
+    result = _validate(con, [_schema("t", [_check("negative", "c < 0")])])
+
+    assert _check_rows(result)["negative"]["route"] == "fetched_rows"
+    assert _schema_row(result)["failed_rows"] == 2
+
+
+def test_a_zero_total_from_a_failed_count_is_counted_again():
+    class ZeroTotals(IbisAdapter):
+        def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int:
+            return 0
+
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, 3), (3, 4)")
+
+    result = _run_validation(_contract([_schema("t", [_check("negative", "c < 0")])]), adapters={"t": ZeroTotals(con)})
+
+    schema = _schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (3, 1, True)
+
+
+def test_a_total_below_a_checks_rows_is_not_exact():
+    class LowTotalsNoPushdown(IbisAdapter):
+        def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int:
+            return 1
+
+        def run_arrow_query(self, sql: str):
+            raise NotImplementedError
+
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -2), (3, 4)")
+    adapters = {"t": LowTotalsNoPushdown(con)}
+
+    result = _run_validation(_contract([_schema("t", [_check("negative", "c < 0")])]), adapters=adapters)
+
+    assert _schema_row(result)["exact"] is False
+
+
+def test_arrow_values_survive_the_cross_route_merge():
+    from vowl.validation.row_quality.merge import FetchedRows, merge_routes
+
+    outcome = pushdown.PushdownOutcome()
+    values = pa.table({"_vowl_v0": pa.array([1, 2], pa.int64())})
+    outcome.value_tables.append(values)
+    outcome.rows = {(b"1",): [0b01, 2, (0, 0)], (b"2",): [0b01, 1, (0, 1)]}
+    fetched = FetchedRows(check_id=1, table=pa.table({"id": pa.array([1, 3, 3], pa.int32())}), key_columns=["id"])
+
+    entries, exact = merge_routes(outcome, [fetched], ["id"], None)
+
+    assert exact is True
+    assert sorted(entries) == [(0b01, 1), (0b10, 2), (0b11, 2)]
+
+
+# ---------------------------------------------------------------------------
+# HDB resale parity
+# ---------------------------------------------------------------------------
+
+_HDB_DIR = Path(__file__).parent / "hdb_resale"
+
+
+@pytest.fixture(scope="module")
+def hdb_frame():
+    import pandas as pd
+
+    return pd.read_csv(_HDB_DIR / "HDBResaleWithErrors.csv").fillna("").astype(str)
+
+
+@pytest.mark.parametrize("cap", [None, 1])
+def test_hdb_resale_numbers_match_annotated_output(hdb_frame, cap: int | None):
+    config = ValidationConfig(max_failed_rows=cap) if cap is not None else None
+
+    result = _run_validation(str(_HDB_DIR / "hdb_resale.yaml"), df=hdb_frame, config=config)
+
+    schema = _schema_row(result, "hdb_resale_prices")
+    assert schema["failed_rows"] == 10_571
+    assert schema["exact"] is True
+    dimensions = _dimension_rows(result, "hdb_resale_prices")
+    assert dimensions["uniqueness"]["failed_rows"] == 10_551
+    assert dimensions["conformity"]["failed_rows"] == 10
+    assert dimensions["consistency"]["failed_rows"] == 12
+    if cap is None:
+        annotated = result.get_annotated_output()["annotated"]["hdb_resale_prices"]
+        assert sum(1 for info in annotated.to_arrow().column("check_info").to_pylist() if info) == 10_571

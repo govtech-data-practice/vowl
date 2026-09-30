@@ -30,6 +30,11 @@ if TYPE_CHECKING:
 LOGICAL_TYPE_TO_SQL = _sql.LOGICAL_TYPE_TO_SQL
 
 
+def _count_skips_nulls(argument: exp.Expression | None) -> bool:
+    """Whether ``COUNT(argument)`` skips the rows where the argument is NULL."""
+    return argument is not None and not isinstance(argument, (exp.Star, exp.Literal, exp.Distinct))
+
+
 class SQLCheckReference(CheckReference, ABC):
     """
     Abstract base for all SQL-based check references.
@@ -93,15 +98,19 @@ class SQLCheckReference(CheckReference, ABC):
             parsed = sqlglot.parse_one(query, dialect=dialect)
             if not isinstance(parsed, exp.Select):
                 return None
-            has_count = any(isinstance(e, exp.Count) for e in parsed.expressions)
+            counts = [e.unalias() for e in parsed.expressions if isinstance(e.unalias(), exp.Count)]
             has_any_agg = any(
                 isinstance(node, (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max))
                 for sel_expr in parsed.expressions
                 for node in sel_expr.walk()
             )
-            if has_count:
+            if counts:
                 result = parsed.copy()
                 result.set("expressions", [exp.Star()])
+                # COUNT(expr) skips rows where expr is NULL, so the failed rows skip them too.
+                argument = counts[0].this
+                if len(counts) == 1 and _count_skips_nulls(argument):
+                    result = result.where(exp.Not(this=exp.Is(this=argument.copy(), expression=exp.Null())))
                 return result.sql(dialect=dialect)
             if not has_any_agg and parsed.find(exp.From):
                 return query

@@ -2,21 +2,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x912a30fba2f7c710",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x5a679a803d83838b",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.948222Z",
-    "end_time": "2026-09-24T12:31:51.954513Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.541447Z",
+    "end_time": "2026-09-30T09:12:24.546627Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "month_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -41,7 +50,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -50,21 +59,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0xf3ebeed6a5f8f0d4",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0xd483112d40c1a027",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.954513Z",
-    "end_time": "2026-09-24T12:31:51.963860Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.546627Z",
+    "end_time": "2026-09-30T09:12:24.555284Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "month_logical_type_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -89,7 +107,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -98,21 +116,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x1e0834de701dd8d8",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x25f86885a6fad6c9",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.963860Z",
-    "end_time": "2026-09-24T12:31:51.970407Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.555284Z",
+    "end_time": "2026-09-30T09:12:24.559784Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "town_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -137,7 +164,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -146,21 +173,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x297bb31f8a74929f",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x0c271da1049644f7",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.970407Z",
-    "end_time": "2026-09-24T12:31:51.977566Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.559784Z",
+    "end_time": "2026-09-30T09:12:24.564581Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "flat_type_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -185,7 +221,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -194,21 +230,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x4c76171e45b32222",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x373805e9e636c83a",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.977566Z",
-    "end_time": "2026-09-24T12:31:51.983434Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.564581Z",
+    "end_time": "2026-09-30T09:12:24.569369Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "block_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -233,7 +278,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -242,21 +287,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x0a52bee06f49ff2a",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0xf7d7446782461a80",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.983434Z",
-    "end_time": "2026-09-24T12:31:51.989672Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.569369Z",
+    "end_time": "2026-09-30T09:12:24.573735Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "street_name_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -281,7 +335,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -290,21 +344,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x1d707926391c6d15",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x978fe9067314246f",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.989672Z",
-    "end_time": "2026-09-24T12:31:51.994678Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.573735Z",
+    "end_time": "2026-09-30T09:12:24.630893Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "storey_range_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -329,7 +392,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -338,21 +401,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x4633852c744ccc11",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x7f8e1ccadc974c1f",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:51.994678Z",
-    "end_time": "2026-09-24T12:31:52.001840Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.630893Z",
+    "end_time": "2026-09-30T09:12:24.635586Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "floor_area_sqm_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -377,7 +449,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -386,21 +458,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0xcccb6bf218d346eb",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x36e4f2f8820e4faa",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.001840Z",
-    "end_time": "2026-09-24T12:31:52.010153Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.635586Z",
+    "end_time": "2026-09-30T09:12:24.641644Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "flat_model_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -425,7 +506,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -434,21 +515,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0xafc1291f9d91ab99",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x4c5547e809d922aa",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.010153Z",
-    "end_time": "2026-09-24T12:31:52.019624Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.641644Z",
+    "end_time": "2026-09-30T09:12:24.646868Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "lease_commence_date_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -473,7 +563,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -482,21 +572,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x2eb81c865347eeba",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0xc61a5ec1209bc0c7",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.019624Z",
-    "end_time": "2026-09-24T12:31:52.025792Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.646868Z",
+    "end_time": "2026-09-30T09:12:24.651179Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "remaining_lease_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -521,7 +620,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -530,21 +629,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0xf008de35abe297a5",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x33369bad6ecfd06b",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.025792Z",
-    "end_time": "2026-09-24T12:31:52.034660Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.651179Z",
+    "end_time": "2026-09-30T09:12:24.655700Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "resale_price_column_exists_check",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -569,7 +677,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -578,21 +686,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x3009df9dc364a3eb",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x80b7e4744aa348fc",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.034660Z",
-    "end_time": "2026-09-24T12:31:52.043930Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.655700Z",
+    "end_time": "2026-09-30T09:12:24.662459Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "hdb_resale_prices_rowCount",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "completeness",
       "engine": "sql",
       "operator": "mustBeBetween",
@@ -619,7 +736,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -628,22 +745,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0xfbd4ee03c2228f6b",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x87c3013d25fa8df6",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.043930Z",
-    "end_time": "2026-09-24T12:31:52.077970Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.662459Z",
+    "end_time": "2026-09-30T09:12:24.681895Z",
     "status": {
-      "status_code": "ERROR",
-      "description": "Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM"
+      "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "Month",
       "status": "FAILED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -664,7 +789,7 @@
     "events": [
       {
         "name": "vowl.failed_row",
-        "timestamp": "2026-09-24T12:31:52.315373Z",
+        "timestamp": "2026-09-30T09:12:30.546085Z",
         "attributes": {
           "month": "2017-jan",
           "town": "BEDOK",
@@ -681,7 +806,7 @@
       },
       {
         "name": "vowl.failed_row",
-        "timestamp": "2026-09-24T12:31:52.315442Z",
+        "timestamp": "2026-09-30T09:12:30.546095Z",
         "attributes": {
           "month": "2017-jan",
           "town": "BISHAN",
@@ -703,7 +828,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -712,21 +837,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x9a00dec7121a7e53",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x6f3b913fd3f43d4d",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.077970Z",
-    "end_time": "2026-09-24T12:31:52.096311Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.681895Z",
+    "end_time": "2026-09-30T09:12:24.694072Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "town_nullValues",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "completeness",
       "engine": "sql",
       "operator": "mustBe",
@@ -750,7 +884,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -759,21 +893,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x34b67d34341150d8",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0xe617c99f519fb2ae",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.096311Z",
-    "end_time": "2026-09-24T12:31:52.124145Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.694072Z",
+    "end_time": "2026-09-30T09:12:24.713425Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "flat_type_invalidValues",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -806,7 +949,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -815,22 +958,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x008c8bdb80609bb2",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x2712cf5b10109299",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.124145Z",
-    "end_time": "2026-09-24T12:31:52.159652Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.713425Z",
+    "end_time": "2026-09-30T09:12:24.731943Z",
     "status": {
-      "status_code": "ERROR",
-      "description": "House number component of a street address | Alphanumeric up to 10 characters (e.g. 12, 535, 358C)"
+      "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "AddressBlockHouseNumber",
       "status": "FAILED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -851,7 +1002,7 @@
     "events": [
       {
         "name": "vowl.failed_row",
-        "timestamp": "2026-09-24T12:31:52.315747Z",
+        "timestamp": "2026-09-30T09:12:30.546176Z",
         "attributes": {
           "month": "2017-01",
           "town": "BEDOK",
@@ -873,7 +1024,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -882,22 +1033,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0xfb29ae02e64dda20",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x57ccface4fbe263b",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.159652Z",
-    "end_time": "2026-09-24T12:31:52.185114Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.731943Z",
+    "end_time": "2026-09-30T09:12:24.747151Z",
     "status": {
-      "status_code": "ERROR",
-      "description": "Validates that floor area must be less than 200"
+      "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "floor_area_must_be_less_than_200",
       "status": "FAILED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "consistency",
       "severity": "error",
       "engine": "sql",
@@ -920,7 +1079,7 @@
     "events": [
       {
         "name": "vowl.failed_row",
-        "timestamp": "2026-09-24T12:31:52.315787Z",
+        "timestamp": "2026-09-30T09:12:30.546208Z",
         "attributes": {
           "month": "2017-06",
           "town": "KALLANG/WHAMPOA",
@@ -937,7 +1096,7 @@
       },
       {
         "name": "vowl.failed_row",
-        "timestamp": "2026-09-24T12:31:52.315794Z",
+        "timestamp": "2026-09-30T09:12:30.546214Z",
         "attributes": {
           "month": "2017-09",
           "town": "CHOA CHU KANG",
@@ -959,7 +1118,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -968,22 +1127,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x869ad74692574d1e",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x03a285e791f4be04",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.185114Z",
-    "end_time": "2026-09-24T12:31:52.209894Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.747151Z",
+    "end_time": "2026-09-30T09:12:24.766407Z",
     "status": {
-      "status_code": "ERROR",
-      "description": "Based on ISO 8601, assumed to be in UTC +8 | YYYY"
+      "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "Year",
       "status": "FAILED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "engine": "sql",
       "operator": "mustBe",
@@ -1004,7 +1171,7 @@
     "events": [
       {
         "name": "vowl.failed_row",
-        "timestamp": "2026-09-24T12:31:52.315829Z",
+        "timestamp": "2026-09-30T09:12:30.546243Z",
         "attributes": {
           "month": "2017-01",
           "town": "ANG MO KIO",
@@ -1021,7 +1188,7 @@
       },
       {
         "name": "vowl.failed_row",
-        "timestamp": "2026-09-24T12:31:52.315837Z",
+        "timestamp": "2026-09-30T09:12:30.546249Z",
         "attributes": {
           "month": "2017-01",
           "town": "ANG MO KIO",
@@ -1043,7 +1210,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -1052,21 +1219,30 @@
   {
     "name": "vowl.check",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x6e137ef4adb03e08",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0x360f2829c4eeca81",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
-    "parent_id": "0x28c4a87c6e8ba039",
-    "start_time": "2026-09-24T12:31:52.209894Z",
-    "end_time": "2026-09-24T12:31:52.314895Z",
+    "parent_id": "0xf04f2b36cd103583",
+    "start_time": "2026-09-30T09:12:24.766407Z",
+    "end_time": "2026-09-30T09:12:24.784786Z",
     "status": {
       "status_code": "OK"
     },
     "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
       "check_name": "resale_price_must_not_exceed_2m",
       "status": "PASSED",
-      "schema": "hdb_resale_prices",
+      "schema_name": "hdb_resale_prices",
       "dimension": "conformity",
       "severity": "error",
       "engine": "sql",
@@ -1093,7 +1269,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -1102,23 +1278,31 @@
   {
     "name": "vowl.validate",
     "context": {
-      "trace_id": "0x7dd37d0592e117746ccb18240758c9ae",
-      "span_id": "0x28c4a87c6e8ba039",
+      "trace_id": "0x9b0dffe5ebc86afaa315803cdd088f8b",
+      "span_id": "0xf04f2b36cd103583",
       "trace_state": "[]"
     },
     "kind": "SpanKind.INTERNAL",
     "parent_id": null,
-    "start_time": "2026-09-24T12:31:51.948222Z",
-    "end_time": "2026-09-24T12:31:52.314895Z",
+    "start_time": "2026-09-30T09:12:24.541447Z",
+    "end_time": "2026-09-30T09:12:25.355979Z",
     "status": {
-      "status_code": "ERROR"
+      "status_code": "OK"
     },
     "attributes": {
-      "total_checks": 20,
-      "passed": 16,
-      "failed": 4,
-      "errors": 0,
-      "success_rate": 80.0
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev3",
+      "vowl.run.id": "19c31595-66aa-4c54-bc41-072fc8e2694f",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.1.0",
+      "vowl.contract.status": "draft",
+      "vowl.domain": "real-estate",
+      "check.count.passed": 16,
+      "check.count.failed": 4,
+      "check.count.error": 0,
+      "check.pass_rate": 0.8
     },
     "events": [],
     "links": [],
@@ -1127,7 +1311,7 @@
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "3a33636a-0da5-48e7-bbee-6e90e4e4742a",
+        "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
         "service.name": "unknown_service"
       },
       "schema_url": ""

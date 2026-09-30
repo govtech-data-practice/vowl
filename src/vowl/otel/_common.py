@@ -8,16 +8,39 @@ package is imported lazily from :meth:`ValidationResult.export_otel` and never b
 from __future__ import annotations
 
 import json
-import uuid
 from typing import TYPE_CHECKING, Any
 
 from opentelemetry._logs import SeverityNumber
 
+# The attribute helpers live with the DQ metrics computation, so the OTel
+# signals and dq_metrics.json label a run and a check the same way.
+from ..validation.dq_metrics import (
+    check_attributes,
+    check_dimension,
+    check_severity,
+    clean_attrs,
+    coerce_attr,
+    contract_attributes,
+    new_run_id,
+    run_identity_attributes,
+)
+
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
 
-#: Attribute values OTEL accepts natively. Anything else is coerced with ``str``.
-_NATIVE_ATTR_TYPES = (str, bool, int, float)
+__all__ = [
+    "build_context_attributes",
+    "build_resource",
+    "check_attributes",
+    "check_dimension",
+    "check_query",
+    "check_severity",
+    "coerce_attr",
+    "contract_attributes",
+    "flatten_check_definition",
+    "new_run_id",
+    "severity_for",
+]
 
 #: How deep :func:`flatten_check_definition` recurses into nested object/array
 #: values before falling back to a compact JSON string. Bounds attribute
@@ -33,60 +56,6 @@ _SEVERITY_BY_STATUS: dict[str, tuple[SeverityNumber, str]] = {
     "FAILED": (SeverityNumber.WARN, "WARN"),
     "ERROR": (SeverityNumber.ERROR, "ERROR"),
 }
-
-
-def new_run_id() -> str:
-    """A fresh per-run id so a consumer can de-duplicate retried runs."""
-    return str(uuid.uuid4())
-
-
-def coerce_attr(value: Any) -> str | bool | int | float | None:
-    """Coerce *value* to an OTEL-safe attribute value, or ``None`` to drop it."""
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, _NATIVE_ATTR_TYPES):
-        return value
-    return str(value)
-
-
-def _clean_attrs(attrs: dict[str, Any]) -> dict[str, str | bool | int | float]:
-    """Drop ``None`` values and coerce the rest to OTEL-safe attribute values."""
-    cleaned: dict[str, str | bool | int | float] = {}
-    for key, raw in attrs.items():
-        value = coerce_attr(raw)
-        if value is not None:
-            cleaned[key] = value
-    return cleaned
-
-
-def contract_attributes(result: ValidationResult, prefix: str = "vowl") -> dict[str, Any]:
-    """Contract identity attributes, absent keys omitted.
-
-    A fixed list of contract fields: ``id``, ``name``, ``version``,
-    ``apiVersion``, ``status``, ``contractCreatedTs``, ``domain``,
-    ``dataProduct`` and ``tenant``. The list is kept short and stable on purpose
-    so the attribute set is predictable. Other fields can be passed through
-    ``custom_attributes``.
-    """
-    contract = result.contract
-    metadata = contract.get_metadata()
-    contract_data = getattr(contract, "contract_data", {}) or {}
-
-    p = prefix
-    attrs = {
-        f"{p}.contract.id": metadata.get("id"),
-        f"{p}.contract.name": contract_data.get("name"),
-        f"{p}.contract.version": contract.get_version(),
-        f"{p}.contract.api_version": result.api_version,
-        f"{p}.contract.status": metadata.get("status"),
-        f"{p}.contract.created_ts": contract_data.get("contractCreatedTs"),
-        f"{p}.domain": contract_data.get("domain"),
-        f"{p}.data_product": contract_data.get("dataProduct"),
-        f"{p}.tenant": contract_data.get("tenant"),
-    }
-    return {key: value for key, value in attrs.items() if value not in (None, "")}
 
 
 def build_context_attributes(
@@ -105,15 +74,11 @@ def build_context_attributes(
     on every metric, span, and log record, and additionally for constructing
     the OTEL Resource in self-contained mode.
     """
-    attrs: dict[str, Any] = {
-        "service.name": service_name,
-        f"{prefix}.version": version,
-        f"{prefix}.run.id": run_id,
-    }
-    attrs.update(contract_attributes(result, prefix=prefix))
+    attrs: dict[str, Any] = {"service.name": service_name}
+    attrs.update(run_identity_attributes(result, run_id=run_id, version=version, prefix=prefix))
     if custom_attributes:
         attrs.update(custom_attributes)
-    return _clean_attrs(attrs)
+    return clean_attrs(attrs)
 
 
 def build_resource(
@@ -137,24 +102,6 @@ def build_resource(
         custom_attributes=custom_attributes,
     )
     return Resource.create(attrs)
-
-
-def check_dimension(check_result: Any) -> str:
-    """Resolve a check's DQ dimension, defaulting to ``"unknown"``.
-
-    Delegates to the resolver the result's dimension rollups use, so every
-    signal buckets a check the same way.
-    """
-    from ..validation.result import _resolve_check_dimension
-
-    return _resolve_check_dimension(check_result)
-
-
-def check_severity(check_result: Any) -> Any:
-    """Resolve a check's severity from metadata or its ``check_definition``."""
-    metadata = check_result.metadata
-    definition = metadata.get("check_definition") or {}
-    return metadata.get("severity") or definition.get("severity")
 
 
 def check_query(check_result: Any) -> str | None:
@@ -246,25 +193,6 @@ def flatten_check_definition(check_result: Any) -> dict[str, Any]:
         else:
             _flatten_value(f"check.definition.{key}", value, out, depth=1)
     return out
-
-
-def check_attributes(check_result: Any) -> dict[str, str | bool | int | float]:
-    """The bounded, low-cardinality attribute set shared across signals.
-
-    Uses bare keys (``check_name``, ``schema_name``, ...) per the
-    semantic-convention tables, which are the downstream ``GROUP BY`` axes.
-    """
-    metadata = check_result.metadata
-    return _clean_attrs(
-        {
-            "check_name": check_result.check_name,
-            "status": check_result.status,
-            "schema_name": metadata.get("schema_name"),
-            "dimension": check_dimension(check_result),
-            "severity": check_severity(check_result),
-            "engine": metadata.get("engine"),
-        }
-    )
 
 
 def severity_for(status: str) -> tuple[SeverityNumber, str] | None:

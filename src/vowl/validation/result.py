@@ -7,7 +7,7 @@ import logging
 import re
 import warnings
 from collections.abc import Iterable, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
@@ -18,9 +18,11 @@ from ..contracts.contract import Contract
 from ..contracts.models.ODCS_types import DataContract
 from ..executors.base import CheckResult
 from ._output_dir import OutputDir, split_file_location
+from .dq_metrics import build_document, new_run_id
 from .result_models import (
     CheckStatusSummary,
     MultiTableSummary,
+    OverallSummary,
     SchemaValidationBreakdown,
     SingleTableSummary,
 )
@@ -35,13 +37,18 @@ from .result_rendering import (
 )
 from .result_row_quality import (
     align_to_schema,
-    build_row_quality_summary,
     first_occurrence_indices,
-    get_eligible_schema_names,
-    iter_unique_failed_row_keys,
     row_keys,
-    select_relevant_failed_row_columns,
 )
+from .row_quality import (
+    CheckRowQuality,
+    DimensionRowQuality,
+    RowQuality,
+    RowQualityReport,
+    SchemaRowQuality,
+    flagged_checks,
+)
+from .row_quality.selection import REASON_OPERATOR, resolve_check_dimension
 
 if TYPE_CHECKING:
     from ..adapters.multi_source_adapter import MultiSourceAdapter
@@ -86,30 +93,12 @@ def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
     return cleaned
 
 
-def _resolve_check_dimension(check_result: CheckResult) -> str:
-    """Resolve a check's DQ dimension for OTEL rollup, defaulting to ``"unknown"``.
-
-    The dimension is read exactly as the check reports it: authored ``quality``
-    rules carry the author-asserted dimension, and auto-generated checks
-    (``required`` / ``unique`` / type / column-existence) carry the dimension
-    vowl's generator assigns them (e.g. ``completeness`` for ``required``).
-    ``"unknown"`` is only used when a check genuinely reports no dimension.
-    """
-    metadata = check_result.metadata
-    definition = metadata.get("check_definition") or {}
-    return metadata.get("dimension") or definition.get("dimension") or "unknown"
+#: Accepted values of ``get_row_quality_df(by=...)``.
+_ROW_QUALITY_GROUPINGS = ("schema", "dimension", "check")
 
 
 class ValidationResult:
     """Container for validation results and reporting helpers."""
-
-    _ROW_QUALITY_EXCLUDED_COLUMNS = (
-        "check_id",
-        "check_ids",
-        "check_info",
-        "check_info_item",
-        "tables_in_query",
-    )
 
     def __init__(
         self,
@@ -127,10 +116,13 @@ class ValidationResult:
         self._schema_names = list(schema_names)
         self._config = config or ValidationConfig()
         self._vs = summary["validation_summary"]
-        self._row_quality_summary_by_schema: dict[str, dict[str, Any]] | None = None
+        self._row_quality_component: RowQuality | None = None
         self._schema_validation_breakdown: dict[str, SchemaValidationBreakdown] | None = None
         self._schema_column_names: dict[str, list[str]] = {}
         self._full_table_cache: dict[str, nw.DataFrame | None] = {}
+        #: This run's id. ``save`` and ``export_otel`` both use it, so the saved
+        #: files and the telemetry of one run share it. Set it to use your own.
+        self.run_id: str = new_run_id()
         # Wall-clock run window in epoch nanoseconds, set by the runner.
         self._run_started_ns: int | None = None
         self._run_finished_ns: int | None = None
@@ -145,15 +137,6 @@ class ValidationResult:
     def _supports_row_level_output(check_result: CheckResult) -> bool:
         """True when the result can participate in row-level summaries/output."""
         return check_result.supports_row_level_output
-
-    def _get_row_quality_eligible_checks(self) -> list[CheckResult]:
-        return [
-            check_result
-            for check_result in self.check_results
-            if check_result.status != "ERROR"
-            and not is_cross_table_check(check_result)
-            and self._supports_row_level_output(check_result)
-        ]
 
     def _get_checks_for_schema(self, schema_name: str) -> list[CheckResult]:
         return [
@@ -226,168 +209,26 @@ class ValidationResult:
         self._schema_column_names[schema_name] = column_names
         return column_names
 
-    def _get_row_quality_summary_by_schema(self) -> dict[str, dict[str, Any]]:
-        if self._row_quality_summary_by_schema is not None:
-            return self._row_quality_summary_by_schema
+    def _row_quality(self) -> RowQuality:
+        """The row-quality component of this result, created on first use."""
+        if self._row_quality_component is None:
+            self._row_quality_component = RowQuality(self)
+        return self._row_quality_component
 
-        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
-        if not total_rows_by_schema:
-            return {}
-
-        eligible_checks = self._get_row_quality_eligible_checks()
-        eligible_schemas = get_eligible_schema_names(eligible_checks, total_rows_by_schema)
-        if not eligible_schemas:
-            return {}
-
-        schema_columns = {schema_name: self._get_schema_column_names(schema_name) for schema_name in eligible_schemas}
-        unique_rows_by_schema = self._collect_unique_failed_rows_by_schema(
-            eligible_checks,
-            eligible_schemas,
-            schema_columns,
-        )
-        self._row_quality_summary_by_schema = {
-            schema_name: asdict(
-                build_row_quality_summary(
-                    total_rows,
-                    len(unique_rows_by_schema.get(schema_name, set())),
-                )
-            )
-            for schema_name, total_rows in total_rows_by_schema.items()
-            if schema_name in eligible_schemas
-        }
-        return self._row_quality_summary_by_schema
-
-    def _collect_unique_failed_rows_by_schema(
-        self,
-        eligible_checks: Iterable[CheckResult],
-        eligible_schemas: set[str],
-        schema_columns: dict[str, list[str]],
-    ) -> dict[str, set[tuple[Any, ...]]]:
-        unique_rows_by_schema: dict[str, set[tuple[Any, ...]]] = {
-            schema_name: set() for schema_name in eligible_schemas
-        }
-        for check_result in eligible_checks:
-            if check_result.status != "FAILED":
-                continue
-
-            schema_name = check_result.metadata.get("schema_name")
-            if not isinstance(schema_name, str) or schema_name not in unique_rows_by_schema:
-                continue
-
-            failed_rows = check_result.failed_rows
-            if len(failed_rows) == 0:
-                continue
-
-            relevant_columns = select_relevant_failed_row_columns(
-                schema_name,
-                failed_rows,
-                schema_columns,
-                self._ROW_QUALITY_EXCLUDED_COLUMNS,
-            )
-            if not relevant_columns:
-                continue
-
-            unique_rows_by_schema[schema_name].update(iter_unique_failed_row_keys(failed_rows, relevant_columns))
-        return unique_rows_by_schema
-
-    def _failed_rows_by_dimension(self) -> dict[tuple[str, str], int]:
-        """Unique failing rows per ``(schema, dimension)``, deduped per bucket.
-
-        Reuses the row-quality eligibility and column-selection logic, but keys
-        the dedup set by ``(schema, dimension)`` so a row failing two checks in
-        the same dimension counts once for that dimension.  A check without a
-        recorded dimension falls under ``"unknown"``.  Used as the
-        ``vowl.failed_rows`` metric numerator by the OTEL exporter.
-        """
-        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
-        if not total_rows_by_schema:
-            return {}
-
-        eligible_checks = self._get_row_quality_eligible_checks()
-        eligible_schemas = get_eligible_schema_names(eligible_checks, total_rows_by_schema)
-        if not eligible_schemas:
-            return {}
-
-        schema_columns = {schema_name: self._get_schema_column_names(schema_name) for schema_name in eligible_schemas}
-        unique_rows_by_key: dict[tuple[str, str], set[tuple[Any, ...]]] = {}
-        for check_result in eligible_checks:
-            if check_result.status != "FAILED":
-                continue
-
-            schema_name = check_result.metadata.get("schema_name")
-            if not isinstance(schema_name, str) or schema_name not in eligible_schemas:
-                continue
-
-            failed_rows = check_result.failed_rows
-            if len(failed_rows) == 0:
-                continue
-
-            relevant_columns = select_relevant_failed_row_columns(
-                schema_name,
-                failed_rows,
-                schema_columns,
-                self._ROW_QUALITY_EXCLUDED_COLUMNS,
-            )
-            if not relevant_columns:
-                continue
-
-            dimension = _resolve_check_dimension(check_result)
-            bucket = unique_rows_by_key.setdefault((schema_name, dimension), set())
-            bucket.update(iter_unique_failed_row_keys(failed_rows, relevant_columns))
-        return {key: len(rows) for key, rows in unique_rows_by_key.items()}
-
-    def _row_eligible_dimensions(self) -> set[tuple[str, str]]:
-        """``(schema, dimension)`` buckets that can have a row pass rate.
-
-        A bucket qualifies when at least one of its checks reports failing rows
-        (the same eligibility as :meth:`_failed_rows_by_dimension`) and its
-        schema has a row count. Buckets with only aggregate checks are left out,
-        since they would always show every row as passing.
-        """
-        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
-        buckets: set[tuple[str, str]] = set()
-        for check_result in self._get_row_quality_eligible_checks():
-            schema_name = check_result.metadata.get("schema_name")
-            if isinstance(schema_name, str) and total_rows_by_schema.get(schema_name):
-                buckets.add((schema_name, _resolve_check_dimension(check_result)))
-        return buckets
-
-    def _check_pass_rate_by_dimension(self) -> dict[tuple[str, str], float]:
-        """Per ``(schema, dimension)`` check pass rate in ``[0, 1]``.
-
-        A per-run convenience gauge (``vowl.dimension.check_pass_rate``), never
-        an aggregation primitive.  Denominator is every check in the bucket that
-        carries a schema; a check without a recorded ``dimension`` defaults to
-        ``"unknown"``.
-        """
-        totals: dict[tuple[str, str], int] = {}
-        passed: dict[tuple[str, str], int] = {}
-        for check_result in self.check_results:
-            schema_name = check_result.metadata.get("schema_name")
-            if not isinstance(schema_name, str):
-                continue
-            dimension = _resolve_check_dimension(check_result)
-            key = (schema_name, dimension)
-            totals[key] = totals.get(key, 0) + 1
-            if check_result.status == "PASSED":
-                passed[key] = passed.get(key, 0) + 1
-        return {key: passed.get(key, 0) / total for key, total in totals.items() if total}
+    def _row_quality_report(self) -> RowQualityReport:
+        """Every row-quality number of this run, computed once and cached."""
+        return self._row_quality().report()
 
     def _get_schema_validation_breakdown(self) -> dict[str, SchemaValidationBreakdown]:
         if self._schema_validation_breakdown is not None:
             return self._schema_validation_breakdown
 
-        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
-        row_quality_summary_by_schema = self._get_row_quality_summary_by_schema()
+        report = self._row_quality_report()
         breakdown: dict[str, SchemaValidationBreakdown] = {}
-
         for schema_name in self._schema_names:
-            schema_checks = self._get_checks_for_schema(schema_name)
             breakdown[schema_name] = self._build_schema_breakdown(
-                schema_name,
-                schema_checks,
-                total_rows_by_schema,
-                row_quality_summary_by_schema,
+                self._get_checks_for_schema(schema_name),
+                report.schema(schema_name),
             )
 
         self._schema_validation_breakdown = breakdown
@@ -403,30 +244,23 @@ class ValidationResult:
 
     def _build_schema_breakdown(
         self,
-        schema_name: str,
         schema_checks: Sequence[CheckResult],
-        total_rows_by_schema: dict[str, int],
-        row_quality_summary_by_schema: dict[str, dict[str, Any]],
+        row_quality: SchemaRowQuality | None,
     ) -> SchemaValidationBreakdown:
         single_table_checks, multi_table_checks = self._split_checks_by_scope(schema_checks)
-        single_table_row_summary = row_quality_summary_by_schema.get(schema_name)
-        total_rows = total_rows_by_schema.get(schema_name)
-        failed_unique_rows = single_table_row_summary["records_with_issues"] if single_table_row_summary else 0
-        passed_unique_rows = max((total_rows or 0) - failed_unique_rows, 0)
-        passed_row_percentage = passed_unique_rows / total_rows * 100 if total_rows else None
-
-        overall = self._summarize_check_statuses(schema_checks)
-        single_status = self._summarize_check_statuses(single_table_checks)
+        pass_rate = row_quality.pass_rate if row_quality is not None else None
+        overall = OverallSummary(
+            **asdict(self._summarize_check_statuses(schema_checks)),
+            failed_rows=row_quality.failed_rows if row_quality is not None else None,
+            passed_rows=row_quality.passed_rows if row_quality is not None else None,
+            total_rows=row_quality.total_rows if row_quality is not None else None,
+            passed_row_percentage=pass_rate * 100 if pass_rate is not None else None,
+            exact=row_quality.exact if row_quality is not None else False,
+        )
         multi_status = self._summarize_check_statuses(multi_table_checks)
         return SchemaValidationBreakdown(
             overall=overall,
-            single_table=SingleTableSummary(
-                **asdict(single_status),
-                failed_unique_rows=failed_unique_rows,
-                passed_unique_rows=passed_unique_rows,
-                total_rows=total_rows,
-                passed_row_percentage=passed_row_percentage,
-            ),
+            single_table=SingleTableSummary(**asdict(self._summarize_check_statuses(single_table_checks))),
             multi_table=MultiTableSummary(
                 **asdict(multi_status),
                 failed_non_unique_rows=sum(
@@ -725,47 +559,44 @@ class ValidationResult:
         return self._full_table_cache[schema_name]
 
     @staticmethod
-    def _is_mergeable_for_full_table(cr: CheckResult, full_table_columns: set[str]) -> bool:
-        """True when *cr*'s failed rows can be annotated onto the full table.
+    def _is_mergeable_for_full_table(
+        rows: nw.DataFrame, full_table_columns: set[str], key_columns: Sequence[str] | None = None
+    ) -> bool:
+        """True when a check's failed *rows* can be annotated onto the full table.
 
-        Predicates are ordered cheapest-first so the lazy ``failed_rows`` fetch
-        (the column-match criterion) is only triggered for checks that pass the
-        cheaper ones.
-
+        This single gate handles both single- and cross-table checks: the
+        failed-rows column set must exactly equal the anchor table's columns.
         A **cross-table** check (one that JOINs against a reference table) is
-        *not* rejected outright.  It is gated solely by the column-structure
-        match below: if the author shaped its failed-rows query to project only
-        the anchor schema's columns (e.g. ``SELECT payroll.* FROM payroll LEFT
-        JOIN ref ...``), those rows match the anchor table and merge; a bare
-        ``JOIN`` whose ``SELECT *`` returns both tables' columns does not match
-        and stays a residue.  The caller only ever evaluates a check against its
-        own ``schema_name`` full table (see ``get_annotated_output`` step 1), so
-        a cross-table check can never merge onto an unrelated schema whose shape
-        happens to coincide.
+        not rejected outright. If the author shaped its failed-rows query to
+        project only the anchor schema's columns (e.g. ``SELECT payroll.* FROM
+        payroll LEFT JOIN ref ...``), those rows match the anchor table and
+        merge. A bare ``JOIN`` whose ``SELECT *`` returns both tables' columns
+        does not match and stays a residue. The caller only ever evaluates a
+        check against its own ``schema_name`` full table, so a cross-table
+        check can never merge onto an unrelated schema whose shape happens to
+        coincide.
+
+        When *key_columns* is given, the schema's rows are matched on its
+        declared primary key instead (see :meth:`RowQuality.merge_key`), and
+        rows that carry every key column merge.
         """
-        if cr.status == "ERROR":
-            return False
-        if not cr.supports_row_level_output:
-            return False
-        # Column match -- the only fetch-triggering predicate, evaluated last.
-        # This single gate handles both single- and cross-table checks: the
-        # failed-rows column set must exactly equal the anchor table's columns.
-        failed_cols = set(cr.failed_rows.columns) - set(_METADATA_COLUMNS)
+        failed_cols = set(rows.columns) - set(_METADATA_COLUMNS)
+        if key_columns:
+            return set(key_columns) <= failed_cols
         return failed_cols == full_table_columns
 
-    def _failed_rows_truncated(self, cr: CheckResult) -> bool:
-        """True when *cr*'s fetched failed rows were capped by ``max_failed_rows``.
+    def _failed_rows_truncated(self, row_count: int | None, rows: nw.DataFrame) -> bool:
+        """True when a check's fetched failed rows were capped by ``max_failed_rows``.
 
-        ``failed_rows_count`` is the true count from the aggregate SQL and is
-        not subject to the ``LIMIT``; only the fetched frame is.  So a true
-        count exceeding the fetched length means the sample was truncated.
+        *row_count* is the true count from the aggregate SQL and is not subject
+        to the ``LIMIT``. Only the fetched frame is. So a true count exceeding
+        the fetched length means the sample was truncated.
         """
         cap = self._config.max_failed_rows
-        count = cr.failed_rows_count
-        return cap >= 0 and count is not None and count > len(cr.failed_rows)
+        return cap >= 0 and row_count is not None and row_count > len(rows)
 
     @staticmethod
-    def _check_info_item_json(cr: CheckResult, preset: CheckInfoPreset) -> str:
+    def _check_info_item_json(cr: CheckResult, preset: CheckInfoPreset, *, tolerated: bool = False) -> str:
         """JSON-encode one failing check's per-row item for the given preset.
 
         Every preset returns a JSON **object** (a single array element), so the
@@ -776,9 +607,15 @@ class ValidationResult:
         - ``"names"``   -> ``{"check_name": ...}``
         - ``"summary"`` -> ``{check_name, dimension, tags, target}``
         - ``"full"``    -> full ``check_definition`` + ``check_name`` + ``target``
+
+        Under ``row_issue_scope="all_violations"``, the item of a check that
+        passed within its tolerance also carries ``"tolerated": true``.
         """
         if preset == "names":
-            return json.dumps({"check_name": cr.check_name})
+            obj: dict[str, Any] = {"check_name": cr.check_name}
+            if tolerated:
+                obj["tolerated"] = True
+            return json.dumps(obj)
         check_definition = cr.metadata.get("check_definition") or {}
         target = get_field_label(cr)
         if preset == "summary":
@@ -792,6 +629,8 @@ class ValidationResult:
             obj = dict(check_definition)
             obj["check_name"] = cr.check_name
             obj["target"] = target
+        if tolerated:
+            obj["tolerated"] = True
         return json.dumps(obj, default=str)
 
     @staticmethod
@@ -802,8 +641,11 @@ class ValidationResult:
     def _build_residue_with_check_info(
         self,
         cr: CheckResult,
+        rows: nw.DataFrame,
         preset: CheckInfoPreset,
         tables_str: str,
+        *,
+        tolerated: bool = False,
     ) -> nw.DataFrame:
         """Build a per-check residue: deduped failed rows + ``check_info`` + ``tables_in_query``.
 
@@ -815,13 +657,13 @@ class ValidationResult:
         because residues are non-mergeable (often cross-table) and the source
         tables are useful context.
         """
-        arrow_table = self._strip_metadata_cols(cr.failed_rows).to_arrow()
+        arrow_table = self._strip_metadata_cols(rows).to_arrow()
         if arrow_table.num_columns:
             # Key-based dedupe instead of .unique(), which cannot hash nested
             # types and treats NaN and -0.0 differently from the annotated merge.
             first = first_occurrence_indices(row_keys(arrow_table, arrow_table.column_names))
             arrow_table = arrow_table.take(pa.array(list(first.values()), type=pa.int64()))
-        check_info = self._join_check_info_items([self._check_info_item_json(cr, preset)])
+        check_info = self._join_check_info_items([self._check_info_item_json(cr, preset, tolerated=tolerated)])
         n = arrow_table.num_rows
         arrow_table = arrow_table.append_column(
             "check_info", pa.array([check_info] * n, type=pa.string())
@@ -993,18 +835,20 @@ class ValidationResult:
           shaped by the ``check_info`` preset (see :data:`CheckInfoPreset`);
           passing rows are ``null``.
         - ``"residues"`` -- **one entry per non-mergeable check that still has
-          offending rows to emit** (column-subset checks, cross-table checks
-          whose failed rows carry columns beyond the anchor schema, or any check
-          on a schema with no adapter).  A cross-table check whose failed-rows
+          offending rows to emit** (column-subset checks that do not hold a
+          unique declared primary key, cross-table checks whose failed rows
+          carry columns beyond the anchor schema, or any check on a schema with
+          no adapter).  A cross-table check whose failed-rows
           query projects only the anchor schema's columns is *mergeable* and
           annotates onto that schema's table instead (see
           :meth:`_is_mergeable_for_full_table`).  Keyed by
           ``"<schema>::<check_name>"``.
-          Empty dict when there are none.  A non-mergeable check with *no* rows
-          to emit -- a scalar aggregation (``AVG``/``SUM``/``MIN``/``MAX``,
-          ``rowCount``) or an errored check -- produces **no residue**; its
-          failure is recorded only in the summary, not in any CSV (see the
-          ``len(cr.failed_rows) == 0`` skip in step 2).  Residues are
+          Empty dict when there are none.  A check with *no* rows to flag -- a
+          scalar aggregation (``AVG``/``SUM``/``MIN``/``MAX``, ``rowCount``),
+          an errored check, or an inverted check whose matched rows are the
+          good ones (``mustBeGreaterThan`` and so on) -- produces **no
+          residue**. Its failure is recorded only in the summary, not in any
+          CSV.  Residues are
           **per-check, not grouped across checks**: a check whose failed rows
           were annotated onto a full table never reappears here, and two
           non-mergeable checks are never folded into one entry even when they
@@ -1013,6 +857,10 @@ class ValidationResult:
           preset as the annotated tables) plus ``tables_in_query``, so every
           file produced in ``output_mode="annotated"`` -- annotated tables and
           residues alike -- is read the same way.
+
+          Under ``row_issue_scope="all_violations"``, rows of checks that
+          passed within their tolerance are flagged too, and their
+          ``check_info`` items carry ``"tolerated": true``.
 
           (The standalone ``failed_rows``/``both`` CSVs still come from the
           grouped :meth:`get_consolidated_output_dfs`, which is unchanged and
@@ -1033,6 +881,23 @@ class ValidationResult:
         """
         preset = check_info if check_info is not None else self._config.annotated_check_info
         checks_set = set(checks) if checks else None
+        row_quality = self._row_quality()
+
+        # The checks whose rows are flagged: the row-quality component's
+        # counted checks under the configured row_issue_scope. Inverted and
+        # table-level checks are left to the summary. Tolerated checks join
+        # only under row_issue_scope="all_violations".
+        flagged = [
+            selection
+            for selection in flagged_checks(row_quality.selections)
+            if not checks_set or selection.result.check_name in checks_set
+        ]
+        flagged_ids = {id(selection.result) for selection in flagged}
+        # A FAILED inverted check's matched rows are the good rows, so they
+        # are neither flagged nor kept as a residue.
+        inverted_ids = {
+            id(selection.result) for selection in row_quality.selections if selection.reason == REASON_OPERATOR
+        }
 
         # Step 1: build one annotated table per schema, tracking which checks
         # were merged in (by output key, so same-named checks across schemas
@@ -1045,14 +910,16 @@ class ValidationResult:
             if full_table is None:
                 continue  # no adapter/export -- leave residues intact
             full_table_cols = set(full_table.columns)
+            # The primary key the row numbers matched on, so both merge the same checks.
+            key_columns = row_quality.merge_key(schema_name)
+            if key_columns and not set(key_columns) <= full_table_cols:
+                key_columns = None
 
-            mergeable_failed = [
-                cr
-                for cr in self.check_results
-                if cr.metadata.get("schema_name") == schema_name
-                and (not checks_set or cr.check_name in checks_set)
-                and cr.status == "FAILED"
-                and self._is_mergeable_for_full_table(cr, full_table_cols)
+            mergeable = [
+                selection
+                for selection in flagged
+                if selection.schema_name == schema_name
+                and self._is_mergeable_for_full_table(row_quality.rows_for(selection), full_table_cols, key_columns)
             ]
 
             # Guard: a mergeable failure whose rows were capped would annotate
@@ -1060,30 +927,33 @@ class ValidationResult:
             # quietly-wrong table. No-op when max_failed_rows == -1 (default).
             # Runs before the empty-rows filter below so that max_failed_rows=0,
             # which fetches no rows at all, is caught too.
-            for cr in mergeable_failed:
-                if self._failed_rows_truncated(cr):
+            for selection in mergeable:
+                rows = row_quality.rows_for(selection)
+                if self._failed_rows_truncated(selection.row_count, rows):
                     raise ValueError(
                         f"Cannot produce annotated output for schema {schema_name!r}: check "
-                        f"{cr.check_name!r} returned {cr.failed_rows_count} failed rows but only "
-                        f"{len(cr.failed_rows)} were fetched (max_failed_rows={self._config.max_failed_rows}). "
+                        f"{selection.result.check_name!r} returned {selection.row_count} failed rows but only "
+                        f"{len(rows)} were fetched (max_failed_rows={self._config.max_failed_rows}). "
                         f"Annotated rows beyond the cap would be silently shown as passing. "
                         f"Set max_failed_rows=-1 or use output_mode='failed_rows'."
                     )
 
-            eligible_failed = [cr for cr in mergeable_failed if len(cr.failed_rows) > 0]
+            eligible = [selection for selection in mergeable if len(row_quality.rows_for(selection)) > 0]
 
-            if not eligible_failed:
+            if not eligible:
                 annotated[schema_name] = self._with_null_marker(full_table)
                 continue
 
             tagged_failures: list[nw.DataFrame] = []
-            for cr in eligible_failed:
+            for selection in eligible:
                 # No .unique() here: _group_check_ids_by_row collapses duplicate
                 # rows itself, and .unique() cannot hash nested column types.
-                rows = self._strip_metadata_cols(cr.failed_rows)
-                item = self._check_info_item_json(cr, preset)
+                rows = self._strip_metadata_cols(row_quality.rows_for(selection))
+                if key_columns:
+                    rows = rows.select(key_columns)
+                item = self._check_info_item_json(selection.result, preset, tolerated=selection.tolerated)
                 tagged_failures.append(rows.with_columns(nw.lit(item).alias("check_info_item")))
-                merged_check_keys.add(self._output_key(cr))
+                merged_check_keys.add(self._output_key(selection.result))
 
             # Collapse duplicate rows into a JSON-array check_info column.
             union = pa.concat_tables([df.to_arrow() for df in tagged_failures], promote_options="default")
@@ -1097,26 +967,35 @@ class ValidationResult:
                 schema_name=schema_name,
             )
 
-        # Step 2: residues = one entry per FAILED check that was NOT merged onto
-        # an annotated table. Per-check (never grouped across checks), so a
-        # merged check can never reappear and two non-mergeable checks are never
-        # folded together. Each entry is row-deduped within its own check and
-        # carries the same check_info column as the annotated tables (a
-        # single-element JSON array) plus tables_in_query.
+        # Step 2: residues = one entry per flagged check that was NOT merged
+        # onto an annotated table, plus the other FAILED checks that returned
+        # rows, except inverted ones.
+        # Per-check (never grouped across checks), so a merged check can never
+        # reappear and two non-mergeable checks are never folded together.
+        # Each entry is row-deduped within its own check and carries the same
+        # check_info column as the annotated tables (a single-element JSON
+        # array) plus tables_in_query.
+        candidates = [(selection.result, selection.tolerated, row_quality.rows_for(selection)) for selection in flagged]
+        candidates += [
+            (cr, False, cr.failed_rows)
+            for cr in self.check_results
+            if cr.status == "FAILED"
+            and id(cr) not in flagged_ids
+            and id(cr) not in inverted_ids
+            and (not checks_set or cr.check_name in checks_set)
+        ]
         residues: dict[str, nw.DataFrame] = {}
-        for cr in self.check_results:
-            if cr.status != "FAILED":
-                continue  # PASSED/ERROR checks have no residue rows
-            if checks_set and cr.check_name not in checks_set:
-                continue
+        for cr, tolerated, rows in candidates:
             if self._output_key(cr) in merged_check_keys:
                 continue  # already annotated onto a full table -> not a residue
-            if len(cr.failed_rows) == 0:
-                continue  # scalar aggregations etc. -- no rows to emit
+            if len(rows) == 0:
+                continue  # no rows to emit
 
             tables = get_tables_in_query(cr)
             tables_str = ", ".join(sorted(tables)) if tables else ""
-            residues[self._output_key(cr)] = self._build_residue_with_check_info(cr, preset, tables_str)
+            residues[self._output_key(cr)] = self._build_residue_with_check_info(
+                cr, rows, preset, tables_str, tolerated=tolerated
+            )
 
         return {"annotated": annotated, "residues": residues}
 
@@ -1168,6 +1047,62 @@ class ValidationResult:
             return None
         return str(value)
 
+    def get_row_quality_df(self, by: str = "schema") -> nw.DataFrame:
+        """Return the row-quality numbers: how many rows of each table have issues.
+
+        Every surface reads the same cached numbers: ``print_summary``, the
+        OTEL gauges and annotated output agree with this frame. See
+        docs/failed-rows.md.
+
+        Args:
+            by: ``"schema"`` for one row per schema, ``"dimension"`` for one
+                row per (schema, dimension), or ``"check"`` for one row per
+                check, with the route its rows took and why it was or was not
+                counted.
+
+        Columns for ``"schema"`` and ``"dimension"``: ``schema_name``,
+        ``dimension`` (``"dimension"`` only), ``total_rows``, ``failed_rows``,
+        ``tolerated_rows``, ``passed_rows``, ``pass_rate`` (0 to 1),
+        ``exact``, ``checks_counted`` and ``checks_not_counted``. A missing
+        value (null) means the number is unavailable, for example a dimension
+        with no counted checks.
+
+        Columns for ``"check"``: ``schema_name``, ``check_name``,
+        ``dimension``, ``status``, ``counted``, ``tolerated``, ``route``,
+        ``reason``, ``failed_rows`` and ``exact``.
+
+        Raises:
+            ValueError: If *by* is not one of the values above.
+        """
+        if by not in _ROW_QUALITY_GROUPINGS:
+            raise ValueError(f"by must be one of {', '.join(_ROW_QUALITY_GROUPINGS)}, got {by!r}")
+        report = self._row_quality_report()
+        items: Sequence[Any]
+        if by == "schema":
+            items, item_type = report.schemas, SchemaRowQuality
+        elif by == "dimension":
+            items, item_type = report.dimensions, DimensionRowQuality
+        else:
+            items, item_type = report.checks, CheckRowQuality
+        names = [f.name for f in fields(item_type)]
+        rows = [asdict(item) for item in items]
+        arrow_types = {
+            "total_rows": pa.int64(),
+            "failed_rows": pa.int64(),
+            "tolerated_rows": pa.int64(),
+            "passed_rows": pa.int64(),
+            "pass_rate": pa.float64(),
+            "exact": pa.bool_(),
+            "counted": pa.bool_(),
+            "tolerated": pa.bool_(),
+            "checks_counted": pa.int64(),
+            "checks_not_counted": pa.int64(),
+        }
+        table = pa.table(
+            {name: pa.array([row[name] for row in rows], type=arrow_types.get(name, pa.string())) for name in names}
+        )
+        return nw.from_native(table, eager_only=True)
+
     def get_check_results_df(
         self,
         *,
@@ -1192,6 +1127,7 @@ class ValidationResult:
             check_def = raw_meta.pop("check_definition", {})
             contract_def = raw_meta.pop("contract_definition", {})
             flat_meta = {k: _safe(v) for k, v in raw_meta.items()}
+            flat_meta["dimension"] = resolve_check_dimension(cr)
             row = {
                 "check_name": cr.check_name,
                 "status": cr.status,
@@ -1219,6 +1155,21 @@ class ValidationResult:
             eager_only=True,
         )
 
+    def get_dq_metrics(self) -> dict[str, Any]:
+        """Return this run's DQ metrics: the content of ``dq_metrics.json``.
+
+        One point per metric reading, at check, dimension, schema and run
+        level, with the same names, types, units and attributes as the
+        OpenTelemetry metrics of :meth:`export_otel`. See
+        docs/dq-metrics/json-export.md.
+
+        Keys: ``schema_version``, ``run`` (run identity attributes, including
+        ``vowl.run.id``), ``run_started_at`` and ``run_finished_at`` (ISO 8601
+        UTC, or None), and ``points``, a list of ``{"name", "type", "unit",
+        "value", "attributes"}``.
+        """
+        return build_document(self)
+
     def export_otel(
         self,
         *,
@@ -1240,8 +1191,8 @@ class ValidationResult:
 
         Requires the optional ``[otel]`` extra (``pip install vowl[otel]``).
         Reads this finished result only. Nothing is re-run against the data.
-        Returns the run id (``vowl.run.id``) so a caller can link it to an
-        artifact saved under the same id. See docs/otel-export.md.
+        Returns the run id (``vowl.run.id``), which is :attr:`run_id` unless
+        *run_id* is passed. See docs/dq-metrics/otel-export.md.
 
         Args:
             signals: Which signals to emit, any subset of ``"metrics"``,
@@ -1255,13 +1206,13 @@ class ValidationResult:
                 ``"vowl"``). Identifies where the validation is running.
             prefix: Prefix for metric names, span names and vowl's attribute
                 keys (default ``"vowl"``). ``"myorg"`` turns
-                ``vowl.check.count`` into ``myorg.check.count``.
+                ``vowl.check.check.count`` into ``myorg.check.check.count``.
             headers: Optional OTLP headers (for example auth).
             custom_attributes: Additional attributes merged onto every data
                 point, span, and log record. vowl never inspects or reroutes
                 a key.
-            run_id: Id for this export. When omitted, a new UUID is generated.
-                Pass your own to save artifacts under it before exporting.
+            run_id: Id for this export. When omitted, :attr:`run_id` is used,
+                the same id :meth:`save` writes into ``dq_metrics.json``.
             max_failed_rows_sample: Max failing rows to attach per check to
                 logs and span events. ``0`` (default) exports no cell values.
                 A positive value is also capped by the run's ``max_failed_rows``.
@@ -1316,7 +1267,9 @@ class ValidationResult:
         check_info: CheckInfoPreset | None = None,
         filesystem: Any | None = None,
     ) -> ValidationResult:
-        """Write the check-results CSV, per-mode row outputs, and summary JSON.
+        """Write the check-results CSV, per-mode row outputs, the summary JSON
+        and the DQ metrics JSON (``<prefix>_dq_metrics.json``, see
+        :meth:`get_dq_metrics`).
 
         ``output_dir`` is a local folder or a URI such as
         ``s3://bucket/dq-results/run-1/``. URIs (``s3://``, ``gs://``,
@@ -1420,12 +1373,14 @@ class ValidationResult:
                     )
                     saved_files.append(target.write_csv(f"{prefix}_{safe_key}_residue.csv", df.to_arrow()))
 
-        json_path = target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str))
+        saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str)))
+        saved_files.append(
+            target.write_text(f"{prefix}_dq_metrics.json", json.dumps(self.get_dq_metrics(), indent=2, default=str))
+        )
 
         print("\nResults saved:")
         for fp in saved_files:
             print(f"   - {fp}")
-        print(f"   - {json_path}")
         return self
 
     @staticmethod

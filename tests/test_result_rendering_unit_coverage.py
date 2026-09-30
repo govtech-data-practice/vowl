@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from vowl.validation.result import _safe_filename_component
-from vowl.validation.result_models import SingleTableSummary
-from vowl.validation.result_rendering import format_unique_passed_rows
+from vowl.validation.result_models import OverallSummary
+from vowl.validation.result_rendering import format_passed_rows
 
 
 @pytest.mark.parametrize(
@@ -31,32 +31,43 @@ def test_safe_filename_component_strips_traversal(value: str, expected: str):
     assert not result.startswith(".")
 
 
-def _summary(*, total_rows, passed_row_percentage, passed_unique_rows=0):
-    return SingleTableSummary(
+def _summary(*, total_rows, passed_row_percentage, passed_rows=0, exact=True):
+    return OverallSummary(
         passed_checks=0,
         error_checks=0,
         total_checks=0,
-        failed_unique_rows=0,
-        passed_unique_rows=passed_unique_rows,
+        failed_rows=0 if passed_rows is not None else None,
+        passed_rows=passed_rows,
         total_rows=total_rows,
         passed_row_percentage=passed_row_percentage,
+        exact=exact,
     )
 
 
-def test_format_unique_passed_rows_handles_none_total_rows():
-    summary = _summary(total_rows=None, passed_row_percentage=None, passed_unique_rows=5)
-    assert format_unique_passed_rows(summary) == "5 / 0 (N/A)"
+def test_format_passed_rows_handles_none_total_rows():
+    summary = _summary(total_rows=None, passed_row_percentage=None, passed_rows=5)
+    assert format_passed_rows(summary) == "5 / 0 (N/A)"
 
 
-def test_format_unique_passed_rows_handles_zero_total_rows():
+def test_format_passed_rows_handles_zero_total_rows():
     """A zero-row table has passed_row_percentage None; must not crash in
     _truncate_pct. Regression for 'unsupported operand *: NoneType and int'
     when every check errored on an empty/unstatted table."""
     summary = _summary(total_rows=0, passed_row_percentage=None)
-    assert format_unique_passed_rows(summary) == "0 / 0 (N/A)"
+    assert format_passed_rows(summary) == "0 / 0 (N/A)"
 
 
-def test_format_unique_passed_rows_formats_percentage():
-    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_unique_rows=999)
+def test_format_passed_rows_formats_percentage():
+    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_rows=999)
     # Truncated (not rounded) to one decimal place.
-    assert format_unique_passed_rows(summary) == "999 / 1,000 (99.9%)"
+    assert format_passed_rows(summary) == "999 / 1,000 (99.9%)"
+
+
+def test_format_passed_rows_marks_approximate_numbers():
+    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_rows=999, exact=False)
+    assert format_passed_rows(summary) == "999 / 1,000 (99.9%) (approx.)"
+
+
+def test_format_passed_rows_without_counted_checks_is_na():
+    summary = _summary(total_rows=1000, passed_row_percentage=None, passed_rows=None)
+    assert format_passed_rows(summary) == "N/A"

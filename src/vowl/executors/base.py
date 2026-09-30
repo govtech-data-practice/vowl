@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
@@ -16,6 +17,39 @@ from vowl.executors.security import (
 if TYPE_CHECKING:
     from vowl.adapters.base import BaseAdapter
     from vowl.contracts.check_reference import CheckReference
+
+
+@dataclass
+class RowSource:
+    """How a SQL check's rows were produced, kept for the row-quality component.
+
+    The executor attaches one to every PASSED or FAILED SQL result, so the
+    row-quality component can rebuild the check's failed-rows query in the
+    same dialect, with the same filters, against the same adapter. It is
+    runtime state only and never appears in ``metadata`` or saved output.
+
+    Attributes:
+        check_ref: The check reference that produced the result.
+        dialect: The dialect the check ran in.
+        filter_conditions: The filters applied when the check ran.
+        use_try_cast: Whether TRY_CAST rewriting was on.
+        adapter: The adapter that executed the check.
+        failed_rows_query: The filtered failed-rows query, exactly as run.
+        fetch: Zero-argument callable returning the failed rows, capped by
+            ``max_failed_rows``.
+        cross_source: True when the check ran on a local copy of tables from
+            more than one source (Mode 2). Such a check cannot be pushed down
+            to a single source.
+    """
+
+    check_ref: Any
+    dialect: str
+    filter_conditions: Any = None
+    use_try_cast: bool = True
+    adapter: Any = None
+    failed_rows_query: str | None = None
+    fetch: Callable[[], nw.DataFrame | None] | None = field(default=None, repr=False)
+    cross_source: bool = False
 
 
 class CheckResult:
@@ -41,6 +75,7 @@ class CheckResult:
         supports_row_level_output: bool = False,
         metadata: dict[str, Any] | None = None,
         execution_time_ms: float = 0.0,
+        row_source: RowSource | None = None,
     ):
         """
         Initialize a check result.
@@ -64,6 +99,8 @@ class CheckResult:
                 row-level failures in summaries and output DataFrames.
             metadata: Additional metadata about the validation check.
             execution_time_ms: Time taken to execute the check in milliseconds.
+            row_source: How the check's rows were produced. Set by the SQL
+                executors and read by the row-quality component.
         """
         self.check_name = check_name
         self.status = status
@@ -76,6 +113,7 @@ class CheckResult:
         self._supports_row_level_output = supports_row_level_output
         self.metadata = metadata or {}
         self.execution_time_ms = execution_time_ms
+        self.row_source = row_source
 
     @property
     def failed_rows(self) -> nw.DataFrame:

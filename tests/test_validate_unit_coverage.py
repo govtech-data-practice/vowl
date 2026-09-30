@@ -178,6 +178,7 @@ def _sample_validation_result() -> ValidationResult:
     }
     contract = SimpleNamespace(
         get_api_version=lambda: "v3.1.0",
+        get_version=lambda: "1.0.0",
         get_metadata=lambda: {"id": "contract-id"},
         contract_data={"kind": "DataContract"},
     )
@@ -254,7 +255,9 @@ def test_validation_result_print_summary_show_methods_and_chaining(capsys: pytes
     assert "Single Table:" in output
     assert "Multi Table:" in output
     assert "ERRORED Checks:         1" in output
-    assert "Unique Passed Rows:     9 / 10 (90.0%)" in output
+    # rule_d ended in ERROR and could hide failing rows, and the contract lists
+    # no columns to match rows on, so the row numbers are approximate.
+    assert "Passed Rows:            9 / 10 (90.0%) (approx.)" in output
     assert "Non-unique Failed Rows: 0" in output
     assert "VALIDATION CHECKS" not in output
     assert "CHECK RESULTS" in output
@@ -399,19 +402,17 @@ def test_validation_result_output_and_consolidation_helpers():
     assert consolidated_df["tables_in_query"].tolist() == ["users"]
 
 
-def test_validation_result_row_quality_summary_uses_deduplicated_failed_rows():
+def test_validation_result_row_quality_merges_rows_caught_by_several_checks():
     result = _sample_validation_result()
 
-    row_quality_by_schema = result._get_row_quality_summary_by_schema()
+    users = result._row_quality_report().schema("users")
 
-    assert row_quality_by_schema == {
-        "users": {
-            "total_rows": 10,
-            "records_with_issues": 1,
-            "clean_records": 9,
-            "data_quality": 90.0,
-        }
-    }
+    # rule_a and rule_b caught the same row. rule_c passed with no matches.
+    # rule_d ended in ERROR, so it is not counted and the numbers are not exact.
+    assert (users.total_rows, users.failed_rows, users.passed_rows) == (10, 1, 9)
+    assert users.pass_rate == pytest.approx(0.9)
+    assert (users.checks_counted, users.checks_not_counted) == (3, 1)
+    assert users.exact is False
 
 
 def test_validation_result_row_quality_excludes_cross_table_failures():
@@ -462,16 +463,15 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
         ["users", "orders"],
     )
 
-    row_quality_by_schema = result._get_row_quality_summary_by_schema()
+    report = result._row_quality_report()
 
-    assert row_quality_by_schema == {
-        "users": {
-            "total_rows": 10,
-            "records_with_issues": 1,
-            "clean_records": 9,
-            "data_quality": 90.0,
-        }
-    }
+    # cross_rule is not row-level (supports_row_level_output defaults to False).
+    users = report.schema("users")
+    assert (users.total_rows, users.failed_rows, users.passed_rows) == (10, 1, 9)
+    assert users.checks_counted == 1
+    # orders has no counted checks, so it has no row numbers.
+    orders = report.schema("orders")
+    assert (orders.total_rows, orders.failed_rows, orders.pass_rate) == (5, None, None)
 
 
 def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails():
@@ -526,16 +526,12 @@ def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails
         ["employees", "payroll"],
     )
 
-    row_quality_by_schema = result._get_row_quality_summary_by_schema()
+    payroll = result._row_quality_report().schema("payroll")
 
-    assert row_quality_by_schema == {
-        "payroll": {
-            "total_rows": 2,
-            "records_with_issues": 2,
-            "clean_records": 0,
-            "data_quality": 0.0,
-        }
-    }
+    # The contract lists the payroll columns, so the fetched rows merge on them.
+    assert (payroll.total_rows, payroll.failed_rows, payroll.passed_rows) == (2, 2, 0)
+    assert payroll.pass_rate == 0.0
+    assert payroll.exact is True
 
 
 def test_validation_result_summary_does_not_use_adapter_export_for_schema_columns(capsys: pytest.CaptureFixture[str]):
@@ -694,7 +690,8 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
     assert "Checks Pass Rate:       0 / 3 (0.0%)" in output
     assert output.count("ERRORED Checks:         0") >= 4
     assert "ERRORED Checks:         1" in output
-    assert "Unique Passed Rows:     0 / 2 (0.0%)" in output
+    # payroll_error_rule ended in ERROR, and the contract lists no columns.
+    assert output.count("Passed Rows:            0 / 2 (0.0%) (approx.)") == 2
     assert "Non-unique Failed Rows: 2" in output
     assert "Non-unique Failed Rows: 0" in output
     assert "CHECK RESULTS" in output
@@ -756,8 +753,9 @@ def test_validation_result_print_summary_omits_row_quality_when_only_cross_table
     assert "Single Table:" in output
     assert "Checks Pass Rate:       0 / 0 (N/A)" in output
     assert "ERRORED Checks:         0" in output
-    assert "Unique Passed Rows:     10 / 10 (100.0%)" in output
-    assert "Unique Passed Rows:     5 / 5 (100.0%)" in output
+    # The only check reads two tables and the contract lists no columns to
+    # match its rows on, so no check is counted and there are no row numbers.
+    assert output.count("Passed Rows:            N/A") == 2
     assert "Multi Table:" in output
     assert output.count("Non-unique Failed Rows: 2") == 1
     assert "CHECK RESULTS" in output

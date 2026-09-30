@@ -219,3 +219,23 @@ class BaseAdapter(ABC):  # noqa: B024
                 )
 
         return all_results
+
+    def run_arrow_query(self, sql: str) -> pa.Table:
+        """Run a read-only query and return its rows as a PyArrow table.
+
+        The row-quality component uses this to count failed rows inside the
+        data source. Adapters that do not implement it get row counts from
+        each check's fetched failed rows instead.
+
+        Raises:
+            NotImplementedError: If the adapter does not support it.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not implement run_arrow_query.")
+
+    def get_column_types(self, schema_name: str) -> dict:
+        """Return the column names and data types of a table.
+
+        Raises:
+            NotImplementedError: If the adapter does not support it.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not implement get_column_types.")

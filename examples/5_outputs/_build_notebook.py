@@ -317,7 +317,7 @@ md(
 <a id="4-saving"></a>
 ## 4. Saving Outputs to Disk
 
-`result.save(...)` can write the annotated tables instead of (or alongside) the failed-rows CSVs. The `output_mode` argument controls the layout (every mode also writes `<prefix>_check_results.csv` and `<prefix>_summary.json`):
+`result.save(...)` can write the annotated tables instead of (or alongside) the failed-rows CSVs. The `output_mode` argument controls the layout (every mode also writes `<prefix>_check_results.csv`, `<prefix>_summary.json`, and `<prefix>_dq_metrics.json`, the run's [DQ metrics](../../docs/dq-metrics/index.md)):
 
 | Mode | Files written |
 |------|----------------|
@@ -516,7 +516,7 @@ optionally a few failed rows) for working out what broke.
 
 | Signal | What you get | Carries | Use it to |
 | ------ | ------------ | ------- | --------- |
-| **Metrics** | counts and rates per check, dimension, and schema, plus the run's duration (a Histogram) | a few short labels only: `status`, `schema_name`, `dimension`, `severity`, `engine`, `check_name` | watch quality trends and alert on rates |
+| **Metrics** | the [DQ metrics](../../docs/dq-metrics/index.md): check and row counts and pass rates at check, dimension, schema, and run level, plus durations (Histograms) | a few short labels only: `status`, `schema_name`, `dimension`, `severity`, `engine`, `check_name` | watch quality trends and alert on rates |
 | **Traces** | one span for the run, and one child span per check | those same labels, plus the SQL that ran and the full check definition (`check.definition.*`) | see exactly what one check did |
 | **Logs** | one record per failed or broken check | a level (`WARN` when the data failed a check, `ERROR` when the check itself could not run), the SQL, the `trace_id` and `span_id`, and a short message | send alerts and jump straight to the trace |
 
@@ -536,8 +536,9 @@ and contract it came from. You never build them by hand. They are:
 - `service.name` and `vowl.version`
 - `vowl.contract.*`, read from your contract (id, version, status, and a few more)
 - anything you passed in `custom_attributes`, copied as-is
-- `vowl.run.id`, the same ID `export_otel(...)` returned above. This one goes on
-  spans and logs only. A new value every run would make every metric series new,
+- `vowl.run.id`, the same ID `export_otel(...)` returned above. It is
+  `result.run_id`, made when the run ran, and `dq_metrics.json` carries it too.
+  This one goes on spans and logs only. A new value every run would make every metric series new,
   which many metric backends charge for.
 
 vowl adds these attributes however the providers were set up (your own, the global
@@ -562,18 +563,15 @@ three ways to get from an alert to the actual data:
 - **A link** to wherever you saved the rows yourself.
 
 The link goes in `custom_attributes`, which vowl copies onto every signal as-is. The
-suggested key is `vowl.artifact.uri`. Pick the run ID yourself, save the rows under
-it, and pass the same ID to `export_otel`:
+suggested key is `vowl.artifact.uri`. Every run already has an ID in
+`result.run_id`, which the saved files and the telemetry share, so save the rows
+under it:
 
 ```python
-import uuid
+output_dir = f"s3://my-bucket/dq-results/{result.run_id}/"
 
-run_id = str(uuid.uuid4())
-output_dir = f"s3://my-bucket/dq-results/{run_id}/"
-
-result.save(output_dir)  # your failed rows and annotated tables go here
+result.save(output_dir)  # your failed rows, annotated tables, and dq_metrics.json go here
 result.export_otel(
-    run_id=run_id,  # the same ID shows up on every span and log
     custom_attributes={"vowl.artifact.uri": output_dir},  # alerts link straight to the files
 )
 ```
@@ -581,7 +579,7 @@ result.export_otel(
 Use `vowl.link.<name>` (for example `vowl.link.runbook` or `vowl.link.ticket`) for
 any other link you want on the run. These are naming ideas, not special keys. They
 help a team spell the same link the same way. See the
-[Exporting to OpenTelemetry guide](../../docs/otel-export.md) for the full list.
+[Exporting to OpenTelemetry guide](../../docs/dq-metrics/otel-export.md) for the full list.
 
 ### The signals as files you can eyeball
 
@@ -633,15 +631,16 @@ md(
   flagged rows read in context and the clean rows fall out with a single filter.
 - Checks that can't attach to one table come back as **residues**, one entry per
   non-mergeable check.
-- `result.save(output_mode="annotated")` writes those same shapes to disk as CSV
-  plus a `*_summary.json` that always carries every full check definition.
+- `result.save(output_mode="annotated")` writes those same shapes to disk as CSV,
+  plus a `*_summary.json` that always carries every full check definition and a
+  `*_dq_metrics.json` with the run's DQ metrics.
 - `result.export_otel(...)` sends the run to OpenTelemetry: small metrics for
   dashboards, plus traces and logs that carry the SQL and full check definition
   for working out what broke.
 - The `outputs/` folder holds a saved example of each output for reference.
 
 Every parameter, metric, and attribute is listed in the
-[Exporting to OpenTelemetry guide](../../docs/otel-export.md).
+[Exporting to OpenTelemetry guide](../../docs/dq-metrics/otel-export.md).
 """
 )
 

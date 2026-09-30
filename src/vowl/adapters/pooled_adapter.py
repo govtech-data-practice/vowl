@@ -168,11 +168,28 @@ class PooledAdapter(BaseAdapter):
         return self._primary_adapter.test_connection(table_name)
 
     def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int:
-        return self._primary_adapter.get_total_rows(schema_name, max_rows)
+        # Leased for the same reason as get_column_types. Row quality counts
+        # the table when annotated output is built, which can be concurrent.
+        with self._lease() as adapter:
+            return adapter.get_total_rows(schema_name, max_rows)
 
     def export_table_as_arrow(self, schema_name: str) -> pa.Table:
         with self._lease() as adapter:
             return adapter.export_table_as_arrow(schema_name)
+
+    def run_arrow_query(self, sql: str) -> pa.Table:
+        with self._lease() as adapter:
+            return adapter.run_arrow_query(sql)
+
+    def get_column_types(self, schema_name: str) -> dict:
+        # Leased, not run on the primary: the primary sits in the pool too, so
+        # another thread may be using its connection.
+        with self._lease() as adapter:
+            return adapter.get_column_types(schema_name)
+
+    @property
+    def filter_conditions(self) -> dict:
+        return getattr(self._primary_adapter, "filter_conditions", {}) or {}
 
     def is_compatible_with(self, other: BaseAdapter) -> bool:
         """Copies of one pool are compatible with each other.

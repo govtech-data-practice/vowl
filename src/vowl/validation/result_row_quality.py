@@ -1,42 +1,12 @@
-"""Internal helpers for validation row-quality summaries."""
+"""Row keys: Python value equality for matching failed rows to table rows."""
 
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Sequence
 from typing import Any
 
-import narwhals as nw
 import pyarrow as pa
-
-from ..executors.base import CheckResult
-from .result_models import RowQualitySummary
-
-
-def get_eligible_schema_names(
-    eligible_checks: Iterable[CheckResult],
-    total_rows_by_schema: dict[str, int],
-) -> set[str]:
-    return {
-        schema_name
-        for check_result in eligible_checks
-        for schema_name in [check_result.metadata.get("schema_name")]
-        if isinstance(schema_name, str) and schema_name in total_rows_by_schema
-    }
-
-
-def select_relevant_failed_row_columns(
-    schema_name: str,
-    failed_rows: nw.DataFrame,
-    schema_columns: dict[str, list[str]],
-    excluded_columns: Sequence[str],
-) -> list[str]:
-    relevant_columns = [
-        column_name for column_name in failed_rows.columns if column_name in schema_columns.get(schema_name, [])
-    ]
-    if relevant_columns:
-        return relevant_columns
-    return [column_name for column_name in failed_rows.columns if column_name not in excluded_columns]
 
 
 class _KeySentinel:
@@ -141,24 +111,3 @@ def align_to_schema(table: pa.Table, target_schema: pa.Schema, columns: Sequence
             continue
         table = table.set_column(index, pa.field(name, target_type), column)
     return table
-
-
-def iter_unique_failed_row_keys(
-    failed_rows: nw.DataFrame,
-    relevant_columns: Sequence[str],
-) -> Iterator[tuple[Any, ...]]:
-    failed_rows_table = failed_rows.to_arrow()
-    prefix = (tuple(relevant_columns),)
-    for key in row_keys(failed_rows_table, relevant_columns):
-        yield prefix + key
-
-
-def build_row_quality_summary(total_rows: int, records_with_issues: int) -> RowQualitySummary:
-    clean_records = max(total_rows - records_with_issues, 0)
-    data_quality = (clean_records / total_rows * 100) if total_rows else 100.0
-    return RowQualitySummary(
-        total_rows=total_rows,
-        records_with_issues=records_with_issues,
-        clean_records=clean_records,
-        data_quality=data_quality,
-    )
