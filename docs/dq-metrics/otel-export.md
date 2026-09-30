@@ -1,0 +1,562 @@
+---
+description: How to send vowl validation results to OpenTelemetry as metrics, traces, and logs.
+---
+
+# Exporting to OpenTelemetry
+
+`ValidationResult.export_otel(...)` sends the results of a validation run to the
+same monitoring tools you use for everything else, such as Grafana, Datadog,
+Honeycomb, or New Relic. It uses OpenTelemetry (OTel), the open standard most of
+these tools accept.
+
+OTel has three kinds of data, called **signals**. vowl sends all three by default:
+
+- **Metrics** are numbers over time, such as "how many rows failed". Use them for
+  dashboards and alerts.
+- **Traces** are a timeline of one run, with one bar per check. Use them to see
+  what ran, how long it took, and what failed.
+- **Logs** are one message per failed or broken check. Use them to route
+  failures to the people who fix them.
+
+```mermaid
+flowchart LR
+    vowl["vowl validation run"] -->|"export_otel(...)"| collector["OpenTelemetry Collector<br/>or your monitoring tool"]
+    collector --> metrics["Metrics:<br/>dashboards and alerts"]
+    collector --> traces["Traces:<br/>a timeline of each run"]
+    collector --> logs["Logs:<br/>one message per failed check"]
+```
+
+`export_otel` only reads the finished result. It never changes how the checks
+ran. It returns the run's ID (`vowl.run.id`) so you can find this run again in
+your monitoring tool.
+
+## Installation
+
+OpenTelemetry support is optional. Install it with the `[otel]` extra:
+
+```bash
+pip install 'vowl[otel]'
+```
+
+If the extra is not installed, `export_otel(...)` raises an `ImportError` that
+tells you the command above. Plain `import vowl` never loads OpenTelemetry.
+
+## Quick start
+
+```python
+from vowl import validate_data
+
+result = validate_data("contract.yaml", df=df)
+
+run_id = result.export_otel(
+    endpoint="http://localhost:4317",
+    service_name="orders-dq",
+    custom_attributes={"deployment.environment": "prod"},
+)
+```
+
+`endpoint` is the address of your OpenTelemetry Collector or monitoring tool.
+In a deployed pipeline you usually leave it out and set the standard
+environment variables instead (see [Environment variables](#environment-variables)).
+
+## Where the data goes
+
+vowl needs somewhere to send each signal. It picks the first of these that
+applies, separately for metrics, traces, and logs:
+
+1. **You pass your own provider** with `metric_provider`, `tracer_provider`, or
+   `logger_provider`. A provider is the OTel object that knows where data goes.
+   vowl records into it and leaves it running afterwards. Use this when you
+   want full control.
+2. **Your application already has OTel set up** and you pass
+   `use_global_providers=True`. vowl records into that existing setup. Use this
+   inside Airflow, Dagster, or any service that already sends telemetry.
+3. **Neither** (the default). vowl connects to `endpoint`, or to the address in
+   the environment variables, and sends everything itself. This is the simplest
+   option for scripts, notebooks, and batch jobs.
+
+In option 3, `export_otel` waits until sending has finished before it returns,
+so a short job does not exit before its data is sent. If the backend rejects
+the data or cannot be reached, vowl raises a `RuntimeWarning` that names the
+signals that did not arrive. If a signal has no address at all, vowl raises a
+`ValueError` before sending anything.
+
+### gRPC or HTTP
+
+OTLP, the OTel wire format, can travel over gRPC or HTTP. Collectors usually
+listen on port **4317** for gRPC and port **4318** for HTTP.
+
+```python
+result.export_otel(endpoint="http://localhost:4318", protocol="http/protobuf")
+```
+
+Over HTTP each signal has its own path: `/v1/metrics`, `/v1/traces`, and
+`/v1/logs`. Give vowl the base address (`http://localhost:4318`) and it adds
+the right path for each signal. If your address already ends with the path,
+vowl leaves it as it is.
+
+### Environment variables
+
+vowl reads the standard OpenTelemetry environment variables when you leave
+the matching argument out:
+
+| Variable | Used for |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | The address for all three signals |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` | A separate address for one signal |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` or `http/protobuf`, when `protocol` is not passed |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Extra headers, such as an API key, when `headers` is not passed |
+
+## Parameters
+
+| Parameter | Default | Purpose |
+| --------- | ------- | ------- |
+| `signals` | `("metrics", "traces", "logs")` | Which signals to send. Any mix of `"metrics"`, `"traces"`, and `"logs"`. |
+| `endpoint` | `None` | Address of your collector or monitoring tool. When left out, the [environment variables](#environment-variables) are used. |
+| `protocol` | `None` | `"grpc"` or `"http/protobuf"`. When left out, vowl uses `OTEL_EXPORTER_OTLP_PROTOCOL`, and falls back to `"grpc"`. |
+| `service_name` | `"vowl"` | Names *where* the validation runs, for example `"orders-dq"`, `"nightly-etl"`, or `"ci-validation"`. Sent as the OTel `service.name` attribute. See [What identifies a validation run](#what-identifies-a-validation-run). |
+| `prefix` | `"vowl"` | The start of every metric name, span name, and vowl attribute name. For example, `"myorg"` turns `vowl.check.count` into `myorg.check.count` and `vowl.contract.id` into `myorg.contract.id`. |
+| `headers` | `None` | Extra headers to send, for example an API key. |
+| `custom_attributes` | `None` | Your own attributes, added to every metric, span, and log record. See [Custom attributes](#custom-attributes). |
+| `run_id` | `None` | Your own ID for this run. When left out, vowl makes a new UUID. Either way, `export_otel` returns it. |
+| `max_failed_rows_sample` | `0` | How many failing rows per check to copy into traces and logs. `0` sends no row data. See [Capturing failed rows](#capturing-failed-rows). |
+| `use_global_providers` | `False` | Record into your application's existing OTel setup instead of connecting directly. |
+| `metric_provider` / `tracer_provider` / `logger_provider` | `None` | Your own providers, for full control. They win over every other option for their signal. |
+
+## Run identity attributes
+
+Every piece of data vowl sends carries **attributes**: named labels such as
+`schema_name="orders"`. You filter and group by them in your monitoring tool.
+
+### What identifies a validation run
+
+A few attributes answer three questions about every run:
+
+| Question | Attribute | Source |
+| --- | --- | --- |
+| **What** is being validated? | `vowl.contract.id`, `vowl.contract.name`, `vowl.data_product`, `vowl.domain` | Taken from the contract |
+| **Where** is it running? | `service.name` | The `service_name` parameter |
+| **Which run** is this? | `vowl.run.id` | The `run_id` parameter, or a new UUID |
+
+The contract already says which data product, domain, and tenant the data
+belongs to, so vowl adds those for you. Use `custom_attributes` for anything
+else your team needs, such as the environment, the team, or where you saved
+the run's output.
+
+### All run identity attributes
+
+vowl adds these contract fields when the contract has a value for them. It does
+not copy any other contract fields. To send more, use `custom_attributes`.
+
+| Key | Source | Notes |
+| --- | --- | --- |
+| `service.name` | `service_name`, default `vowl` | |
+| `vowl.version` | vowl package version | |
+| `vowl.run.id` | `run_id`, or a new UUID | On traces and logs only. See the note below. |
+| `vowl.contract.id` | ODCS `id` | |
+| `vowl.contract.name` | ODCS `name` | Left out when missing |
+| `vowl.contract.version` | The contract author's `version` | Left out when missing |
+| `vowl.contract.api_version` | ODCS spec version (`apiVersion`, for example `v3.1.0`) | Not the same as `version` |
+| `vowl.contract.status` | ODCS `status` | Left out when missing |
+| `vowl.contract.created_ts` | ODCS `contractCreatedTs` | Left out when missing |
+| `vowl.domain` | ODCS `domain` | ODCS v3 only. Left out when missing. |
+| `vowl.data_product` | ODCS `dataProduct` | ODCS v3 only. Left out when missing. |
+| `vowl.tenant` | ODCS `tenant` | Left out when missing |
+
+These go on every metric, span, and log record, with one exception.
+`vowl.run.id` is not put on metrics. Monitoring tools store one series of
+numbers for each unique set of attributes, so a new ID every run would create
+new series every run and keep growing your storage and bill. Traces and logs
+are looked up one run at a time, so they keep it.
+
+### Custom attributes
+
+Use `custom_attributes` to add your own keys to every signal. This is also how
+you send contract fields that vowl does not add itself, such as `tags`.
+
+A common use is to save the run's full output and point to it from your
+monitoring tool. Pick the run ID first, so the saved folder and the telemetry
+share it:
+
+```python
+import uuid
+
+run_id = str(uuid.uuid4())
+output_dir = f"s3://my-bucket/dq-results/{run_id}/"
+tags = result.contract_data.get("tags") or []
+
+result.save(output_dir)
+result.export_otel(
+    run_id=run_id,
+    custom_attributes={
+        "vowl.artifact.uri": output_dir,
+        "vowl.contract.tags": ", ".join(tags),
+    },
+)
+```
+
+Suggested keys. These are naming ideas only, and vowl treats them like any
+other key:
+
+- `vowl.artifact.uri`: where `result.save(...)` wrote this run's output.
+- `vowl.contract.tags`: the contract's tags.
+- `vowl.link.<name>`: any other link for the run, for example `vowl.link.runbook` or `vowl.link.ticket`.
+
+Custom attributes go on metrics too. A value that changes every run, like
+`vowl.artifact.uri` above, has the same storage cost as a run ID on metrics.
+If that matters for your backend, drop the key from metrics in your OTel
+Collector.
+
+## Metrics
+
+Each metric has a name, such as `vowl.check.count`, and a set of attributes
+that say what it measured. All the run identity attributes above are on every
+metric too, apart from `vowl.run.id`. They are left out of the tables below.
+
+vowl uses three types of metric:
+
+- A **Counter** is a count that adds up. vowl has one, `vowl.check.count`,
+  which records 1 for each check a run did. Summing it over a week gives the
+  number of checks run that week.
+- A **Gauge** is a reading taken once per run, like a thermometer. It holds
+  the row counts and the pass rates. Your monitoring tool shows the latest
+  reading, or how the reading changes from run to run.
+- A **Histogram** records a timing, such as how long a check took. Your
+  monitoring tool can show the average, or the slowest runs.
+
+Row counts are gauges, not counters, because adding them up usually counts
+the same rows twice. See [Adding up row counts](#adding-up-row-counts).
+
+### Per check
+
+One data point per check in the run.
+
+| Metric | Type | What it measures | Attributes |
+| --- | --- | --- | --- |
+| `vowl.check.count` | Counter | 1 for each check, labelled with its result | `status`, `schema_name`, `dimension`, `severity`, `engine`, `check_name` |
+| `vowl.check.row.count` | Gauge | Rows that passed (`status="PASSED"`) and failed (`status="FAILED"`) this check | `status`, `schema_name`, `dimension`, `check_name` |
+| `vowl.check.row_pass_rate` | Gauge | Share of rows that passed this check, 0 to 1 | `schema_name`, `dimension`, `check_name` |
+| `vowl.check.duration` | Histogram | How long the check took, in milliseconds | `schema_name`, `engine`, `check_name` |
+
+Every `row.count` metric sends two data points per run, one `PASSED` and one
+`FAILED`. Both are always sent, so a clean run sends `FAILED` as 0 instead of
+sending nothing. That way a dashboard showing the latest value never keeps
+showing the failures from an earlier run. Add the two points together to get
+the number of rows checked.
+
+Row counts and row pass rates are only sent for checks that look at rows one
+by one, such as "`email` must not be empty". A check on the whole table, such
+as a row count, has no failing rows to count, so it would always show every
+row as passing. Checks that could not run (status `ERROR`) are skipped too.
+
+### Per dimension
+
+A dimension is the kind of quality a check measures, such as `completeness` or
+`consistency`. One data point per schema and dimension.
+
+| Metric | Type | What it measures | Attributes |
+| --- | --- | --- | --- |
+| `vowl.dimension.row.count` | Gauge | Rows that passed every check in this dimension (`PASSED`), and rows that failed at least one (`FAILED`) | `status`, `schema_name`, `dimension` |
+| `vowl.dimension.check_pass_rate` | Gauge | Share of checks that passed, 0 to 1 | `schema_name`, `dimension` |
+| `vowl.dimension.row_pass_rate` | Gauge | Share of rows that passed every check in this dimension, 0 to 1 | `schema_name`, `dimension` |
+
+As with checks, `vowl.dimension.row.count` and `vowl.dimension.row_pass_rate`
+are only sent for a dimension that has at least one check that looks at rows
+one by one.
+
+### Per schema
+
+A schema is one table in the contract. One data point per schema.
+
+| Metric | Type | What it measures | Attributes |
+| --- | --- | --- | --- |
+| `vowl.schema.row.count` | Gauge | Rows that passed every check (`PASSED`), and rows that failed at least one (`FAILED`) | `status`, `schema_name` |
+| `vowl.schema.check_pass_rate` | Gauge | Share of checks that passed, 0 to 1 | `schema_name` |
+| `vowl.schema.row_pass_rate` | Gauge | Share of rows that passed every check, 0 to 1 | `schema_name` |
+
+`vowl.schema.row.count` and `vowl.schema.row_pass_rate` are only sent for a
+schema that has at least one check that looks at rows one by one.
+
+### Per run
+
+One data point for the whole run.
+
+| Metric | Type | What it measures | Attributes |
+| --- | --- | --- | --- |
+| `vowl.run.duration` | Histogram | How long the run took, in milliseconds, from connecting to the data to the last check | Run identity attributes only |
+
+### How failed rows are counted
+
+Rows are counted at three levels. The difference is how often one failing row
+can be counted:
+
+- **`check.row.count`** counts each check on its own. A row that fails two
+  checks is `FAILED` for each check.
+- **`dimension.row.count`** counts each row once per dimension. A row that
+  fails two completeness checks counts once for completeness. A row that fails
+  one completeness check and one consistency check counts once for each.
+- **`schema.row.count`** counts each row once, however many checks it fails.
+
+At every level, `PASSED` plus `FAILED` is the number of rows in the table.
+
+### Adding up row counts
+
+A row count is a reading of one table in one run. Whether adding readings
+together makes sense depends on what you add across:
+
+- **Across tables** is safe. Different tables have different rows, so the sum
+  of `schema.row.count` over every schema is the number of rows checked in
+  total.
+- **Across checks or dimensions** counts a row once for each check or
+  dimension it fails. Use `schema.row.count` for "how many rows had a
+  problem".
+- **Across runs** only makes sense when each run checks new rows, such as a
+  daily load of new records. When each run checks the whole table again, the
+  same rows are counted every run. If your runs do check new rows each time,
+  you can still add them up on purpose, for example with `SUM` in a warehouse
+  or `sum_over_time` in Prometheus.
+
+To get a pass rate over a week, add up `PASSED` and `FAILED` over the week
+and divide, rather than averaging the daily rates. That way a small run
+counts for less than a large one.
+
+### Runs close together
+
+Gauges keep only the last reading taken before the data is sent. In the
+default setup, vowl sends each run's data as soon as the run ends, so every
+run is kept.
+
+When you record into your own provider or your application's existing one
+(options 1 and 2 in [Where the data goes](#where-the-data-goes)), data is
+usually sent on a timer instead. If the same contract runs twice before the
+timer fires, only the second run's row counts and rates are sent. `vowl.check.count` and the timings still count
+both runs, because they are not gauges. Runs that are minutes or hours apart
+are not affected.
+
+### Worked example
+
+Schema `orders` has 100 rows and 3 checks. Two fail: `email_required_check`
+(completeness, 5 rows) and `order_id_unique_check` (consistency, 3 rows). One
+row has both a missing email and a duplicate `order_id`. The run identity
+attributes are left out to keep it short.
+
+```
+# Per check: each check counted on its own
+vowl.check.count:         1     {status="FAILED", dimension="completeness", check_name="email_required_check"}
+vowl.check.count:         1     {status="FAILED", dimension="consistency",  check_name="order_id_unique_check"}
+vowl.check.count:         1     {status="PASSED", dimension="completeness", check_name="order_id_required_check"}
+vowl.check.row.count:     95    {status="PASSED", check_name="email_required_check"}
+vowl.check.row.count:     5     {status="FAILED", check_name="email_required_check"}
+vowl.check.row.count:     97    {status="PASSED", check_name="order_id_unique_check"}
+vowl.check.row.count:     3     {status="FAILED", check_name="order_id_unique_check"}
+vowl.check.row.count:     100   {status="PASSED", check_name="order_id_required_check"}
+vowl.check.row.count:     0     {status="FAILED", check_name="order_id_required_check"}
+vowl.check.row_pass_rate: 0.95  {check_name="email_required_check"}
+vowl.check.row_pass_rate: 0.97  {check_name="order_id_unique_check"}
+vowl.check.row_pass_rate: 1.0   {check_name="order_id_required_check"}
+
+# Per dimension: each row counted once per dimension
+vowl.dimension.row.count:        95    {status="PASSED", dimension="completeness"}
+vowl.dimension.row.count:        5     {status="FAILED", dimension="completeness"}
+vowl.dimension.row.count:        97    {status="PASSED", dimension="consistency"}
+vowl.dimension.row.count:        3     {status="FAILED", dimension="consistency"}
+vowl.dimension.check_pass_rate:  0.5   {dimension="completeness"}
+vowl.dimension.check_pass_rate:  0.0   {dimension="consistency"}
+vowl.dimension.row_pass_rate:    0.95  {dimension="completeness"}
+vowl.dimension.row_pass_rate:    0.97  {dimension="consistency"}
+
+# Per schema: each row counted once
+# 7 rows, not 5 + 3 = 8, because 1 row failed in both dimensions
+vowl.schema.row.count:        93     {status="PASSED", schema_name="orders"}
+vowl.schema.row.count:        7      {status="FAILED", schema_name="orders"}
+vowl.schema.check_pass_rate:  0.333  {schema_name="orders"}
+vowl.schema.row_pass_rate:    0.93   {schema_name="orders"}
+
+# Per run: one timing
+vowl.run.duration:  count=1  sum=340  {}
+```
+
+## Traces
+
+A trace is a timeline of one run. It is made of **spans**: one span for the
+whole run, with one span inside it for each check. A run started from an
+orchestrator that already sends traces (Airflow, Dagster, and others) appears
+inside that orchestrator's trace.
+
+A span's status says whether the work itself broke, not whether the data was
+good. A check that finds bad data (status `FAILED`) worked as intended, so its
+span is `OK`. Only a check that could not run (status `ERROR`) gets an `ERROR`
+span. This matches the logs, where a failed check is a warning and a broken
+check is an error, so alerts on span error rates do not fire for ordinary data
+problems. To find failed checks in a trace, filter on the `status` attribute
+(`status = "FAILED"`).
+
+### Run span: `vowl.validate`
+
+One per run. It starts when vowl connects to the data and ends when the last
+check finishes. Its status is `ERROR` if any check could not run, and `OK`
+otherwise. The `failed` attribute counts the checks that found bad data.
+
+| Attribute | Description | Presence |
+| --- | --- | --- |
+| `total_checks` | Number of checks in the run | Always |
+| `passed` | Number of checks that passed | Always |
+| `failed` | Number of checks that failed | Always |
+| `errors` | Number of checks that could not run | Always |
+| `success_rate` | Share of checks that passed, as a percentage (for example `80.0`) | Always |
+
+### Check span: `vowl.check`
+
+One per check. Its status is `ERROR` for a check that could not run, and `OK`
+otherwise, including for a check that failed. For an `ERROR` status, the
+check's message (such as the database error) is the status description.
+
+Each check span lasts as long as the check did. vowl does not record the exact
+moment each check started, so the spans are placed one after another from the
+start of the run. When checks ran at the same time, they all start at the
+start of the run instead. Durations are exact. The start positions are only
+approximate.
+
+| Attribute | Description | Presence |
+| --- | --- | --- |
+| `check_name` | Name of the check | Always |
+| `status` | `PASSED`, `FAILED`, or `ERROR` | Always |
+| `schema_name` | Schema the check belongs to | When known |
+| `dimension` | Quality dimension (for example `completeness` or `consistency`) | Always. `"unknown"` when the check has none. |
+| `severity` | Check severity (for example `error` or `warning`) | When the contract sets one |
+| `engine` | How the check ran: `sql` for SQL checks, or the engine a custom check names | When known |
+| `operator` | How the result was compared (for example `mustBe`) | When known |
+| `query` | The SQL the check ran | When known |
+| `expected_value` | The expected value or threshold | When known |
+| `actual_value` | The value vowl found | When known |
+| `failed_rows_count` | Rows that failed this check | Always. `0` when none failed. |
+| `check.definition.*` | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known |
+| `check.definition.custom.<name>` | The check's `customProperties`, one key per property | When the contract sets them |
+
+### Failed row events: `vowl.failed_row`
+
+When `max_failed_rows_sample` is above 0, each failing check span also holds
+up to that many `vowl.failed_row` events. An event is a point on the span's
+timeline with its own attributes. Here, its attributes are the column names and
+values of one failing row.
+
+### Worked example
+
+A run checks one schema, `orders`, with five checks. Two pass, two fail, and one
+cannot run because its query names a column that does not exist.
+
+```
+Trace 7f3a...  (inside the pipeline's trace, if there is one)
+|
++- SPAN  vowl.validate                              status=ERROR   1840ms
+   |   vowl.run.id               = 0f2c9e1a-...
+   |   vowl.contract.id          = customer_orders
+   |   vowl.contract.version     = 3.0.0
+   |   vowl.contract.api_version = v3.1.0
+   |   vowl.domain               = sales
+   |   vowl.tenant               = agency-a
+   |   total_checks=5  passed=2  failed=2  errors=1  success_rate=40.0
+   |
+   +- SPAN vowl.check  email_required_check          status=OK       38ms
+   |     schema_name=orders  dimension=completeness  severity=error
+   |     status=FAILED  engine=sql
+   |     failed_rows_count=42
+   |
+   +- SPAN vowl.check  updated_at_within_24h         status=OK       51ms
+   |     dimension=timeliness  status=PASSED  operator=mustBe
+   |     query='SELECT COUNT(*) FROM "orders" WHERE updated_at < NOW() - INTERVAL 24 HOUR'
+   |     expected_value=0  actual_value=0
+   |     check.definition.custom.owner=risk-team
+   |
+   +- SPAN vowl.check  order_id_required_check       status=OK       12ms
+   |     dimension=completeness  status=PASSED
+   |
+   +- SPAN vowl.check  order_id_unique_check         status=OK       44ms
+   |     dimension=consistency  status=FAILED  failed_rows_count=3
+   |
+   +- SPAN vowl.check  region_valid                  status=ERROR     9ms
+         "Error executing check: Binder Error: Referenced column "region" not found"
+         dimension=conformity  status=ERROR
+```
+
+The two failed checks have `OK` spans and `status=FAILED`. The run span is
+`ERROR` only because `region_valid` could not run. The quoted line under that
+span is its status description.
+
+## Logs
+
+vowl writes one log record for each check that failed or could not run.
+Checks that pass write nothing.
+
+- A check that **failed** (status `FAILED`) logs at `WARN`. The data has a
+  problem, which is normal day-to-day work.
+- A check that **could not run** (status `ERROR`) logs at `ERROR`. Something in
+  the check itself is broken, such as a query naming a missing column.
+
+This keeps `ERROR` logs for "vowl itself needs fixing", so ordinary data
+problems do not page anyone like an outage. To alert on every failure, filter
+on the `status` attribute instead.
+
+| Field | Description |
+| --- | --- |
+| **Severity** | `WARN` for a failed check, `ERROR` for a check that could not run |
+| **Body** | The check's message. A check with no message gets `vowl.check failed: <check_name>` or `vowl.check errored: <check_name>`. |
+| **`trace_id`** and **`span_id`** | The check's span, when traces are sent in the same call. Your monitoring tool uses them to jump from the log to the trace. |
+
+### Log record attributes
+
+| Attribute | Description | Presence |
+| --- | --- | --- |
+| `check_name` | Name of the check | Always |
+| `status` | `FAILED` or `ERROR` | Always |
+| `schema_name` | Schema the check belongs to | When known |
+| `dimension` | Quality dimension | Always. `"unknown"` when the check has none. |
+| `severity` | Check severity | When the contract sets one |
+| `engine` | How the check ran: `sql` for SQL checks, or the engine a custom check names | When known |
+| `failed_rows_count` | Rows that failed this check | Always. `0` when none failed. |
+| `query` | The SQL the check ran | When known |
+| `check.definition.*` | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known |
+| `check.definition.custom.<name>` | The check's `customProperties`, one key per property | When the contract sets them |
+| `vowl.failed_rows_sample` | Sampled failing rows, as a JSON list | When `max_failed_rows_sample` is above 0 and rows failed |
+
+### Worked example
+
+The run from the traces example writes three log records. The two checks that
+passed write nothing. The first line of each record is its body.
+
+```
+[WARN]  Column 'email' must not contain NULL values
+        trace_id=7f3a...  span_id=a11c...
+        check_name=email_required_check  status=FAILED
+        schema_name=orders  dimension=completeness  failed_rows_count=42
+
+[WARN]  Column 'order_id' must contain unique values
+        trace_id=7f3a...  span_id=b02d...
+        check_name=order_id_unique_check  status=FAILED
+        schema_name=orders  dimension=consistency  failed_rows_count=3
+
+[ERROR] Error executing check: Binder Error: Referenced column "region" not found
+        trace_id=7f3a...  span_id=c73e...
+        check_name=region_valid  status=ERROR
+        schema_name=orders  dimension=conformity
+        query='SELECT COUNT(*) FROM "orders" WHERE region NOT IN (...)'
+```
+
+## Capturing failed rows
+
+By default `export_otel` sends **counts only**. No values from your data leave
+the process. There are three ways to get from an alert to the rows behind it:
+
+1. **`failed_rows_count`** is on every check span and every log record. It
+   holds a count and no data values.
+2. **A small sample** with `max_failed_rows_sample`. Set it above 0 and each
+   failing check copies up to that many rows into its span (as
+   `vowl.failed_row` events) and its log record (as `vowl.failed_rows_sample`).
+   The run's own `max_failed_rows` setting also caps it, whichever is smaller.
+3. **A link to the saved output**, with `custom_attributes`. See
+   [Custom attributes](#custom-attributes).
+
+!!! warning "Sampled rows contain real data"
+    A positive `max_failed_rows_sample` copies real failing rows into your
+    telemetry. Only turn it on when your monitoring tool is an acceptable place
+    for that data, and take care with personal data.

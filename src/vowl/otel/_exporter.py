@@ -8,7 +8,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from .. import __version__
-from ._common import build_resource, build_context_attributes, new_run_id
+from ._common import build_context_attributes, build_resource, new_run_id
 from ._logs import LogEmitter
 from ._metrics import MetricEmitter
 from ._providers import resolve_providers
@@ -21,7 +21,23 @@ DEFAULT_SIGNALS: tuple[str, ...] = ("metrics", "traces", "logs")
 
 _VALID_SIGNALS = ("metrics", "traces", "logs")
 _VALID_PROTOCOLS = ("grpc", "http/protobuf")
+_DEFAULT_PROTOCOL = "grpc"
 _DEFAULT_PREFIX = "vowl"
+
+
+def _resolve_protocol(protocol: str | None) -> str:
+    """The argument if given, else ``OTEL_EXPORTER_OTLP_PROTOCOL``, else gRPC."""
+    resolved = protocol or os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL") or _DEFAULT_PROTOCOL
+    if resolved not in _VALID_PROTOCOLS:
+        raise ValueError(f"Unknown protocol {resolved!r}. Expected one of {_VALID_PROTOCOLS}.")
+    return resolved
+
+
+def _has_env_endpoint(signal: str) -> bool:
+    """Whether the standard OTLP env vars give *signal* somewhere to send to."""
+    return bool(
+        os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get(f"OTEL_EXPORTER_OTLP_{signal.upper()}_ENDPOINT")
+    )
 
 
 class OtelExporter:
@@ -32,11 +48,12 @@ class OtelExporter:
         *,
         signals: tuple[str, ...] = DEFAULT_SIGNALS,
         endpoint: str | None = None,
-        protocol: str = "grpc",
+        protocol: str | None = None,
         service_name: str = _DEFAULT_PREFIX,
         prefix: str = _DEFAULT_PREFIX,
         headers: dict[str, str] | None = None,
         custom_attributes: dict[str, Any] | None = None,
+        run_id: str | None = None,
         max_failed_rows_sample: int = 0,
         use_global_providers: bool = False,
         metric_provider: Any | None = None,
@@ -47,25 +64,25 @@ class OtelExporter:
         unknown = [s for s in signals if s not in _VALID_SIGNALS]
         if unknown:
             raise ValueError(f"Unknown signal(s) {unknown}. Expected any of {_VALID_SIGNALS}.")
-        if protocol not in _VALID_PROTOCOLS:
-            raise ValueError(f"Unknown protocol {protocol!r}. Expected one of {_VALID_PROTOCOLS}.")
+        protocol = _resolve_protocol(protocol)
         if max_failed_rows_sample < 0:
             raise ValueError("max_failed_rows_sample must be >= 0.")
 
-        builds_own_providers = (
-            not use_global_providers
-            and metric_provider is None
-            and tracer_provider is None
-            and logger_provider is None
-        )
-        if builds_own_providers and endpoint is None and not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
-            raise ValueError(
-                "No endpoint configured. Pass endpoint= or set the OTEL_EXPORTER_OTLP_ENDPOINT environment variable."
-            )
+        # Only signals vowl builds a provider for need an endpoint. An explicit
+        # provider (or the globals) already knows where its data goes.
+        if not use_global_providers and endpoint is None:
+            explicit = {"metrics": metric_provider, "traces": tracer_provider, "logs": logger_provider}
+            missing = [s for s in signals if explicit[s] is None and not _has_env_endpoint(s)]
+            if missing:
+                raise ValueError(
+                    f"No endpoint configured for {', '.join(missing)}. Pass endpoint=, set the "
+                    "OTEL_EXPORTER_OTLP_ENDPOINT environment variable, or pass your own provider."
+                )
 
         self._signals = signals
         self._endpoint = endpoint
         self._protocol = protocol
+        self._run_id = run_id
         self._service_name = service_name
         self._prefix = prefix
         self._headers = headers
@@ -78,15 +95,23 @@ class OtelExporter:
 
     def export(self, result: ValidationResult) -> str:
         """Emit the enabled signals for *result*. Returns the run id."""
-        run_id = new_run_id()
-        resource = build_resource(
-            result,
-            service_name=self._service_name,
-            run_id=run_id,
-            version=__version__,
-            prefix=self._prefix,
-            custom_attributes=self._custom_attributes,
-        )
+        run_id = self._run_id or new_run_id()
+        identity = {
+            "service_name": self._service_name,
+            "run_id": run_id,
+            "version": __version__,
+            "prefix": self._prefix,
+            "custom_attributes": self._custom_attributes,
+        }
+        # Everything that can raise runs before any provider exists, so a
+        # provider vowl builds is always reached by the shutdown below.
+        sample_rows = self._collect_row_samples(result)
+        context_attrs = build_context_attributes(result, **identity)
+        # The run id stays off metric points: a fresh value per run would start
+        # a new metric series every run. Spans, logs and the Resource keep it.
+        metric_attrs = {k: v for k, v in context_attrs.items() if k != f"{self._prefix}.run.id"}
+        resource = build_resource(result, **identity)
+
         providers = resolve_providers(
             self._signals,
             resource=resource,
@@ -99,22 +124,12 @@ class OtelExporter:
             logger_provider=self._logger_provider,
         )
 
-        sample_rows = self._collect_row_samples(result)
-        context_attrs = build_context_attributes(
-            result,
-            service_name=self._service_name,
-            run_id=run_id,
-            version=__version__,
-            prefix=self._prefix,
-            custom_attributes=self._custom_attributes,
-        )
-
         try:
             if providers.meter is not None:
                 MetricEmitter(
                     providers.meter,
                     namespace=self._prefix,
-                    context_attributes=context_attrs,
+                    context_attributes=metric_attrs,
                 ).emit(result)
 
             span_contexts: dict[int, Any] = {}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import warnings
 from pathlib import Path
 from typing import Any
@@ -140,8 +141,10 @@ class ValidationRunner:
             adapter.use_try_cast = self._config.use_try_cast
 
         check_refs_by_schema = self._contract.get_check_references_by_schema()
+        run_started_ns = time.time_ns()
         connection_results = self._multi_adapter.test_connections(check_refs_by_schema)
         check_results = self._multi_adapter.run_checks(check_refs_by_schema)
+        run_finished_ns = time.time_ns()
 
         total_rows_by_schema: dict[str, int] = {}
         if self._config.enable_additional_schema_statistics:
@@ -152,7 +155,7 @@ class ValidationRunner:
         summary = self._build_summary(check_results, total_rows_by_schema, connection_results)
         schema_names = list(self._multi_adapter.adapters.keys())
 
-        return self.result_cls(
+        result = self.result_cls(
             summary=summary,
             check_results=check_results,
             contract=self._contract,
@@ -160,3 +163,8 @@ class ValidationRunner:
             schema_names=schema_names,
             config=self._config,
         )
+        # Wall-clock run window, used for the OTel root span. Set after
+        # construction so result_cls keeps its signature.
+        result._run_started_ns = run_started_ns
+        result._run_finished_ns = run_finished_ns
+        return result

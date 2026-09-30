@@ -1,4 +1,4 @@
-"""Shared helpers for the OTEL exporter: resource, attributes, providers.
+"""Shared helpers for the OTEL exporter: the resource and the attributes.
 
 Everything in :mod:`vowl.otel` imports ``opentelemetry`` at module load, so this
 package is imported lazily from :meth:`ValidationResult.export_otel` and never by
@@ -64,9 +64,10 @@ def _clean_attrs(attrs: dict[str, Any]) -> dict[str, str | bool | int | float]:
 def contract_attributes(result: ValidationResult, prefix: str = "vowl") -> dict[str, Any]:
     """Contract identity attributes, absent keys omitted.
 
-    Includes all first-level scalar fields from the contract. Fields beyond the
-    first level (nested objects, arrays) are excluded because they can have
-    unbounded cardinality; users who need them can pass them via
+    A fixed list of contract fields: ``id``, ``name``, ``version``,
+    ``apiVersion``, ``status``, ``contractCreatedTs``, ``domain``,
+    ``dataProduct`` and ``tenant``. The list is kept short and stable on purpose
+    so the attribute set is predictable. Other fields can be passed through
     ``custom_attributes``.
     """
     contract = result.contract
@@ -139,18 +140,14 @@ def build_resource(
 
 
 def check_dimension(check_result: Any) -> str:
-    """Resolve a check's DQ dimension for the semantic convention.
+    """Resolve a check's DQ dimension, defaulting to ``"unknown"``.
 
-    The dimension is reported by the check and passed through verbatim: authored
-    ``quality`` rules carry the author-asserted dimension, and auto-generated
-    checks (``required`` / ``unique`` / type / column-existence) carry the
-    dimension vowl's generator assigns them (e.g. ``completeness`` for
-    ``required``, ``conformity`` for column-existence).  ``"unknown"`` is only
-    used when a check genuinely reports no dimension.
+    Delegates to the resolver the result's dimension rollups use, so every
+    signal buckets a check the same way.
     """
-    metadata = check_result.metadata
-    definition = metadata.get("check_definition") or {}
-    return metadata.get("dimension") or definition.get("dimension") or "unknown"
+    from ..validation.result import _resolve_check_dimension
+
+    return _resolve_check_dimension(check_result)
 
 
 def check_severity(check_result: Any) -> Any:
@@ -254,8 +251,8 @@ def flatten_check_definition(check_result: Any) -> dict[str, Any]:
 def check_attributes(check_result: Any) -> dict[str, str | bool | int | float]:
     """The bounded, low-cardinality attribute set shared across signals.
 
-    Uses bare keys (``schema``, ``check_name``, ...) per the semantic-convention
-    tables, which are the downstream ``GROUP BY`` axes.
+    Uses bare keys (``check_name``, ``schema_name``, ...) per the
+    semantic-convention tables, which are the downstream ``GROUP BY`` axes.
     """
     metadata = check_result.metadata
     return _clean_attrs(

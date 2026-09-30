@@ -1,10 +1,11 @@
 """Trace emitter: pipeline observability and correlation.
 
 Emits one root ``{namespace}.validate`` span per run and one
-``{namespace}.check`` child span per check, laid out as a timed waterfall using
-explicit start/end timestamps derived from the recorded execution times. Spans
-join any active context, so a run nested inside an instrumented orchestrator
-attaches to the parent trace.
+``{namespace}.check`` child span per check. The root span uses the real run
+start and end recorded by the runner when they exist. Each child keeps its real
+duration, but its start is approximate because vowl does not record when each
+check began (checks can run in parallel). Spans join any active context, so a
+run nested inside an instrumented orchestrator attaches to the parent trace.
 
 ``emit`` returns the span context of each check span keyed by ``id(check)`` so
 the log emitter can backlink a failure record to its span.
@@ -43,48 +44,73 @@ class TraceEmitter:
         from opentelemetry.trace import SpanContext, Status, StatusCode, set_span_in_context
 
         vs = result._vs
-        total_ms = float(vs.get("total_execution_time_ms", 0.0) or 0.0)
-        end_ns = time.time_ns()
-        start_ns = end_ns - int(total_ms * _MS_TO_NS)
+        start_ns, end_ns = self._run_window(result)
 
         root_attrs = dict(self._ctx_attrs)
-        root_attrs.update({
-            "total_checks": int(vs.get("total_checks", 0)),
-            "passed": int(vs.get("passed", 0)),
-            "failed": int(vs.get("failed", 0)),
-            "errors": int(vs.get("errors", 0)),
-            "success_rate": float(vs.get("success_rate", 0.0) or 0.0),
-        })
+        root_attrs.update(
+            {
+                "total_checks": int(vs.get("total_checks", 0)),
+                "passed": int(vs.get("passed", 0)),
+                "failed": int(vs.get("failed", 0)),
+                "errors": int(vs.get("errors", 0)),
+                "success_rate": float(vs.get("success_rate", 0.0) or 0.0),
+            }
+        )
         root = self._tracer.start_span(
             f"{self._ns}.validate",
             start_time=start_ns,
             attributes=root_attrs,
         )
-        root.set_status(Status(StatusCode.OK if result.passed else StatusCode.ERROR))
+        # ERROR only if a check could not run. A FAILED check did its job, so
+        # it stays OK and shows up through the ``failed`` count instead. This
+        # keeps span error rates about broken checks, not bad data.
+        run_ok = int(vs.get("errors", 0)) == 0
+        root.set_status(Status(StatusCode.OK if run_ok else StatusCode.ERROR))
         root_ctx = set_span_in_context(root)
+
+        durations = [int(float(cr.execution_time_ms or 0.0) * _MS_TO_NS) for cr in result.check_results]
+        # Lay checks out one after another. If that overruns the root span the
+        # checks ran in parallel, so start them all at the root start instead.
+        sequential = start_ns + sum(durations) <= end_ns
 
         contexts: dict[int, SpanContext] = {}
         cursor_ns = start_ns
-        for check_result in result.check_results:
-            duration_ns = int(float(check_result.execution_time_ms or 0.0) * _MS_TO_NS)
+        for check_result, duration_ns in zip(result.check_results, durations, strict=True):
+            child_start = cursor_ns if sequential else start_ns
             child = self._tracer.start_span(
                 f"{self._ns}.check",
                 context=root_ctx,
-                start_time=cursor_ns,
+                start_time=child_start,
                 attributes=self._check_span_attributes(check_result),
             )
-            if check_result.status in ("FAILED", "ERROR"):
+            # FAILED checks stay OK. The ``status`` attribute carries FAILED.
+            if check_result.status == "ERROR":
                 child.set_status(Status(StatusCode.ERROR, check_result.details or None))
             else:
                 child.set_status(Status(StatusCode.OK))
 
             self._attach_sample_events(child, check_result)
             contexts[id(check_result)] = child.get_span_context()
-            child.end(end_time=cursor_ns + duration_ns)
+            child.end(end_time=min(child_start + duration_ns, end_ns))
             cursor_ns += duration_ns
 
         root.end(end_time=end_ns)
         return contexts
+
+    @staticmethod
+    def _run_window(result: ValidationResult) -> tuple[int, int]:
+        """The run's start and end in epoch nanoseconds.
+
+        Uses the wall-clock times the runner recorded. A result built another
+        way has none, so the window ends now and spans the summed check time.
+        """
+        started = getattr(result, "_run_started_ns", None)
+        finished = getattr(result, "_run_finished_ns", None)
+        if started is not None and finished is not None and finished >= started:
+            return started, finished
+        total_ms = float(result._vs.get("total_execution_time_ms", 0.0) or 0.0)
+        end_ns = time.time_ns()
+        return end_ns - int(total_ms * _MS_TO_NS), end_ns
 
     def _check_span_attributes(self, check_result: Any) -> dict[str, Any]:
         attrs = dict(self._ctx_attrs)

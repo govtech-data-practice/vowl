@@ -1,6 +1,6 @@
 """Log emitter: routing failures into a log pipeline.
 
-Emits one structured record per FAILED (WARN) or ERROR (ERROR) check; passing
+Emits one structured record per FAILED (WARN) or ERROR (ERROR) check. Passing
 checks are silent. Each record carries the check span's ``trace_id``/``span_id``
 when traces were emitted, so an alert links back to the trace, plus the opt-in
 bounded row sample when the caller enabled it.
@@ -15,6 +15,19 @@ from ._common import check_attributes, check_query, flatten_check_definition, se
 
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
+
+
+def _log_record_class() -> type:
+    """The ``LogRecord`` class this SDK's ``Logger.emit`` expects.
+
+    Older SDKs (such as 1.27, the minimum vowl supports) export their own
+    ``LogRecord``. Newer ones dropped it and accept the API ``LogRecord``.
+    """
+    try:
+        from opentelemetry.sdk._logs import LogRecord
+    except ImportError:
+        from opentelemetry._logs import LogRecord
+    return LogRecord
 
 
 class LogEmitter:
@@ -36,8 +49,9 @@ class LogEmitter:
         self._ctx_attrs: dict[str, Any] = context_attributes or {}
 
     def emit(self, result: ValidationResult) -> None:
-        from opentelemetry.sdk._logs._internal import LogRecord
         from opentelemetry.trace import TraceFlags
+
+        LogRecord = _log_record_class()
 
         for check_result in result.check_results:
             severity = severity_for(check_result.status)
@@ -57,10 +71,11 @@ class LogEmitter:
             if sample:
                 attrs[f"{self._ns}.failed_rows_sample"] = json.dumps(sample, default=str)
 
-            trace_id, span_id = 0, 0
+            trace_id, span_id, trace_flags = 0, 0, TraceFlags(TraceFlags.DEFAULT)
             span_context = self._span_contexts.get(id(check_result))
             if span_context is not None:
                 trace_id, span_id = span_context.trace_id, span_context.span_id
+                trace_flags = span_context.trace_flags
 
             verb = "errored" if check_result.status == "ERROR" else "failed"
             body = check_result.details or f"{self._ns}.check {verb}: {check_result.check_name}"
@@ -69,7 +84,7 @@ class LogEmitter:
                 LogRecord,
                 trace_id=trace_id,
                 span_id=span_id,
-                trace_flags=TraceFlags(TraceFlags.SAMPLED if trace_id else TraceFlags.DEFAULT),
+                trace_flags=trace_flags,
                 severity_number=severity_number,
                 severity_text=severity_text,
                 body=body,

@@ -10,8 +10,8 @@ status: Implemented
 
 Internal design record for `ValidationResult.export_otel(...)`. It captures why
 the exporter is built the way it is. The user-facing guide, with the full
-attribute reference, a worked example, and the warehouse rollup, is
-`docs/otel-export.md`. This document does not repeat that catalogue.
+attribute reference and a worked example, is `docs/otel-export.md`. This
+document does not repeat that catalogue.
 
 ## Goal
 
@@ -38,8 +38,7 @@ downstream data-quality report (for example an agency DQ-submission payload).
 Report shape, endpoint, auth, and windowing belong to the consumer. vowl's job is
 to emit metrics clean enough that such a report is straightforward to build
 downstream, typically by landing the OTLP data in a warehouse and rolling it up
-with SQL. The rollup path is covered for users under "Aggregating across runs" in
-the guide, and the properties that make it work are recorded in
+with SQL. The properties that make that rollup work are recorded in
 [Design decisions](#design-decisions) below.
 
 ## Why it fits cleanly
@@ -52,7 +51,7 @@ plumbing runs through the engine.
 | [`CheckResult`](https://github.com/govtech-data-practice/vowl/blob/main/src/vowl/executors/base.py) | Per-check `status`, `failed_rows_count`, `execution_time_ms`, and a `metadata` dict (`schema_name`, `engine`, `target`, `dimension`, `severity`, `tags`, `type`, `logical_type`, `operator`, and more) |
 | `ValidationResult.summary["validation_summary"]` | `total_checks`, `passed`, `failed`, `errors`, `success_rate`, `failed_rows`, `total_execution_time_ms`, `total_rows_by_schema` |
 | `ValidationResult._get_schema_validation_breakdown()` | Per-schema check counts, `failed_unique_rows`, `passed_row_percentage` |
-| `RowQualitySummary.data_quality` | Per-schema data-quality ratio (0 to 1), a first-class gauge |
+| `RowQualitySummary.data_quality` | Per-schema data-quality percentage (0 to 100), exported as the 0 to 1 `vowl.schema.row_pass_rate` gauge |
 | `ValidationResult.contract_id` / `.api_version` | Contract identity for context attributes |
 
 ## Architecture
@@ -90,23 +89,29 @@ emitters. Each emitter owns exactly one OTEL signal and can be turned on or off.
 
 - **Context attributes** attached to every data point: `service.name`,
   `vowl.version`, the `vowl.contract.*` keys, and any user `custom_attributes`.
+  `vowl.run.id` is attached to spans and log records but not to metric points
+  (see design decision 11).
 - **Common check attributes** derived once per check and reused across signals:
-  `schema`, `check_name`, `dimension`, `severity`, `engine`, `status`. Tags are
-  normalised into a bounded attribute to avoid unbounded cardinality.
+  `schema_name`, `check_name`, `dimension`, `severity`, `engine`, `status`.
 - **Provider resolution**, described under [Provider resolution](#provider-resolution).
 
 ### Emitters
 
 - **`MetricEmitter`** is the primary use case (dashboards and alerting). It
-  records the v1 instruments (`vowl.check.count`, `vowl.check.failed_rows`,
-  `vowl.check.duration`, `vowl.dimension.failed_rows`,
-  `vowl.dimension.check_pass_rate`, `vowl.dimension.row_pass_rate`,
-  `vowl.schema.failed_rows`, `vowl.schema.rows_total`,
+  records the v1 instruments (`vowl.check.count`, `vowl.check.row.count`,
+  `vowl.check.row_pass_rate`, `vowl.check.duration`,
+  `vowl.dimension.row.count`, `vowl.dimension.check_pass_rate`,
+  `vowl.dimension.row_pass_rate`, `vowl.schema.row.count`,
   `vowl.schema.check_pass_rate`, `vowl.schema.row_pass_rate`,
-  `vowl.run.duration`).
+  `vowl.run.duration`). `vowl.check.count` is the only counter, because a
+  count of checks run is the only value that adds up across runs. Row counts
+  and rates are per-run gauges (see design decision 7). The two durations are
+  histograms because a duration is a timing, not something to sum.
 - **`TraceEmitter`** covers pipeline observability and correlation. It emits one
   `vowl.validate` root span per run and one `vowl.check` child span per check.
-  Failed checks set span status ERROR and record `failed_rows_count`. Spans join
+  Only errored checks set span status ERROR, and so does the root span when
+  any check errored. Failed checks keep status OK and carry `status=FAILED`
+  (see design decision 15). Spans join
   any active context, so a run nested inside an instrumented orchestrator
   (Airflow, Dagster, and the like) attaches to the parent trace automatically.
 - **`LogEmitter`** routes failures into a log pipeline. It emits one structured
@@ -122,18 +127,20 @@ function over reaching through the result object. The full parameter reference i
 in the guide. The design-relevant behaviour follows.
 
 ```python
-result = validate_data(df, "contract.yaml")
+result = validate_data("contract.yaml", df=df)
 
 # 1) Self-contained: vowl configures OTLP exporters and flushes on return.
 result.export_otel(
-    signals=("metrics", "traces", "logs"),   # any subset. Default is ("metrics", "traces")
+    signals=("metrics", "traces", "logs"),   # any subset. Default is all three
     endpoint="http://otel-collector:4317",   # OTLP, or read OTEL_EXPORTER_OTLP_* env
-    namespace="vowl",                         # metric/span name prefix, default "vowl"
+    protocol=None,                            # None reads OTEL_EXPORTER_OTLP_PROTOCOL, else "grpc"
+    prefix="vowl",                            # metric/span name prefix, default "vowl"
     service_name="orders-dq",
-    max_failed_rows_sample=0,                 # default 0. no row contents leave the process
-    custom_attributes={                     # pass-through, attached to every signal
+    run_id="nightly-2026-09-29",              # optional. Default is a fresh UUID
+    max_failed_rows_sample=0,                 # default 0. No row contents leave the process
+    custom_attributes={                       # pass-through, attached to every signal
         "env": "prod",
-        "vowl.artifact.uri": "s3://dq/run=0f2c9e1a/",   # optional pointer back to saved rows
+        "vowl.artifact.uri": "s3://my-bucket/dq-results/nightly-2026-09-29/",  # optional pointer back to saved rows
     },
 )
 
@@ -147,8 +154,8 @@ result.export_otel(metric_provider=my_meter_provider, tracer_provider=my_tracer_
 ### Prefix
 
 The `prefix` parameter (default `"vowl"`) applies to metric names, span names,
-and context attribute keys. Setting it to `"myorg"` changes `vowl.checks` to
-`myorg.checks`, `vowl.contract.id` to `myorg.contract.id`, etc. The knob
+and context attribute keys. Setting it to `"myorg"` changes `vowl.check.count` to
+`myorg.check.count`, `vowl.contract.id` to `myorg.contract.id`, and so on. The knob
 exists for orgs with naming conventions for their telemetry, and is meant to be
 set once at the org level rather than per run.
 
@@ -167,21 +174,28 @@ set once at the org level rather than per run.
    flush-on-exit is the key correctness detail for fire-and-forget validation
    jobs.
 
-Run identity attributes (`vowl.contract.id`, `vowl.run.id`,
-`custom_attributes`, and the rest) are emitted as signal-level attributes on
-every metric data point, span, and log record in all three modes (see design
-decision 11). In mode 3, the same attributes are additionally placed on the
-OTEL `Resource` for backends that surface resource metadata separately. Delta
-temporality is set on the metric reader when vowl builds the provider, and is
-the host's responsibility in the other two modes.
+Resolution is per signal, so a caller can pass a tracer provider and let vowl
+build the metrics provider. The endpoint check follows the same rule: it only
+raises for a signal vowl has to build a provider for and that has no
+`endpoint`, no `OTEL_EXPORTER_OTLP_ENDPOINT`, and no
+`OTEL_EXPORTER_OTLP_<SIGNAL>_ENDPOINT`.
+
+Contract identity attributes (`vowl.contract.id` and the rest) and
+`custom_attributes` are emitted as signal-level attributes on every metric data
+point, span, and log record in all three modes. `vowl.run.id` rides on spans
+and log records only (see design decision 11). In mode 3, the same attributes,
+including `vowl.run.id`, are also placed on the OTEL `Resource` for backends
+that surface resource metadata separately. Delta temporality is set on the
+metric reader when vowl builds the provider, and is the host's responsibility
+in the other two modes.
 
 ### How the emitters read the result
 
 Each emitter walks the finished `ValidationResult` read-only and records into
 OTEL instruments. Nothing new runs against the data source. The metric emitter,
-for instance, adds one `vowl.checks` point per check and adds the deduplicated
-unique failing rows per `(schema, dimension)` to `vowl.failed_rows`, while
-`vowl.rows.total` gets one contribution per schema. The OTEL SDK batches the
+for instance, adds one `vowl.check.count` point per check and sets
+`vowl.dimension.row.count` to the deduplicated passing and failing rows per
+`(schema_name, dimension)`. The OTEL SDK batches the
 points and ships them over OTLP to a collector or backend. vowl never talks to a
 warehouse.
 
@@ -233,16 +247,32 @@ their rationale.
    The recommended keys (`vowl.artifact.uri`, `vowl.link.<name>`) are naming
    guidance only, with no special code behaviour, so behaviour is predictable
    whether or not a caller follows the convention.
-6. **Metrics use delta temporality.** Batch validation runs are discrete events,
-   so additive counters report "this run had N" and a warehouse rollup is a plain
-   `SUM(...) WHERE time BETWEEN`. Cumulative temporality assumes a continuous
-   process and resets per run, which is painful to unpick downstream. This is the
-   single most consequential choice for warehouse friendliness.
-7. **Metrics emit components, never pre-divided rates.** Rates are not additive,
-   so vowl exports the numerator (`failed_rows`) and denominator (`rows.total`)
-   as separate counters and lets the consumer recompute the windowed rate. The
-   per-run rate gauges are a live-dashboard convenience, never the aggregation
-   primitive.
+6. **Additive metrics use delta temporality.** Batch validation runs are
+   discrete events, so `vowl.check.count` and the duration histograms report
+   "this run had N", and summing over a time range gives the total for the
+   runs in that range. Cumulative temporality assumes a continuous process and
+   resets per run, which is painful to unpick downstream. Gauges have no
+   temporality, so this choice does not affect row counts or rates.
+7. **Row counts are gauges with a `status` label, not counters.** OTEL reserves
+   counters for values where a sum is meaningful, and Prometheus asks that
+   `sum()` over every attribute make sense. Row counts fail both tests. A row
+   that fails two checks is counted under each, and a run that re-validates a
+   whole table counts the same rows every run. So each level has one gauge,
+   `vowl.{check,dimension,schema}.row.count`, with a `PASSED` and a `FAILED`
+   point per run. The two points sum to the table's row count, which serves as
+   the denominator, so no separate total metric is needed. Both points are
+   always sent, zeros included, so a latest-value panel never keeps a failure
+   count from an earlier run. Summing is still possible where it is sound:
+   across schemas (disjoint rows), or deliberately across runs for incremental
+   loads, where a windowed rate is `sum(FAILED) / sum(PASSED + FAILED)`. The
+   rate gauges are a live-dashboard convenience. Row counts and row pass rates
+   are only emitted for checks, dimensions, and schemas that report row-level
+   failures. An aggregate check (such as a row count) has no failing rows to
+   count, so it would always show every row as passing and mislead. The known
+   cost is that a gauge keeps only its last value per export interval, and
+   `vowl.run.id` is not a metric attribute. In modes 1 and 2, two runs of the
+   same contract inside one interval collapse to the later one. Mode 3 flushes
+   per run and is unaffected.
 8. **Dimension is reported by the check and passed through verbatim.** Authored
    `quality` rules export their author-asserted dimension, and auto-generated
    checks export the dimension vowl's generator assigns them (`required` to
@@ -255,35 +285,84 @@ their rationale.
 9. **No dedicated freshness feature.** Data freshness is expressed as an ordinary
    ODCS `quality` rule with `dimension: timeliness` (for example "`MAX(updated_at)`
    within 24h"). It flows through the normal check path, and because a timestamp
-   is not a numeric metric, the raw value rides on the check's span and log record
-   as `actual_value` while metrics stay numeric. Processing duration is the
+   is not a numeric metric, the raw value rides on the check's span as
+   `actual_value` while metrics stay numeric. Processing duration is the
    separate `vowl.run.duration` metric.
 10. **A CLI hook is deferred.** vowl has no CLI yet (see
     [Roadmap](../docs/roadmap.md)). Export is a Python API. When the planned CLI
     lands it can add `--otel-*` flags, but nothing in this design depends on it.
-11. **Run identity attributes are always signal-level.** Contract identity
-    (`vowl.contract.id`, `vowl.run.id`, etc.) and user-supplied
+11. **Identity attributes are signal-level, and the run id stays off metrics.**
+    Contract identity (`vowl.contract.id` and the rest) and user-supplied
     `custom_attributes` are attached directly to every metric data point,
     span, and log record. This follows the pattern used by major OTEL
-    instrumentation libraries (Flask, Django, etc.) which use signal-level
-    attributes because they do not own the provider. Without this, modes 1 and
-    2 (explicit and global providers) silently lose the run identity because
-    the provider's OTEL `Resource` is immutable after creation. In mode 3
-    (self-contained), the same attributes also go on the Resource for backends
-    that surface resource metadata separately.
+    instrumentation libraries (Flask, Django, and others), which use
+    signal-level attributes because they do not own the provider. Without
+    this, modes 1 and 2 (explicit and global providers) silently lose the
+    identity because the provider's OTEL `Resource` is immutable after
+    creation. `vowl.run.id` is the exception. It is a new value every run, so
+    on a metric point it would start a new metric series every run, and the
+    number of stored series would grow without limit. It goes on spans, log
+    records, and (in mode 3) the Resource, which is where a single run is
+    looked up. In mode 3 the other identity attributes also go on the
+    Resource for backends that surface resource metadata separately.
+12. **OTLP/HTTP endpoints get the per-signal path added.** The OTLP/HTTP
+    exporters use an explicit `endpoint=` exactly as given and only add
+    `/v1/traces`, `/v1/metrics`, or `/v1/logs` when the URL comes from the
+    generic `OTEL_EXPORTER_OTLP_ENDPOINT` env var. vowl takes one endpoint for
+    all three signals, so for `protocol="http/protobuf"` it appends the right
+    path per signal, unless the URL already ends with it. gRPC endpoints are
+    passed through unchanged.
+13. **A failed delivery warns instead of passing silently.** `force_flush`
+    only reports that the flush finished, and the OTEL SDK only logs export
+    failures. For the exporters vowl builds itself, vowl watches each export
+    result and, after shutdown, raises a `RuntimeWarning` naming the signals
+    that did not arrive. Every owned provider is shut down even if an earlier
+    one raises. Explicit and global providers are left alone, because their
+    owner decides how to handle failures.
+14. **The root span uses the real run window, and child spans are laid out
+    approximately.** The runner records the wall-clock start and end of a
+    run, and the root span uses them. Per-check start times are not recorded,
+    only durations, and checks may run in parallel. So child spans keep their
+    real durations and are laid out one after another from the run start. If
+    that would run past the end of the run (because checks overlapped), every
+    child starts at the run start instead. The root span's status is ERROR
+    when any check errored (see decision 15). It does not use
+    `result.passed`, which ignores ERROR checks.
+15. **Span status ERROR means the check broke, not that the data was bad.**
+    In OpenTelemetry, span status ERROR marks an operation that failed, and
+    backends build error-rate views and alerts on it. A FAILED check ran
+    correctly and found bad data, so its span is OK and the `status`
+    attribute carries `FAILED`. Only an ERROR check (one that could not run)
+    sets span status ERROR, with its message as the status description. The
+    root span follows the same rule. This matches the log severities, where
+    FAILED is WARN and ERROR is ERROR, so teams alerting on span error rates
+    are not paged for ordinary data problems.
 
 ## Context attribute methodology
 
-Context attributes describe the contract and the run. The inclusion rule is:
-**include every first-level scalar field from the contract that has a value.**
+Context attributes describe the contract and the run. vowl includes a fixed
+list of contract fields, each only when it has a value:
 
-Fields beyond the first level (nested objects, arrays) are excluded because
-they can have unbounded cardinality. Users who need any of these can pass them
-via `custom_attributes`. `kind` is also excluded because it is always
-`"DataContract"` and carries zero information.
+| Contract field | Attribute |
+| --- | --- |
+| `id` | `vowl.contract.id` |
+| `name` | `vowl.contract.name` |
+| `version` | `vowl.contract.version` |
+| `apiVersion` | `vowl.contract.api_version` |
+| `status` | `vowl.contract.status` |
+| `contractCreatedTs` | `vowl.contract.created_ts` |
+| `domain` | `vowl.domain` |
+| `dataProduct` | `vowl.data_product` |
+| `tenant` | `vowl.tenant` |
 
-This rule is mechanical: when a new first-level scalar field is added to ODCS,
-it gets a `vowl.*` context attribute. No per-field judgment call needed.
+The list is fixed rather than "every top-level field" on purpose. These fields
+identify the contract and do not change from run to run, so they are safe to
+put on every metric point. A generic rule would pick up any new top-level
+field ODCS adds, including free text, without anyone checking what it does to
+metric cardinality. Nested objects and arrays are left out. `kind` is left out
+because it is always `"DataContract"`. Users who need another field can pass it
+via `custom_attributes`. Adding a field to the list is a deliberate change to
+`contract_attributes` in `src/vowl/otel/_common.py`.
 
 ## Cardinality
 
@@ -291,31 +370,50 @@ Metric label cardinality is the main operational footgun. The defaults keep it
 bounded:
 
 - `check_name`, `schema_name`, `dimension`, `severity`, and `engine` are bounded
-  by the contract, so they are safe as metric attributes.
+  by the contract, so they are safe as metric attributes. `status` has at most
+  three values (`PASSED`, `FAILED`, `ERROR`), and only two on row counts.
 - Row-level failed-row contents are off metrics entirely, and off all signals by
   default. An opt-in bounded sample can ride logs and span events. Full
   failed-row output stays the job of `save()` / `get_annotated_output()`.
 - High-cardinality per-event values, such as the engine-rendered `query` and the
   flattened `check.definition.*` keys, ride on spans and logs only, never on
   metric labels.
-- Per-run identity attributes (`vowl.run.id`, `vowl.contract.id`, and any custom
-  `custom_attributes`) are signal-level attributes on every data point in all
-  provider modes. They fork the metric series per run, which suits the warehouse
-  path where each run is a row. For a Prometheus/Mimir-style TSDB, drop them
-  with an OTEL Collector relabel or transform on that path.
+- `vowl.run.id` is never a metric attribute. A new value every run would start
+  a new metric series every run. It rides on spans and logs, where one run is
+  looked up.
+- Contract identity attributes are bounded by the number of contracts, so they
+  are safe on metrics. `custom_attributes` are attached to metrics verbatim, so
+  their cardinality is the caller's responsibility. A caller who puts a per-run
+  value there (such as `vowl.artifact.uri`) forks the metric series per run. For
+  a Prometheus/Mimir-style TSDB, drop such keys with an OTEL Collector relabel
+  or transform on that path.
 
 ## Testing
 
+All in `tests/test_otel_export.py`:
+
 - Each emitter is unit-tested with the OTEL in-memory readers and exporters
   (`InMemoryMetricReader`, `InMemorySpanExporter`, and the in-memory log
-  exporter), asserting instrument names, values, and attributes against a
-  synthetic `ValidationResult`.
+  exporter), asserting instrument names, types, values, and attributes against
+  a `ValidationResult` from a real run.
+- Instrument-type tests assert that row counts are gauges and `vowl.check.count`
+  is a counter, and that a clean run still sends `FAILED` row-count points of 0.
 - A guard test asserts that core `import vowl` does not import `opentelemetry`.
 - A test asserts the missing-extra path raises the friendly install error.
-- A flush/shutdown test asserts the self-contained mode delivers all points
-  before returning.
-- A test asserts `max_failed_rows_sample=0` (the default) exports no row contents
-  on any signal, and that a positive value is capped by both the flag and
+- Lifecycle tests assert that only vowl-owned providers are flushed and shut
+  down, and that every owned provider is shut down even if one raises.
+- Error-path tests assert that an ERROR check logs at ERROR severity and turns
+  its own span and the root span ERROR, while a FAILED check leaves every
+  span OK.
+- Timing tests assert that the runner records the run window and the root span
+  uses it.
+- Endpoint tests assert the OTLP/HTTP per-signal paths, the protocol and
+  per-signal endpoint env vars, the per-signal endpoint check, and the
+  `RuntimeWarning` on a failed delivery (using stub exporters, no network).
+- Identity tests assert that `vowl.run.id` is on spans and logs but not
+  metrics, and that a caller-supplied `run_id` is used and returned.
+- Row-sample tests assert that the default exports no row contents, and that a
+  positive `max_failed_rows_sample` is capped by both the flag and the run's
   `max_failed_rows`.
 
 ## Not included

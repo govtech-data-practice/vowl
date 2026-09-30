@@ -395,43 +395,42 @@ md(
 <a id="5-otel"></a>
 ## 5. OpenTelemetry: Metrics, Traces, and Logs
 
-This last output shape sends the finished run to your monitoring tools, so
-data-quality results show up on the same dashboards and alerts as everything else.
-`export_otel()` reuses the `result` from section 1, so nothing re-runs. It is fully
-optional: the feature lives behind the `[otel]` extra, and `import vowl` never pulls
-in `opentelemetry`.
+This last output sends the finished run to your monitoring tools, so data quality
+results show up on the same dashboards and alerts as everything else.
+`export_otel()` reuses the `result` from section 1, so nothing runs again. It is
+optional: install it with the `[otel]` extra. `import vowl` never loads
+OpenTelemetry on its own.
 
-In production you point vowl at an OTLP endpoint:
+In a real pipeline you point vowl at your OpenTelemetry Collector:
 
 ```python
 run_id = result.export_otel(
-    endpoint="http://localhost:4317",   # or leave unset to use OTEL_EXPORTER_OTLP_* env vars
-    signals=("metrics", "traces", "logs"),  # logs are opt-in, default is metrics + traces
+    endpoint="http://localhost:4317",  # or leave it out and set OTEL_EXPORTER_OTLP_ENDPOINT
     service_name="hdb-resale-dq",
-    custom_attributes={
-        "deployment.environment": "prod",
-        "vowl.artifact.uri": "s3://dq/run=0f2c9e1a/",  # link alerts to the rows you saved
-    },
+    custom_attributes={"deployment.environment": "prod"},
 )
 ```
 
-That needs a live collector, so we do not run it here. Instead we hand `export_otel`
-some **in-memory providers** so everything runs offline. The call returns a run id
-now, and at the end of this section we serialize the signals it emitted to files you
-can open.
+vowl sends all three signals (metrics, traces, and logs) by default. It waits until
+the data is sent before returning, and warns you if the collector could not be
+reached.
 
-> **Demo only.** These in-memory providers hold each signal in memory and lose it
-> when the kernel stops. In a real pipeline you export to your own collector (the
-> `endpoint` call above) and let it handle storage, dashboards, and alerts.
+That needs a running collector, so we skip it here. Instead we give `export_otel`
+some **in-memory providers**, so everything runs offline. The call still returns a
+run ID, and at the end of this section we write what it sent to files you can open.
+
+> **Demo only.** In-memory providers keep the data in memory and lose it when the
+> kernel stops. In a real pipeline you send to your own collector (the `endpoint`
+> call above), and it handles storage, dashboards, and alerts.
 """
 )
 
 md(
     """
-`export_otel` also takes explicit `metric_provider` / `tracer_provider` /
-`logger_provider`. When you pass your own, vowl emits into them but does not flush
-or shut them down, so we can read them back afterwards. Here we use the in-memory
-ones the OpenTelemetry SDK ships.
+`export_otel` also accepts your own `metric_provider`, `tracer_provider`, and
+`logger_provider`. When you pass your own, vowl writes into them but leaves them
+open, so we can read the data back afterwards. Here we use the in-memory ones that
+come with the OpenTelemetry SDK.
 """
 )
 
@@ -447,10 +446,10 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 
 def in_memory_providers(resource=None):
-    \"\"\"A meter/tracer/logger trio wired to in-memory readers we can inspect.
+    \"\"\"A meter, tracer, and logger that keep everything in memory for us to read.
 
-    Pass ``resource`` to stamp every signal with a specific OTEL resource. Leave
-    it unset to get the SDK default (fine when we only care about the signals).
+    Pass ``resource`` to stamp every signal with a specific OTel resource. Leave
+    it unset to get the SDK default, which is fine when we only look at the signals.
     \"\"\"
     metric_reader = InMemoryMetricReader()
     meter = MeterProvider(metric_readers=[metric_reader], resource=resource)
@@ -469,14 +468,13 @@ def in_memory_providers(resource=None):
 meter, metric_reader, tracer, span_exporter, logger, log_exporter = in_memory_providers()
 
 run_id = result.export_otel(
-    signals=("metrics", "traces", "logs"),
     service_name="hdb-resale-dq",
     custom_attributes={"deployment.environment": "demo", "team": "housing-data"},
     metric_provider=meter,
     tracer_provider=tracer,
     logger_provider=logger,
 )
-print(f"exported run id: {run_id}")
+print(f"exported run ID: {run_id}")
 """
 )
 
@@ -484,23 +482,27 @@ md(
     """
 ### How the signals flow through your stack
 
-The three signals do different jobs. `export_otel` hands them to an OpenTelemetry
-Collector, which sends each one where it belongs. **Metrics** feed dashboards you
-watch over time. **Logs and traces** carry the per-check detail (the SQL, the full
-definition, a row sample), so an alert can open a data incident with everything an
-on-call needs already attached.
+The three signals do different jobs. `export_otel` sends them to an OpenTelemetry
+Collector (or straight to your monitoring tool), which sends each one where it
+belongs:
+
+- **Metrics** are numbers over time, such as "how many rows failed". They feed
+  dashboards and alerts.
+- **Traces** are a timeline of one run, with one bar per check. They show what ran,
+  how long it took, and what failed.
+- **Logs** are one message per failed or broken check. They carry the SQL and the
+  links you need, so an alert can reach the right person with the details attached.
 
 ```mermaid
 flowchart LR
-    vowl["vowl validation run"] -->|"export_otel(...)"| collector["OpenTelemetry Collector"]
-    collector --> metrics["Metrics"]
-    collector --> logstraces["Logs & Traces"]
-    metrics --> agg["Aggregation"] --> dash["DQ reporting & dashboards"]
-    logstraces --> errors["Listen for errors"] --> incident["Automated data-incident reporting"]
+    vowl["vowl validation run"] -->|"export_otel(...)"| collector["OpenTelemetry Collector<br/>or your monitoring tool"]
+    collector --> metrics["Metrics:<br/>dashboards and alerts"]
+    collector --> traces["Traces:<br/>a timeline of each run"]
+    collector --> logs["Logs:<br/>one message per failed check"]
 ```
 
 Metrics tell you how quality is trending. Logs and traces tell you what broke and
-where. The table below lays out who carries what.
+where. The table below shows what each one carries.
 """
 )
 
@@ -508,38 +510,39 @@ md(
     """
 ### What each signal carries
 
-Same run, three signals, split by job. Metrics stay lightweight so they can feed
-dashboards. Traces and logs carry the heavy detail (the SQL, the full definition, a
-row sample) for digging into what broke.
+Same run, three signals, each with its own job. Metrics stay small so dashboards
+stay fast. Traces and logs carry the detail (the SQL, the full check definition, and
+optionally a few failed rows) for working out what broke.
 
-| Signal | One per | Carries | Reach for it to |
-| ------ | ------- | ------- | --------------- |
-| **Metrics** | run (counts) | a few safe labels only: `schema`, `dimension`, `severity`, `engine`, `check_name` | watch quality trends and alert on rates |
-| **Traces** | check | those same labels, plus the SQL that ran and the full check definition (`check.definition.*`) | see exactly what one check did |
-| **Logs** | failing check only | severity (`WARN` for a data failure, `ERROR` when vowl itself broke), the SQL, the `trace_id`/`span_id`, and a short message | fire error alerts and jump straight to the trace |
+| Signal | What you get | Carries | Use it to |
+| ------ | ------------ | ------- | --------- |
+| **Metrics** | counts and rates per check, dimension, and schema, plus the run's duration (a Histogram) | a few short labels only: `status`, `schema_name`, `dimension`, `severity`, `engine`, `check_name` | watch quality trends and alert on rates |
+| **Traces** | one span for the run, and one child span per check | those same labels, plus the SQL that ran and the full check definition (`check.definition.*`) | see exactly what one check did |
+| **Logs** | one record per failed or broken check | a level (`WARN` when the data failed a check, `ERROR` when the check itself could not run), the SQL, the `trace_id` and `span_id`, and a short message | send alerts and jump straight to the trace |
 
-You can see all three for real in the `metrics.json`, `traces.json`, and `logs.json`
-files written at the end of this section.
+You can see all three in the `metrics.json`, `traces.json`, and `logs.json` files
+written at the end of this section.
 """
 )
 
 md(
     """
-### Context attributes on every signal
+### Run details on every signal
 
-vowl attaches a set of **context attributes** to every metric data point, span, and
-log record, so each signal says which run and contract it came from. You never build
-them by hand. They carry:
+An **attribute** is a `key=value` label on a piece of OTel data. vowl adds the same
+set of attributes to every metric, span, and log record, so each one says which run
+and contract it came from. You never build them by hand. They are:
 
 - `service.name` and `vowl.version`
-- `vowl.run.id`, the same id `export_otel(...)` returned above
-- `vowl.contract.*` pulled from your contract (id, version, status, and so on)
-- anything you passed in `custom_attributes`, added as-is
+- `vowl.contract.*`, read from your contract (id, version, status, and a few more)
+- anything you passed in `custom_attributes`, copied as-is
+- `vowl.run.id`, the same ID `export_otel(...)` returned above. This one goes on
+  spans and logs only. A new value every run would make every metric series new,
+  which many metric backends charge for.
 
-These attributes are signal-level in all three provider modes (explicit, global, and
-self-contained), so they are always present regardless of how the providers are set
-up. In self-contained mode they additionally go on the OTEL Resource for backends
-that surface resource metadata separately.
+vowl adds these attributes however the providers were set up (your own, the global
+ones, or ones vowl builds). When vowl builds the providers itself, it also puts them
+on the OTel resource, for tools that show resource details separately.
 """
 )
 
@@ -547,42 +550,48 @@ md(
     """
 ### Linking an alert back to the rows
 
-vowl exports **how many** rows failed, never the rows themselves. Three ways to
-get from an alert to the actual data, weakest to strongest:
+By default vowl sends **how many** rows failed, not the rows themselves. There are
+three ways to get from an alert to the actual data:
 
-- **`failed_rows_count`** rides on every check, always on. No cell values leave the
+- **`failed_rows_count`** is on every check, always. No cell values leave your
   process.
-- **An inline sample** via `max_failed_rows_sample`. Off by default. Set a positive
-  number and each failing check attaches that many rows to its log and span. Mind
-  PII, since these are real cell values.
-- **A pointer** to wherever you saved the rows yourself.
+- **A small sample** with `max_failed_rows_sample`. This is off by default. Set a
+  positive number and each failed check adds up to that many rows to its log and
+  span. These are real cell values, so think about personal data before you turn
+  it on.
+- **A link** to wherever you saved the rows yourself.
 
-The pointer goes in `custom_attributes`, which vowl copies onto every signal
-untouched. The suggested key is `vowl.artifact.uri`, pointing at the output
-`result.save(...)` wrote for this run:
+The link goes in `custom_attributes`, which vowl copies onto every signal as-is. The
+suggested key is `vowl.artifact.uri`. Pick the run ID yourself, save the rows under
+it, and pass the same ID to `export_otel`:
 
 ```python
-result.save("s3://dq/run=0f2c9e1a/")  # your failed rows and annotated tables land here
+import uuid
+
+run_id = str(uuid.uuid4())
+output_dir = f"s3://my-bucket/dq-results/{run_id}/"
+
+result.save(output_dir)  # your failed rows and annotated tables go here
 result.export_otel(
-    custom_attributes={"vowl.artifact.uri": "s3://dq/run=0f2c9e1a/"},  # alerts deep-link to them
+    run_id=run_id,  # the same ID shows up on every span and log
+    custom_attributes={"vowl.artifact.uri": output_dir},  # alerts link straight to the files
 )
 ```
 
 Use `vowl.link.<name>` (for example `vowl.link.runbook` or `vowl.link.ticket`) for
-any other link you want on the run. vowl always sets `vowl.run.id`, so a run still
-matches an artifact saved under that id even with no pointer. These are naming
-suggestions, not special keys, so a team spells the same pointer the same way. See
-the [OpenTelemetry Export guide](../../docs/otel-export.md) for the full list.
+any other link you want on the run. These are naming ideas, not special keys. They
+help a team spell the same link the same way. See the
+[Exporting to OpenTelemetry guide](../../docs/otel-export.md) for the full list.
 
 ### The signals as files you can eyeball
 
-This last cell writes one file per signal into the `outputs/` folder beside this
-notebook: `metrics.json`, `traces.json`, and `logs.json`, each as the OpenTelemetry
-SDK serializes it. Open them to see the exact shape a collector receives.
+This last cell writes one file per signal into the `outputs/` folder next to this
+notebook: `metrics.json`, `traces.json`, and `logs.json`, in the JSON form the
+OpenTelemetry SDK produces. Open them to see what a collector receives.
 
-Here we set `max_failed_rows_sample` to `2` (it is `0` by default) so each failure
-log and span carries a couple of the offending rows, which is what you would attach
-for triage. Timestamps and the run, trace, and span ids vary from run to run.
+Here we set `max_failed_rows_sample` to `2` (it is `0` by default), so each failed
+check's log and span carries a couple of the failed rows. Timestamps and the run,
+trace, and span IDs change on every run.
 """
 )
 
@@ -590,7 +599,6 @@ code(
     """
 ometer, oreader, otracer, ospans, ologger, ologs = in_memory_providers()
 result.export_otel(
-    signals=("metrics", "traces", "logs"),
     max_failed_rows_sample=2,
     metric_provider=ometer,
     tracer_provider=otracer,
@@ -627,13 +635,13 @@ md(
   non-mergeable check.
 - `result.save(output_mode="annotated")` writes those same shapes to disk as CSV
   plus a `*_summary.json` that always carries every full check definition.
-- `result.export_otel(...)` sends the run to OpenTelemetry: lightweight metrics
-  for dashboards, and traces and logs carrying the SQL and full definition for
-  digging into what broke.
-- The `outputs/` folder holds a serialized sample of each shape for reference.
+- `result.export_otel(...)` sends the run to OpenTelemetry: small metrics for
+  dashboards, plus traces and logs that carry the SQL and full check definition
+  for working out what broke.
+- The `outputs/` folder holds a saved example of each output for reference.
 
-The full parameters, signal schema, and correlation keys live in the
-[OpenTelemetry Export guide](../../docs/otel-export.md).
+Every parameter, metric, and attribute is listed in the
+[Exporting to OpenTelemetry guide](../../docs/otel-export.md).
 """
 )
 

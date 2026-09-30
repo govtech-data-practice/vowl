@@ -131,6 +131,9 @@ class ValidationResult:
         self._schema_validation_breakdown: dict[str, SchemaValidationBreakdown] | None = None
         self._schema_column_names: dict[str, list[str]] = {}
         self._full_table_cache: dict[str, nw.DataFrame | None] = {}
+        # Wall-clock run window in epoch nanoseconds, set by the runner.
+        self._run_started_ns: int | None = None
+        self._run_finished_ns: int | None = None
 
     def __repr__(self) -> str:
         total = self._vs["total_checks"]
@@ -333,11 +336,27 @@ class ValidationResult:
             bucket.update(iter_unique_failed_row_keys(failed_rows, relevant_columns))
         return {key: len(rows) for key, rows in unique_rows_by_key.items()}
 
+    def _row_eligible_dimensions(self) -> set[tuple[str, str]]:
+        """``(schema, dimension)`` buckets that can have a row pass rate.
+
+        A bucket qualifies when at least one of its checks reports failing rows
+        (the same eligibility as :meth:`_failed_rows_by_dimension`) and its
+        schema has a row count. Buckets with only aggregate checks are left out,
+        since they would always show every row as passing.
+        """
+        total_rows_by_schema = self._vs.get("total_rows_by_schema", {})
+        buckets: set[tuple[str, str]] = set()
+        for check_result in self._get_row_quality_eligible_checks():
+            schema_name = check_result.metadata.get("schema_name")
+            if isinstance(schema_name, str) and total_rows_by_schema.get(schema_name):
+                buckets.add((schema_name, _resolve_check_dimension(check_result)))
+        return buckets
+
     def _check_pass_rate_by_dimension(self) -> dict[tuple[str, str], float]:
         """Per ``(schema, dimension)`` check pass rate in ``[0, 1]``.
 
-        A per-run convenience gauge (``vowl.dq.pass_rate``), never an
-        aggregation primitive.  Denominator is every check in the bucket that
+        A per-run convenience gauge (``vowl.dimension.check_pass_rate``), never
+        an aggregation primitive.  Denominator is every check in the bucket that
         carries a schema; a check without a recorded ``dimension`` defaults to
         ``"unknown"``.
         """
@@ -1205,11 +1224,12 @@ class ValidationResult:
         *,
         signals: Sequence[str] = ("metrics", "traces", "logs"),
         endpoint: str | None = None,
-        protocol: str = "grpc",
+        protocol: str | None = None,
         service_name: str = "vowl",
         prefix: str = "vowl",
         headers: dict[str, str] | None = None,
         custom_attributes: dict[str, Any] | None = None,
+        run_id: str | None = None,
         max_failed_rows_sample: int = 0,
         use_global_providers: bool = False,
         metric_provider: Any | None = None,
@@ -1219,35 +1239,47 @@ class ValidationResult:
         """Export this run's results to OpenTelemetry (metrics, traces, logs).
 
         Requires the optional ``[otel]`` extra (``pip install vowl[otel]``).
-        Reads this finished result only; nothing is re-run against the data.
-        Returns the generated ``vowl.run.id`` so a caller can correlate an
-        artifact it saved under that id.  See docs/otel-export.md.
+        Reads this finished result only. Nothing is re-run against the data.
+        Returns the run id (``vowl.run.id``) so a caller can link it to an
+        artifact saved under the same id. See docs/otel-export.md.
 
         Args:
             signals: Which signals to emit, any subset of ``"metrics"``,
-                ``"traces"``, ``"logs"``.  All three are on by default.
-            endpoint: OTLP endpoint.  When omitted, standard
-                ``OTEL_EXPORTER_OTLP_*`` env vars are used.
-            protocol: ``"grpc"`` (default) or ``"http/protobuf"``.
+                ``"traces"``, ``"logs"``. All three are on by default.
+            endpoint: OTLP endpoint. When omitted, the standard
+                ``OTEL_EXPORTER_OTLP_*`` env vars are used. For
+                ``"http/protobuf"`` vowl adds the ``/v1/<signal>`` path.
+            protocol: ``"grpc"`` or ``"http/protobuf"``. When omitted, uses
+                ``OTEL_EXPORTER_OTLP_PROTOCOL``, then ``"grpc"``.
             service_name: ``service.name`` context attribute (default
-                ``"vowl"``).  Identifies where the validation is running.
-            prefix: Prefix for metric and span names (default ``"vowl"``).
-                Changes ``vowl.checks`` to ``{prefix}.checks``, etc.
-            headers: Optional OTLP headers (e.g. auth).
+                ``"vowl"``). Identifies where the validation is running.
+            prefix: Prefix for metric names, span names and vowl's attribute
+                keys (default ``"vowl"``). ``"myorg"`` turns
+                ``vowl.check.count`` into ``myorg.check.count``.
+            headers: Optional OTLP headers (for example auth).
             custom_attributes: Additional attributes merged onto every data
-                point, span, and log record.  vowl never inspects or reroutes
+                point, span, and log record. vowl never inspects or reroutes
                 a key.
+            run_id: Id for this export. When omitted, a new UUID is generated.
+                Pass your own to save artifacts under it before exporting.
             max_failed_rows_sample: Max failing rows to attach per check to
-                logs/span events.  ``0`` (default) exports no cell values; a
-                positive value is also capped by the run's ``max_failed_rows``.
+                logs and span events. ``0`` (default) exports no cell values.
+                A positive value is also capped by the run's ``max_failed_rows``.
             use_global_providers: Record into the process's already-configured
-                global providers instead of building OTLP exporters.  vowl then
-                owns no lifecycle (no flush/shutdown).
+                global providers instead of building OTLP exporters. vowl then
+                owns no lifecycle (no flush or shutdown).
             metric_provider / tracer_provider / logger_provider: Explicit
-                providers for full control; take precedence over everything else.
+                providers for full control. They take precedence over
+                everything else.
 
         Raises:
             ImportError: When the ``[otel]`` extra is not installed.
+            ValueError: On an unknown signal or protocol, or when a signal vowl
+                has to build a provider for has no endpoint configured.
+
+        Warns:
+            RuntimeWarning: When the backend rejected the data or could not be
+                reached, for any provider vowl built itself.
         """
         try:
             from ..otel import OtelExporter
@@ -1264,6 +1296,7 @@ class ValidationResult:
             prefix=prefix,
             headers=headers,
             custom_attributes=custom_attributes,
+            run_id=run_id,
             max_failed_rows_sample=max_failed_rows_sample,
             use_global_providers=use_global_providers,
             metric_provider=metric_provider,
