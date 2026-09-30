@@ -292,11 +292,12 @@ Group on one binary, type-tagged expression per column, aliased by position as
 `_vowl_c0`, `_vowl_c1` and so on.
 
 - Binary identity removes collation effects in the keyed dialects: NOCASE and
-  RTRIM (SQLite), Spark UTF8_LCASE, and Databricks collations through the shared
-  Spark entry. It also keeps `-0.0` apart from `0.0`. SQL Server CI_AS, MySQL PAD
+  RTRIM (SQLite), Spark UTF8_LCASE, Databricks collations through the shared
+  Spark entry, and Postgres nondeterministic collations. It also keeps `-0.0` apart from `0.0`. SQL Server CI_AS, MySQL PAD
   SPACE and `max_sort_length`, and Snowflake collations raise the same problem,
   but those dialects have no key entry yet and are reported inexact.
-- The type tag separates SQLite's `1`, `1.0` and `'1'` in one column.
+- The type tag separates SQLite's `1`, `1.0` and `'1'` in one column. The
+  other keyed dialects hold one type per column, so they need no tag.
 - Positional aliases cannot collide with data columns. With the basic shape's
   names, a table with a column named `copies` counted 30 rows against a truth
   of 3. They also avoid Spark's `AMBIGUOUS_REFERENCE` on case-variant or
@@ -309,12 +310,13 @@ The key expression comes from a per-dialect table:
 | DuckDB                                                     | `encode(CAST(c AS VARCHAR))`. Nested types use `encode(CAST(to_json(c) AS VARCHAR))`, so `['a, b']` and `['a', 'b']` stay apart. BLOB columns are used as they are.                                   | Tested. Doubles round-trip bit for bit, including ±0, ±inf and subnormals.                                                                                                                      |
 | SQLite                                                     | `typeof(c) \|\| ':' \|\| CASE typeof(c) WHEN 'real' THEN printf('%!.17g', c) WHEN 'blob' THEN hex(c) ELSE CAST(c AS TEXT) END`                                                                        | Tested. `CAST AS BLOB` alone is not enough, and `printf('%.17g')` prints 0.30000000000000004 as `0.3`. `%!.17g` round-trips every double tried. The concatenation drops the column's collation. |
 | Spark and Databricks (shared)                              | `CAST(CAST(c AS STRING) AS BINARY)`. Nested types use `CAST(to_json(c) AS BINARY)`.                                                                                                                   | Tested on Spark 4.0.2, including `-0.0` against `0.0` and NaN. Databricks shares the entry and the single-scan form but was not tested separately.                                              |
-| Other dialects (BigQuery, Snowflake, SQL Server, Postgres) | Plain column. `MD5(CAST(c AS VARCHAR))` only for the types ibis reports as JSON, geospatial or nested. Types ibis reports as strings (SQL Server `text` and `xml`, Oracle CLOB) use the plain column. | Untested, reported with `exact = false`                                                                                                                                                         |
+| Postgres | `float8send(CAST(c AS DOUBLE PRECISION))` for floating types, so the key is the stored bits. `convert_to(CAST(c AS TEXT), 'UTF8')` for everything else, which drops the collation and also groups `json`. `bytea` columns are used as they are. | Tested on Postgres 16 with testcontainers: `-0.0` against `0.0`, NaN, 0.30000000000000004 against 0.3, `a` and `A` under a nondeterministic ICU collation, duplicates, table match, and boolean, `json` and `bytea` columns in the mixed route. |
+| Other dialects (BigQuery, Snowflake, SQL Server) | Plain column. `MD5(CAST(c AS VARCHAR))` only for the types ibis reports as JSON, geospatial or nested. Types ibis reports as strings (SQL Server `text` and `xml`, Oracle CLOB) use the plain column. | Untested, reported with `exact = false`                                                                                                                                                         |
 
 A dialect with no entry runs with plain column keys and reports `exact = false`.
 
 Some types cannot be grouped (Spark VARIANT, BigQuery JSON and GEOGRAPHY,
-Postgres `json`, SQL Server `text` and `xml`, Oracle CLOB), and a key can be
+SQL Server `text` and `xml`, Oracle CLOB), and a key can be
 wider than SQL Server's 8,060-byte limit. The design called for grouping these
 on a 128-bit hash of an injective encoding: a NULL marker plus length-prefixed
 text per column. A 64-bit hash is not enough. Its collision probability is about
@@ -820,8 +822,8 @@ Four annotated-output bugs found by the investigation are already fixed:
 
 ## Risks and open questions
 
-- **Key expressions for untested dialects.** BigQuery, Snowflake, SQL Server and
-  Postgres need a binary key entry, and each needs a round-trip test for floats
+- **Key expressions for untested dialects.** BigQuery, Snowflake and SQL Server
+  need a binary key entry, and each needs a round-trip test for floats
   and a collation test. Until then they report `exact = false`.
 - **Declared primary keys.** A duplicated key would merge distinct rows (P6).
   The implementation guards it. The primary key is used only when a
@@ -837,9 +839,11 @@ Four annotated-output bugs found by the investigation are already fixed:
   250-branch chunk plans more stages than that is untested.
 - **Connection lifetime.** Pushdown needs the adapter's connection after the run,
   as annotated output already does.
-- **Backends tested.** DuckDB, SQLite and Spark 4.0.2 only. Databricks shares
-  the Spark entry but was not tested separately. Spark 3.x, Postgres, Snowflake,
-  BigQuery and others are untested.
+- **Backends tested.** DuckDB, SQLite, Spark 4.0.2 and Postgres 16 only.
+  Databricks shares the Spark entry but was not tested separately. Spark 3.x,
+  Snowflake, BigQuery and others are untested. An Ibis backend that vowl does
+  not map to a dialect is rendered as Postgres. If it lacks `float8send` or
+  `convert_to`, the preflight fails and its schemas go to fetched rows.
 
 ## Testing
 
@@ -884,6 +888,13 @@ Four annotated-output bugs found by the investigation are already fixed:
 - Statistics off, capped statistics no longer capping the total, the report
   computed once, the OTEL exact attribute, and statement shapes that pass the
   security validator.
+
+`tests/test_row_quality_postgres.py` runs the key cases on Postgres 16 with
+testcontainers (Docker only): `-0.0`, NaN and close floats, a nondeterministic
+case-insensitive collation, duplicates, table match, and boolean, `json` and
+`bytea` columns next to cross-source fetched rows. Postgres has no `MIN` for
+boolean, `bytea` or `json`, so the value aggregate there is
+`(ARRAY_AGG(x))[1]`.
 
 Not yet covered by automated tests: Spark UTF8_LCASE and parity on Employee.
 
