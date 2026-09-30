@@ -45,13 +45,20 @@ theme:
 nav:
   - Get Started:
       - Overview: index.md
-      - Installation & Quick Start: getting-started.md
+      - Quick Start: getting-started.md
+      - Key Terms: key-terms.md
   - Guides:
       - Writing Data Contracts: contracts.md
       - Connecting to Your Data: usage-patterns.md
-      - Exporting to OpenTelemetry: otel-export.md
-  - How It Works:
-      - Architecture: architecture.md
+      - Loading Contracts: loading-contracts.md
+      - Reading Results: results.md
+      - Handling of Failed Rows: failed-rows.md
+      - DQ Metrics:
+          - dq-metrics/index.md
+          - Exporting to OpenTelemetry: dq-metrics/otel-export.md
+          - Exporting to dq_metrics.json: dq-metrics/json-export.md
+  - Reference:
+      - How vowl Works: architecture.md
       - Design Decisions: design-considerations.md
       - Known Issues & Caveats: known-issues.md
   - Roadmap: roadmap.md

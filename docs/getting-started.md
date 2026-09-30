@@ -2,7 +2,7 @@
 description: Install vowl and validate your first dataset in three lines of Python. Supports pandas, Polars, PySpark, and 20+ Ibis backends.
 ---
 
-# Installation & Quick Start
+# Quick Start
 
 ## Installation
 
@@ -10,12 +10,14 @@ description: Install vowl and validate your first dataset in three lines of Pyth
 pip install vowl
 ```
 
-Optional extras are available:
+Optional extras:
 
-| Extra         | What it adds             |
-| ------------- | ------------------------ |
-| `vowl[spark]` | PySpark support          |
-| `vowl[all]`   | Everything (Spark + AWS) |
+| Extra         | What it adds                                                  |
+| ------------- | ------------------------------------------------------------- |
+| `vowl[spark]` | PySpark support, including Spark Connect                      |
+| `vowl[spark-classic]` | PySpark 3.0 to 3.3, without Spark Connect             |
+| `vowl[otel]`  | [Exporting to OpenTelemetry](dq-metrics/otel-export.md)       |
+| `vowl[all]`   | Everything: Spark, AWS (`boto3`) and OpenTelemetry            |
 
 For local development, testing, and release workflow, see [CONTRIBUTING.md](https://github.com/govtech-data-practice/vowl/blob/main/CONTRIBUTING.md).
 
@@ -46,10 +48,10 @@ result.display_full_report()
          Overall:
            Checks Pass Rate:       18 / 20 (90.0%)
            ERRORED Checks:         0
+           Passed Rows:            195 / 200 (97.5%)
          Single Table:
            Checks Pass Rate:       18 / 20 (90.0%)
            ERRORED Checks:         0
-           Unique Passed Rows:     195 / 200 (97.5%)
          Multi Table:
            Checks Pass Rate:       0 / 0 (N/A)
            ERRORED Checks:         0
@@ -121,18 +123,29 @@ result.display_full_report()
     +---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
     ```
 
-## The `ValidationResult` Object
+### Reading the summary
 
-The `validate_data` function returns a powerful `ValidationResult` object that provides multiple ways to interact with your validation results.
+The summary groups the numbers for each schema (one table in the contract):
 
-### Core Methods
+- **Checks Pass Rate** is passed checks over all checks.
+- **ERRORED Checks** are checks that could not run, for example because the
+  query names a missing column.
+- **Passed Rows** is the share of rows in the table that failed no check. See
+  [Failed rows](failed-rows.md).
+- **Single Table** covers checks that read only this schema's table.
+  **Multi Table** covers cross-table checks, which read more than one table.
+- **Non-unique Failed Rows** adds up the failed rows of the cross-table
+  checks. A row that fails two of them is counted twice.
 
-| Method/Property                                   | What It Does                                                                                          | Returns                |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------- |
-| **`print_summary()`**                             | Prints high-level statistics (pass/fail counts, success rate, performance)                            | `self` (chainable)     |
-| **`show_failed_rows(max_rows=5)`**                | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                            | `self` (chainable)     |
-| **`display_full_report(max_rows=5)`**             | Prints summary + shows failed rows (convenience method)                                               | `self` (chainable)     |
-| **`save(output_dir=".", prefix="vowl_results")`** | Saves enhanced CSV and summary JSON to disk                                                           | `self` (chainable)     |
-| **`get_output_dfs(checks=None)`**                 | Returns per-check failed rows as `{check_id: DataFrame}`                                              | `Dict[str, DataFrame]` |
-| **`get_consolidated_output_dfs(checks=None)`**    | _Deprecated_ — use `get_annotated_output()`. Deduplicates failed rows across checks, grouped by table | `Dict[str, DataFrame]` |
-| **`.passed`** (property)                          | Boolean indicating if all checks passed                                                               | `True`/`False`         |
+In the **CHECK RESULTS** table, `check_id` is the check's name, and
+`tables_in_query` lists the tables its query reads.
+
+## Next steps
+
+- [Key terms](key-terms.md) defines the words used across these docs.
+- [Writing contracts](contracts.md) shows how to describe your data and its
+  checks.
+- [Connecting to data](usage-patterns.md) covers databases, Spark and
+  multi-source runs.
+- [Reading results](results.md) lists everything you can do with the
+  `ValidationResult` that `validate_data` returns, including saving it.

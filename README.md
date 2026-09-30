@@ -115,10 +115,10 @@ result.display_full_report()
      Overall:
        Checks Pass Rate:       17 / 20 (85.0%)
        ERRORED Checks:         0
+       Passed Rows:            201,863 / 201,879 (99.9%)
      Single Table:
        Checks Pass Rate:       17 / 20 (85.0%)
        ERRORED Checks:         0
-       Unique Passed Rows:     201,863 / 201,879 (99.9%)
      Multi Table:
        Checks Pass Rate:       0 / 0 (N/A)
        ERRORED Checks:         0
@@ -538,14 +538,30 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                            | `self` (chainable)              |
 | **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                            | `self` (chainable)              |
 | **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                               | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV, summary JSON and DQ metrics JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
 | **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                              | Dict[str, DataFrame]            |
 | **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) marking failed rows                                                                                                   | Dict[str, Dict[str, DataFrame]] |
+| **`get_row_quality_df(by="schema")`**                                                | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                  | DataFrame                       |
+| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [DQ Metrics](docs/dq-metrics/index.md)                                                  | dict                            |
 | **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                               | `True`/`False`                  |
+
+#### Row Quality
+
+`get_row_quality_df()` returns the row numbers behind **Passed Rows** in the summary: for each table, how many rows failed at least one check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `exact` flag for the cases where it could be off. See [Counting and marking compared](docs/failed-rows.md#counting-and-marking-compared) for how the row numbers relate to annotated output.
+
+```python
+result.get_row_quality_df()                  # one row per table
+result.get_row_quality_df(by="dimension")    # one row per table and dimension
+result.get_row_quality_df(by="check")        # which checks were counted, and how
+```
+
+Rows caught by a check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) are reported as `tolerated_rows`. Set `ValidationConfig(row_issue_scope="all_violations")` to count them as failed rows too. See [Handling of Failed Rows](docs/failed-rows.md#how-vowl-counts-failed-rows).
 
 #### Annotated Output
 
 `get_annotated_output()` returns the **full in-scope table** with a `check_info` column that marks which rows failed which checks. Passing rows have `null` in the `check_info` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
+
+> New to this? [Handling of Failed Rows](docs/failed-rows.md) explains failed rows, annotated output and residues in plain language, with a small worked example.
 
 It returns a nested dict with two reserved keys:
 
@@ -683,7 +699,7 @@ result.save()  # uses the configured output_mode
 result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
 ```
 
-It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/usage-patterns.md#saving-results-to-cloud-storage).
+It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-results-to-cloud-storage).
 
 ## Architecture
 
@@ -971,7 +987,7 @@ result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
 
-> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). Single-table checks run inside each table's own database. For a cross-table check across different connections, the `MultiSourceAdapter` **downloads each table it reads in full** (after filter conditions) via Arrow into a local DuckDB instance, so prefer ATTACH for large tables when your sources support it. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). Both options share a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block. vowl reads an undeclared table through the connection of the schema the check sits under, whether the check reads it alone or joins it to other tables, and the check runs whenever that connection can see the table.
+> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). Single-table checks run inside each table's own database. For a cross-table check across different connections, the `MultiSourceAdapter` **downloads each table it reads in full** (after filter conditions) via Arrow into a local DuckDB instance, so prefer ATTACH for large tables when your sources support it. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). Both options share a [known dark pattern](docs/known-issues.md#queries-that-read-tables-outside-the-contract): SQL checks can reference tables not declared in the contract's `schema` block. vowl reads an undeclared table through the connection of the schema the check sits under, whether the check reads it alone or joins it to other tables, and the check runs whenever that connection can see the table.
 
 ### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
 
@@ -1139,7 +1155,7 @@ result.display_full_report()
 | ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
 | ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
-| ✅ **OpenTelemetry Export**        | Export validation metrics, traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                                                                |
+| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/index.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                                                               |
 
 ### Planned
 

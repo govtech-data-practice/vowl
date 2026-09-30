@@ -1,11 +1,22 @@
 ---
-description: Usage patterns for vowl — local DataFrames, PySpark, Ibis connections, multi-source validation, custom adapters, and loading contracts from Git or S3.
+description: Connect vowl to your data. Local DataFrames, PySpark, 20+ databases through Ibis, filter conditions, concurrent checks, multi-source runs and custom adapters.
 ---
 
 # Connecting to Your Data
 
 !!! tip "Interactive Demo"
-    Try the [example notebooks](https://github.com/govtech-data-practice/vowl/tree/main/examples) for a hands-on walkthrough of the examples below — start with the [Basic Tutorial](https://github.com/govtech-data-practice/vowl/blob/main/examples/1_basic_tutorial/basic_tutorial.ipynb).
+    Try the [example notebooks](https://github.com/govtech-data-practice/vowl/tree/main/examples) for a hands-on walkthrough. Start with the [Basic Tutorial](https://github.com/govtech-data-practice/vowl/blob/main/examples/1_basic_tutorial/basic_tutorial.ipynb).
+
+vowl reads your data through an **adapter**, an object that knows how to run
+queries on one data source. Most of the time you do not build one yourself:
+
+| Your data is in                                 | Pass to `validate_data`                           | See                                                   |
+| ----------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------- |
+| A pandas or Polars DataFrame                    | `df=df`                                           | [Local DataFrames](#local-dataframe-pandaspolars)     |
+| A Spark DataFrame                               | `df=spark_df`                                     | [PySpark](#pyspark)                                   |
+| A database                                      | `adapter=IbisAdapter(con)`                        | [Ibis connections](#ibis-connections-20-backends)     |
+| A database, with many checks to run at once     | `adapter=PooledAdapter(...)`                      | [Concurrent checks](#concurrent-checks-pooledadapter) |
+| Several databases                               | `adapters={"schema_name": adapter, ...}`          | [Multi-source validation](#multi-source-validation)   |
 
 ## Local DataFrame (Pandas/Polars)
 
@@ -17,6 +28,10 @@ df = pd.read_csv("data.csv")
 result = validate_data("contract.yaml", df=df)
 result.display_full_report()
 ```
+
+Any DataFrame that [Narwhals](https://narwhals-dev.github.io/narwhals/)
+supports works the same way. vowl loads it into an in-memory DuckDB and runs
+the checks there.
 
 ## PySpark
 
@@ -35,7 +50,9 @@ finally:
 ```
 
 !!! note
-    The library does **not** manage the SparkSession lifecycle. You must create and stop it yourself. This is by design. SparkSession is a heavy, application-owned resource with specific configuration requirements.
+    vowl does **not** start or stop the SparkSession. You create and stop it
+    yourself, because it is a heavy resource your application owns and
+    configures.
 
 ## Ibis Connections (20+ Backends)
 
@@ -50,36 +67,33 @@ result = validate_data("contract.yaml", adapter=IbisAdapter(con))
 result.display_full_report()
 ```
 
-Ibis supports: Amazon Athena, BigQuery, ClickHouse, Dask, Databricks, DataFusion, Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, pandas, Polars, PostgreSQL, PySpark, RisingWave, SingleStoreDB, Snowflake, SQLite, Trino, and more. See [ibis-project/ibis](https://github.com/ibis-project/ibis).
+Checks run inside the database. Only counts and failed rows come back.
+
+Ibis supports Amazon Athena, BigQuery, ClickHouse, Databricks, DataFusion,
+Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, pandas, Polars,
+PostgreSQL, PySpark, RisingWave, SingleStoreDB, Snowflake, SQLite, Trino, and
+more. See [ibis-project/ibis](https://github.com/ibis-project/ibis). Some
+databases handle nulls, regex or arrays differently. See
+[Known issues](known-issues.md#database-backend-differences).
 
 !!! info "MySQL"
-    Select the database when you create the connection, for example via `ibis.mysql.connect(..., database="my_db")` or a connection URI that already includes the database name. vowl does not issue `USE database` during validation; it runs read-only `SELECT` queries against the active database on the existing connection.
+    Select the database when you create the connection, for example
+    `ibis.mysql.connect(..., database="my_db")`, or use a connection URI that
+    includes the database name. vowl does not run `USE database`. It runs
+    read-only `SELECT` queries on the connection's current database.
 
-## Compatibility Mode (DuckDB ATTACH)
+## Filter Conditions
 
-```python
-import ibis
-from vowl import validate_data
-from vowl.adapters import IbisAdapter
-
-con = ibis.duckdb.connect()
-con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
-con.raw_sql("USE pg")
-
-result = validate_data("contract.yaml", adapter=IbisAdapter(con))
-result.display_full_report()
-```
-
-!!! tip "When to use this"
-    Your remote backend doesn't support a SQL feature that a check needs, or you want a single local engine for reproducible results regardless of the source database. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
-
-## Explicit Adapter with Filter Conditions
+Filter conditions limit which rows vowl checks, for example only the last
+seven days. Pass them to the adapter. Keys are table names, and `*` matches
+any characters.
 
 ```python
-from vowl import validate_data
-from vowl.adapters import IbisAdapter
 from datetime import datetime, timedelta
+
 import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter
 
 date_limit = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
 con = ibis.postgres.connect(...)
@@ -87,41 +101,22 @@ con = ibis.postgres.connect(...)
 adapter = IbisAdapter(
     con,
     filter_conditions={
-        # Exact match
-        "TableA": {
-            "field": "date_dt",
-            "operator": ">=",
-            "value": date_limit
-        },
-        # Wildcard: matches employees, emp_history, emp_details, etc.
-        "emp*": {
-            "field": "date_dt",
-            "operator": ">=",
-            "value": date_limit
-        },
-        # Wildcard: matches orders_archive, customers_archive, etc.
-        "*_archive": {
-            "field": "is_deleted",
-            "operator": "=",
-            "value": False
-        },
-        # Apply to ALL tables
-        "*": {
-            "field": "tenant_id",
-            "operator": "=",
-            "value": 123
-        },
-    }
+        # One table
+        "TableA": {"field": "date_dt", "operator": ">=", "value": date_limit},
+        # employees, emp_history, emp_details, ...
+        "emp*": {"field": "date_dt", "operator": ">=", "value": date_limit},
+        # orders_archive, customers_archive, ...
+        "*_archive": {"field": "is_deleted", "operator": "=", "value": False},
+        # Every table
+        "*": {"field": "tenant_id", "operator": "=", "value": 123},
+    },
 )
 
 result = validate_data("contract.yaml", adapter=adapter)
-result.display_full_report()
 ```
 
-!!! note
-    If multiple patterns match a table, conditions are combined with AND.
-
-### Multiple Filter Conditions on Same Table
+When several keys match a table, all their conditions apply (they are joined
+with AND). To give one table several conditions, pass a list:
 
 ```python
 adapter = IbisAdapter(
@@ -131,41 +126,79 @@ adapter = IbisAdapter(
             {"field": "date_dt", "operator": ">=", "value": date_limit},
             {"field": "status", "operator": "=", "value": "active"},
         ]
-    }
+    },
 )
 ```
 
+## Concurrent Checks (`PooledAdapter`)
+
+When a contract has many checks and the database can serve several queries at
+once, run the checks side by side with a `PooledAdapter`. You give it a
+_factory_, a function that returns a new adapter with its own connection. The
+pool calls it once per connection it opens. The results are the same as a run
+one check at a time.
+
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter, PooledAdapter
+
+def make_adapter():
+    con = ibis.duckdb.connect("my_db.duckdb")
+    return IbisAdapter(con)
+
+pooled = PooledAdapter(factory=make_adapter, max_concurrency=4)
+
+result = validate_data("contract.yaml", adapter=pooled)
+# or adapters={"orders": pooled, ...} to use the pool for some schemas only
+```
+
+- `max_concurrency` (default 4) is the most checks running at once, and so the
+  most connections open, for the whole run. Schemas given the same pool share
+  that limit.
+- A cross-table check between tables on one pool runs in the database. A check
+  that joins two pools, or a pool and another adapter, copies the tables into
+  memory first. See
+  [PooledAdapter: Joins Across Pools Are Copied](known-issues.md#pooledadapter-joins-across-pools-are-copied).
+- The pool keeps its connections after the run, so you can reuse it. Call
+  `pooled.cleanup()` when you are done. It drops the pooled adapters but does
+  not close Ibis connections, so close those yourself if they need it.
+
+!!! warning "SQLite"
+    A SQLite connection opened by `ibis.connect("sqlite://...")` cannot be
+    shared between threads. See
+    [SQLite: Parallel Checks Need a Thread-Safe Connection](known-issues.md#sqlite-parallel-checks-need-a-thread-safe-connection).
+
 ## Multi-Source Validation
 
-Use this when one contract covers tables that live in different databases, and
-some checks need to read more than one of them at once. The usual case is a
-foreign key: every `transactions.user_id` must exist in `users.id`, but
-`transactions` is in PostgreSQL and `users` is in SQLite. Neither database can
-run that join alone, so something has to bring the two tables together.
+Use this when one contract covers tables in different databases, and some
+checks read more than one of them. The usual case is a foreign key: every
+`transactions.user_id` must exist in `users.id`, but `transactions` is in
+PostgreSQL and `users` is in SQLite. Neither database can run that join alone,
+so something has to bring the two tables together.
 
-vowl gives you two ways to do that. They differ in where the checks run and
-how your rows travel to them.
+There are two ways. They differ in where the checks run and how your rows
+reach them.
 
-|                                | Option A: DuckDB ATTACH                                      | Option B: Multi-source adapters                                       |
-| ------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------- |
-| Where single-table checks run  | In DuckDB on your machine, reading the remote table          | Inside each table's own database                                      |
-| Where cross-table checks run   | In DuckDB on your machine, reading the remote tables         | In a local DuckDB, on downloaded copies of the tables                 |
-| How rows reach your machine    | Streamed while each check runs, then discarded               | Downloaded in full before the check, then held in memory for the run  |
-| Supported sources              | PostgreSQL, MySQL, SQLite                                    | Any Ibis backend                                                      |
-| Who wires up the tables        | You, with `ATTACH` and views                                 | vowl, from one adapter per contract table                             |
+|                                | Option A: DuckDB ATTACH                                | Option B: Multi-source adapters                                  |
+| ------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------- |
+| Where single-table checks run  | In DuckDB on your machine, reading the remote table    | Inside each table's own database                                 |
+| Where cross-table checks run   | In DuckDB on your machine, reading the remote tables   | In DuckDB on your machine, on copies of the tables               |
+| How rows reach your machine    | Read while each check runs, then discarded             | Copied into memory in full before the check, kept for the run    |
+| Supported sources              | PostgreSQL, MySQL, SQLite                              | Any Ibis backend                                                 |
+| Who connects the tables        | You, with `ATTACH` and views                           | vowl, from one adapter per schema                                |
 
-Neither option keeps all the work inside your databases. Option A doesn't
-download whole tables up front, so it suits large tables, but it only works
-with PostgreSQL, MySQL and SQLite. Option B works with any backend, such as
-Snowflake, BigQuery, Databricks, Oracle or MSSQL, and keeps single-table checks
-inside each database, but every table a cross-table check reads is downloaded
-whole.
+Option A suits large tables, because it never copies a whole table up front,
+but it only works with PostgreSQL, MySQL and SQLite. Option B works with any
+backend, such as Snowflake, BigQuery, Databricks, Oracle or MSSQL, and keeps
+single-table checks inside each database. But every table a cross-table check
+reads is copied into memory whole.
 
 ### Option A: DuckDB ATTACH
 
 You open one DuckDB connection and attach each remote database to it. DuckDB
-can read from all of them in a single query, so vowl sees one connection that
-holds every table.
+can read from all of them in one query, so vowl sees one connection that holds
+every table.
 
 ```python
 import ibis
@@ -189,33 +222,44 @@ result.display_full_report()
 What each step does:
 
 1. `ATTACH ... READ_ONLY` makes a remote database visible inside DuckDB under
-   an alias. Its tables are then reachable as `pg_sales.transactions`,
+   a short name. Its tables are then reachable as `pg_sales.transactions`,
    `sqlite_users.users` and so on.
 2. `USE memory` switches back to DuckDB's own in-memory database, so the views
    in the next step are created there and not in a remote database.
-3. `CREATE VIEW` gives each attached table the bare name your contract uses.
-   Contract queries say `transactions`, not `pg_sales.transactions`, so without
-   the views vowl would not find the tables.
-4. `validate_data` runs every check, single-table and cross-table, through this
-   one DuckDB connection.
+3. `CREATE VIEW` gives each attached table the name your contract uses.
+   Contract queries say `transactions`, not `pg_sales.transactions`, so
+   without the views vowl would not find the tables.
+4. `validate_data` runs every check through this one DuckDB connection.
 
-!!! note "Streamed, not stored"
+!!! note "Read, not stored"
     A view is a saved query, not a copy. Each time a check runs, DuckDB reads
-    the rows it needs from the remote database and discards them once the
-    check finishes. For PostgreSQL and MySQL, DuckDB sends simple column
-    filters to the source, so only matching rows travel. Joins and aggregates such as `COUNT(*)` run inside
-    DuckDB, so the rows they read still cross the network. A table used by
-    five checks is read five times.
+    the rows it needs from the remote database and discards them when the
+    check finishes. For PostgreSQL and MySQL, DuckDB passes simple column
+    filters to the source, so only matching rows travel. Joins and counts
+    such as `COUNT(*)` run inside DuckDB, so the rows they read still cross
+    the network. A table used by five checks is read five times.
+
+!!! tip "Also useful for one database"
+    ATTACH helps with a single database too, when that database lacks a SQL
+    feature a check needs (for example regex on MSSQL), or when you want the
+    same engine to run the checks whatever the source. Attach the database,
+    run `USE` on it, and pass the DuckDB connection to `IbisAdapter`:
+
+    ```python
+    con = ibis.duckdb.connect()
+    con.raw_sql("ATTACH 'postgresql://user:pass@host:5432/mydb' AS pg (TYPE postgres, READ_ONLY)")  # trufflehog:ignore
+    con.raw_sql("USE pg")
+    result = validate_data("contract.yaml", adapter=IbisAdapter(con))
+    ```
 
 ### Option B: Multi-Source Adapters
 
-You give vowl one adapter per contract table, and vowl decides where each check
-runs.
+You give vowl one adapter per schema, and vowl decides where each check runs.
 
 ```python
+import ibis
 from vowl import validate_data
 from vowl.adapters import IbisAdapter
-import ibis
 
 pg_con = ibis.postgres.connect(...)
 sqlite_con = ibis.sqlite.connect(...)
@@ -229,42 +273,39 @@ result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
 
-The dictionary keys must match the schema `name`s in your contract. vowl then
-routes each check like this:
+The keys must match the schema `name`s in your contract. vowl then runs each
+check like this:
 
-- **Single-table checks** (for example `required`, `unique`, or a SQL check that
-  only reads `users`) run on that table's own adapter, inside its own database.
-  Nothing is copied.
-- **Cross-table checks on one connection** run directly in that database. This
-  applies when every table the check reads shares the same connection object.
-  Each table keeps the [filter conditions](#explicit-adapter-with-filter-conditions)
-  of the adapter that reads it, so the result matches a run on local copies.
-  Tables served by one `PooledAdapter` count as one connection. The check runs
-  on one of the pool's connections. A join across two pools, or between a pool
-  and another adapter, is copied. See
-  [PooledAdapter: Joins Across Pools Are Copied](known-issues.md#pooledadapter-joins-across-pools-are-copied).
-- **Cross-table checks across connections** need a local copy. vowl downloads
-  each table the check reads, applying that adapter's
-  [filter conditions](#explicit-adapter-with-filter-conditions) at the source.
-  It loads the copies into a local in-memory DuckDB and runs the check there.
-  Each table is downloaded once per run, however many checks use it, and the
-  copies are dropped when the run ends.
-- **Tables the contract doesn't declare** (a lookup table such as `audit_log`)
-  are read through the adapter of the schema the check sits under, in both
-  single-table checks and joins. See
-  [Queries Accessing Tables Outside the Contract](known-issues.md#queries-accessing-tables-outside-the-contract).
+- **Single-table checks** (for example `required`, `unique`, or a SQL check
+  that reads only `users`) run inside that table's own database. Nothing is
+  copied.
+- **Cross-table checks on one connection** run inside that database, when
+  every table the check reads uses the same connection object. Each table
+  keeps the [filter conditions](#filter-conditions) of its own adapter.
+  Tables on one `PooledAdapter` count as one connection.
+- **Cross-table checks across connections** copy each table the check reads
+  into an in-memory DuckDB on your machine, and run the check there. The
+  [filter conditions](#filter-conditions) apply at the source, so only
+  matching rows are copied. Each table is copied once per run, however many
+  checks use it, and the copies are dropped when the run ends.
+- **Tables the contract does not declare** (a lookup table such as
+  `currencies`) are read through the adapter of the schema the check belongs
+  to. See
+  [Queries that read tables outside the contract](known-issues.md#queries-accessing-tables-outside-the-contract).
 
 !!! warning "Watch the data volume"
-    A table read by a cross-table check is downloaded in full, minus any rows
-    your filter conditions exclude. Large tables can use a lot of memory and
-    network. Add filter conditions to limit what is pulled, or use Option A if
-    your sources support it. See
-    [Known Issues & Caveats](known-issues.md#multi-source-adapters-data-materialisation)
-    for more, including why vowl doesn't use `ATTACH` internally.
+    A table read by a cross-table check across connections is copied in full,
+    minus any rows your filter conditions leave out. Large tables can use a lot
+    of memory and network. Add filter conditions to limit what is copied, or
+    use Option A if your sources support it. See
+    [Known issues](known-issues.md#multi-source-adapters-tables-copied-into-memory)
+    for more, including why vowl does not use `ATTACH` itself.
 
 ## Custom Adapters and Executors
 
-`BaseAdapter`, `BaseExecutor`, and `SQLExecutor` are intended as extension points for teams building custom integrations.
+`BaseAdapter`, `BaseExecutor` and `SQLExecutor` are extension points for teams
+building their own integrations. An adapter connects to a data source. An
+executor runs one kind of check on it, keyed by the check's `engine`.
 
 ```python
 from typing import Optional
@@ -309,122 +350,22 @@ executors = adapter.get_executors()
 assert "sql" in executors
 ```
 
-!!! info
-    `validate_data` accepts any `BaseAdapter` through `adapter=` or `adapters=`, including `IbisAdapter`, `PooledAdapter` and your own subclasses. A custom adapter runs its checks through the executors it registers. A cross-table check runs in the database only if `is_compatible_with` says the adapters can share a query. The default returns `False`, so vowl copies the tables to a local DuckDB, which needs `export_table_as_arrow`. When the tables in such a join have different filter conditions, the adapter also needs `with_filter_conditions`, or vowl copies the tables.
+`validate_data` accepts any `BaseAdapter` through `adapter=` or `adapters=`.
+For cross-table checks, a custom adapter can implement three more methods:
 
-## Using Servers Defined in Data Contract
+- `is_compatible_with(other)` returns `True` when two adapters can run one
+  query together, so the check runs in the database. The default is `False`.
+- `export_table_as_arrow(schema_name)` returns a table as a PyArrow table, so vowl can copy it
+  into memory when the check cannot run in the database.
+- `with_filter_conditions(filter_conditions)` returns a copy of the adapter with other
+  filter conditions. vowl needs it to run a join in the database when the
+  joined tables have different filter conditions. Without it, vowl copies the
+  tables.
 
-```python
-from vowl import validate_data
-from vowl.contracts import Contract
-from vowl.adapters import IbisAdapter
-import ibis
+## Loading contracts and saving results
 
-contract = Contract.load("contract.yaml")
-server = contract.get_server("my-postgres-server")  # Match by server name
-# Or: contract.get_server("uat")        # falls back to matching by environment
-# Or: contract.get_server()             # returns the first server
-
-con = ibis.postgres.connect(
-    host=server["server"],
-    port=server.get("port", 5432),
-    database=server.get("database", ""),
-)
-
-adapter = IbisAdapter(con)
-result = validate_data("contract.yaml", adapter=adapter)
-result.display_full_report()
-```
-
-## Loading Contracts from Git (GitHub/GitLab)
-
-```python
-from vowl import validate_data
-
-# GitHub - blob URL (auto-converted to raw)
-result = validate_data(
-    "https://github.com/org/repo/blob/main/contracts/my_contract.yaml",
-    df=df
-)
-
-# GitHub - raw URL
-result = validate_data(
-    "https://raw.githubusercontent.com/org/repo/main/contracts/my_contract.yaml",
-    df=df
-)
-
-# GitLab - blob URL (auto-converted to raw)
-result = validate_data(
-    "https://gitlab.com/org/repo/-/blob/main/contracts/my_contract.yaml",
-    df=df
-)
-```
-
-## Loading Contracts from S3
-
-```python
-from vowl import validate_data
-
-result = validate_data("s3://my-bucket/contracts/my_contract.yaml", df=df)
-result.display_full_report()
-```
-
-!!! note
-    `boto3` is not included in the base install. Install it with `pip install vowl[all]` or `pip install boto3`. Uses default AWS credentials (environment variables, `~/.aws/credentials`, IAM role, etc.).
-
-## Saving Results to Cloud Storage
-
-`result.save()` writes to a local folder by default. Give it a URI instead and it
-writes straight to cloud storage:
-
-```python
-from vowl import validate_data
-
-result = validate_data("contract.yaml", df=df)
-result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
-```
-
-This works for these locations:
-
-| Location           | Example                                                    |
-| ------------------ | ---------------------------------------------------------- |
-| Amazon S3          | `s3://my-bucket/dq-results/`                               |
-| Google Cloud       | `gs://my-bucket/dq-results/`                               |
-| Azure Data Lake    | `abfs://container@account.dfs.core.windows.net/dq-results/` |
-| HDFS               | `hdfs://namenode:8020/dq-results/`                         |
-| A local file URI   | `file:///shared/dq-results/`                               |
-
-vowl uses the filesystems that come with pyarrow, which vowl already depends on,
-so there's nothing extra to install. Credentials come from the usual place for
-each cloud. For S3 that means environment variables such as `AWS_ACCESS_KEY_ID`,
-the `~/.aws` files, or an IAM role. For Google Cloud it means your default
-application credentials.
-
-`ValidationResult.save_dataframe(df, "s3://my-bucket/out.parquet", "parquet")`
-accepts a URI the same way.
-
-### Custom endpoints and explicit credentials
-
-To save to an S3-compatible store such as MinIO, or to pass credentials yourself,
-build a pyarrow filesystem and pass it as `filesystem=`. `output_dir` is then a
-path inside that filesystem, starting with the bucket name:
-
-```python
-import pyarrow.fs as pafs
-
-minio = pafs.S3FileSystem(
-    endpoint_override="http://minio.internal:9000",
-    access_key="...",
-    secret_key="...",
-)
-result.save("my-bucket/dq-results/run-1/", output_mode="annotated", filesystem=minio)
-```
-
-If you'd rather keep plain `s3://` URIs, set the `AWS_ENDPOINT_URL` environment
-variable to the store's address instead. Both vowl's saving and its S3 contract
-loading pick it up.
-
-!!! note
-    Some pyarrow builds, mostly from conda, leave out S3 or Google Cloud support. If
-    `save()` says the filesystem isn't supported, install pyarrow from PyPI with
-    `pip install --force-reinstall pyarrow`.
+- [Loading contracts](loading-contracts.md) covers contracts from Git and S3,
+  and connecting with the servers a contract defines.
+- [Reading results](results.md) covers saving results, including to
+  [cloud storage](results.md#saving-results-to-cloud-storage), and
+  [row counts](results.md#row-counts).

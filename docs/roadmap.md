@@ -14,15 +14,15 @@ description: >-
 | **Remote Contract Loading**     | Load contracts from S3 (`s3://`) and Git (GitHub/GitLab URLs)                                                                                                           |
 | **Remote Result Saving**        | Save results straight to S3, Google Cloud, Azure, or HDFS with `result.save("s3://...")`                                                                                |
 | **JSONPath Navigation**         | Navigate contract elements using JSONPath expressions (`contract.resolve("$.schema[0].name")`)                                                                          |
-| **Static Checks**               | Auto-generated checks from contract elements: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`                                                   |
-| **Library Metrics**             | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. SQL auto-generated at runtime |
+| **Generated Checks**            | Checks built from contract fields: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`                                                              |
+| **Library Checks**              | Declare common checks (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. vowl writes the SQL for you               |
 | **ODCS Schema Validation**      | Contracts validated against ODCS JSON Schema before execution                                                                                                           |
-| **Filter Conditions**           | Incremental quality testing with wildcard pattern matching, optimised for append-only data sources                                                                      |
-| **Multi-Schema Checks**         | Cross-table referential checks within a single contract                                                                                                                 |
-| **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                             |
-| **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
+| **Filter Conditions**           | Check only new or chosen rows, with wildcard table names. Suits tables that only grow                                                                                   |
+| **Cross-Table Checks**          | Checks that compare tables within a single contract, such as foreign keys                                                                                               |
+| **Multi-Source Checks**         | Cross-table checks between tables in different databases, with `adapters={...}`                                                                                         |
+| **Optional Extras**             | Add Spark with `.[spark]`, OpenTelemetry with `.[otel]`, or everything with `.[all]`                                                                                    |
 | **Custom Adapters & Executors** | Extensible architecture. Create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                              |
-| **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
+| **Parallel Check Execution**    | Run checks side by side on large contracts with `PooledAdapter`                                                                                                         |
 | **OpenTelemetry Export**        | Export validation metrics, traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                                                                |
 
 ## Planned

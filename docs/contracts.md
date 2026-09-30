@@ -6,7 +6,14 @@ description: Learn how to define data quality rules in declarative YAML using th
 
 ## The Core Concept
 
-Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
+Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This keeps your rules apart from your code, so they are easier to manage, version and share.
+
+A contract has one entry under `schema` for each table. Each **schema** lists its columns under `properties`. Checks come from two places:
+
+- **Checks you write**, under `quality`, either as SQL (`type: sql`) or as [library checks](#library-checks-type-library) (`type: library`), where vowl writes the SQL for you.
+- **[Generated checks](#generated-checks)**, which vowl builds from the column details you declare, such as `logicalType`, `required` or `unique`.
+
+A check under a property's `quality` is about that column. A check under the schema's `quality` is about the whole table. Give each check a `dimension` (such as `completeness` or `conformity`) to group it in the results.
 
 **Example `hdb_resale_simple.yaml`** (trimmed for readability):
 
@@ -31,7 +38,7 @@ schema:
               WHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';
             dimension: conformity
 
-      # Library metric: null-value check
+      # Library check: null values
       - name: town
         quality:
           - type: library
@@ -39,7 +46,7 @@ schema:
             mustBe: 0
             dimension: completeness
 
-      # Library metric: valid-value list
+      # Library check: allowed values
       - name: flat_type
         quality:
           - type: library
@@ -77,7 +84,7 @@ schema:
               SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price > 2000000
             mustBe: 0
 
-    # Table-level library metric
+    # Table-level library check
     quality:
       - type: library
         metric: rowCount
@@ -87,30 +94,9 @@ schema:
         dimension: completeness
 ```
 
-## Automatic Check References
+## Generated Checks
 
-When a contract is loaded, vowl automatically builds `CheckReference` objects for every executable check in the contract via `Contract.get_check_references_by_schema()`.
-
-This includes both user-authored checks in `quality` blocks and synthetic checks derived from column metadata. The generated references are grouped by schema, and the auto-generated ones run before explicit `quality` checks.
-
-| Reference type               | Trigger in contract                            | JSONPath stored in the reference                           |
-| ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
-| Table check                  | Entry under schema-level `quality`             | `$.schema[N].quality[M]`                                   |
-| Column check                 | Entry under property-level `quality`           | `$.schema[N].properties[M].quality[K]`                     |
-| Library column metric        | `type: library` under property-level `quality` | `$.schema[N].properties[M].quality[K]`                     |
-| Library table metric         | `type: library` under schema-level `quality`   | `$.schema[N].quality[M]`                                   |
-| Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
-| Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
-| Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
-| Array items check            | `items` sub-schema on a `logicalType: array`   | `$.schema[N].properties[M].items.<...>`                    |
-| Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
-| Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
-| Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
-| Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
-| Property foreign-key check   | `relationships` entry on a property            | `$.schema[N].properties[M].relationships[K]`               |
-| Schema foreign-key check     | `relationships` entry on a schema              | `$.schema[N].relationships[K]`                             |
-
-## Auto-Generated Checks
+vowl builds these checks from the column details in your contract. You don't write them.
 
 | Generated from                        | What vowl validates                                                                                                                               |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -141,23 +127,83 @@ In practice, a property like this:
 
 ```yaml
 - name: block
-    logicalType: string
-    logicalTypeOptions:
-        maxLength: 10
-    required: true
+  logicalType: string
+  logicalTypeOptions:
+    maxLength: 10
+  required: true
 ```
 
-produces three generated check references:
-
-| Check path                                                 | Check type                           |
-| ---------------------------------------------------------- | ------------------------------------ |
-| `$.schema[0].properties[...]`                              | `DeclaredColumnExistsCheckReference` |
-| `$.schema[0].properties[...].logicalTypeOptions.maxLength` | `LogicalTypeOptionsCheckReference`   |
-| `$.schema[0].properties[...].required`                     | `RequiredCheckReference`             |
+produces three generated checks: the column exists, no value is longer than 10 characters, and no value is `NULL`.
 
 !!! note
-    Because `string` does not currently generate a SQL cast-based type check, the `logicalType` entry above contributes metadata for option checks rather than a standalone type-validation query. If you use `integer`, `number`, `boolean`, `date`, `timestamp`, or `time`, vowl also generates a `logicalType` SQL check automatically.
+    `logicalType: string` makes no check of its own, because any value can be read as a string. It only tells vowl which `logicalTypeOptions` apply. For `integer`, `number`, `boolean`, `date`, `timestamp` and `time`, vowl also checks that every value can be converted to that type.
 
+## Library Checks (`type: library`)
+
+Instead of writing SQL by hand, you can declare common checks with `type: library` in your `quality` blocks. vowl writes the SQL for you when the check runs.
+
+### Column-Level Checks
+
+Under a property's `quality`:
+
+| `metric`          | What it checks                                              | Arguments                                                                      |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `nullValues`      | Count of `NULL` values in the column                        | -                                                                              |
+| `missingValues`   | Count of values matching a configurable missing-values list | `arguments.missingValues`: values that mean "missing", such as `""` or `"N/A"` (use `null` for SQL NULL) |
+| `invalidValues`   | Count of values that fail valid-value or pattern criteria   | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
+| `duplicateValues` | Count of duplicate non-NULL values in the column            | -                                                                              |
+
+### Table-Level Checks
+
+Under a schema's `quality`:
+
+| `metric`          | What it checks                                   | Arguments                                             |
+| ----------------- | ------------------------------------------------ | ----------------------------------------------------- |
+| `rowCount`        | Total number of rows in the table                | -                                                     |
+| `duplicateValues` | Count of duplicate rows across specified columns | `arguments.properties`: list of column names to check |
+
+All library checks support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
+
+### Example
+
+```yaml
+properties:
+  - name: town
+    quality:
+      - type: library
+        metric: nullValues
+        mustBe: 0
+        dimension: completeness
+
+  - name: flat_type
+    quality:
+      - type: library
+        metric: invalidValues
+        mustBe: 0
+        dimension: conformity
+        arguments:
+          validValues:
+            - 3 ROOM
+            - 4 ROOM
+            - 5 ROOM
+            - EXECUTIVE
+
+quality:
+  - type: library
+    metric: rowCount
+    mustBeGreaterThan: 0
+    dimension: completeness
+
+  - type: library
+    metric: duplicateValues
+    mustBe: 0
+    dimension: uniqueness
+    arguments:
+      properties:
+        - month
+        - block
+        - street_name
+```
 ## Relationships (Foreign Keys)
 
 A `relationships` entry of type `foreignKey` requires every non-`NULL` key value to exist in the table it points to. vowl runs this as a real check (`dimension: consistency`, `mustBe: 0`).
@@ -229,12 +275,12 @@ A composite row is skipped if **any** of its key columns is `NULL`.
 An external reference points at a property in **another contract file**, written as `customers.yaml#/schema/<id>/properties/<id>`. Two things to know:
 
 - The part after `#` must use the full `/schema/.../properties/...` form. Shorthand like `customers.customer_id` is fine for same-file references, but ODCS doesn't allow it after a `file.yaml#` prefix, so `customers.yaml#customers.customer_id` won't pass contract validation.
-- vowl looks for the external file **relative to the contract that references it**. When you pass a file path or URL to `validate_data` (for example `validate_data(contract="orders.yaml", …)`), vowl resolves the external file next to `orders.yaml` for you. The one case that breaks is building a `Contract` object yourself from an in-memory dict. That object has no location attached, so vowl has nothing to resolve the reference against, and the check degrades.
+- vowl looks for the external file **relative to the contract that references it**. When you pass a file path or URL to `validate_data` (for example `validate_data(contract="orders.yaml", …)`), vowl resolves the external file next to `orders.yaml` for you. The one case that breaks is building a `Contract` object yourself from an in-memory dict. That object has no location, so vowl can't find the external file, and reports the check as unsupported.
 
-### Execution model
+### How relationship checks run
 
-- **Adapters are keyed by schema `name`.** vowl does not auto-connect from `servers`. Instead, you register one adapter per schema. When the two sides live in different sources, the check routes across them automatically.
-- **External references still need an adapter for the target schema.** Loading `customers.yaml` only tells vowl the target's schema `name` and column, and it never opens a connection. You register the adapter under that schema's **`name`** as declared in the external file (not its `id`, and not the file name). vowl treats resolved foreign-key targets as valid adapter keys even when they aren't declared in the contract you loaded, so a cross-file target doesn't trigger the "no schema with that name" warning (that warning is reserved for adapter keys that match neither a declared schema nor a resolved reference target, i.e. genuine typos). Load the referencing contract from a path or URL so it has an `origin` to resolve the external file against:
+- **Adapters are keyed by schema `name`.** vowl does not connect using the contract's `servers` on its own. You give one adapter per schema. When the two sides are in different databases, vowl runs the check across them for you.
+- **External references still need an adapter for the target schema.** Loading `customers.yaml` only tells vowl the target's schema `name` and column. It never opens a connection. Give the adapter under that schema's **`name`** as declared in the external file (not its `id`, and not the file name). vowl accepts it without the "no schema with that name" warning, even though the schema is not in the contract you loaded. Load the referencing contract from a path or URL, so vowl knows where to look for the external file:
 
   ```python
   validate_data(
@@ -249,11 +295,11 @@ An external reference points at a property in **another contract file**, written
   See [`examples/2_multiple_sources`](https://github.com/govtech-data-practice/vowl/blob/main/examples/2_multiple_sources/multiple_sources.ipynb) for a runnable version.
 
 - **Self-referential** keys (a table referencing itself) run as a single-table check.
-- Failed rows carry only the referencing table's columns, so they merge onto that table's annotated output rather than landing in a separate residue.
-- If the **reference itself** can't be resolved (missing target property, or an external path with no known contract location to resolve against), the check degrades to an unsupported reference with a warning instead of failing the run.
+- Failed rows hold only the referencing table's columns, so they are marked on that table's annotated output instead of becoming a residue.
+- If the **reference itself** can't be resolved (missing target property, or an external path with no known contract location to resolve against), vowl logs a warning and reports the check as unsupported. The rest of the run goes ahead.
 - If the reference resolves to an external schema but you **don't register an adapter** for it, vowl reads the target table through the referencing schema's adapter, as it does for any [table outside the contract](known-issues.md#queries-accessing-tables-outside-the-contract). The check runs if that connection has the table. Otherwise it comes back `ERROR` with the database's "table not found" message, and the rest of the run still executes.
 
-See [Reference resolution for relationships](design-considerations.md#reference-resolution-for-relationships) for how `relationships` targets are resolved (RFC 3986).
+See [Reference resolution for relationships](design-considerations.md#reference-resolution-for-relationships) for the exact rules vowl uses to find `relationships` targets.
 
 ## Format Checks
 
@@ -307,13 +353,13 @@ Validates values against a built-in regex pattern.
 
 ### Number formats
 
-`f32` and `f64` are recognised but produce no check — they are metadata-only hints that SQL engines do not differentiate at query time.
+`f32` and `f64` are recognised but produce no check. SQL engines do not tell them apart when they read the data.
 
 ### Date, timestamp and time formats
 
-For `date`, `timestamp`, and `time` logical types, `format` accepts a **JDK DateTimeFormatter** pattern (e.g. `yyyy-MM-dd`, `yyyy-MM-dd HH:mm:ss`). vowl converts the pattern to a regex and validates that string-cast values match.
+For `date`, `timestamp` and `time` logical types, `format` takes a pattern such as `yyyy-MM-dd` or `yyyy-MM-dd HH:mm:ss`. These are Java date patterns ([`DateTimeFormatter`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html)): `yyyy` is a four-digit year, `MM` a two-digit month, and so on. vowl turns the pattern into a regex and checks that each value, read as text, matches it.
 
-Supported JDK tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`, `h`, `mm`, `ss`, `SSS` (fractional seconds), and timezone offsets (`X`/`XX`/`XXX`/`Z`). Literal characters such as `-`, `:`, `T`, and quoted sections (`'T'`) are preserved. If a pattern contains tokens vowl cannot translate, the check is skipped with a warning.
+Supported tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`, `h`, `mm`, `ss`, `SSS` (fractional seconds), and timezone offsets (`X`/`XX`/`XXX`/`Z`). Literal characters such as `-`, `:`, `T`, and quoted sections (`'T'`) are preserved. If a pattern contains tokens vowl cannot translate, the check is skipped with a warning.
 
 ```yaml
 - name: created_at
@@ -324,7 +370,7 @@ Supported JDK tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`
 
 ## Array Checks
 
-When a property declares `logicalType: array`, vowl checks the array's size, and it uses the `items` sub-schema to check the elements inside it. These checks run only when `logicalType: array` is set. On any other property, the same options or an `items` block degrade to an unsupported reference instead of generating array SQL.
+When a property declares `logicalType: array`, vowl checks the array's size, and it uses the `items` sub-schema to check the elements inside it. These checks run only when `logicalType: array` is set. On any other property, the same options or an `items` block are reported as unsupported checks.
 
 ```yaml
 - name: tags
@@ -356,71 +402,27 @@ This produces a column-exists check plus one check per array constraint:
 
 **NULL vs empty.** A `NULL` array is skipped by every array check (use `required` to forbid NULLs). An empty array `[]` only fails `minItems`. With no elements, `uniqueItems` and the `items` checks have nothing to flag, so they pass.
 
-**Backend support.** These checks are tested on DuckDB. Size checks (`minItems`/`maxItems`) emit `ARRAY_LENGTH`, which should transpile broadly, while `uniqueItems` and `items` element checks emit `ARRAY_DISTINCT` and `UNNEST`, which aren't available on every engine. On other engines the behaviour is inferred from the emitted SQL rather than verified, so see [Known Issues](known-issues.md#native-array-checks) for the per-engine expectations. Where a construct isn't supported, the check returns `ERROR` rather than silently passing.
+**Backend support.** These checks are tested on DuckDB. Size checks (`minItems`/`maxItems`) use `ARRAY_LENGTH`, which most engines with arrays support. `uniqueItems` and element checks use `ARRAY_DISTINCT` and `UNNEST`, which not every engine has. For other engines the behaviour is worked out from the SQL vowl writes, not tested, so see [Known Issues](known-issues.md#native-array-checks) for the per-engine expectations. Where a construct isn't supported, the check returns `ERROR` rather than silently passing.
 
-## Library Metrics (`type: library`)
+## How vowl Finds Each Check
 
-Instead of writing SQL by hand, you can declare common data quality metrics using `type: library` in your `quality` blocks. vowl auto-generates the appropriate SQL at runtime.
+This section is for readers working with vowl's Python objects. When a contract loads, vowl creates one `CheckReference` for every check, both the ones you wrote and the generated ones. `Contract.get_check_references_by_schema()` returns them grouped by schema. Generated checks run before the ones in `quality`.
 
-### Column-Level Metrics
+Each reference records where in the contract its check came from, as a JSONPath:
 
-Under a property's `quality`:
-
-| `metric`          | What it checks                                              | Arguments                                                                      |
-| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `nullValues`      | Count of `NULL` values in the column                        | -                                                                              |
-| `missingValues`   | Count of values matching a configurable missing-values list | `arguments.missingValues`: list of sentinel values (use `null` for SQL NULL)   |
-| `invalidValues`   | Count of values that fail valid-value or pattern criteria   | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
-| `duplicateValues` | Count of duplicate non-NULL values in the column            | -                                                                              |
-
-### Table-Level Metrics
-
-Under a schema's `quality`:
-
-| `metric`          | What it checks                                   | Arguments                                             |
-| ----------------- | ------------------------------------------------ | ----------------------------------------------------- |
-| `rowCount`        | Total number of rows in the table                | -                                                     |
-| `duplicateValues` | Count of duplicate rows across specified columns | `arguments.properties`: list of column names to check |
-
-All library metrics support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
-
-### Example
-
-```yaml
-properties:
-  - name: town
-    quality:
-      - type: library
-        metric: nullValues
-        mustBe: 0
-        dimension: completeness
-
-  - name: flat_type
-    quality:
-      - type: library
-        metric: invalidValues
-        mustBe: 0
-        dimension: conformity
-        arguments:
-          validValues:
-            - 3 ROOM
-            - 4 ROOM
-            - 5 ROOM
-            - EXECUTIVE
-
-quality:
-  - type: library
-    metric: rowCount
-    mustBeGreaterThan: 0
-    dimension: completeness
-
-  - type: library
-    metric: duplicateValues
-    mustBe: 0
-    dimension: uniqueness
-    arguments:
-      properties:
-        - month
-        - block
-        - street_name
-```
+| Reference type               | Trigger in contract                            | JSONPath stored in the reference                           |
+| ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
+| Table check                  | Entry under schema-level `quality`             | `$.schema[N].quality[M]`                                   |
+| Column check                 | Entry under property-level `quality`           | `$.schema[N].properties[M].quality[K]`                     |
+| Library column metric        | `type: library` under property-level `quality` | `$.schema[N].properties[M].quality[K]`                     |
+| Library table metric         | `type: library` under schema-level `quality`   | `$.schema[N].quality[M]`                                   |
+| Declared column exists check | Property has a `name`                          | `$.schema[N].properties[M]`                                |
+| Logical type check           | `logicalType` present on a property            | `$.schema[N].properties[M].logicalType`                    |
+| Logical type options check   | Supported key under `logicalTypeOptions`       | `$.schema[N].properties[M].logicalTypeOptions.<optionKey>` |
+| Array items check            | `items` sub-schema on a `logicalType: array`   | `$.schema[N].properties[M].items.<...>`                    |
+| Enum check                   | `enum` present on a property                   | `$.schema[N].properties[M].enum`                           |
+| Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
+| Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
+| Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
+| Property foreign-key check   | `relationships` entry on a property            | `$.schema[N].properties[M].relationships[K]`               |
+| Schema foreign-key check     | `relationships` entry on a schema              | `$.schema[N].relationships[K]`                             |
