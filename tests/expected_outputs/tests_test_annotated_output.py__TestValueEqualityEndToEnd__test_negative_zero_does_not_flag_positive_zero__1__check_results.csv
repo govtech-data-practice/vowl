@@ -1,0 +1,4 @@
+check_name,target,schema_name,engine,status,operator,actual_value,expected_value,failed_rows_count,aggregation_type,message,rendered_implementation,tables_in_query,check_path,check_ref_type,is_generated
+c_column_exists_check,t.c,t,sql,PASSED,mustBe,0,0,0,count,,"SELECT COUNT(*) FROM (SELECT ""c"" FROM ""t"" LIMIT 0) AS _vowl_column_exists",['t'],$.schema[0].properties[1].name,DeclaredColumnExistsCheckReference,True
+id_column_exists_check,t.id,t,sql,PASSED,mustBe,0,0,0,count,,"SELECT COUNT(*) FROM (SELECT ""id"" FROM ""t"" LIMIT 0) AS _vowl_column_exists",['t'],$.schema[0].properties[0].name,DeclaredColumnExistsCheckReference,True
+neg_zero,t,t,sql,FAILED,mustBe,1,0,1,count,,SELECT COUNT(*) FROM t WHERE TRY_CAST(id AS BIGINT) = 1 AND SIGNBIT(c),['t'],$.schema[0].quality[0],SQLTableCheckReference,False

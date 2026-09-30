@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 import pyarrow as pa
+import sqlglot
 
 from vowl.executors.security import (
     validate_query_security,
@@ -80,7 +82,10 @@ class CheckResult:
         """Rows that failed this check (lazily fetched on first access)."""
         _empty = nw.from_native(pa.table({}), eager_only=True)
         if self._failed_rows is None and self._failed_rows_fetcher is not None:
-            self._failed_rows = self._failed_rows_fetcher() or _empty
+            # Compare with None, not truthiness: a zero-row frame is falsy but
+            # still carries the column names that decide mergeability.
+            fetched = self._failed_rows_fetcher()
+            self._failed_rows = fetched if fetched is not None else _empty
             self._failed_rows_fetcher = None  # release closure references
         return self._failed_rows if self._failed_rows is not None else _empty
 
@@ -202,6 +207,23 @@ class SQLExecutor(BaseExecutor):
                 renamed_columns.append(name)
 
         return table.rename_columns(renamed_columns)
+
+    @staticmethod
+    def _with_row_cap(query: str, max_rows: int, dialect: str) -> str:
+        """Append ``LIMIT max_rows`` unless the outer query already limits its rows.
+
+        The outer LIMIT, TOP or FETCH is detected with sqlglot, so a column,
+        string literal, subquery or CTE that merely mentions LIMIT (for example
+        a ``credit_limit`` column) no longer disables the cap.  Unparseable
+        queries fall back to a whole-word match.
+        """
+        if max_rows < 0:
+            return query
+        try:
+            has_limit = sqlglot.parse_one(query, dialect=dialect).args.get("limit") is not None
+        except sqlglot.errors.SqlglotError:
+            has_limit = re.search(r"\bLIMIT\b", query, re.IGNORECASE) is not None
+        return query if has_limit else f"{query} LIMIT {max_rows}"
 
     def __init__(
         self,

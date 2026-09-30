@@ -34,9 +34,12 @@ from .result_rendering import (
     is_cross_table_check,
 )
 from .result_row_quality import (
+    align_to_schema,
     build_row_quality_summary,
+    first_occurrence_indices,
     get_eligible_schema_names,
     iter_unique_failed_row_keys,
+    row_keys,
     select_relevant_failed_row_columns,
 )
 
@@ -654,33 +657,24 @@ class ValidationResult:
             )
 
         arrow_table = combined.to_arrow()
-        check_id_col = arrow_table.column("check_id")
-        tables_col = arrow_table.column("tables_in_query")
-        data_arrow_cols = [arrow_table.column(column) for column in data_cols]
+        check_ids = arrow_table.column("check_id").to_pylist()
+        tables = arrow_table.column("tables_in_query").to_pylist()
 
-        row_groups: dict[tuple[Any, ...], dict[str, Any]] = {}
-        for row_index in range(arrow_table.num_rows):
-            row_key = tuple(column[row_index].as_py() for column in data_arrow_cols)
-            group = row_groups.setdefault(
-                row_key,
-                {
-                    "check_ids": set(),
-                    "tables_in_query": tables_col[row_index].as_py(),
-                },
-            )
-            group["check_ids"].add(check_id_col[row_index].as_py())
+        first_index: dict[tuple[Any, ...], int] = {}
+        check_ids_by_key: dict[tuple[Any, ...], set[str]] = {}
+        for row_index, row_key in enumerate(row_keys(arrow_table, data_cols)):
+            first_index.setdefault(row_key, row_index)
+            check_ids_by_key.setdefault(row_key, set()).add(check_ids[row_index])
 
-        result_data: dict[str, list] = {column: [] for column in data_cols}
-        result_data["check_ids"] = []
-        result_data["tables_in_query"] = []
-
-        for row_key, group in row_groups.items():
-            for column, value in zip(data_cols, row_key, strict=False):
-                result_data[column].append(value)
-            result_data["check_ids"].append(", ".join(sorted(group["check_ids"])))
-            result_data["tables_in_query"].append(group["tables_in_query"])
-
-        return nw.from_native(pa.table(result_data), eager_only=True)
+        # Rebuild from the original Arrow rows rather than from Python values,
+        # so types such as timestamp[ns] and uint64 are kept exactly.
+        indices = list(first_index.values())
+        result = arrow_table.select(data_cols).take(pa.array(indices, type=pa.int64()))
+        result = result.append_column(
+            "check_ids",
+            pa.array([", ".join(sorted(ids)) for ids in check_ids_by_key.values()], type=pa.string()),
+        ).append_column("tables_in_query", pa.array([tables[i] for i in indices]))
+        return nw.from_native(result, eager_only=True)
 
     # ------------------------------------------------------------------
     # Annotated output (full in-scope table with failed rows marked).
@@ -802,10 +796,14 @@ class ValidationResult:
         because residues are non-mergeable (often cross-table) and the source
         tables are useful context.
         """
-        rows = self._strip_metadata_cols(cr.failed_rows).unique()
+        arrow_table = self._strip_metadata_cols(cr.failed_rows).to_arrow()
+        if arrow_table.num_columns:
+            # Key-based dedupe instead of .unique(), which cannot hash nested
+            # types and treats NaN and -0.0 differently from the annotated merge.
+            first = first_occurrence_indices(row_keys(arrow_table, arrow_table.column_names))
+            arrow_table = arrow_table.take(pa.array(list(first.values()), type=pa.int64()))
         check_info = self._join_check_info_items([self._check_info_item_json(cr, preset)])
-        n = len(rows)
-        arrow_table = rows.to_arrow()
+        n = arrow_table.num_rows
         arrow_table = arrow_table.append_column(
             "check_info", pa.array([check_info] * n, type=pa.string())
         ).append_column("tables_in_query", pa.array([tables_str] * n, type=pa.string()))
@@ -822,24 +820,26 @@ class ValidationResult:
         """
         data_cols = [c for c in combined.columns if c not in _METADATA_COLUMNS]
         arrow_table = combined.to_arrow()
-        check_info_col = arrow_table.column("check_info_item")
-        data_arrow_cols = [arrow_table.column(c) for c in data_cols]
+        check_info_items = arrow_table.column("check_info_item").to_pylist()
 
+        first_index: dict[tuple[Any, ...], int] = {}
         row_groups: dict[tuple[Any, ...], list[str]] = {}
-        for i in range(arrow_table.num_rows):
-            row_key = tuple(c[i].as_py() for c in data_arrow_cols)
+        for i, row_key in enumerate(row_keys(arrow_table, data_cols)):
+            first_index.setdefault(row_key, i)
             items = row_groups.setdefault(row_key, [])
-            item = check_info_col[i].as_py()
+            item = check_info_items[i]
             if item is not None and item not in items:
                 items.append(item)
 
-        result_data: dict[str, list] = {c: [] for c in data_cols}
-        result_data["check_info"] = []
-        for row_key, items in row_groups.items():
-            for c, v in zip(data_cols, row_key, strict=False):
-                result_data[c].append(v)
-            result_data["check_info"].append(cls._join_check_info_items(items))
-        return nw.from_native(pa.table(result_data), eager_only=True)
+        check_info = pa.array([cls._join_check_info_items(items) for items in row_groups.values()], type=pa.string())
+        if not data_cols:
+            return nw.from_native(pa.table({"check_info": check_info}), eager_only=True)
+        # Rebuild from the original Arrow rows rather than from Python values.
+        # Re-inferring types from Python values truncated timestamp[ns] to
+        # microseconds and overflowed uint64 values above 2^63.
+        indices = pa.array(list(first_index.values()), type=pa.int64())
+        result = arrow_table.select(data_cols).take(indices).append_column("check_info", check_info)
+        return nw.from_native(result, eager_only=True)
 
     @staticmethod
     def _check_names_in_entry(df: nw.DataFrame) -> set[str]:
@@ -877,11 +877,12 @@ class ValidationResult:
     ) -> nw.DataFrame:
         """Attach ``check_info`` (and any *extra_cols*) to matching full-table rows.
 
-        Uses Python dict matching on the row value-tuple (Candidate B).  Python's
-        ``None == None`` is ``True`` and tuples containing ``None`` hash/compare
-        correctly, so NULLs match without masks or placeholders, and there is no
-        ``pa.null()`` join-key crash.  This mirrors the existing
-        ``_consolidate_grouped_output`` row-grouping pattern.
+        Uses Python dict matching on normalised row keys from ``row_keys``
+        (Candidate B).  NULLs match because ``None == None``, NaN matches NaN,
+        ``-0.0`` stays apart from ``0.0``, nested values are compared element by
+        element and temporal values at full precision.  The failed-row key
+        columns are first cast to the full table's types where they differ, so
+        both sides build keys from the same Arrow types.
 
         A value-based matcher cannot distinguish N byte-identical full-table
         rows: if one such row failed, all N receive ``check_info`` (the safe
@@ -889,20 +890,17 @@ class ValidationResult:
         """
         marker_cols = ["check_info", *extra_cols]
         consolidated_arrow = consolidated.to_arrow()
-        key_cols = [consolidated_arrow.column(c) for c in data_cols]
-        marker_arrow = {c: consolidated_arrow.column(c) for c in marker_cols}
+        full_arrow = full_table.to_arrow()
+        key_table = align_to_schema(consolidated_arrow, full_arrow.schema, data_cols)
+        marker_values = [consolidated_arrow.column(c).to_pylist() for c in marker_cols]
 
         failed_map: dict[tuple[Any, ...], tuple[Any, ...]] = {}
-        for i in range(consolidated_arrow.num_rows):
-            row_key = tuple(c[i].as_py() for c in key_cols)
-            failed_map[row_key] = tuple(marker_arrow[c][i].as_py() for c in marker_cols)
+        for i, row_key in enumerate(row_keys(key_table, data_cols)):
+            failed_map[row_key] = tuple(values[i] for values in marker_values)
 
-        full_arrow = full_table.to_arrow()
-        full_key_cols = [full_arrow.column(c) for c in data_cols]
         outputs: dict[str, list] = {c: [] for c in marker_cols}
         annotated_rows = 0
-        for i in range(full_arrow.num_rows):
-            row_key = tuple(c[i].as_py() for c in full_key_cols)
+        for row_key in row_keys(full_arrow, data_cols):
             match = failed_map.get(row_key)
             if match is not None:
                 annotated_rows += 1
@@ -1029,20 +1027,21 @@ class ValidationResult:
                 continue  # no adapter/export -- leave residues intact
             full_table_cols = set(full_table.columns)
 
-            eligible_failed = [
+            mergeable_failed = [
                 cr
                 for cr in self.check_results
                 if cr.metadata.get("schema_name") == schema_name
                 and (not checks_set or cr.check_name in checks_set)
                 and cr.status == "FAILED"
                 and self._is_mergeable_for_full_table(cr, full_table_cols)
-                and len(cr.failed_rows) > 0
             ]
 
             # Guard: a mergeable failure whose rows were capped would annotate
             # the un-fetched failures as passing. Raise rather than emit a
             # quietly-wrong table. No-op when max_failed_rows == -1 (default).
-            for cr in eligible_failed:
+            # Runs before the empty-rows filter below so that max_failed_rows=0,
+            # which fetches no rows at all, is caught too.
+            for cr in mergeable_failed:
                 if self._failed_rows_truncated(cr):
                     raise ValueError(
                         f"Cannot produce annotated output for schema {schema_name!r}: check "
@@ -1052,13 +1051,17 @@ class ValidationResult:
                         f"Set max_failed_rows=-1 or use output_mode='failed_rows'."
                     )
 
+            eligible_failed = [cr for cr in mergeable_failed if len(cr.failed_rows) > 0]
+
             if not eligible_failed:
                 annotated[schema_name] = self._with_null_marker(full_table)
                 continue
 
             tagged_failures: list[nw.DataFrame] = []
             for cr in eligible_failed:
-                rows = self._strip_metadata_cols(cr.failed_rows).unique()
+                # No .unique() here: _group_check_ids_by_row collapses duplicate
+                # rows itself, and .unique() cannot hash nested column types.
+                rows = self._strip_metadata_cols(cr.failed_rows)
                 item = self._check_info_item_json(cr, preset)
                 tagged_failures.append(rows.with_columns(nw.lit(item).alias("check_info_item")))
                 merged_check_keys.add(self._output_key(cr))

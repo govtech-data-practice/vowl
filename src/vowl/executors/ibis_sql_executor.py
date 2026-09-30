@@ -67,8 +67,7 @@ class IbisSQLExecutor(SQLExecutor):
 
         # Add LIMIT to avoid fetching too many rows (controlled by config.max_failed_rows)
         max_rows = getattr(self._adapter, "max_failed_rows", 1000)
-        if max_rows >= 0 and "LIMIT" not in select_query.upper():
-            select_query = f"{select_query} LIMIT {max_rows}"
+        select_query = self._with_row_cap(select_query, max_rows, self._target_dialect)
 
         try:
             # Validate query security before execution

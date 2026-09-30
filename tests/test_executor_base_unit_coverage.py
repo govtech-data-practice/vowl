@@ -81,6 +81,26 @@ def test_check_result_failed_rows_returns_empty_frame_when_fetcher_returns_none(
     assert fetch_calls == ["called"]
 
 
+def test_check_result_failed_rows_keeps_columns_of_zero_row_frame():
+    # A zero-row frame is falsy, so it must not be swapped for the column-less
+    # empty frame. Annotated output needs its columns to decide mergeability.
+    import narwhals as nw
+
+    def fetch_rows():
+        return nw.from_native(pa.table({"id": pa.array([], pa.int64())}), eager_only=True)
+
+    result = CheckResult(
+        check_name="row_check",
+        status="FAILED",
+        details="details",
+        failed_rows_fetcher=fetch_rows,
+        failed_rows_count=2,
+    )
+
+    assert len(result.failed_rows) == 0
+    assert result.failed_rows.columns == ["id"]
+
+
 def test_check_result_repr_is_concise():
     result = CheckResult("my_check", "PASSED", "details")
 

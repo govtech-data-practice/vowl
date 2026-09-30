@@ -685,6 +685,24 @@ class TestTruncationGuard:
         with pytest.raises(ValueError, match="annotated output"):
             result.get_annotated_output()
 
+    def test_zero_cap_raises_instead_of_annotating_all_as_passing(self):
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        # max_failed_rows=0 fetches no rows, but the columns still match, so
+        # the check is mergeable and its 2 real failures must not vanish.
+        check = _make_check(
+            "c",
+            "orders",
+            failed_rows=pa.table({"id": pa.array([], pa.int64()), "name": pa.array([], pa.string())}),
+            failed_rows_count=2,
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(max_failed_rows=0),
+        )
+        with pytest.raises(ValueError, match="annotated output"):
+            result.get_annotated_output()
+
     def test_uncapped_same_scenario_does_not_raise(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
@@ -1271,3 +1289,119 @@ class TestCrossTableMergeEndToEnd:
         annotated = out["annotated"]["demo_employee_payroll"]
         assert all(r["check_info"] is None for r in annotated.to_arrow().to_pylist())
         assert "employee_id_exists_in_master_list" in self._residue_check_names(out)
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: row matching is exact for values that Python equality gets wrong
+# (NaN, -0.0), for nested types that cannot be hashed as is, and for types that
+# lost precision or overflowed when the merged rows were rebuilt from Python.
+# ---------------------------------------------------------------------------
+
+
+class TestValueEqualityEndToEnd:
+    @staticmethod
+    def _validate(monkeypatch, create_sql: str, checks: list[tuple[str, str]]):
+        import ibis
+
+        import vowl.contracts.contract as contract_module
+        from vowl.adapters.ibis_adapter import IbisAdapter
+        from vowl.contracts.models import get_latest_version
+        from vowl.validate import validate_data
+
+        monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+        contract = contract_module.Contract(
+            {
+                "apiVersion": get_latest_version(),
+                "kind": "DataContract",
+                "version": "1.0.0",
+                "id": "value-equality",
+                "status": "active",
+                "schema": [
+                    {
+                        "name": "t",
+                        "properties": [{"name": "id"}, {"name": "c"}],
+                        "quality": [
+                            {"type": "sql", "name": name, "query": query, "mustBe": 0} for name, query in checks
+                        ],
+                    }
+                ],
+            }
+        )
+        con = ibis.duckdb.connect()
+        con.raw_sql(create_sql)
+        source_type = con.raw_sql("SELECT c FROM t").to_arrow_table().schema.field("c").type
+        return validate_data(contract, adapters={"t": IbisAdapter(con)}), source_type
+
+    @staticmethod
+    def _flagged_ids(out) -> list[int]:
+        rows = out["annotated"]["t"].to_arrow().to_pylist()
+        return sorted(r["id"] for r in rows if r["check_info"])
+
+    @pytest.mark.parametrize(
+        ("v1", "v2"),
+        [
+            pytest.param("'NaN'::DOUBLE", "1.5::DOUBLE", id="nan"),
+            pytest.param("[1, 2]", "[3]", id="list"),
+            pytest.param("{'a': 1, 'b': 'x'}", "{'a': 2, 'b': 'y'}", id="struct"),
+            pytest.param("MAP {'k': 1}", "MAP {'j': 2}", id="map"),
+            pytest.param("[1, 2]::INT[2]", "[3, 4]::INT[2]", id="fixed_size_list"),
+            pytest.param("[1.0, 'NaN'::DOUBLE]", "[-0.0]", id="nested_floats"),
+            pytest.param("18446744073709551615::UBIGINT", "0::UBIGINT", id="ubigint_max"),
+            pytest.param(
+                "'2024-01-01 00:00:00.123456789'::TIMESTAMP_NS",
+                "'2024-01-01'::TIMESTAMP_NS",
+                id="timestamp_ns",
+            ),
+        ],
+    )
+    def test_every_copy_of_a_failing_row_is_flagged(self, monkeypatch, caplog, v1, v2):
+        create_sql = f"CREATE TABLE t AS SELECT * FROM (VALUES (1, {v1}), (1, {v1}), (2, {v2}), (3, {v2})) v(id, c)"
+        result, source_type = self._validate(
+            monkeypatch,
+            create_sql,
+            [("a", "SELECT COUNT(*) FROM t WHERE id = 1"), ("b", "SELECT COUNT(*) FROM t WHERE id = 2")],
+        )
+        with caplog.at_level(logging.WARNING):
+            out = result.get_annotated_output()
+
+        # Both copies of the id=1 row and the id=2 row. The id=3 row shares c
+        # with id=2 but differs in id, so it passes.
+        assert self._flagged_ids(out) == [1, 1, 2]
+        assert not [r for r in caplog.records if "could be matched" in r.getMessage()]
+        # The annotated table keeps the source type (no timestamp[ns] -> [us]).
+        assert out["annotated"]["t"].to_arrow().schema.field("c").type == source_type
+
+    def test_negative_zero_does_not_flag_positive_zero(self, monkeypatch):
+        result, _ = self._validate(
+            monkeypatch,
+            "CREATE TABLE t AS SELECT * FROM (VALUES (1, -0.0::DOUBLE), (1, 0.0::DOUBLE)) v(id, c)",
+            [("neg_zero", "SELECT COUNT(*) FROM t WHERE id = 1 AND signbit(c)")],
+        )
+        rows = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+        flagged = [r["c"] for r in rows if r["check_info"]]
+        assert len(flagged) == 1
+        assert str(flagged[0]) == "-0.0"
+
+    def test_negative_and_positive_zero_split_across_checks(self, monkeypatch):
+        result, _ = self._validate(
+            monkeypatch,
+            "CREATE TABLE t AS SELECT * FROM (VALUES (1, -0.0::DOUBLE), (1, 0.0::DOUBLE)) v(id, c)",
+            [
+                ("neg_zero", "SELECT COUNT(*) FROM t WHERE signbit(c)"),
+                ("pos_zero", "SELECT COUNT(*) FROM t WHERE NOT signbit(c)"),
+            ],
+        )
+        rows = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+        names_by_sign = {str(r["c"]): _check_names_of(r["check_info"]) for r in rows}
+        assert names_by_sign == {"-0.0": ["neg_zero"], "0.0": ["pos_zero"]}
+
+    def test_residue_with_nested_column_dedupes(self):
+        # A non-mergeable check (its columns differ from the table) lands in
+        # residues. Its nested column used to crash the .unique() dedupe.
+        failed = pa.table({"tags": [[1, 2], [1, 2], [3]]})
+        check = _make_check("tags_check", "t", failed_rows=failed)
+        full = pa.table({"id": [1, 2, 3], "tags": [[1, 2], [1, 2], [3]]})
+        result = _make_result([check], {"t": _FakeAdapter(full)})
+
+        residue = result.get_annotated_output()["residues"]["t::tags_check"]
+        assert residue.to_arrow().column("tags").to_pylist() == [[1, 2], [3]]

@@ -508,6 +508,36 @@ def test_ibis_fetch_failed_rows_adds_limit_and_supports_to_arrow(monkeypatch: py
     assert result.to_pandas().to_dict(orient="records") == [{"id": 1}]
 
 
+@pytest.mark.parametrize(
+    ("query", "dialect", "expected"),
+    [
+        # Mentions of LIMIT that are not an outer limit keep the cap.
+        ("SELECT * FROM users WHERE credit_limit > 5", "duckdb", "SELECT * FROM users WHERE credit_limit > 5 LIMIT 3"),
+        ("SELECT * FROM users WHERE note = 'LIMIT'", "duckdb", "SELECT * FROM users WHERE note = 'LIMIT' LIMIT 3"),
+        (
+            "SELECT * FROM users WHERE id IN (SELECT id FROM r LIMIT 1)",
+            "duckdb",
+            "SELECT * FROM users WHERE id IN (SELECT id FROM r LIMIT 1) LIMIT 3",
+        ),
+        # An outer limit in any dialect's syntax is left alone.
+        ("SELECT * FROM users LIMIT 10", "duckdb", "SELECT * FROM users LIMIT 10"),
+        ("SELECT TOP 10 * FROM users", "tsql", "SELECT TOP 10 * FROM users"),
+        ("SELECT * FROM users FETCH FIRST 10 ROWS ONLY", "oracle", "SELECT * FROM users FETCH FIRST 10 ROWS ONLY"),
+    ],
+)
+def test_with_row_cap_detects_only_the_outer_limit(query: str, dialect: str, expected: str):
+    assert IbisSQLExecutor._with_row_cap(query, 3, dialect) == expected
+
+
+def test_with_row_cap_is_a_no_op_when_uncapped():
+    assert IbisSQLExecutor._with_row_cap("SELECT * FROM users", -1, "duckdb") == "SELECT * FROM users"
+
+
+def test_with_row_cap_falls_back_to_whole_word_match_when_unparseable():
+    assert IbisSQLExecutor._with_row_cap("SELECT credit_limit FROM (", 3, "duckdb").endswith(" LIMIT 3")
+    assert IbisSQLExecutor._with_row_cap("SELECT * FROM ( LIMIT 1", 3, "duckdb") == "SELECT * FROM ( LIMIT 1"
+
+
 def test_ibis_fetch_failed_rows_returns_none_for_unsupported_result_shape(monkeypatch: pytest.MonkeyPatch):
     connection = StubRawSQLConnection(lambda query: object())
     executor = IbisSQLExecutor(StubIbisAdapter(connection))

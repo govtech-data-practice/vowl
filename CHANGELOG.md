@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `validate_data` now accepts a `PooledAdapter` or a custom `BaseAdapter` subclass through `adapter=` or in `adapters={...}`. Previously it raised `TypeError: Unsupported adapter type: PooledAdapter` unless you wrapped the adapter in a `MultiSourceAdapter` yourself.
 - A `PooledAdapter` shared by several schemas now keeps to `max_concurrency` connections in total. Previously each schema's copy of the pool kept its own count, so the copies together could open more connections than the limit.
 - A `PooledAdapter` and an `IbisAdapter` on the same connection no longer route a join between their tables to the database through the pool, which could fail. The join is copied to a local DuckDB.
+- Capped `sqlglot` at `<30.18`. With sqlglot 30.18.0 or newer, ibis's DuckDB `create_table` emits an incomplete `DROP VIEW/TABLE IF EXISTS`, so DataFrame and Arrow input (ibis 12.0.0) and multi-source checks (ibis 11.x and 12.0.0) failed with `Parser Error: syntax error at end of input`.
+- The `max_failed_rows` cap is no longer skipped when a failed-rows query merely mentions `LIMIT`, for example in a `credit_limit` column, a string literal or a subquery. Only an outer `LIMIT`, `TOP` or `FETCH` now counts.
+- `get_annotated_output()` now raises when `max_failed_rows=0`, instead of silently marking every row as passing.
+- A failed-rows fetch that returns zero rows now keeps its column names, so the check is still recognised as mergeable.
+- Annotated output now flags every copy of a failing row that holds NaN, keeps `-0.0` apart from `0.0`, supports list, struct, map and fixed-size array columns, and keeps nanosecond timestamps and `UBIGINT` values above 2^63 with their original types. Previously NaN rows were never flagged, a `-0.0` failure also flagged `0.0` rows, nested columns raised, and nanosecond timestamps were truncated so only one copy matched.
 
 ## [0.0.6] - 2026-09-21
 

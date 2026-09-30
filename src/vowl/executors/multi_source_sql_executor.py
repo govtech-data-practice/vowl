@@ -290,8 +290,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             return None
 
         max_rows = getattr(self._multi_adapter, "max_failed_rows", 1000)
-        if max_rows >= 0 and "LIMIT" not in select_query.upper():
-            select_query = f"{select_query} LIMIT {max_rows}"
+        select_query = self._with_row_cap(select_query, max_rows, "duckdb")
 
         try:
             self.validate_query_security(select_query)
@@ -692,8 +691,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     def fetcher(q=failed_query, con=local_con, max_r=max_rows):
                         if not q:
                             return None
-                        if max_r >= 0 and "LIMIT" not in q.upper():
-                            q = f"{q} LIMIT {max_r}"
+                        q = self._with_row_cap(q, max_r, "duckdb")
                         try:
                             validate_query_security(q, dialect="duckdb")
                             r = con.raw_sql(q)
