@@ -214,27 +214,40 @@ vowl also generates a `<column>_column_exists_check` (conformity) for each of
 the 3 columns in the contract, and they all pass. So the run has 7 checks: 4
 passed and 3 failed. The numbers below are the real output of this run.
 
-To keep it short, the check counts leave out the zero statuses, the three
-`column_exists` checks are left out at check level, and every reading leaves
-out `vowl.row_quality.exact` and the run identity attributes.
+To keep it short, the check counts leave out statuses with a count of 0 (for
+example `status="ERROR"`), and every reading leaves out
+`vowl.row_quality.exact`, the durations and the run identity attributes.
+Everything else the run sends is shown.
 
 ```
 # Check level: each check on its own
+vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="order_id_column_exists_check"}
+vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="email_column_exists_check"}
+vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="order_id_required_check"}
 vowl.check.check.count:    1     {status="FAILED", schema_name="orders",  check_name="email_required_check"}
 vowl.check.check.count:    1     {status="FAILED", schema_name="orders",  check_name="order_id_unique_check"}
-vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="order_id_required_check"}
+vowl.check.check.count:    1     {status="PASSED", schema_name="refunds", check_name="amount_column_exists_check"}
 vowl.check.check.count:    1     {status="FAILED", schema_name="refunds", check_name="refund_positive"}
+vowl.check.row.count:      100   {status="PASSED", check_name="order_id_column_exists_check"}
+vowl.check.row.count:      0     {status="FAILED", check_name="order_id_column_exists_check"}
+vowl.check.row.count:      100   {status="PASSED", check_name="email_column_exists_check"}
+vowl.check.row.count:      0     {status="FAILED", check_name="email_column_exists_check"}
+vowl.check.row.count:      100   {status="PASSED", check_name="order_id_required_check"}
+vowl.check.row.count:      0     {status="FAILED", check_name="order_id_required_check"}
 vowl.check.row.count:      95    {status="PASSED", check_name="email_required_check"}
 vowl.check.row.count:      5     {status="FAILED", check_name="email_required_check"}
 vowl.check.row.count:      97    {status="PASSED", check_name="order_id_unique_check"}
 vowl.check.row.count:      3     {status="FAILED", check_name="order_id_unique_check"}
-vowl.check.row.count:      100   {status="PASSED", check_name="order_id_required_check"}
-vowl.check.row.count:      0     {status="FAILED", check_name="order_id_required_check"}
+vowl.check.row.count:      20    {status="PASSED", check_name="amount_column_exists_check"}
+vowl.check.row.count:      0     {status="FAILED", check_name="amount_column_exists_check"}
 vowl.check.row.count:      18    {status="PASSED", check_name="refund_positive"}
 vowl.check.row.count:      2     {status="FAILED", check_name="refund_positive"}
+vowl.check.row.pass_rate:  1.0   {check_name="order_id_column_exists_check"}
+vowl.check.row.pass_rate:  1.0   {check_name="email_column_exists_check"}
+vowl.check.row.pass_rate:  1.0   {check_name="order_id_required_check"}
 vowl.check.row.pass_rate:  0.95  {check_name="email_required_check"}
 vowl.check.row.pass_rate:  0.97  {check_name="order_id_unique_check"}
-vowl.check.row.pass_rate:  1.0   {check_name="order_id_required_check"}
+vowl.check.row.pass_rate:  1.0   {check_name="amount_column_exists_check"}
 vowl.check.row.pass_rate:  0.9   {check_name="refund_positive"}
 
 # Dimension level: each row once per dimension
@@ -249,16 +262,21 @@ vowl.dimension.check.pass_rate:  0.5   {schema_name="orders",  dimension="comple
 vowl.dimension.check.pass_rate:  0.0   {schema_name="orders",  dimension="consistency"}
 vowl.dimension.check.pass_rate:  1.0   {schema_name="refunds", dimension="conformity"}
 vowl.dimension.check.pass_rate:  0.0   {schema_name="refunds", dimension="consistency"}
+vowl.dimension.row.count:        100   {status="PASSED", schema_name="orders",  dimension="conformity"}
+vowl.dimension.row.count:        0     {status="FAILED", schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.count:        95    {status="PASSED", schema_name="orders",  dimension="completeness"}
 vowl.dimension.row.count:        5     {status="FAILED", schema_name="orders",  dimension="completeness"}
 vowl.dimension.row.count:        97    {status="PASSED", schema_name="orders",  dimension="consistency"}
 vowl.dimension.row.count:        3     {status="FAILED", schema_name="orders",  dimension="consistency"}
+vowl.dimension.row.count:        20    {status="PASSED", schema_name="refunds", dimension="conformity"}
+vowl.dimension.row.count:        0     {status="FAILED", schema_name="refunds", dimension="conformity"}
 vowl.dimension.row.count:        18    {status="PASSED", schema_name="refunds", dimension="consistency"}
 vowl.dimension.row.count:        2     {status="FAILED", schema_name="refunds", dimension="consistency"}
+vowl.dimension.row.pass_rate:    1.0   {schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.pass_rate:    0.95  {schema_name="orders",  dimension="completeness"}
 vowl.dimension.row.pass_rate:    0.97  {schema_name="orders",  dimension="consistency"}
+vowl.dimension.row.pass_rate:    1.0   {schema_name="refunds", dimension="conformity"}
 vowl.dimension.row.pass_rate:    0.9   {schema_name="refunds", dimension="consistency"}
-# (conformity rows are all PASSED: 100 for orders, 20 for refunds)
 
 # Schema level: each row once
 # orders has 7 failed rows, not 5 + 3 = 8, because 1 row failed in both dimensions
