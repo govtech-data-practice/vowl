@@ -17,6 +17,7 @@ from opentelemetry._logs import SeverityNumber
 from ..validation.dq_metrics import (
     check_attributes,
     check_dimension,
+    check_row_numbers,
     check_severity,
     clean_attrs,
     coerce_attr,
@@ -34,6 +35,7 @@ __all__ = [
     "check_attributes",
     "check_dimension",
     "check_query",
+    "check_row_attributes",
     "check_severity",
     "coerce_attr",
     "contract_attributes",
@@ -116,6 +118,25 @@ def check_query(check_result: Any) -> str | None:
     metadata = check_result.metadata
     definition = metadata.get("check_definition") or {}
     return metadata.get("rendered_implementation") or definition.get("query")
+
+
+def check_row_attributes(result: ValidationResult) -> dict[int, dict[str, int | float]]:
+    """Each check's row numbers as span/log attributes, keyed by ``id(check)``.
+
+    The same numbers as ``vowl.check.row.count`` and ``vowl.check.row.pass_rate``,
+    named without the level: ``row.count.passed``, ``row.count.failed`` and
+    ``row.pass_rate``. A check the metrics give no row numbers (an aggregate
+    check, or one that errored) gets none here either, rather than a ``0`` that
+    would read as every row passing.
+    """
+    attrs: dict[int, dict[str, int | float]] = {}
+    for key, (total, failed) in check_row_numbers(result).items():
+        attrs[key] = {
+            "row.count.passed": max(total - failed, 0),
+            "row.count.failed": failed,
+            "row.pass_rate": (total - failed) / total,
+        }
+    return attrs
 
 
 def _flatten_value(key: str, value: Any, out: dict[str, Any], depth: int) -> None:

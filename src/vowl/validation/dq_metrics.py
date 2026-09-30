@@ -212,6 +212,60 @@ def run_duration_ms(result: ValidationResult) -> float:
     return float(result._vs.get("total_execution_time_ms", 0.0) or 0.0)
 
 
+def check_level_attributes(check_result: Any) -> dict[str, AttrValue]:
+    """The attributes every check-level metric carries: :func:`check_attributes` without ``status``."""
+    return {key: value for key, value in check_attributes(check_result).items() if key != "status"}
+
+
+def check_row_numbers(result: ValidationResult) -> dict[int, tuple[int, int]]:
+    """``(total_rows, failed_rows)`` of each check that gets row numbers, keyed by ``id(check)``.
+
+    Only checks that report failing rows get them. An aggregate check (or one
+    that errored) would always show every row as passing, so it is left out.
+    """
+    # The row-quality totals are uncapped. Fall back to the run's recorded
+    # totals when row statistics are off.
+    total_by_schema = dict(result._vs.get("total_rows_by_schema", {}) or {})
+    for item in result._row_quality_report().schemas:
+        if item.total_rows is not None:
+            total_by_schema[item.schema_name] = item.total_rows
+
+    numbers: dict[int, tuple[int, int]] = {}
+    for cr in result.check_results:
+        schema = cr.metadata.get("schema_name")
+        total = total_by_schema.get(schema) if schema else None
+        if total and cr.status != "ERROR" and cr.supports_row_level_output:
+            numbers[id(cr)] = (total, cr.failed_rows_count or 0)
+    return numbers
+
+
+def run_row_numbers(result: ValidationResult) -> tuple[int, int, bool] | None:
+    """``(total_rows, failed_rows, exact)`` for the whole run, ``None`` without row numbers.
+
+    Tables hold different rows, so the schema row counts add up. Only schemas
+    with row numbers take part, and the sum is exact only when every one of
+    them is.
+    """
+    rows = [
+        item
+        for item in result._row_quality_report().schemas
+        if item.total_rows is not None and item.failed_rows is not None
+    ]
+    if not rows:
+        return None
+    total = sum(item.total_rows or 0 for item in rows)
+    failed = sum(item.failed_rows or 0 for item in rows)
+    return total, failed, all(item.exact for item in rows)
+
+
+def schema_status_counts(result: ValidationResult) -> dict[str, int]:
+    """Schemas per status (see :func:`schema_status`), every status present."""
+    counts = dict.fromkeys(CHECK_STATUSES, 0)
+    for bucket in _checks_by_schema(result).values():
+        counts[schema_status(check_status_counts(bucket))] += 1
+    return counts
+
+
 # --------------------------------------------------------------------------- #
 # Points
 # --------------------------------------------------------------------------- #
@@ -281,43 +335,31 @@ def _schema_names(result: ValidationResult) -> list[str]:
     return names
 
 
-def _check_level(points: _Points, result: ValidationResult) -> None:
-    # The row-quality totals are uncapped. Fall back to the run's recorded
-    # totals when row statistics are off.
-    total_by_schema = dict(result._vs.get("total_rows_by_schema", {}) or {})
-    for item in result._row_quality_report().schemas:
-        if item.total_rows is not None:
-            total_by_schema[item.schema_name] = item.total_rows
-
-    for cr in result.check_results:
-        attrs = check_attributes(cr)
-        points.check_counts(
-            "check.check.count", check_status_counts([cr]), {k: v for k, v in attrs.items() if k != "status"}
-        )
-
-    for cr in result.check_results:
-        metadata = cr.metadata
-        points.add(
-            "check.duration",
-            HISTOGRAM,
-            "ms",
-            float(cr.execution_time_ms or 0.0),
-            {"check_name": cr.check_name, "schema_name": metadata.get("schema_name"), "engine": metadata.get("engine")},
-        )
-
-    # Only checks that report failing rows get row numbers. An aggregate check
-    # (or one that errored) would always show every row as passing.
-    rated: list[tuple[CheckResult, int, dict[str, Any]]] = []
+def _checks_by_schema(result: ValidationResult) -> dict[str, list[CheckResult]]:
+    """The run's checks grouped by schema, every schema present."""
+    by_schema: dict[str, list[CheckResult]] = {name: [] for name in _schema_names(result)}
     for cr in result.check_results:
         schema = cr.metadata.get("schema_name")
-        total = total_by_schema.get(schema) if schema else None
-        if total and cr.status != "ERROR" and cr.supports_row_level_output:
-            attrs = {"check_name": cr.check_name, "schema_name": schema, "dimension": check_dimension(cr)}
-            rated.append((cr, total, attrs))
-    for cr, total, attrs in rated:
-        points.row_counts("check.row.count", total, cr.failed_rows_count or 0, attrs)
-    for cr, total, attrs in rated:
-        points.pass_rate("check.row.pass_rate", (total - (cr.failed_rows_count or 0)) / total, attrs)
+        if isinstance(schema, str):
+            by_schema[schema].append(cr)
+    return by_schema
+
+
+def _check_level(points: _Points, result: ValidationResult) -> None:
+    # Every check-level metric carries the same attributes, so they can be
+    # filtered and joined the same way.
+    for cr in result.check_results:
+        points.check_counts("check.check.count", check_status_counts([cr]), check_level_attributes(cr))
+
+    for cr in result.check_results:
+        points.add("check.duration", HISTOGRAM, "ms", float(cr.execution_time_ms or 0.0), check_level_attributes(cr))
+
+    numbers = check_row_numbers(result)
+    rated = [(cr, *numbers[id(cr)]) for cr in result.check_results if id(cr) in numbers]
+    for cr, total, failed in rated:
+        points.row_counts("check.row.count", total, failed, check_level_attributes(cr))
+    for cr, total, failed in rated:
+        points.pass_rate("check.row.pass_rate", (total - failed) / total, check_level_attributes(cr))
 
 
 def _dimension_level(points: _Points, result: ValidationResult) -> None:
@@ -384,18 +426,10 @@ def _run_level(points: _Points, result: ValidationResult, counts: dict[str, dict
     points.check_counts("run.check.count", run_counts, {})
     points.pass_rate("run.check.pass_rate", check_pass_rate(run_counts), {})
 
-    # Tables hold different rows, so the schema row counts add up. Only
-    # schemas with row numbers take part, and the sum is exact only when
-    # every one of them is.
-    rows = [
-        item
-        for item in result._row_quality_report().schemas
-        if item.total_rows is not None and item.failed_rows is not None
-    ]
-    if rows:
-        total = sum(item.total_rows or 0 for item in rows)
-        failed = sum(item.failed_rows or 0 for item in rows)
-        attrs = {points.exact_key: all(item.exact for item in rows)}
+    run_rows = run_row_numbers(result)
+    if run_rows is not None:
+        total, failed, exact = run_rows
+        attrs = {points.exact_key: exact}
         points.row_counts("run.row.count", total, failed, attrs)
         points.pass_rate("run.row.pass_rate", max(total - failed, 0) / total if total else None, attrs)
 
@@ -405,12 +439,7 @@ def _run_level(points: _Points, result: ValidationResult, counts: dict[str, dict
 def compute_points(result: ValidationResult, *, prefix: str = "vowl") -> list[MetricPoint]:
     """Every DQ metric point of *result*: check, dimension, schema, then run level."""
     points = _Points(prefix)
-    by_schema: dict[str, list[CheckResult]] = {name: [] for name in _schema_names(result)}
-    for cr in result.check_results:
-        schema = cr.metadata.get("schema_name")
-        if isinstance(schema, str):
-            by_schema[schema].append(cr)
-    schema_counts = {schema: check_status_counts(checks) for schema, checks in by_schema.items()}
+    schema_counts = {schema: check_status_counts(checks) for schema, checks in _checks_by_schema(result).items()}
 
     _check_level(points, result)
     _dimension_level(points, result)

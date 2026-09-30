@@ -348,10 +348,8 @@ their rationale.
     attribute helpers (`check_attributes`, `contract_attributes`,
     `run_identity_attributes`) live there too and `_common` re-exports them.
     So there is one version of every number to maintain, and a test asserts
-    the two outputs match point for point. The run span's check numbers
-    (`check.count.passed`, `check.count.failed`, `check.count.error`,
-    `check.pass_rate`) use the same helpers, named like the run-level metrics
-    without the level.
+    the two outputs match point for point. Spans and log records carry the
+    same numbers from the same helpers (see decision 19).
 17. **Check counts are counters at every level, and every status is sent.**
     Each check sits in exactly one dimension and one schema, so check counts
     add up from check to run level and across runs, which is what a counter
@@ -367,6 +365,20 @@ their rationale.
     the saved files and the telemetry of one run share an id without the
     caller choosing one first. `export_otel(run_id=...)` still overrides it
     for one export. Setting `result.run_id` changes it for every output.
+19. **Spans and logs carry the metrics' numbers under the metrics' names.**
+    The run span carries every run-level number (`check.count.*`,
+    `check.pass_rate`, `schema.count.*`, `row.count.*`, `row.pass_rate`,
+    `vowl.row_quality.exact`), and each check span and log record carries the
+    check-level row numbers (`row.count.passed`, `row.count.failed`,
+    `row.pass_rate`). Each is named like its metric without the level, with
+    the status moved into the name because a span holds one value per key.
+    Row attributes go only on the checks the check-level row metrics cover,
+    so an aggregate or errored check gets no row numbers instead of a `0`
+    that reads as every row passing. This replaced the earlier
+    `failed_rows_count` attribute, which was always sent and matched no
+    metric. Every check-level metric also carries the same attributes
+    (`check_attributes` without `status`), so a dashboard can filter and join
+    them the same way and move from a metric to its span on those keys.
 
 ## Context attribute methodology
 

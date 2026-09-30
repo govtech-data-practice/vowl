@@ -16,8 +16,13 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 
-from ..validation.dq_metrics import check_pass_rate, check_status_counts
-from ._common import check_attributes, check_query, coerce_attr, flatten_check_definition
+from ..validation.dq_metrics import (
+    check_pass_rate,
+    check_status_counts,
+    run_row_numbers,
+    schema_status_counts,
+)
+from ._common import check_attributes, check_query, check_row_attributes, coerce_attr, flatten_check_definition
 
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
@@ -46,14 +51,26 @@ class TraceEmitter:
 
         start_ns, end_ns = self._run_window(result)
 
-        # The run-level check numbers, named like vowl.run.check.count and
-        # vowl.run.check.pass_rate without the level (the span is the run).
+        # The run-level DQ metrics, named like vowl.run.check.count and
+        # vowl.run.row.pass_rate without the level (the span is the run). A
+        # span holds one value per key, so the status moves into the name.
         counts = check_status_counts(result.check_results)
         root_attrs = dict(self._ctx_attrs)
         root_attrs.update({f"check.count.{status.lower()}": count for status, count in counts.items()})
         pass_rate = check_pass_rate(counts)
         if pass_rate is not None:
             root_attrs["check.pass_rate"] = pass_rate
+        root_attrs.update(
+            {f"schema.count.{status.lower()}": count for status, count in schema_status_counts(result).items()}
+        )
+        run_rows = run_row_numbers(result)
+        if run_rows is not None:
+            total, failed, exact = run_rows
+            root_attrs["row.count.passed"] = max(total - failed, 0)
+            root_attrs["row.count.failed"] = failed
+            if total:
+                root_attrs["row.pass_rate"] = max(total - failed, 0) / total
+            root_attrs[f"{self._ns}.row_quality.exact"] = exact
         root = self._tracer.start_span(
             f"{self._ns}.validate",
             start_time=start_ns,
@@ -71,6 +88,7 @@ class TraceEmitter:
         # checks ran in parallel, so start them all at the root start instead.
         sequential = start_ns + sum(durations) <= end_ns
 
+        row_attrs = check_row_attributes(result)
         contexts: dict[int, SpanContext] = {}
         cursor_ns = start_ns
         for check_result, duration_ns in zip(result.check_results, durations, strict=True):
@@ -79,7 +97,7 @@ class TraceEmitter:
                 f"{self._ns}.check",
                 context=root_ctx,
                 start_time=child_start,
-                attributes=self._check_span_attributes(check_result),
+                attributes=self._check_span_attributes(check_result, row_attrs.get(id(check_result), {})),
             )
             # FAILED checks stay OK. The ``status`` attribute carries FAILED.
             if check_result.status == "ERROR":
@@ -110,16 +128,16 @@ class TraceEmitter:
         end_ns = time.time_ns()
         return end_ns - int(total_ms * _MS_TO_NS), end_ns
 
-    def _check_span_attributes(self, check_result: Any) -> dict[str, Any]:
+    def _check_span_attributes(self, check_result: Any, row_attrs: dict[str, Any]) -> dict[str, Any]:
         attrs = dict(self._ctx_attrs)
         attrs.update(check_attributes(check_result))
+        attrs.update(row_attrs)
         metadata = check_result.metadata
         extra = {
             "operator": metadata.get("operator"),
             "query": check_query(check_result),
             "expected_value": coerce_attr(check_result.expected_value),
             "actual_value": coerce_attr(check_result.actual_value),
-            "failed_rows_count": int(check_result.failed_rows_count or 0),
         }
         attrs.update({k: v for k, v in extra.items() if v is not None})
         # Full authored definition, flattened, as queryable check.definition.* keys

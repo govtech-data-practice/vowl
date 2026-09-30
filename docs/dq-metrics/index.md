@@ -167,9 +167,9 @@ such as `vowl.contract.id`.
 | Metric                           | Attributes                                                               |
 | -------------------------------- | ------------------------------------------------------------------------ |
 | `vowl.check.check.count`         | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
-| `vowl.check.row.count`           | `status`, `check_name`, `schema_name`, `dimension`                       |
-| `vowl.check.row.pass_rate`       | `check_name`, `schema_name`, `dimension`                                 |
-| `vowl.check.duration`            | `check_name`, `schema_name`, `engine`                                    |
+| `vowl.check.row.count`           | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.pass_rate`       | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
+| `vowl.check.duration`            | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
 | `vowl.dimension.check.count`     | `status`, `schema_name`, `dimension`                                     |
 | `vowl.dimension.check.pass_rate` | `schema_name`, `dimension`                                               |
 | `vowl.dimension.row.count`       | `status`, `schema_name`, `dimension`, `vowl.row_quality.exact`           |
@@ -185,7 +185,11 @@ such as `vowl.contract.id`.
 | `vowl.run.row.pass_rate`         | `vowl.row_quality.exact`                                                 |
 | `vowl.run.duration`              | none                                                                     |
 
-`severity` is left out when the contract does not set one.
+Every check-level metric carries the same attributes, apart from `status` on
+the counts, so you can filter and join them the same way. `severity` is left
+out when the contract does not set one. The
+[traces and logs](otel-export.md#traces) carry the same numbers under the same
+names, without the level.
 
 ## The run ID
 
@@ -216,8 +220,9 @@ passed and 3 failed. The numbers below are the real output of this run.
 
 To keep it short, the check counts leave out statuses with a count of 0 (for
 example `status="ERROR"`), and every reading leaves out
-`vowl.row_quality.exact`, the durations and the run identity attributes.
-Everything else the run sends is shown.
+`vowl.row_quality.exact`, the durations and the run identity attributes. The
+check lines show only the attributes that tell them apart. Every other reading
+the run sends is shown.
 
 ```
 # Check level: each check on its own

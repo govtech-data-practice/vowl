@@ -1190,3 +1190,101 @@ def test_row_sample_off_by_default_exports_no_row_contents(result):
         assert not [e for e in span.events if e.name == "vowl.failed_row"]
     for entry in log_exporter.get_finished_logs():
         assert "vowl.failed_rows_sample" not in entry.log_record.attributes
+
+
+# --------------------------------------------------------------------------- #
+# Spans and logs carry the same numbers as the metrics
+# --------------------------------------------------------------------------- #
+
+
+def test_check_level_metrics_share_one_attribute_set(result):
+    """Every check-level metric of a check carries the same attributes (apart
+    from ``status`` on the counts), so they filter and join the same way."""
+    from vowl.validation.dq_metrics import compute_points
+
+    by_check: dict[str, set] = {}
+    for point in compute_points(result):
+        if point.name.startswith("vowl.check."):
+            attrs = {k: v for k, v in point.attributes.items() if k != "status"}
+            by_check.setdefault(point.attributes["check_name"], set()).add(tuple(sorted(attrs.items())))
+    for check_name, attr_sets in by_check.items():
+        assert len(attr_sets) == 1, check_name
+        (attrs,) = attr_sets
+        assert {"check_name", "schema_name", "dimension", "engine"} <= dict(attrs).keys()
+
+
+def test_check_span_row_attributes_match_the_metrics(result):
+    from vowl.otel._traces import TraceEmitter
+    from vowl.validation.dq_metrics import compute_points
+
+    points = compute_points(result)
+    rows = _row_counts([p for p in points if p.name == "vowl.check.row.count"], "check_name")
+    rates = {p.attributes["check_name"]: p.value for p in points if p.name == "vowl.check.row.pass_rate"}
+
+    provider, exporter = _tracer_provider()
+    TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(result)
+    for span in exporter.get_finished_spans():
+        if span.name != "vowl.check":
+            continue
+        name = span.attributes["check_name"]
+        assert "failed_rows_count" not in span.attributes
+        assert span.attributes["row.count.passed"] == rows[name]["PASSED"]
+        assert span.attributes["row.count.failed"] == rows[name]["FAILED"]
+        assert span.attributes["row.pass_rate"] == rates[name]
+
+
+def test_run_span_attributes_match_the_run_metrics(two_schema_result):
+    from vowl.otel._traces import TraceEmitter
+    from vowl.validation.dq_metrics import compute_points
+
+    points = compute_points(two_schema_result)
+
+    def one(name, status=None):
+        (value,) = [
+            p.value for p in points if p.name == name and (status is None or p.attributes.get("status") == status)
+        ]
+        return value
+
+    provider, exporter = _tracer_provider()
+    TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(two_schema_result)
+    (root,) = [s for s in exporter.get_finished_spans() if s.name == "vowl.validate"]
+
+    for status in ("PASSED", "FAILED", "ERROR"):
+        assert root.attributes[f"check.count.{status.lower()}"] == one("vowl.run.check.count", status)
+        assert root.attributes[f"schema.count.{status.lower()}"] == one("vowl.run.schema.count", status)
+    assert root.attributes["check.pass_rate"] == one("vowl.run.check.pass_rate")
+    assert root.attributes["row.count.passed"] == one("vowl.run.row.count", "PASSED")
+    assert root.attributes["row.count.failed"] == one("vowl.run.row.count", "FAILED")
+    assert root.attributes["row.pass_rate"] == one("vowl.run.row.pass_rate")
+    (exact,) = {p.attributes["vowl.row_quality.exact"] for p in points if p.name == "vowl.run.row.count"}
+    assert root.attributes["vowl.row_quality.exact"] is exact
+
+
+def test_errored_check_has_no_row_attributes(errored_result):
+    """A check that could not run gets no row numbers on its span or log,
+    the same as the metrics, instead of a 0 that reads as all rows passing."""
+    from vowl.otel._logs import LogEmitter
+    from vowl.otel._traces import TraceEmitter
+
+    provider, exporter = _tracer_provider()
+    TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(errored_result)
+    (broken,) = [
+        s for s in exporter.get_finished_spans() if s.name == "vowl.check" and s.attributes["status"] == "ERROR"
+    ]
+    log_provider, log_exporter = _logger_provider()
+    LogEmitter(log_provider, namespace="vowl", span_contexts={}, sample_rows_by_check={}).emit(errored_result)
+    (record,) = [entry.log_record for entry in log_exporter.get_finished_logs()]
+
+    for attrs in (broken.attributes, record.attributes):
+        assert not {"row.count.passed", "row.count.failed", "row.pass_rate", "failed_rows_count"} & set(attrs)
+
+
+def test_failed_check_log_carries_row_attributes(result):
+    from vowl.otel._logs import LogEmitter
+
+    provider, exporter = _logger_provider()
+    LogEmitter(provider, namespace="vowl", span_contexts={}, sample_rows_by_check={}).emit(result)
+    (record,) = [entry.log_record for entry in exporter.get_finished_logs()]
+    assert record.attributes["row.count.failed"] == 2
+    assert record.attributes["row.count.passed"] == 2
+    assert record.attributes["row.pass_rate"] == 0.5

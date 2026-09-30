@@ -554,8 +554,8 @@ md(
 By default vowl sends **how many** rows failed, not the rows themselves. There are
 three ways to get from an alert to the actual data:
 
-- **`failed_rows_count`** is on every check, always. No cell values leave your
-  process.
+- **`row.count.failed`** is on every check that reports failing rows. No cell
+  values leave your process.
 - **A small sample** with `max_failed_rows_sample`. This is off by default. Set a
   positive number and each failed check adds up to that many rows to its log and
   span. These are real cell values, so think about personal data before you turn

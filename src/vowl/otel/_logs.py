@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-from ._common import check_attributes, check_query, flatten_check_definition, severity_for
+from ._common import check_attributes, check_query, check_row_attributes, flatten_check_definition, severity_for
 
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
@@ -53,6 +53,7 @@ class LogEmitter:
 
         LogRecord = _log_record_class()
 
+        row_attrs = check_row_attributes(result)
         for check_result in result.check_results:
             severity = severity_for(check_result.status)
             if severity is None:
@@ -61,7 +62,7 @@ class LogEmitter:
 
             attrs = dict(self._ctx_attrs)
             attrs.update(check_attributes(check_result))
-            attrs["failed_rows_count"] = int(check_result.failed_rows_count or 0)
+            attrs.update(row_attrs.get(id(check_result), {}))
             query = check_query(check_result)
             if query is not None:
                 attrs["query"] = query

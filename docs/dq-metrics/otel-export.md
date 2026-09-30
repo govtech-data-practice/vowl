@@ -296,23 +296,38 @@ check finishes. Its status is `ERROR` if any check could not run, and `OK`
 otherwise. The `check.count.failed` attribute counts the checks that found bad
 data.
 
-Its attributes are the run-level check numbers from the
-[DQ metrics](index.md), `vowl.run.check.count` and
-`vowl.run.check.pass_rate`, named without the level because the span is the
-run.
+Its attributes are the run-level [DQ metrics](index.md), with the same
+values. They are named without the level because the span is the run. A span
+holds one value per name, so the status is part of the name:
+`vowl.run.check.count{status="FAILED"}` becomes `check.count.failed`.
 
-| Attribute            | Description                                                                      | Presence                |
-| -------------------- | -------------------------------------------------------------------------------- | ----------------------- |
-| `check.count.passed` | Number of checks that passed                                                     | Always                  |
-| `check.count.failed` | Number of checks that found bad data                                             | Always                  |
-| `check.count.error`  | Number of checks that could not run                                              | Always                  |
-| `check.pass_rate`    | Share of checks that passed, 0 to 1. Checks that could not run count against it. | When the run has checks |
+| Attribute                | Same as                                  | Description                                                                      | Presence                           |
+| ------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
+| `check.count.passed`     | `vowl.run.check.count{status="PASSED"}`  | Number of checks that passed                                                     | Always                             |
+| `check.count.failed`     | `vowl.run.check.count{status="FAILED"}`  | Number of checks that found bad data                                             | Always                             |
+| `check.count.error`      | `vowl.run.check.count{status="ERROR"}`   | Number of checks that could not run                                              | Always                             |
+| `check.pass_rate`        | `vowl.run.check.pass_rate`               | Share of checks that passed, 0 to 1. Checks that could not run count against it. | When the run has checks            |
+| `schema.count.passed`    | `vowl.run.schema.count{status="PASSED"}` | Number of schemas whose checks all passed                                        | Always                             |
+| `schema.count.failed`    | `vowl.run.schema.count{status="FAILED"}` | Number of schemas with a check that found bad data                               | Always                             |
+| `schema.count.error`     | `vowl.run.schema.count{status="ERROR"}`  | Number of schemas with a check that could not run, and none that failed          | Always                             |
+| `row.count.passed`       | `vowl.run.row.count{status="PASSED"}`    | Rows that passed every counted check, over all schemas                           | When the run has row counts        |
+| `row.count.failed`       | `vowl.run.row.count{status="FAILED"}`    | Rows that failed at least one counted check, over all schemas                    | When the run has row counts        |
+| `row.pass_rate`          | `vowl.run.row.pass_rate`                 | Share of rows that passed, 0 to 1                                                | When the run has rows              |
+| `vowl.row_quality.exact` | `vowl.row_quality.exact`                 | Whether the row numbers are exact                                                | When the run has row counts        |
 
 ### Check span: `vowl.check`
 
 One per check. Its status is `ERROR` for a check that could not run, and `OK`
-otherwise, including for a check that failed. For an `ERROR` status, the
+otherwise, including for a check that failed. Its `check_name`, `status`,
+`schema_name`, `dimension`, `severity` and `engine` are the same as on the
+check-level metrics, so you can go from a metric to its span by filtering on
+them. For an `ERROR` status, the
 check's message (such as the database error) is the status description.
+
+The row attributes are on the same checks as the check-level row metrics. A
+check that returns one number instead of rows (such as an average), or that
+could not run, has none. A `0` there would wrongly say every row passed. See
+[Which checks are counted](../failed-rows.md#which-checks-are-counted).
 
 Each check span lasts as long as the check did. vowl does not record the exact
 moment each check started, so the spans are placed one after another from the
@@ -332,7 +347,9 @@ approximate.
 | `query`                          | The SQL the check ran                                                                                                                      | When known                                   |
 | `expected_value`                 | The expected value or threshold                                                                                                            | When known                                   |
 | `actual_value`                   | The value vowl found                                                                                                                       | When known                                   |
-| `failed_rows_count`              | Rows that failed this check                                                                                                                | Always. `0` when none failed.                |
+| `row.count.passed`               | Rows that passed this check. Same as `vowl.check.row.count{status="PASSED"}`.                                                              | When the check gets row counts               |
+| `row.count.failed`               | Rows that failed this check. Same as `vowl.check.row.count{status="FAILED"}`.                                                              | When the check gets row counts               |
+| `row.pass_rate`                  | Share of rows that passed this check, 0 to 1. Same as `vowl.check.row.pass_rate`.                                                          | When the check gets row counts               |
 | `check.definition.*`             | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known                                   |
 | `check.definition.custom.<name>` | The check's `customProperties`, one key per property                                                                                       | When the contract sets them                  |
 
@@ -345,8 +362,10 @@ values of one failing row.
 
 ### Worked example
 
-A run checks one schema, `orders`, with five checks. Two pass, two fail, and one
-cannot run because its query names a column that does not exist.
+A run checks one schema, `orders`, with 1,000 rows and five checks. Two pass,
+two fail, and one cannot run because its query names a column that does not
+exist. 43 rows fail at least one check: 42 have no email, 3 have a duplicate
+`order_id`, and 2 rows have both.
 
 ```
 Trace 7f3a...  (inside the pipeline's trace, if there is one)
@@ -360,23 +379,29 @@ Trace 7f3a...  (inside the pipeline's trace, if there is one)
    |   vowl.tenant               = agency-a
    |   check.count.passed=2  check.count.failed=2  check.count.error=1
    |   check.pass_rate=0.4
+   |   schema.count.passed=0  schema.count.failed=1  schema.count.error=0
+   |   row.count.passed=957  row.count.failed=43  row.pass_rate=0.957
+   |   vowl.row_quality.exact=true
    |
    +- SPAN vowl.check  email_required_check          status=OK       38ms
    |     schema_name=orders  dimension=completeness  severity=error
    |     status=FAILED  engine=sql
-   |     failed_rows_count=42
+   |     row.count.passed=958  row.count.failed=42  row.pass_rate=0.958
    |
    +- SPAN vowl.check  updated_at_within_24h         status=OK       51ms
    |     dimension=timeliness  status=PASSED  operator=mustBe
+   |     row.count.passed=1000  row.count.failed=0  row.pass_rate=1.0
    |     query='SELECT COUNT(*) FROM "orders" WHERE updated_at < NOW() - INTERVAL 24 HOUR'
    |     expected_value=0  actual_value=0
    |     check.definition.custom.owner=risk-team
    |
    +- SPAN vowl.check  order_id_required_check       status=OK       12ms
    |     dimension=completeness  status=PASSED
+   |     row.count.passed=1000  row.count.failed=0  row.pass_rate=1.0
    |
    +- SPAN vowl.check  order_id_unique_check         status=OK       44ms
-   |     dimension=consistency  status=FAILED  failed_rows_count=3
+   |     dimension=consistency  status=FAILED
+   |     row.count.passed=997  row.count.failed=3  row.pass_rate=0.997
    |
    +- SPAN vowl.check  region_valid                  status=ERROR     9ms
          "Error executing check: Binder Error: Referenced column "region" not found"
@@ -385,7 +410,8 @@ Trace 7f3a...  (inside the pipeline's trace, if there is one)
 
 The two failed checks have `OK` spans and `status=FAILED`. The run span is
 `ERROR` only because `region_valid` could not run. The quoted line under that
-span is its status description.
+span is its status description. It has no row attributes, because a check that
+could not run has no row counts.
 
 ## Logs
 
@@ -417,7 +443,9 @@ on the `status` attribute instead.
 | `dimension`                      | Quality dimension                                                                                                                          | Always. `"unknown"` when the check has none.             |
 | `severity`                       | Check severity                                                                                                                             | When the contract sets one                               |
 | `engine`                         | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                | When known                                               |
-| `failed_rows_count`              | Rows that failed this check                                                                                                                | Always. `0` when none failed.                            |
+| `row.count.passed`               | Rows that passed this check, as on its span                                                                                                | When the check gets row counts                           |
+| `row.count.failed`               | Rows that failed this check, as on its span                                                                                                | When the check gets row counts                           |
+| `row.pass_rate`                  | Share of rows that passed this check, as on its span                                                                                       | When the check gets row counts                           |
 | `query`                          | The SQL the check ran                                                                                                                      | When known                                               |
 | `check.definition.*`             | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known                                               |
 | `check.definition.custom.<name>` | The check's `customProperties`, one key per property                                                                                       | When the contract sets them                              |
@@ -432,12 +460,14 @@ passed write nothing. The first line of each record is its body.
 [WARN]  Column 'email' must not contain NULL values
         trace_id=7f3a...  span_id=a11c...
         check_name=email_required_check  status=FAILED
-        schema_name=orders  dimension=completeness  failed_rows_count=42
+        schema_name=orders  dimension=completeness
+        row.count.passed=958  row.count.failed=42  row.pass_rate=0.958
 
 [WARN]  Column 'order_id' must contain unique values
         trace_id=7f3a...  span_id=b02d...
         check_name=order_id_unique_check  status=FAILED
-        schema_name=orders  dimension=consistency  failed_rows_count=3
+        schema_name=orders  dimension=consistency
+        row.count.passed=997  row.count.failed=3  row.pass_rate=0.997
 
 [ERROR] Error executing check: Binder Error: Referenced column "region" not found
         trace_id=7f3a...  span_id=c73e...
@@ -451,7 +481,7 @@ passed write nothing. The first line of each record is its body.
 By default `export_otel` sends **counts only**. No values from your data leave
 the process. There are three ways to get from an alert to the rows behind it:
 
-1. **`failed_rows_count`** is on every check span and every log record. It
+1. **`row.count.failed`** is on each counted check's span and log record. It
    holds a count and no data values.
 2. **A small sample** with `max_failed_rows_sample`. Set it above 0 and each
    failing check copies up to that many rows into its span (as
