@@ -7,11 +7,17 @@ This module provides test coverage for all usage patterns including:
 4. Explicit Adapter with Filter Conditions
 5. Multi-Adapters
 6. Custom Adapters and Executors
+7. ValidationResult API
+8. Error Handling
+9. Contract API
+10. DataSourceMapper
+11. Saving Results to Cloud Storage
 
 Uses real database instances:
 - DuckDB: In-memory
 - SQLite: File-based via tmp_path
 - PostgreSQL: Via testcontainers (requires Docker)
+- S3: Adobe S3Mock via testcontainers (requires Docker)
 """
 
 import os
@@ -1281,3 +1287,171 @@ class TestDataSourceMapper:
         adapter = create_adapter(sample_dataframe, "test_table")
 
         assert adapter is not None
+
+
+# ============================================================================
+# 11. Saving Results to Cloud Storage (S3 via testcontainers)
+# ============================================================================
+
+
+@pytest.mark.docker_integration
+class TestSaveResultsToCloudStorage:
+    """Save results to a real S3 API, served by Adobe S3Mock in a container.
+
+    These tests require Docker to be running. They cover the "Saving Results to
+    Cloud Storage" and "Loading Contracts from S3" sections of the usage guide.
+    """
+
+    BUCKET = "vowl-results"
+
+    @pytest.fixture(scope="class")
+    def s3_endpoint(self):
+        """Start an S3Mock container with one empty bucket and return its ``host:port``."""
+        import subprocess
+
+        try:
+            from testcontainers.core.container import DockerContainer
+            from testcontainers.core.wait_strategies import HttpWaitStrategy
+        except ImportError:
+            pytest.skip("testcontainers not installed")
+
+        try:
+            subprocess.run(["docker", "info"], capture_output=True, check=True, timeout=5)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            pytest.skip("Docker not available")
+
+        # Same Docker Desktop settings as TestPostgresConnection above.
+        docker_sock_path = Path.home() / ".docker" / "run" / "docker.sock"
+        if docker_sock_path.exists() and "DOCKER_HOST" not in os.environ:
+            os.environ["DOCKER_HOST"] = f"unix://{docker_sock_path}"
+        if "TESTCONTAINERS_RYUK_DISABLED" not in os.environ:
+            os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
+        os.environ.setdefault("TESTCONTAINERS_HOST_OVERRIDE", "localhost")
+
+        container = (
+            DockerContainer("adobe/s3mock:5.2.3")
+            .with_exposed_ports(9090)
+            .with_env("COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS", self.BUCKET)
+            # The store is thrown away after the tests, so keep it in memory.
+            .with_kwargs(tmpfs={"/tmp": ""})
+            .waiting_for(HttpWaitStrategy(9090, "/"))
+        )
+        container.start()
+
+        yield f"{container.get_container_host_ip()}:{container.get_exposed_port(9090)}"
+
+        container.stop()
+
+    @pytest.fixture
+    def aws_env(self, s3_endpoint, monkeypatch):
+        """Point the standard AWS settings at the mock, the way a user's environment would."""
+        monkeypatch.setenv("AWS_ENDPOINT_URL", f"http://{s3_endpoint}")
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+        monkeypatch.setenv("AWS_REGION", "us-east-1")
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+        monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+        monkeypatch.delenv("AWS_SESSION_TOKEN", raising=False)
+        monkeypatch.delenv("AWS_PROFILE", raising=False)
+
+    @pytest.fixture
+    def s3_client(self, aws_env):
+        """A boto3 client, used to check what landed in the bucket independently of vowl."""
+        boto3 = pytest.importorskip("boto3")
+        return boto3.client("s3")
+
+    def _keys(self, s3_client, prefix: str) -> set[str]:
+        listing = s3_client.list_objects_v2(Bucket=self.BUCKET, Prefix=prefix)
+        return {obj["Key"] for obj in listing.get("Contents", [])}
+
+    def _read(self, s3_client, key: str) -> bytes:
+        return s3_client.get_object(Bucket=self.BUCKET, Key=key)["Body"].read()
+
+    def test_save_to_s3_uri(self, s3_client, small_clean_dataframe, contract_path, tmp_path, monkeypatch):
+        """
+        Save straight to an ``s3://`` URI, credentials and endpoint from the environment:
+
+        >>> result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
+        """
+        import io
+        import json
+
+        import pyarrow.csv as pa_csv
+
+        from vowl import validate_data
+
+        monkeypatch.chdir(tmp_path)
+        results = validate_data(contract=contract_path, df=small_clean_dataframe)
+
+        results.save(f"s3://{self.BUCKET}/run-1/", prefix="dq", output_mode="annotated")
+
+        assert self._keys(s3_client, "run-1/") == {
+            "run-1/dq_check_results.csv",
+            "run-1/dq_hdb_resale_prices_annotated.csv",
+            "run-1/dq_summary.json",
+        }
+        summary = json.loads(self._read(s3_client, "run-1/dq_summary.json"))
+        assert summary == json.loads(json.dumps(results.summary, default=str))
+        annotated = pa_csv.read_csv(io.BytesIO(self._read(s3_client, "run-1/dq_hdb_resale_prices_annotated.csv")))
+        assert annotated.num_rows == len(small_clean_dataframe)
+        # Nothing written locally (the old bug created a local "s3:" folder).
+        assert list(tmp_path.iterdir()) == []
+
+    def test_save_with_explicit_filesystem(self, s3_endpoint, small_clean_dataframe, contract_path):
+        """
+        Custom endpoint and explicit credentials, as in the MinIO example:
+
+        >>> s3 = pafs.S3FileSystem(endpoint_override="http://...", access_key="...", secret_key="...")
+        >>> result.save("my-bucket/dq-results/run-1/", output_mode="annotated", filesystem=s3)
+        """
+        import pyarrow.fs as pafs
+
+        from vowl import validate_data
+
+        s3 = pafs.S3FileSystem(
+            endpoint_override=f"http://{s3_endpoint}",
+            access_key="test",
+            secret_key="test",
+            region="us-east-1",
+        )
+        results = validate_data(contract=contract_path, df=small_clean_dataframe)
+
+        results.save(f"{self.BUCKET}/explicit/", prefix="dq", output_mode="annotated", filesystem=s3)
+
+        saved = s3.get_file_info(pafs.FileSelector(f"{self.BUCKET}/explicit"))
+        assert {info.base_name for info in saved} == {
+            "dq_check_results.csv",
+            "dq_hdb_resale_prices_annotated.csv",
+            "dq_summary.json",
+        }
+
+    def test_save_dataframe_to_s3_uri(self, s3_client, small_clean_dataframe):
+        """``save_dataframe`` accepts an ``s3://`` URI the same way ``save`` does."""
+        import io
+
+        import pyarrow.parquet as pa_pq
+
+        from vowl.validation.result import ValidationResult
+
+        ValidationResult.save_dataframe(small_clean_dataframe, f"s3://{self.BUCKET}/frames/out.parquet", "parquet")
+
+        table = pa_pq.read_table(io.BytesIO(self._read(s3_client, "frames/out.parquet")))
+        assert table.num_rows == len(small_clean_dataframe)
+
+    def test_contract_from_s3_and_results_back_to_s3(self, s3_client, small_clean_dataframe, contract_path):
+        """
+        Round trip through one bucket: load the contract from S3, save the results to S3.
+
+        >>> result = validate_data("s3://my-bucket/contracts/my_contract.yaml", df=df)
+        >>> result.save("s3://my-bucket/dq-results/run-1/")
+        """
+        from vowl import validate_data
+
+        s3_client.upload_file(contract_path, self.BUCKET, "contracts/hdb_resale.yaml")
+
+        results = validate_data(f"s3://{self.BUCKET}/contracts/hdb_resale.yaml", df=small_clean_dataframe)
+        results.save(f"s3://{self.BUCKET}/round-trip/", prefix="dq")
+
+        assert len(results.check_results) > 0
+        assert_no_check_errors(results)
+        assert "round-trip/dq_summary.json" in self._keys(s3_client, "round-trip/")

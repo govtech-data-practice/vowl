@@ -770,6 +770,23 @@ class TestValidationResultAPI:
         finally:
             os.chdir(original_dir)
 
+    def test_save_results_to_cloud_storage(self, result, tmp_path, monkeypatch):
+        """README: ``save()`` to an ``s3://`` URI. An in-memory filesystem stands in for S3."""
+        import pyarrow.fs as pafs
+        from pyarrow._fs import _MockFileSystem
+
+        from vowl.validation import _output_dir
+
+        fs = _MockFileSystem()
+        monkeypatch.setattr(_output_dir, "_filesystem_from_uri", lambda uri: (fs, uri.split("://", 1)[1]))
+        monkeypatch.chdir(tmp_path)
+
+        result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
+
+        saved = fs.get_file_info(pafs.FileSelector("my-bucket/dq-results/run-1"))
+        assert any(info.path.endswith("_summary.json") for info in saved)
+        assert list(tmp_path.iterdir()) == []
+
     def test_summary_dict(self, result):
         assert "validation_summary" in result.summary
         vs = result.summary["validation_summary"]

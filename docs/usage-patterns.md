@@ -371,3 +371,60 @@ result.display_full_report()
 
 !!! note
     `boto3` is not included in the base install. Install it with `pip install vowl[all]` or `pip install boto3`. Uses default AWS credentials (environment variables, `~/.aws/credentials`, IAM role, etc.).
+
+## Saving Results to Cloud Storage
+
+`result.save()` writes to a local folder by default. Give it a URI instead and it
+writes straight to cloud storage:
+
+```python
+from vowl import validate_data
+
+result = validate_data("contract.yaml", df=df)
+result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
+```
+
+This works for these locations:
+
+| Location           | Example                                                    |
+| ------------------ | ---------------------------------------------------------- |
+| Amazon S3          | `s3://my-bucket/dq-results/`                               |
+| Google Cloud       | `gs://my-bucket/dq-results/`                               |
+| Azure Data Lake    | `abfs://container@account.dfs.core.windows.net/dq-results/` |
+| HDFS               | `hdfs://namenode:8020/dq-results/`                         |
+| A local file URI   | `file:///shared/dq-results/`                               |
+
+vowl uses the filesystems that come with pyarrow, which vowl already depends on,
+so there's nothing extra to install. Credentials come from the usual place for
+each cloud. For S3 that means environment variables such as `AWS_ACCESS_KEY_ID`,
+the `~/.aws` files, or an IAM role. For Google Cloud it means your default
+application credentials.
+
+`ValidationResult.save_dataframe(df, "s3://my-bucket/out.parquet", "parquet")`
+accepts a URI the same way.
+
+### Custom endpoints and explicit credentials
+
+To save to an S3-compatible store such as MinIO, or to pass credentials yourself,
+build a pyarrow filesystem and pass it as `filesystem=`. `output_dir` is then a
+path inside that filesystem, starting with the bucket name:
+
+```python
+import pyarrow.fs as pafs
+
+minio = pafs.S3FileSystem(
+    endpoint_override="http://minio.internal:9000",
+    access_key="...",
+    secret_key="...",
+)
+result.save("my-bucket/dq-results/run-1/", output_mode="annotated", filesystem=minio)
+```
+
+If you'd rather keep plain `s3://` URIs, set the `AWS_ENDPOINT_URL` environment
+variable to the store's address instead. Both vowl's saving and its S3 contract
+loading pick it up.
+
+!!! note
+    Some pyarrow builds, mostly from conda, leave out S3 or Google Cloud support. If
+    `save()` says the filesystem isn't supported, install pyarrow from PyPI with
+    `pip install --force-reinstall pyarrow`.

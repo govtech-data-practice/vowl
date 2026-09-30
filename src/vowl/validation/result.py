@@ -8,18 +8,16 @@ import re
 import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 import pyarrow as pa
-import pyarrow.csv as _pa_csv
-import pyarrow.parquet as _pa_pq
 
 from ..config import CheckInfoPreset, OutputMode, ValidationConfig
 from ..contracts.contract import Contract
 from ..contracts.models.ODCS_types import DataContract
 from ..executors.base import CheckResult
+from ._output_dir import OutputDir, split_file_location
 from .result_models import (
     CheckStatusSummary,
     MultiTableSummary,
@@ -1280,8 +1278,17 @@ class ValidationResult:
         include_contract_definition: bool = False,
         output_mode: OutputMode | None = None,
         check_info: CheckInfoPreset | None = None,
+        filesystem: Any | None = None,
     ) -> ValidationResult:
         """Write the check-results CSV, per-mode row outputs, and summary JSON.
+
+        ``output_dir`` is a local folder or a URI such as
+        ``s3://bucket/dq-results/run-1/``. URIs (``s3://``, ``gs://``,
+        ``abfs://``, ``hdfs://``, ``file://``) are written through pyarrow's
+        filesystems, which find credentials the usual way for each cloud. Pass
+        ``filesystem=`` (a ``pyarrow.fs.FileSystem``) to set one up yourself,
+        for example an S3-compatible store with a custom endpoint. ``output_dir``
+        is then a path inside that filesystem.
 
         ``output_mode`` selects the row output shape:
 
@@ -1340,37 +1347,31 @@ class ValidationResult:
                     stacklevel=2,
                 )
 
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
+        target = OutputDir(output_dir, filesystem)
 
         # Sanitize the caller-supplied prefix so it cannot traverse directories.
         prefix = _safe_filename_component(prefix, fallback="vowl_results")
 
-        check_csv = output_path / f"{prefix}_check_results.csv"
-        _pa_csv.write_csv(
+        check_csv = target.write_csv(
+            f"{prefix}_check_results.csv",
             self.get_check_results_df(
                 include_check_definition=include_check_definition,
                 include_contract_definition=include_contract_definition,
             ).to_arrow(),
-            str(check_csv),
         )
 
-        saved_files = [str(check_csv)]
+        saved_files = [check_csv]
 
         if mode in ("failed_rows", "both"):
             for table_key, df in self._get_consolidated_output_dfs().items():
                 safe_key = _safe_filename_component(table_key.replace(", ", "_").replace(" ", "_"))
-                csv_path = output_path / f"{prefix}_{safe_key}.csv"
-                _pa_csv.write_csv(df.to_arrow(), str(csv_path))
-                saved_files.append(str(csv_path))
+                saved_files.append(target.write_csv(f"{prefix}_{safe_key}.csv", df.to_arrow()))
 
         if mode in ("annotated", "both"):
             out = self.get_annotated_output(check_info=check_info)
             for schema, df in out["annotated"].items():
                 safe_key = _safe_filename_component(schema.replace(", ", "_").replace(" ", "_"))
-                csv_path = output_path / f"{prefix}_{safe_key}_annotated.csv"
-                _pa_csv.write_csv(df.to_arrow(), str(csv_path))
-                saved_files.append(str(csv_path))
+                saved_files.append(target.write_csv(f"{prefix}_{safe_key}_annotated.csv", df.to_arrow()))
             # In "annotated" mode, residues cover the non-mergeable checks and
             # the standalone failed-rows CSVs were NOT written, so emit them
             # here. In "both" mode, those same failed rows are already in the
@@ -1381,13 +1382,9 @@ class ValidationResult:
                     safe_key = _safe_filename_component(
                         residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_")
                     )
-                    csv_path = output_path / f"{prefix}_{safe_key}_residue.csv"
-                    _pa_csv.write_csv(df.to_arrow(), str(csv_path))
-                    saved_files.append(str(csv_path))
+                    saved_files.append(target.write_csv(f"{prefix}_{safe_key}_residue.csv", df.to_arrow()))
 
-        json_path = output_path / f"{prefix}_summary.json"
-        with open(json_path, "w") as f:
-            json.dump(self.summary, f, indent=2, default=str)
+        json_path = target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str))
 
         print("\nResults saved:")
         for fp in saved_files:
@@ -1396,9 +1393,21 @@ class ValidationResult:
         return self
 
     @staticmethod
-    def save_dataframe(df: Any, filepath: str, file_format: str = "csv", **kwargs) -> None:
-        output_dir = Path(filepath).parent
-        output_dir.mkdir(parents=True, exist_ok=True)
+    def save_dataframe(
+        df: Any,
+        filepath: str,
+        file_format: str = "csv",
+        *,
+        filesystem: Any | None = None,
+        **kwargs,
+    ) -> None:
+        """Write *df* to *filepath*, a local path or a URI (see :meth:`save`)."""
+        fmt = file_format.lower()
+        if fmt not in ("csv", "parquet", "json"):
+            raise ValueError(f"Unsupported format: {file_format}. Use 'csv', 'parquet', or 'json'")
+
+        folder, name = split_file_location(filepath)
+        target = OutputDir(folder, filesystem)
 
         if isinstance(df, pa.Table):
             arrow_table = df
@@ -1409,20 +1418,16 @@ class ValidationResult:
         else:
             arrow_table = nw.from_native(df, eager_only=True).to_arrow()
 
-        fmt = file_format.lower()
         if fmt == "csv":
-            _pa_csv.write_csv(arrow_table, filepath, **kwargs)
+            saved = target.write_csv(name, arrow_table, **kwargs)
         elif fmt == "parquet":
-            _pa_pq.write_table(arrow_table, filepath, **kwargs)
-        elif fmt == "json":
-            rows = arrow_table.to_pylist()
-            with open(filepath, "w") as f:
-                for row in rows:
-                    f.write(json.dumps(row, default=str) + "\n")
+            saved = target.write_parquet(name, arrow_table, **kwargs)
         else:
-            raise ValueError(f"Unsupported format: {file_format}. Use 'csv', 'parquet', or 'json'")
+            saved = target.write_text(
+                name, "".join(json.dumps(row, default=str) + "\n" for row in arrow_table.to_pylist())
+            )
 
-        print(f"Saved to: {filepath}")
+        print(f"Saved to: {saved}")
 
     def display_full_report(self, max_rows: int = 5) -> ValidationResult:
         self.print_summary().show_failed_rows(max_rows=max_rows)
