@@ -61,6 +61,7 @@ result = validate_data("s3://my-bucket/contracts/my_contract.yaml", df=df)
 ```
 
 !!! note
+
     Loading from S3 needs `boto3`, which the base install leaves out. Install
     it with `pip install 'vowl[all]'` or `pip install boto3`. vowl uses your
     default AWS credentials: environment variables, `~/.aws/credentials`, or an

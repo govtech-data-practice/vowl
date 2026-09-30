@@ -13,17 +13,17 @@ to follow it.
 Each word below means one thing, and this page uses no other word for it. [Key terms](key-terms.md) has the words used across the
 docs.
 
-| Word                | Meaning                                                                                                                                                  |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **check**           | One test from your contract, such as "price must be positive".                                                                                           |
-| **failed rows**     | The rows a check caught.                                                                                                                                 |
+| Word                | Meaning                                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **check**           | One test from your contract, such as "price must be positive".                                                                                          |
+| **failed rows**     | The rows a check caught.                                                                                                                                |
 | **counted check**   | A check whose failed rows count toward the row counts. Most checks are counted. [Which checks are counted](#which-checks-are-counted) lists the others. |
-| **row counts**     | How many rows of a table failed at least one counted check, and how many passed them all.                                                                |
-| **mark**            | To write a check's name into a row's `check_info` column.                                                                                                |
-| **annotated table** | Your table with one extra column, `check_info`. Every row is kept.                                                                                       |
-| **clean row**       | A row in the annotated table that no check marked. Its `check_info` is empty.                                                                            |
-| **residue**         | Failed rows that vowl could not mark on a table. vowl keeps them in a separate list.                                                                     |
-| **summary**         | The report printed by `print_summary()`, and saved as `summary.json`.                                                                                    |
+| **row counts**      | How many rows of a table failed at least one counted check, and how many passed them all.                                                               |
+| **mark**            | To write a check's name into a row's `check_info` column.                                                                                               |
+| **annotated table** | Your table with one extra column, `check_info`. Every row is kept.                                                                                      |
+| **clean row**       | A row in the annotated table that no check marked. Its `check_info` is empty.                                                                           |
+| **residue**         | Failed rows that vowl could not mark on a table. vowl keeps them in a separate list.                                                                    |
+| **summary**         | The report printed by `print_summary()`, and saved as `summary.json`.                                                                                   |
 
 ## The short version
 
@@ -117,12 +117,12 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 A check is counted when all of these hold:
 
-| Rule                                      | Why                                                                 | Example of a check that is not counted                         |
-| ----------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Rule                                      | Why                                                                  | Example of a check that is not counted                         |
+| ----------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
 | It points at rows                         | An average, a sum or a `rowCount` is one number for the whole table. | `average_price_in_range`                                       |
-| Its failed rows are the bad rows          | Some checks count good rows, so the rows they catch are fine.       | "at least 100 orders are paid" (`mustBeGreaterThan: 100`)      |
-| It ran                                    | A check that hit an error has no failed rows.                       | A check with a typo in its SQL                                 |
-| Its failed rows can be found in the table | vowl needs to recognise the same row across checks.                 | A check that returns only the town names with an unusual price |
+| Its failed rows are the bad rows          | Some checks count good rows, so the rows they catch are fine.        | "at least 100 orders are paid" (`mustBeGreaterThan: 100`)      |
+| It ran                                    | A check that hit an error has no failed rows.                        | A check with a typo in its SQL                                 |
+| Its failed rows can be found in the table | vowl needs to recognise the same row across checks.                  | A check that returns only the town names with an unusual price |
 
 The second rule looks at the check's operator. The rows a check catches are
 bad rows when the check sets an upper limit on them:
@@ -232,13 +232,14 @@ for them rather than 100%.
 
 Every failed check ends up in exactly one of three places.
 
-| Where                                  | Which checks                                                                                                                                                                                                                                       | Example                                                            |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Marked on the annotated table**      | Counted checks whose failed rows have exactly the same columns as your table. Most checks are like this, including many that vowl creates for you, such as unique-value and foreign-key checks.                                                    | `price_must_be_positive`                                           |
-| **A residue**, in `output["residues"]` | Checks whose failed rows have different columns from your table, either fewer columns or extra columns from a second table. Each residue is stored under the name `"<table>::<check>"`.                                                            | A check that returns only the names of towns with an unusual price |
+| Where                                  | Which checks                                                                                                                                                                                                                                      | Example                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Marked on the annotated table**      | Counted checks whose failed rows have exactly the same columns as your table. Most checks are like this, including many that vowl creates for you, such as unique-value and foreign-key checks.                                                   | `price_must_be_positive`                                           |
+| **A residue**, in `output["residues"]` | Checks whose failed rows have different columns from your table, either fewer columns or extra columns from a second table. Each residue is stored under the name `"<table>::<check>"`.                                                           | A check that returns only the names of towns with an unusual price |
 | **The summary only**                   | Checks that produce one number instead of rows, such as an average, a maximum or `rowCount`. Checks whose failed rows are good rows (see [Which checks are counted](#which-checks-are-counted)). Also checks that hit an error and could not run. | `average_price_in_range`                                           |
 
 !!! tip "Read the summary for the final result"
+
     A check in the last group marks no row and creates no residue. It appears
     only in the summary and in `result.get_check_results_df()`. Looking at the
     annotated tables alone, you would miss it.
@@ -293,14 +294,14 @@ table to work out the row counts.
 
 ### How the two work
 
-|                             | Counting (the row counts)                                                                                                                                                                                                                              | Marking (the annotated table)                                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Where it runs               | In your data source, for the `pushdown` and `table_match` routes. On your machine, for `fetched_rows`.                                                                                                                                                  | On your machine.                                                                                                 |
-| What vowl downloads         | Counts. For a `fetched_rows` check, its failed rows.                                                                                                                                                                                                    | Your whole table, plus the failed rows of every check that marks rows.                                           |
+|                             | Counting (the row counts)                                                                                                                                                                                                                                         | Marking (the annotated table)                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Where it runs               | In your data source, for the `pushdown` and `table_match` routes. On your machine, for `fetched_rows`.                                                                                                                                                            | On your machine.                                                                                                 |
+| What vowl downloads         | Counts. For a `fetched_rows` check, its failed rows.                                                                                                                                                                                                              | Your whole table, plus the failed rows of every check that marks rows.                                           |
 | How it tells two rows apart | In DuckDB, SQLite, Spark and Postgres, the data source compares the stored values exactly, so `a` and `A`, or `-0.0` and `0.0`, stay apart. In other data sources it uses the data source's own comparison, see below. For fetched rows, vowl's value comparison. | vowl's value comparison, described in [How vowl finds a failed row](#how-vowl-finds-a-failed-row-in-your-table). |
-| Which checks it can use     | Checks whose failed rows have the table's columns, or its primary key.                                                                                                                                                                                  | The same checks as counting.                                                                                     |
-| Effect of `max_failed_rows` | None for `pushdown` and `table_match`. A `fetched_rows` check that was cut short makes the number not exact.                                                                                                                                            | Stops with an error when a check that marks rows was cut short.                                                  |
-| Cost                        | Grows with the number of checks, not with the size of the table.                                                                                                                                                                                        | Downloads the whole table every time.                                                                            |
+| Which checks it can use     | Checks whose failed rows have the table's columns, or its primary key.                                                                                                                                                                                            | The same checks as counting.                                                                                     |
+| Effect of `max_failed_rows` | None for `pushdown` and `table_match`. A `fetched_rows` check that was cut short makes the number not exact.                                                                                                                                                      | Stops with an error when a check that marks rows was cut short.                                                  |
+| Cost                        | Grows with the number of checks, not with the size of the table.                                                                                                                                                                                                  | Downloads the whole table every time.                                                                            |
 
 A check on the `table_match` route is counted the way marking works: the data
 source counts the table rows that match the check's failed rows. So a check
@@ -309,13 +310,13 @@ and marks three.
 
 ### When the two differ
 
-| Situation                                                                                                                                           | Row counts                                                                                                | Annotated table                                               |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| A check had more failed rows than `max_failed_rows`                                                                                                 | Exact, when the data source counts. Marked not exact when the check's rows were fetched.                   | `get_annotated_output()` stops with an error.                 |
-| The table has a column vowl can't download (`INTERVAL`, `BIT`, `UNION`)                                                                             | Counted as usual.                                                                                          | No annotated table. The failed rows become residues.          |
+| Situation                                                                                                                                                     | Row counts                                                                                                 | Annotated table                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| A check had more failed rows than `max_failed_rows`                                                                                                           | Exact, when the data source counts. Marked not exact when the check's rows were fetched.                   | `get_annotated_output()` stops with an error.                 |
+| The table has a column vowl can't download (`INTERVAL`, `BIT`, `UNION`)                                                                                       | Counted as usual.                                                                                          | No annotated table. The failed rows become residues.          |
 | The data source is not DuckDB, SQLite, Spark or Postgres, and it treats different values as equal, for example `a` and `A` under a case-insensitive collation | Two rows caught by different checks can count as one. The number is marked not exact.                      | Both rows are marked.                                         |
-| A check's query is not a plain filter, and its rows had to be fetched, for example `DISTINCT` on a data source that can't count for vowl            | Counted from the fetched rows, so three identical copies can count as one. The number is marked not exact. | All three copies are marked, since they hold the same values. |
-| The table changes while vowl reads it                                                                                                               | Counting reads the table at one moment, or at a few moments for large contracts.                           | Marking reads it again later, so it can see different rows.   |
+| A check's query is not a plain filter, and its rows had to be fetched, for example `DISTINCT` on a data source that can't count for vowl                      | Counted from the fetched rows, so three identical copies can count as one. The number is marked not exact. | All three copies are marked, since they hold the same values. |
+| The table changes while vowl reads it                                                                                                                         | Counting reads the table at one moment, or at a few moments for large contracts.                           | Marking reads it again later, so it can see different rows.   |
 
 In the first three rows of the table, the row counts are the right ones and
 `exact` stays `True`. In the next two, `exact` is `False` on the number. vowl
@@ -434,6 +435,7 @@ Its failed rows are kept under
 `"demo_employee_payroll::employee_id_exists_in_master_list"`.
 
 !!! note "vowl goes by the columns, not by what the check means"
+
     A check is only ever matched against its own schema's table, and its failed
     rows must have exactly that table's columns. A query that returns rows of
     the right shape for the wrong reason will still mark them, the same as a
@@ -446,6 +448,9 @@ output = result.get_annotated_output()
 output["annotated"]   # {"<schema>": your table + check_info}
 output["residues"]    # {"<schema>::<check_name>": failed rows + check_info + tables_in_query}
 ```
+
+<!-- prettier-ignore-start -->
+<!-- Zensical needs the table indented 4 spaces to stay inside the list item. -->
 
 - **Every schema gets an annotated table**, even when nothing failed. Its
   `check_info` column is then empty on every row.
@@ -468,15 +473,17 @@ output["residues"]    # {"<schema>::<check_name>": failed rows + check_info + ta
   The exception is `duplicateValues` with `unit: percent`, whose result is a
   share and not a number of rows.
 
+<!-- prettier-ignore-end -->
+
 ## Other ways to see failed rows
 
-| Method                                 | What you get                                                                          |
-| -------------------------------------- | ------------------------------------------------------------------------------------- |
-| `result.get_row_quality_df(by=...)`    | The row counts per table, per dimension or per check.                                 |
-| `result.show_failed_rows(max_rows=5)`  | Prints a few failed rows for each failed check. `max_rows=-1` prints them all.        |
+| Method                                 | What you get                                                                           |
+| -------------------------------------- | -------------------------------------------------------------------------------------- |
+| `result.get_row_quality_df(by=...)`    | The row counts per table, per dimension or per check.                                  |
+| `result.show_failed_rows(max_rows=5)`  | Prints a few failed rows for each failed check. `max_rows=-1` prints them all.         |
 | `result.get_output_dfs()`              | Each check's failed rows as a separate table, stored under `"<schema>::<check_name>"`. |
-| `result.get_annotated_output()`        | The annotated tables and residues.                                                    |
-| `result.save(output_mode="annotated")` | Saves the annotated tables, residues and `summary.json` as files.                     |
+| `result.get_annotated_output()`        | The annotated tables and residues.                                                     |
+| `result.save(output_mode="annotated")` | Saves the annotated tables, residues and `summary.json` as files.                      |
 
 `output_mode="failed_rows"` and `get_consolidated_output_dfs()` are the older
 way of saving failed rows and will be removed. They group the failed rows of

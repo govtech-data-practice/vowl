@@ -24,12 +24,12 @@ result.save("dq-results/", output_mode="annotated")
 
 These return the result itself, so you can chain them.
 
-| Method                             | What it prints                                                                         |
-| ---------------------------------- | -------------------------------------------------------------------------------------- |
-| `print_summary()`                  | Check and row counts for each schema, and a table of every check                       |
-| `show_failed_checks()`             | Each failed check with its operator, expected value and actual value                   |
-| `show_failed_rows(max_rows=5)`     | Up to `max_rows` failed rows per failed check. `max_rows=-1` prints them all.          |
-| `display_full_report(max_rows=5)`  | `print_summary()` followed by `show_failed_rows()`                                     |
+| Method                            | What it prints                                                                |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| `print_summary()`                 | Check and row counts for each schema, and a table of every check              |
+| `show_failed_checks()`            | Each failed check with its operator, expected value and actual value          |
+| `show_failed_rows(max_rows=5)`    | Up to `max_rows` failed rows per failed check. `max_rows=-1` prints them all. |
+| `display_full_report(max_rows=5)` | `print_summary()` followed by `show_failed_rows()`                            |
 
 [Quick start](getting-started.md#reading-the-summary) explains each line of the
 summary.
@@ -40,18 +40,18 @@ The DataFrame methods return [Narwhals](https://narwhals-dev.github.io/narwhals/
 DataFrames. Call `.to_native()` to get the pandas, Polars or other DataFrame
 underneath.
 
-| Method or property                        | Returns                                                                                                                                                                    |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `passed`                                  | `True` when every check passed                                                                                                                                             |
-| `get_check_results_df()`                  | One row per check: name, status, expected and actual values, timing. `include_check_definition=True` adds each check's definition as JSON.                                |
-| `get_annotated_output(check_info=None)`   | Your tables with failed rows marked, plus the failed rows that could not be marked. See [Failed rows](failed-rows.md).                                                     |
-| `get_row_quality_df(by="schema")`         | Row counts: how many rows failed and passed. See [Row counts](#row-counts).                                                                                                |
-| `get_output_dfs(checks=None)`             | Each check's failed rows on their own, keyed `"<schema>::<check_name>"`                                                                                                    |
-| `get_dq_metrics()`                        | The [DQ metrics](dq-metrics/index.md) as a `dict`, the same content as `dq_metrics.json`                                                                                   |
-| `export_otel(...)`                        | Sends the results to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                                                                          |
-| `run_id`                                  | This run's ID. You can set it to your own value. See [The run ID](dq-metrics/index.md#the-run-id).                                                                         |
-| `contract_id`, `api_version`, `contract_data` | The contract's `id`, its ODCS `apiVersion`, and the whole contract                                                                                                     |
-| `get_consolidated_output_dfs(checks=None)` | _Deprecated._ Use `get_annotated_output()`.                                                                                                                               |
+| Method or property                            | Returns                                                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `passed`                                      | `True` when every check passed                                                                                                             |
+| `get_check_results_df()`                      | One row per check: name, status, expected and actual values, timing. `include_check_definition=True` adds each check's definition as JSON. |
+| `get_annotated_output(check_info=None)`       | Your tables with failed rows marked, plus the failed rows that could not be marked. See [Failed rows](failed-rows.md).                     |
+| `get_row_quality_df(by="schema")`             | Row counts: how many rows failed and passed. See [Row counts](#row-counts).                                                                |
+| `get_output_dfs(checks=None)`                 | Each check's failed rows on their own, keyed `"<schema>::<check_name>"`                                                                    |
+| `get_dq_metrics()`                            | The [DQ metrics](dq-metrics/index.md) as a `dict`, the same content as `dq_metrics.json`                                                   |
+| `export_otel(...)`                            | Sends the results to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                                           |
+| `run_id`                                      | This run's ID. You can set it to your own value. See [The run ID](dq-metrics/index.md#the-run-id).                                         |
+| `contract_id`, `api_version`, `contract_data` | The contract's `id`, its ODCS `apiVersion`, and the whole contract                                                                         |
+| `get_consolidated_output_dfs(checks=None)`    | _Deprecated._ Use `get_annotated_output()`.                                                                                                |
 
 ## Saving results
 
@@ -61,15 +61,16 @@ underneath.
 result.save("dq-results/", prefix="orders", output_mode="annotated")
 ```
 
-| File                                  | What it holds                                                                                   |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `orders_check_results.csv`            | One row per check, the same as `get_check_results_df()`                                         |
-| `orders_<schema>_annotated.csv`       | One per schema: the full table with a `check_info` column on each failed row                    |
+| File                                  | What it holds                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `orders_check_results.csv`            | One row per check, the same as `get_check_results_df()`                                                                              |
+| `orders_<schema>_annotated.csv`       | One per schema: the full table with a `check_info` column on each failed row                                                         |
 | `orders_<schema>_<check>_residue.csv` | One per check whose failed rows could not be marked on the table. See [Failed rows](failed-rows.md#where-each-failed-check-ends-up). |
-| `orders_summary.json`                 | The numbers behind `print_summary()`                                                            |
-| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md)                                                     |
+| `orders_summary.json`                 | The numbers behind `print_summary()`                                                                                                 |
+| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md)                                                                                          |
 
 !!! warning "Pass `output_mode=\"annotated\"`"
+
     `save()` still defaults to `output_mode="failed_rows"`, which writes the
     older grouped failed-rows CSVs and is deprecated. The default will change
     to `"annotated"` in a future release. Pass `output_mode="annotated"` now to
@@ -94,13 +95,13 @@ storage:
 result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
 ```
 
-| Location           | Example                                                     |
-| ------------------ | ----------------------------------------------------------- |
-| Amazon S3          | `s3://my-bucket/dq-results/`                                |
-| Google Cloud       | `gs://my-bucket/dq-results/`                                |
-| Azure Data Lake    | `abfs://container@account.dfs.core.windows.net/dq-results/` |
-| HDFS               | `hdfs://namenode:8020/dq-results/`                          |
-| A local file URI   | `file:///shared/dq-results/`                                |
+| Location         | Example                                                     |
+| ---------------- | ----------------------------------------------------------- |
+| Amazon S3        | `s3://my-bucket/dq-results/`                                |
+| Google Cloud     | `gs://my-bucket/dq-results/`                                |
+| Azure Data Lake  | `abfs://container@account.dfs.core.windows.net/dq-results/` |
+| HDFS             | `hdfs://namenode:8020/dq-results/`                          |
+| A local file URI | `file:///shared/dq-results/`                                |
 
 vowl uses the filesystems that come with pyarrow, which vowl already depends
 on, so there is nothing extra to install. Credentials come from the usual place
@@ -136,6 +137,7 @@ variable to the store's address. Both saving and
 pick it up.
 
 !!! note
+
     Some pyarrow builds, mostly from conda, leave out S3 or Google Cloud
     support. If `save()` says the filesystem is not supported, install pyarrow
     from PyPI with `pip install --force-reinstall pyarrow`.
@@ -175,12 +177,12 @@ explains which checks are counted and how.
 `ValidationConfig` holds the settings that apply to a whole run. Pass it to
 `validate_data` as `config=`.
 
-| Setting                  | Default           | What it does                                                                                                                                  |
-| ------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `max_failed_rows`        | `-1` (no cap)     | The most failed rows kept per check. See [Capping failed rows](failed-rows.md#capping-failed-rows).                                           |
-| `row_issue_scope`        | `"failed_checks"` | `"all_violations"` also counts the failed rows of checks that passed within their threshold. See [Row counts](#row-counts).                  |
-| `use_try_cast`           | `True`            | Turns `CAST` into `TRY_CAST` in check queries, so a value that cannot be converted becomes a failed row instead of stopping the check.        |
-| `output_mode`            | `"failed_rows"`   | What `save()` writes when you do not pass `output_mode`. Set it to `"annotated"`. See [Saving results](#saving-results).                       |
-| `annotated_check_info`   | `"names"`         | How much detail the `check_info` column holds when you do not pass `check_info`                                                               |
-| `enable_additional_schema_statistics` | `True` | Counts the rows in each table for the summary. `False` skips the count.                                                                   |
-| `max_rows_for_statistics` | `-1` (no cap)    | The most rows counted per table for the summary                                                                                               |
+| Setting                               | Default           | What it does                                                                                                                           |
+| ------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `max_failed_rows`                     | `-1` (no cap)     | The most failed rows kept per check. See [Capping failed rows](failed-rows.md#capping-failed-rows).                                    |
+| `row_issue_scope`                     | `"failed_checks"` | `"all_violations"` also counts the failed rows of checks that passed within their threshold. See [Row counts](#row-counts).            |
+| `use_try_cast`                        | `True`            | Turns `CAST` into `TRY_CAST` in check queries, so a value that cannot be converted becomes a failed row instead of stopping the check. |
+| `output_mode`                         | `"failed_rows"`   | What `save()` writes when you do not pass `output_mode`. Set it to `"annotated"`. See [Saving results](#saving-results).               |
+| `annotated_check_info`                | `"names"`         | How much detail the `check_info` column holds when you do not pass `check_info`                                                        |
+| `enable_additional_schema_statistics` | `True`            | Counts the rows in each table for the summary. `False` skips the count.                                                                |
+| `max_rows_for_statistics`             | `-1` (no cap)     | The most rows counted per table for the summary                                                                                        |

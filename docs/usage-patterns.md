@@ -5,18 +5,19 @@ description: Connect vowl to your data. Local DataFrames, PySpark, 20+ databases
 # Connecting to Your Data
 
 !!! tip "Interactive Demo"
+
     Try the [example notebooks](https://github.com/govtech-data-practice/vowl/tree/main/examples) for a hands-on walkthrough. Start with the [Basic Tutorial](https://github.com/govtech-data-practice/vowl/blob/main/examples/1_basic_tutorial/basic_tutorial.ipynb).
 
 vowl reads your data through an **adapter**, an object that knows how to run
 queries on one data source. Most of the time you do not build one yourself:
 
-| Your data is in                                 | Pass to `validate_data`                           | See                                                   |
-| ----------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------- |
-| A pandas or Polars DataFrame                    | `df=df`                                           | [Local DataFrames](#local-dataframe-pandaspolars)     |
-| A Spark DataFrame                               | `df=spark_df`                                     | [PySpark](#pyspark)                                   |
-| A database                                      | `adapter=IbisAdapter(con)`                        | [Ibis connections](#ibis-connections-20-backends)     |
-| A database, with many checks to run at once     | `adapter=PooledAdapter(...)`                      | [Concurrent checks](#concurrent-checks-pooledadapter) |
-| Several databases                               | `adapters={"schema_name": adapter, ...}`          | [Multi-source validation](#multi-source-validation)   |
+| Your data is in                             | Pass to `validate_data`                  | See                                                   |
+| ------------------------------------------- | ---------------------------------------- | ----------------------------------------------------- |
+| A pandas or Polars DataFrame                | `df=df`                                  | [Local DataFrames](#local-dataframe-pandaspolars)     |
+| A Spark DataFrame                           | `df=spark_df`                            | [PySpark](#pyspark)                                   |
+| A database                                  | `adapter=IbisAdapter(con)`               | [Ibis connections](#ibis-connections-20-backends)     |
+| A database, with many checks to run at once | `adapter=PooledAdapter(...)`             | [Concurrent checks](#concurrent-checks-pooledadapter) |
+| Several databases                           | `adapters={"schema_name": adapter, ...}` | [Multi-source validation](#multi-source-validation)   |
 
 ## Local DataFrame (Pandas/Polars)
 
@@ -50,6 +51,7 @@ finally:
 ```
 
 !!! note
+
     vowl does **not** start or stop the SparkSession. You create and stop it
     yourself, because it is a heavy resource your application owns and
     configures.
@@ -77,6 +79,7 @@ databases handle nulls, regex or arrays differently. See
 [Known issues](known-issues.md#database-backend-differences).
 
 !!! info "MySQL"
+
     Select the database when you create the connection, for example
     `ibis.mysql.connect(..., database="my_db")`, or use a connection URI that
     includes the database name. vowl does not run `USE database`. It runs
@@ -165,6 +168,7 @@ result = validate_data("contract.yaml", adapter=pooled)
   not close Ibis connections, so close those yourself if they need it.
 
 !!! warning "SQLite"
+
     A SQLite connection opened by `ibis.connect("sqlite://...")` cannot be
     shared between threads. See
     [SQLite: Parallel Checks Need a Thread-Safe Connection](known-issues.md#sqlite-parallel-checks-need-a-thread-safe-connection).
@@ -180,13 +184,13 @@ so something has to bring the two tables together.
 There are two ways. They differ in where the checks run and how your rows
 reach them.
 
-|                                | Option A: DuckDB ATTACH                                | Option B: Multi-source adapters                                  |
-| ------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------- |
-| Where single-table checks run  | In DuckDB on your machine, reading the remote table    | Inside each table's own database                                 |
-| Where cross-table checks run   | In DuckDB on your machine, reading the remote tables   | In DuckDB on your machine, on copies of the tables               |
-| How rows reach your machine    | Read while each check runs, then discarded             | Copied into memory in full before the check, kept for the run    |
-| Supported sources              | PostgreSQL, MySQL, SQLite                              | Any Ibis backend                                                 |
-| Who connects the tables        | You, with `ATTACH` and views                           | vowl, from one adapter per schema                                |
+|                               | Option A: DuckDB ATTACH                              | Option B: Multi-source adapters                               |
+| ----------------------------- | ---------------------------------------------------- | ------------------------------------------------------------- |
+| Where single-table checks run | In DuckDB on your machine, reading the remote table  | Inside each table's own database                              |
+| Where cross-table checks run  | In DuckDB on your machine, reading the remote tables | In DuckDB on your machine, on copies of the tables            |
+| How rows reach your machine   | Read while each check runs, then discarded           | Copied into memory in full before the check, kept for the run |
+| Supported sources             | PostgreSQL, MySQL, SQLite                            | Any Ibis backend                                              |
+| Who connects the tables       | You, with `ATTACH` and views                         | vowl, from one adapter per schema                             |
 
 Option A suits large tables, because it never copies a whole table up front,
 but it only works with PostgreSQL, MySQL and SQLite. Option B works with any
@@ -232,6 +236,7 @@ What each step does:
 4. `validate_data` runs every check through this one DuckDB connection.
 
 !!! note "Read, not stored"
+
     A view is a saved query, not a copy. Each time a check runs, DuckDB reads
     the rows it needs from the remote database and discards them when the
     check finishes. For PostgreSQL and MySQL, DuckDB passes simple column
@@ -240,6 +245,7 @@ What each step does:
     the network. A table used by five checks is read five times.
 
 !!! tip "Also useful for one database"
+
     ATTACH helps with a single database too, when that database lacks a SQL
     feature a check needs (for example regex on MSSQL), or when you want the
     same engine to run the checks whatever the source. Attach the database,
@@ -294,6 +300,7 @@ check like this:
   [Queries that read tables outside the contract](known-issues.md#queries-accessing-tables-outside-the-contract).
 
 !!! warning "Watch the data volume"
+
     A table read by a cross-table check across connections is copied in full,
     minus any rows your filter conditions leave out. Large tables can use a lot
     of memory and network. Add filter conditions to limit what is copied, or

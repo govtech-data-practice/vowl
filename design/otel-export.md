@@ -50,13 +50,13 @@ plumbing runs through the engine. `vowl.validation.dq_metrics.compute_points()`
 reads these sources once, and both `MetricEmitter` and `dq_metrics.json` use
 its points.
 
-| Source | What it provides |
-| ------ | ---------------- |
+| Source                                                                                              | What it provides                                                                                                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`CheckResult`](https://github.com/govtech-data-practice/vowl/blob/main/src/vowl/executors/base.py) | Per-check `status`, `failed_rows_count`, `execution_time_ms`, and a `metadata` dict (`schema_name`, `engine`, `target`, `dimension`, `severity`, `tags`, `type`, `logical_type`, `operator`, and more). The check counts at every level are counted from these. |
-| `ValidationResult._row_quality_report()` | Per-schema and per-dimension failed rows, total rows, pass rates and `exact`, exported as the row-count and row pass-rate gauges. The run level adds up the schemas. See [Row-Quality Statistics](row-quality-statistics.md). |
-| `ValidationResult._run_started_ns` / `._run_finished_ns` | The run's start and end, for `vowl.run.duration` and the span timestamps |
-| `ValidationResult.run_id` | The run ID, set when the run is made |
-| `ValidationResult.contract` / `.api_version` | Contract identity for context attributes: id, name, version, status, domain and more |
+| `ValidationResult._row_quality_report()`                                                            | Per-schema and per-dimension failed rows, total rows, pass rates and `exact`, exported as the row-count and row pass-rate gauges. The run level adds up the schemas. See [Row-Quality Statistics](row-quality-statistics.md).                                   |
+| `ValidationResult._run_started_ns` / `._run_finished_ns`                                            | The run's start and end, for `vowl.run.duration` and the span timestamps                                                                                                                                                                                        |
+| `ValidationResult.run_id`                                                                           | The run ID, set when the run is made                                                                                                                                                                                                                            |
+| `ValidationResult.contract` / `.api_version`                                                        | Contract identity for context attributes: id, name, version, status, domain and more                                                                                                                                                                            |
 
 ## Architecture
 

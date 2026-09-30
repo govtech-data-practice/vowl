@@ -136,6 +136,7 @@ In practice, a property like this:
 produces three generated checks: the column exists, no value is longer than 10 characters, and no value is `NULL`.
 
 !!! note
+
     `logicalType: string` makes no check of its own, because any value can be read as a string. It only tells vowl which `logicalTypeOptions` apply. For `integer`, `number`, `boolean`, `date`, `timestamp` and `time`, vowl also checks that every value can be converted to that type.
 
 ## Library Checks (`type: library`)
@@ -146,12 +147,12 @@ Instead of writing SQL by hand, you can declare common checks with `type: librar
 
 Under a property's `quality`:
 
-| `metric`          | What it checks                                              | Arguments                                                                      |
-| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `nullValues`      | Count of `NULL` values in the column                        | -                                                                              |
+| `metric`          | What it checks                                              | Arguments                                                                                                |
+| ----------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `nullValues`      | Count of `NULL` values in the column                        | -                                                                                                        |
 | `missingValues`   | Count of values matching a configurable missing-values list | `arguments.missingValues`: values that mean "missing", such as `""` or `"N/A"` (use `null` for SQL NULL) |
-| `invalidValues`   | Count of values that fail valid-value or pattern criteria   | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex |
-| `duplicateValues` | Count of duplicate non-NULL values in the column            | -                                                                              |
+| `invalidValues`   | Count of values that fail valid-value or pattern criteria   | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex                           |
+| `duplicateValues` | Count of duplicate non-NULL values in the column            | -                                                                                                        |
 
 ### Table-Level Checks
 
@@ -204,6 +205,7 @@ quality:
         - block
         - street_name
 ```
+
 ## Relationships (Foreign Keys)
 
 A `relationships` entry of type `foreignKey` requires every non-`NULL` key value to exist in the table it points to. vowl runs this as a real check (`dimension: consistency`, `mustBe: 0`).

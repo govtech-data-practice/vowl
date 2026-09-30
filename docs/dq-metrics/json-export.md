@@ -100,26 +100,26 @@ This table shows how many points each one has in this run, and one reading
 from each. Counts have one point per status, zeros included, so
 `vowl.check.check.count` has 7 checks times 3 statuses, which is 21 points.
 
-| Metric                           | Type      | Unit       | Points | One reading from this run                                          |
-| -------------------------------- | --------- | ---------- | -----: | ------------------------------------------------------------------ |
-| `vowl.check.check.count`         | counter   | `{check}`  |     21 | `1` for `email_required_check`, `status="FAILED"`                  |
-| `vowl.check.row.count`           | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"`                  |
-| `vowl.check.row.pass_rate`       | gauge     | `1`        |      7 | `0.95` for `email_required_check`                                  |
-| `vowl.check.duration`            | histogram | `ms`       |      7 | `11.6` for `email_required_check`                                  |
-| `vowl.dimension.check.count`     | counter   | `{check}`  |     15 | `1` for `orders` completeness, `status="FAILED"`                   |
-| `vowl.dimension.check.pass_rate` | gauge     | `1`        |      5 | `0.5` for `orders` completeness                                    |
-| `vowl.dimension.row.count`       | gauge     | `{row}`    |     10 | `5` for `orders` completeness, `status="FAILED"`                   |
-| `vowl.dimension.row.pass_rate`   | gauge     | `1`        |      5 | `0.95` for `orders` completeness                                   |
-| `vowl.schema.check.count`        | counter   | `{check}`  |      6 | `2` for `orders`, `status="FAILED"`                                |
-| `vowl.schema.check.pass_rate`    | gauge     | `1`        |      2 | `0.6` for `orders`                                                 |
-| `vowl.schema.row.count`          | gauge     | `{row}`    |      4 | `7` for `orders`, `status="FAILED"`                                |
-| `vowl.schema.row.pass_rate`      | gauge     | `1`        |      2 | `0.93` for `orders`                                                |
-| `vowl.run.schema.count`          | counter   | `{schema}` |      3 | `2` with `status="FAILED"`                                         |
-| `vowl.run.check.count`           | counter   | `{check}`  |      3 | `3` with `status="FAILED"`                                         |
-| `vowl.run.check.pass_rate`       | gauge     | `1`        |      1 | `0.571`, which is 4 of 7 checks                                    |
-| `vowl.run.row.count`             | gauge     | `{row}`    |      2 | `9` with `status="FAILED"`                                         |
-| `vowl.run.row.pass_rate`         | gauge     | `1`        |      1 | `0.925`, which is 111 of 120 rows                                  |
-| `vowl.run.duration`              | histogram | `ms`       |      1 | `400.1`                                                            |
+| Metric                           | Type      | Unit       | Points | One reading from this run                         |
+| -------------------------------- | --------- | ---------- | -----: | ------------------------------------------------- |
+| `vowl.check.check.count`         | counter   | `{check}`  |     21 | `1` for `email_required_check`, `status="FAILED"` |
+| `vowl.check.row.count`           | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
+| `vowl.check.row.pass_rate`       | gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
+| `vowl.check.duration`            | histogram | `ms`       |      7 | `11.6` for `email_required_check`                 |
+| `vowl.dimension.check.count`     | counter   | `{check}`  |     15 | `1` for `orders` completeness, `status="FAILED"`  |
+| `vowl.dimension.check.pass_rate` | gauge     | `1`        |      5 | `0.5` for `orders` completeness                   |
+| `vowl.dimension.row.count`       | gauge     | `{row}`    |     10 | `5` for `orders` completeness, `status="FAILED"`  |
+| `vowl.dimension.row.pass_rate`   | gauge     | `1`        |      5 | `0.95` for `orders` completeness                  |
+| `vowl.schema.check.count`        | counter   | `{check}`  |      6 | `2` for `orders`, `status="FAILED"`               |
+| `vowl.schema.check.pass_rate`    | gauge     | `1`        |      2 | `0.6` for `orders`                                |
+| `vowl.schema.row.count`          | gauge     | `{row}`    |      4 | `7` for `orders`, `status="FAILED"`               |
+| `vowl.schema.row.pass_rate`      | gauge     | `1`        |      2 | `0.93` for `orders`                               |
+| `vowl.run.schema.count`          | counter   | `{schema}` |      3 | `2` with `status="FAILED"`                        |
+| `vowl.run.check.count`           | counter   | `{check}`  |      3 | `3` with `status="FAILED"`                        |
+| `vowl.run.check.pass_rate`       | gauge     | `1`        |      1 | `0.571`, which is 4 of 7 checks                   |
+| `vowl.run.row.count`             | gauge     | `{row}`    |      2 | `9` with `status="FAILED"`                        |
+| `vowl.run.row.pass_rate`         | gauge     | `1`        |      1 | `0.925`, which is 111 of 120 rows                 |
+| `vowl.run.duration`              | histogram | `ms`       |      1 | `400.1`                                           |
 
 A few things to notice:
 
@@ -211,22 +211,22 @@ vowl.run.check.pass_rate               NaN   0.571429
 
 ## What is in the file
 
-| Key               | What it holds                                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema_version`  | The version of this layout. It changes only when the layout changes in a way that could break a reader.                                                |
+| Key               | What it holds                                                                                                                                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`  | The version of this layout. It changes only when the layout changes in a way that could break a reader.                                                                                                                                  |
 | `run`             | The run identity: the vowl version, `vowl.run.id` and the contract fields. The keys are the same as the [run identity attributes](otel-export.md#all-run-identity-attributes), apart from `service.name`, which only OpenTelemetry uses. |
-| `run_started_at`  | When the run started, in UTC. `null` when vowl did not record it.                                                                                       |
-| `run_finished_at` | When the last check finished, in UTC. `null` when vowl did not record it.                                                                               |
-| `points`          | One entry per metric reading, at check, dimension, schema and run level.                                                                                |
+| `run_started_at`  | When the run started, in UTC. `null` when vowl did not record it.                                                                                                                                                                        |
+| `run_finished_at` | When the last check finished, in UTC. `null` when vowl did not record it.                                                                                                                                                                |
+| `points`          | One entry per metric reading, at check, dimension, schema and run level.                                                                                                                                                                 |
 
 Each entry in `points` has:
 
-| Key          | What it holds                                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `name`       | The metric name, for example `vowl.schema.row.pass_rate`. [All metrics](index.md#all-metrics) lists them.         |
-| `type`       | `counter`, `gauge` or `histogram`. It says whether the value adds up. See [Which numbers add up](index.md#which-numbers-add-up). |
-| `unit`       | `{check}`, `{row}` or `{schema}` for counts, `1` for pass rates, `ms` for durations.                              |
-| `value`      | The reading for this run. For a counter, it is this run's count. For a histogram, it is one timing.              |
+| Key          | What it holds                                                                                                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`       | The metric name, for example `vowl.schema.row.pass_rate`. [All metrics](index.md#all-metrics) lists them.                                                                      |
+| `type`       | `counter`, `gauge` or `histogram`. It says whether the value adds up. See [Which numbers add up](index.md#which-numbers-add-up).                                               |
+| `unit`       | `{check}`, `{row}` or `{schema}` for counts, `1` for pass rates, `ms` for durations.                                                                                           |
+| `value`      | The reading for this run. For a counter, it is this run's count. For a histogram, it is one timing.                                                                            |
 | `attributes` | What the reading is for, such as `schema_name` and `status`. The run identity is in `run` instead, not repeated. [Attributes](index.md#attributes) lists them for each metric. |
 
 The metric names always start with `vowl`. The `prefix` of `save` only names
@@ -266,8 +266,8 @@ from it, in the vocabulary on [DQ Metrics](index.md).
 Some fields in `summary.json` look like DQ metrics but follow older rules.
 Prefer `dq_metrics.json` for these:
 
-| In `summary.json`                  | Use instead                   | Why                                                                                      |
-| ---------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------- |
-| `success_rate`                     | `vowl.run.check.pass_rate`    | `success_rate` is a percentage from 0 to 100. Pass rates are from 0 to 1.                 |
-| `failed_rows`                      | `vowl.run.row.count`          | `failed_rows` adds up the failed rows of each check, so a row that fails two checks counts twice. |
-| `total_checks`, `passed`, `failed`, `errors` | `vowl.run.check.count` | The same numbers, as one metric with a `status` attribute.                               |
+| In `summary.json`                            | Use instead                | Why                                                                                               |
+| -------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `success_rate`                               | `vowl.run.check.pass_rate` | `success_rate` is a percentage from 0 to 100. Pass rates are from 0 to 1.                         |
+| `failed_rows`                                | `vowl.run.row.count`       | `failed_rows` adds up the failed rows of each check, so a row that fails two checks counts twice. |
+| `total_checks`, `passed`, `failed`, `errors` | `vowl.run.check.count`     | The same numbers, as one metric with a `status` attribute.                                        |

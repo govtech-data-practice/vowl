@@ -22,12 +22,12 @@ the file. This page describes the metrics once for both.
 Every metric is a reading at one of four **levels**. The level says what one
 reading covers.
 
-| Level         | One reading per      | Answers questions like                              |
-| ------------- | -------------------- | --------------------------------------------------- |
-| **check**     | Check                | "How many rows failed `email_required_check`?"      |
-| **dimension** | Schema and dimension | "What share of `orders` rows are complete?"         |
-| **schema**    | Schema               | "How many `orders` rows have any problem?"          |
-| **run**       | Run                  | "How did last night's run do overall?"              |
+| Level         | One reading per      | Answers questions like                         |
+| ------------- | -------------------- | ---------------------------------------------- |
+| **check**     | Check                | "How many rows failed `email_required_check`?" |
+| **dimension** | Schema and dimension | "What share of `orders` rows are complete?"    |
+| **schema**    | Schema               | "How many `orders` rows have any problem?"     |
+| **run**       | Run                  | "How did last night's run do overall?"         |
 
 A **schema** is one table in the contract. A **dimension** is the kind of
 quality a check measures, such as `completeness` or `consistency`. A check
@@ -95,11 +95,11 @@ Each check belongs to exactly one dimension and one schema, so check counts
 always add up from one level to the next. Rows are different. One row can
 fail several checks, so it can show up once per check or dimension it fails.
 
-| From, to            | Checks | Rows                                                     |
-| ------------------- | ------ | -------------------------------------------------------- |
-| Check to dimension  | Yes    | No. A row can fail several checks in one dimension.       |
-| Dimension to schema | Yes    | No. A row can fail checks in several dimensions.          |
-| Schema to run       | Yes    | Yes. Each table has different rows.                       |
+| From, to            | Checks | Rows                                                |
+| ------------------- | ------ | --------------------------------------------------- |
+| Check to dimension  | Yes    | No. A row can fail several checks in one dimension. |
+| Dimension to schema | Yes    | No. A row can fail checks in several dimensions.    |
+| Schema to run       | Yes    | Yes. Each table has different rows.                 |
 
 The run level is there for convenience. You could add up the schema levels
 yourself, but you do not have to.
@@ -164,26 +164,26 @@ Each reading carries attributes that say what it is for. All levels also
 carry the [run identity attributes](otel-export.md#run-identity-attributes),
 such as `vowl.contract.id`.
 
-| Metric                         | Attributes                                                             |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| `vowl.check.check.count`       | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
-| `vowl.check.row.count`         | `status`, `check_name`, `schema_name`, `dimension`                     |
-| `vowl.check.row.pass_rate`     | `check_name`, `schema_name`, `dimension`                               |
-| `vowl.check.duration`          | `check_name`, `schema_name`, `engine`                                  |
-| `vowl.dimension.check.count`   | `status`, `schema_name`, `dimension`                                   |
-| `vowl.dimension.check.pass_rate` | `schema_name`, `dimension`                                           |
-| `vowl.dimension.row.count`     | `status`, `schema_name`, `dimension`, `vowl.row_quality.exact`         |
-| `vowl.dimension.row.pass_rate` | `schema_name`, `dimension`, `vowl.row_quality.exact`                   |
-| `vowl.schema.check.count`      | `status`, `schema_name`                                                |
-| `vowl.schema.check.pass_rate`  | `schema_name`                                                          |
-| `vowl.schema.row.count`        | `status`, `schema_name`, `vowl.row_quality.exact`                      |
-| `vowl.schema.row.pass_rate`    | `schema_name`, `vowl.row_quality.exact`                                |
-| `vowl.run.schema.count`        | `status`                                                               |
-| `vowl.run.check.count`         | `status`                                                               |
-| `vowl.run.check.pass_rate`     | none                                                                   |
-| `vowl.run.row.count`           | `status`, `vowl.row_quality.exact`                                     |
-| `vowl.run.row.pass_rate`       | `vowl.row_quality.exact`                                               |
-| `vowl.run.duration`            | none                                                                   |
+| Metric                           | Attributes                                                               |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| `vowl.check.check.count`         | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.count`           | `status`, `check_name`, `schema_name`, `dimension`                       |
+| `vowl.check.row.pass_rate`       | `check_name`, `schema_name`, `dimension`                                 |
+| `vowl.check.duration`            | `check_name`, `schema_name`, `engine`                                    |
+| `vowl.dimension.check.count`     | `status`, `schema_name`, `dimension`                                     |
+| `vowl.dimension.check.pass_rate` | `schema_name`, `dimension`                                               |
+| `vowl.dimension.row.count`       | `status`, `schema_name`, `dimension`, `vowl.row_quality.exact`           |
+| `vowl.dimension.row.pass_rate`   | `schema_name`, `dimension`, `vowl.row_quality.exact`                     |
+| `vowl.schema.check.count`        | `status`, `schema_name`                                                  |
+| `vowl.schema.check.pass_rate`    | `schema_name`                                                            |
+| `vowl.schema.row.count`          | `status`, `schema_name`, `vowl.row_quality.exact`                        |
+| `vowl.schema.row.pass_rate`      | `schema_name`, `vowl.row_quality.exact`                                  |
+| `vowl.run.schema.count`          | `status`                                                                 |
+| `vowl.run.check.count`           | `status`                                                                 |
+| `vowl.run.check.pass_rate`       | none                                                                     |
+| `vowl.run.row.count`             | `status`, `vowl.row_quality.exact`                                       |
+| `vowl.run.row.pass_rate`         | `vowl.row_quality.exact`                                                 |
+| `vowl.run.duration`              | none                                                                     |
 
 `severity` is left out when the contract does not set one.
 

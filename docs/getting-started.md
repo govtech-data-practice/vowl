@@ -12,12 +12,12 @@ pip install vowl
 
 Optional extras:
 
-| Extra         | What it adds                                                  |
-| ------------- | ------------------------------------------------------------- |
-| `vowl[spark]` | PySpark support, including Spark Connect                      |
-| `vowl[spark-classic]` | PySpark 3.0 to 3.3, without Spark Connect             |
-| `vowl[otel]`  | [Exporting to OpenTelemetry](dq-metrics/otel-export.md)       |
-| `vowl[all]`   | Everything: Spark, AWS (`boto3`) and OpenTelemetry            |
+| Extra                 | What it adds                                            |
+| --------------------- | ------------------------------------------------------- |
+| `vowl[spark]`         | PySpark support, including Spark Connect                |
+| `vowl[spark-classic]` | PySpark 3.0 to 3.3, without Spark Connect               |
+| `vowl[otel]`          | [Exporting to OpenTelemetry](dq-metrics/otel-export.md) |
+| `vowl[all]`           | Everything: Spark, AWS (`boto3`) and OpenTelemetry      |
 
 For local development, testing, and release workflow, see [CONTRIBUTING.md](https://github.com/govtech-data-practice/vowl/blob/main/CONTRIBUTING.md).
 

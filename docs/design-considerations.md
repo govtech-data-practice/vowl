@@ -60,6 +60,7 @@ This is what lets vowl mark a cross-table check's failed rows on one table
 (next section).
 
 !!! info "How the rewrite works"
+
     vowl does not search and replace the text `COUNT(*)`. It parses your query
     with [sqlglot](https://github.com/tobymao/sqlglot), a Python library that
     reads and translates SQL, and swaps the select list in the parsed query.
@@ -67,6 +68,7 @@ This is what lets vowl mark a cross-table check's failed rows on one table
     through intact.
 
 !!! note "The failed-rows query runs only when needed"
+
     The count query always runs, because vowl needs it to pass or fail the
     check. The failed-rows query runs only when a check **fails** and something
     asks for the rows, such as `get_annotated_output()`, `show_failed_rows()`
@@ -78,6 +80,7 @@ This is what lets vowl mark a cross-table check's failed rows on one table
     [Handling of Failed Rows](failed-rows.md#how-vowl-counts-failed-rows).
 
 !!! info "A note on query performance"
+
     The extra wrapping vowl adds (subqueries, and swapping `COUNT(*)` for
     `SELECT *`) does not slow the query down. Databases flatten these standard
     shapes when they plan the query. A `LEFT JOIN ... WHERE ref.key IS NULL`,
@@ -99,11 +102,11 @@ names, so they match the table.
 [Writing a cross-table check that marks rows](failed-rows.md#writing-a-cross-table-check-that-marks-rows)
 has the full example.
 
-| Query shape                                           | Failed-rows columns                     | Marked on payroll?           |
-| ----------------------------------------------------- | --------------------------------------- | ---------------------------- |
+| Query shape                                           | Failed-rows columns                     | Marked on payroll?          |
+| ----------------------------------------------------- | --------------------------------------- | --------------------------- |
 | Bare `SELECT COUNT(*) FROM payroll LEFT JOIN ref ...` | Both tables' columns (`ref.*` all NULL) | No, the columns don't match |
-| Subquery with `SELECT payroll.*`                      | Payroll columns only                    | Yes                          |
-| `WHERE NOT EXISTS (SELECT 1 FROM ref ...)`            | Payroll columns only                    | Yes                          |
+| Subquery with `SELECT payroll.*`                      | Payroll columns only                    | Yes                         |
+| `WHERE NOT EXISTS (SELECT 1 FROM ref ...)`            | Payroll columns only                    | Yes                         |
 
 `NOT EXISTS` needs no wrapper, because the reference table appears only inside
 the `WHERE`:

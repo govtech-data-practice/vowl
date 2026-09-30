@@ -116,28 +116,28 @@ vowl leaves it as it is.
 vowl reads the standard OpenTelemetry environment variables when you leave
 the matching argument out:
 
-| Variable | Used for |
-| --- | --- |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | The address for all three signals |
-| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` | A separate address for one signal |
-| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` or `http/protobuf`, when `protocol` is not passed |
-| `OTEL_EXPORTER_OTLP_HEADERS` | Extra headers, such as an API key, when `headers` is not passed |
+| Variable                                                                                                        | Used for                                                        |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`                                                                                   | The address for all three signals                               |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` | A separate address for one signal                               |
+| `OTEL_EXPORTER_OTLP_PROTOCOL`                                                                                   | `grpc` or `http/protobuf`, when `protocol` is not passed        |
+| `OTEL_EXPORTER_OTLP_HEADERS`                                                                                    | Extra headers, such as an API key, when `headers` is not passed |
 
 ## Parameters
 
-| Parameter | Default | Purpose |
-| --------- | ------- | ------- |
-| `signals` | `("metrics", "traces", "logs")` | Which signals to send. Any mix of `"metrics"`, `"traces"`, and `"logs"`. |
-| `endpoint` | `None` | Address of your collector or monitoring tool. When left out, the [environment variables](#environment-variables) are used. |
-| `protocol` | `None` | `"grpc"` or `"http/protobuf"`. When left out, vowl uses `OTEL_EXPORTER_OTLP_PROTOCOL`, and falls back to `"grpc"`. |
-| `service_name` | `"vowl"` | Names *where* the validation runs, for example `"orders-dq"`, `"nightly-etl"`, or `"ci-validation"`. Sent as the OTel `service.name` attribute. See [What identifies a validation run](#what-identifies-a-validation-run). |
-| `prefix` | `"vowl"` | The start of every metric name, span name, and vowl attribute name. For example, `"myorg"` turns `vowl.check.check.count` into `myorg.check.check.count` and `vowl.contract.id` into `myorg.contract.id`. |
-| `headers` | `None` | Extra headers to send, for example an API key. |
-| `custom_attributes` | `None` | Your own attributes, added to every metric, span, and log record. See [Custom attributes](#custom-attributes). |
-| `run_id` | `None` | An ID for this export only. When left out, vowl uses `result.run_id`, the ID the run got when it ran and the one in `dq_metrics.json`. Either way, `export_otel` returns it. To change the ID for every output, set `result.run_id` instead. See [The run ID](index.md#the-run-id). |
-| `max_failed_rows_sample` | `0` | How many failing rows per check to copy into traces and logs. `0` sends no row data. See [Capturing failed rows](#capturing-failed-rows). |
-| `use_global_providers` | `False` | Record into your application's existing OTel setup instead of connecting directly. |
-| `metric_provider` / `tracer_provider` / `logger_provider` | `None` | Your own providers, for full control. They win over every other option for their signal. |
+| Parameter                                                 | Default                         | Purpose                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `signals`                                                 | `("metrics", "traces", "logs")` | Which signals to send. Any mix of `"metrics"`, `"traces"`, and `"logs"`.                                                                                                                                                                                                            |
+| `endpoint`                                                | `None`                          | Address of your collector or monitoring tool. When left out, the [environment variables](#environment-variables) are used.                                                                                                                                                          |
+| `protocol`                                                | `None`                          | `"grpc"` or `"http/protobuf"`. When left out, vowl uses `OTEL_EXPORTER_OTLP_PROTOCOL`, and falls back to `"grpc"`.                                                                                                                                                                  |
+| `service_name`                                            | `"vowl"`                        | Names _where_ the validation runs, for example `"orders-dq"`, `"nightly-etl"`, or `"ci-validation"`. Sent as the OTel `service.name` attribute. See [What identifies a validation run](#what-identifies-a-validation-run).                                                          |
+| `prefix`                                                  | `"vowl"`                        | The start of every metric name, span name, and vowl attribute name. For example, `"myorg"` turns `vowl.check.check.count` into `myorg.check.check.count` and `vowl.contract.id` into `myorg.contract.id`.                                                                           |
+| `headers`                                                 | `None`                          | Extra headers to send, for example an API key.                                                                                                                                                                                                                                      |
+| `custom_attributes`                                       | `None`                          | Your own attributes, added to every metric, span, and log record. See [Custom attributes](#custom-attributes).                                                                                                                                                                      |
+| `run_id`                                                  | `None`                          | An ID for this export only. When left out, vowl uses `result.run_id`, the ID the run got when it ran and the one in `dq_metrics.json`. Either way, `export_otel` returns it. To change the ID for every output, set `result.run_id` instead. See [The run ID](index.md#the-run-id). |
+| `max_failed_rows_sample`                                  | `0`                             | How many failing rows per check to copy into traces and logs. `0` sends no row data. See [Capturing failed rows](#capturing-failed-rows).                                                                                                                                           |
+| `use_global_providers`                                    | `False`                         | Record into your application's existing OTel setup instead of connecting directly.                                                                                                                                                                                                  |
+| `metric_provider` / `tracer_provider` / `logger_provider` | `None`                          | Your own providers, for full control. They win over every other option for their signal.                                                                                                                                                                                            |
 
 ## Run identity attributes
 
@@ -148,11 +148,11 @@ Every piece of data vowl sends carries **attributes**: named labels such as
 
 A few attributes answer three questions about every run:
 
-| Question | Attribute | Source |
-| --- | --- | --- |
-| **What** is being validated? | `vowl.contract.id`, `vowl.contract.name`, `vowl.data_product`, `vowl.domain` | Taken from the contract |
-| **Where** is it running? | `service.name` | The `service_name` parameter |
-| **Which run** is this? | `vowl.run.id` | `result.run_id`, made when the run runs |
+| Question                     | Attribute                                                                    | Source                                  |
+| ---------------------------- | ---------------------------------------------------------------------------- | --------------------------------------- |
+| **What** is being validated? | `vowl.contract.id`, `vowl.contract.name`, `vowl.data_product`, `vowl.domain` | Taken from the contract                 |
+| **Where** is it running?     | `service.name`                                                               | The `service_name` parameter            |
+| **Which run** is this?       | `vowl.run.id`                                                                | `result.run_id`, made when the run runs |
 
 The contract already says which data product, domain, and tenant the data
 belongs to, so vowl adds those for you. Use `custom_attributes` for anything
@@ -164,20 +164,20 @@ the run's output.
 vowl adds these contract fields when the contract has a value for them. It does
 not copy any other contract fields. To send more, use `custom_attributes`.
 
-| Key | Source | Notes |
-| --- | --- | --- |
-| `service.name` | `service_name`, default `vowl` | |
-| `vowl.version` | vowl package version | |
-| `vowl.run.id` | `result.run_id`, or the `run_id` parameter | On traces and logs only. See the note below. |
-| `vowl.contract.id` | ODCS `id` | |
-| `vowl.contract.name` | ODCS `name` | Left out when missing |
-| `vowl.contract.version` | The contract author's `version` | Left out when missing |
-| `vowl.contract.api_version` | ODCS spec version (`apiVersion`, for example `v3.1.0`) | Not the same as `version` |
-| `vowl.contract.status` | ODCS `status` | Left out when missing |
-| `vowl.contract.created_ts` | ODCS `contractCreatedTs` | Left out when missing |
-| `vowl.domain` | ODCS `domain` | ODCS v3 only. Left out when missing. |
-| `vowl.data_product` | ODCS `dataProduct` | ODCS v3 only. Left out when missing. |
-| `vowl.tenant` | ODCS `tenant` | Left out when missing |
+| Key                         | Source                                                 | Notes                                        |
+| --------------------------- | ------------------------------------------------------ | -------------------------------------------- |
+| `service.name`              | `service_name`, default `vowl`                         |                                              |
+| `vowl.version`              | vowl package version                                   |                                              |
+| `vowl.run.id`               | `result.run_id`, or the `run_id` parameter             | On traces and logs only. See the note below. |
+| `vowl.contract.id`          | ODCS `id`                                              |                                              |
+| `vowl.contract.name`        | ODCS `name`                                            | Left out when missing                        |
+| `vowl.contract.version`     | The contract author's `version`                        | Left out when missing                        |
+| `vowl.contract.api_version` | ODCS spec version (`apiVersion`, for example `v3.1.0`) | Not the same as `version`                    |
+| `vowl.contract.status`      | ODCS `status`                                          | Left out when missing                        |
+| `vowl.contract.created_ts`  | ODCS `contractCreatedTs`                               | Left out when missing                        |
+| `vowl.domain`               | ODCS `domain`                                          | ODCS v3 only. Left out when missing.         |
+| `vowl.data_product`         | ODCS `dataProduct`                                     | ODCS v3 only. Left out when missing.         |
+| `vowl.tenant`               | ODCS `tenant`                                          | Left out when missing                        |
 
 These go on every metric, span, and log record, with one exception.
 `vowl.run.id` is not put on metrics. Monitoring tools store one series of
@@ -235,11 +235,11 @@ All the run identity attributes above are on every metric too, apart from
 
 vowl uses the three OpenTelemetry metric types:
 
-| Type          | Metrics                                         | In your monitoring tool                                           |
-| ------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
-| **Counter**   | Every `check.count`, and `vowl.run.schema.count` | Add up over time: "checks that failed this week"                  |
-| **Gauge**     | Every `row.count` and `pass_rate`               | Show the latest reading, or how it changes from run to run        |
-| **Histogram** | `vowl.check.duration`, `vowl.run.duration`      | Show the average, or the slowest runs                             |
+| Type          | Metrics                                          | In your monitoring tool                                    |
+| ------------- | ------------------------------------------------ | ---------------------------------------------------------- |
+| **Counter**   | Every `check.count`, and `vowl.run.schema.count` | Add up over time: "checks that failed this week"           |
+| **Gauge**     | Every `row.count` and `pass_rate`                | Show the latest reading, or how it changes from run to run |
+| **Histogram** | `vowl.check.duration`, `vowl.run.duration`       | Show the average, or the slowest runs                      |
 
 Counters are for numbers that add up, gauges for numbers that do not. See
 [Which numbers add up](index.md#which-numbers-add-up).
@@ -301,12 +301,12 @@ Its attributes are the run-level check numbers from the
 `vowl.run.check.pass_rate`, named without the level because the span is the
 run.
 
-| Attribute | Description | Presence |
-| --- | --- | --- |
-| `check.count.passed` | Number of checks that passed | Always |
-| `check.count.failed` | Number of checks that found bad data | Always |
-| `check.count.error` | Number of checks that could not run | Always |
-| `check.pass_rate` | Share of checks that passed, 0 to 1. Checks that could not run count against it. | When the run has checks |
+| Attribute            | Description                                                                      | Presence                |
+| -------------------- | -------------------------------------------------------------------------------- | ----------------------- |
+| `check.count.passed` | Number of checks that passed                                                     | Always                  |
+| `check.count.failed` | Number of checks that found bad data                                             | Always                  |
+| `check.count.error`  | Number of checks that could not run                                              | Always                  |
+| `check.pass_rate`    | Share of checks that passed, 0 to 1. Checks that could not run count against it. | When the run has checks |
 
 ### Check span: `vowl.check`
 
@@ -320,21 +320,21 @@ start of the run. When checks ran at the same time, they all start at the
 start of the run instead. Durations are exact. The start positions are only
 approximate.
 
-| Attribute | Description | Presence |
-| --- | --- | --- |
-| `check_name` | Name of the check | Always |
-| `status` | `PASSED`, `FAILED`, or `ERROR` | Always |
-| `schema_name` | Schema the check belongs to | When known |
-| `dimension` | Quality dimension (for example `completeness` or `consistency`) | Always. `"unknown"` when the check has none. |
-| `severity` | Check severity (for example `error` or `warning`) | When the contract sets one |
-| `engine` | How the check ran: `sql` for SQL checks, or the engine a custom check names | When known |
-| `operator` | How the result was compared (for example `mustBe`) | When known |
-| `query` | The SQL the check ran | When known |
-| `expected_value` | The expected value or threshold | When known |
-| `actual_value` | The value vowl found | When known |
-| `failed_rows_count` | Rows that failed this check | Always. `0` when none failed. |
-| `check.definition.*` | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known |
-| `check.definition.custom.<name>` | The check's `customProperties`, one key per property | When the contract sets them |
+| Attribute                        | Description                                                                                                                                | Presence                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| `check_name`                     | Name of the check                                                                                                                          | Always                                       |
+| `status`                         | `PASSED`, `FAILED`, or `ERROR`                                                                                                             | Always                                       |
+| `schema_name`                    | Schema the check belongs to                                                                                                                | When known                                   |
+| `dimension`                      | Quality dimension (for example `completeness` or `consistency`)                                                                            | Always. `"unknown"` when the check has none. |
+| `severity`                       | Check severity (for example `error` or `warning`)                                                                                          | When the contract sets one                   |
+| `engine`                         | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                | When known                                   |
+| `operator`                       | How the result was compared (for example `mustBe`)                                                                                         | When known                                   |
+| `query`                          | The SQL the check ran                                                                                                                      | When known                                   |
+| `expected_value`                 | The expected value or threshold                                                                                                            | When known                                   |
+| `actual_value`                   | The value vowl found                                                                                                                       | When known                                   |
+| `failed_rows_count`              | Rows that failed this check                                                                                                                | Always. `0` when none failed.                |
+| `check.definition.*`             | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known                                   |
+| `check.definition.custom.<name>` | The check's `customProperties`, one key per property                                                                                       | When the contract sets them                  |
 
 ### Failed row events: `vowl.failed_row`
 
@@ -401,27 +401,27 @@ This keeps `ERROR` logs for "vowl itself needs fixing", so ordinary data
 problems do not page anyone like an outage. To alert on every failure, filter
 on the `status` attribute instead.
 
-| Field | Description |
-| --- | --- |
-| **Severity** | `WARN` for a failed check, `ERROR` for a check that could not run |
-| **Body** | The check's message. A check with no message gets `vowl.check failed: <check_name>` or `vowl.check errored: <check_name>`. |
+| Field                            | Description                                                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Severity**                     | `WARN` for a failed check, `ERROR` for a check that could not run                                                          |
+| **Body**                         | The check's message. A check with no message gets `vowl.check failed: <check_name>` or `vowl.check errored: <check_name>`. |
 | **`trace_id`** and **`span_id`** | The check's span, when traces are sent in the same call. Your monitoring tool uses them to jump from the log to the trace. |
 
 ### Log record attributes
 
-| Attribute | Description | Presence |
-| --- | --- | --- |
-| `check_name` | Name of the check | Always |
-| `status` | `FAILED` or `ERROR` | Always |
-| `schema_name` | Schema the check belongs to | When known |
-| `dimension` | Quality dimension | Always. `"unknown"` when the check has none. |
-| `severity` | Check severity | When the contract sets one |
-| `engine` | How the check ran: `sql` for SQL checks, or the engine a custom check names | When known |
-| `failed_rows_count` | Rows that failed this check | Always. `0` when none failed. |
-| `query` | The SQL the check ran | When known |
-| `check.definition.*` | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known |
-| `check.definition.custom.<name>` | The check's `customProperties`, one key per property | When the contract sets them |
-| `vowl.failed_rows_sample` | Sampled failing rows, as a JSON list | When `max_failed_rows_sample` is above 0 and rows failed |
+| Attribute                        | Description                                                                                                                                | Presence                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `check_name`                     | Name of the check                                                                                                                          | Always                                                   |
+| `status`                         | `FAILED` or `ERROR`                                                                                                                        | Always                                                   |
+| `schema_name`                    | Schema the check belongs to                                                                                                                | When known                                               |
+| `dimension`                      | Quality dimension                                                                                                                          | Always. `"unknown"` when the check has none.             |
+| `severity`                       | Check severity                                                                                                                             | When the contract sets one                               |
+| `engine`                         | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                | When known                                               |
+| `failed_rows_count`              | Rows that failed this check                                                                                                                | Always. `0` when none failed.                            |
+| `query`                          | The SQL the check ran                                                                                                                      | When known                                               |
+| `check.definition.*`             | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known                                               |
+| `check.definition.custom.<name>` | The check's `customProperties`, one key per property                                                                                       | When the contract sets them                              |
+| `vowl.failed_rows_sample`        | Sampled failing rows, as a JSON list                                                                                                       | When `max_failed_rows_sample` is above 0 and rows failed |
 
 ### Worked example
 
@@ -461,6 +461,7 @@ the process. There are three ways to get from an alert to the rows behind it:
    [Custom attributes](#custom-attributes).
 
 !!! warning "Sampled rows contain real data"
+
     A positive `max_failed_rows_sample` copies real failing rows into your
     telemetry. Only turn it on when your monitoring tool is an acceptable place
     for that data, and take care with personal data.
