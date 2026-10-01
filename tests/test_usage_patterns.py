@@ -1427,6 +1427,7 @@ class TestSaveResultsToCloudStorage:
             "dq_dq_metrics.json",
         }
 
+    @pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
     def test_save_dataframe_to_s3_uri(self, s3_client, small_clean_dataframe):
         """``save_dataframe`` accepts an ``s3://`` URI the same way ``save`` does."""
         import io

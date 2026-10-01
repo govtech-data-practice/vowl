@@ -211,6 +211,7 @@ def test_create_dir_is_skipped_only_for_object_stores(result, type_name, expect_
 # --------------------------------------------------------------------------- #
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 @pytest.mark.parametrize("file_format", ["csv", "parquet", "json"])
 def test_save_dataframe_to_s3_uri(mock_s3, file_format, capsys):
     df = pd.DataFrame({"id": [1, 2], "value": ["a", "b"]})
@@ -231,6 +232,7 @@ def test_save_dataframe_to_s3_uri(mock_s3, file_format, capsys):
     assert f"Saved to: {uri}" in capsys.readouterr().out
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 def test_save_dataframe_rejects_an_unknown_format_before_writing(mock_s3):
     with pytest.raises(ValueError, match="Unsupported format"):
         ValidationResult.save_dataframe(pd.DataFrame({"id": [1]}), "s3://bucket/out.txt", "txt")

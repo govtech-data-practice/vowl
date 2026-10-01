@@ -237,15 +237,19 @@ result.save("my-bucket/dq-results/run-1/", filesystem=minio)
 
 ### Saving one DataFrame
 
-`ValidationResult.save_dataframe()` writes any DataFrame to a path or URI, in
-the same way as `save()`. It supports `csv`, `parquet` and `json`:
+To write one check's failed rows on their own, convert the frame to Arrow and
+write it with pyarrow. pyarrow takes the same URIs and `filesystem=` as
+`save()`:
 
 ```python
-from vowl import ValidationResult
+import pyarrow.parquet as pq
 
 failed = result.get_output_dfs()["orders::price_must_be_positive"]
-ValidationResult.save_dataframe(failed, "s3://my-bucket/price_failures.parquet", "parquet")
+pq.write_table(failed.to_arrow(), "s3://my-bucket/price_failures.parquet")
 ```
+
+You can also use your own library's writer on `failed.to_native()`, such as
+`to_parquet()` in pandas or `write_parquet()` in polars.
 
 ## Contract details
 
@@ -259,11 +263,12 @@ ValidationResult.save_dataframe(failed, "s3://my-bucket/price_failures.parquet",
 
 These still work but will be removed in a future release.
 
-| Deprecated                        | Use instead                     |
-| --------------------------------- | ------------------------------- |
-| `save(output_mode="failed_rows")` | `save()`                        |
-| `save(output_mode="both")`        | `save()`                        |
-| `get_consolidated_output_dfs()`   | `get_annotated_output()`        |
+| Deprecated                          | Use instead                                       |
+| ----------------------------------- | ------------------------------------------------- |
+| `save(output_mode="failed_rows")`   | `save()`                                          |
+| `save(output_mode="both")`          | `save()`                                          |
+| `get_consolidated_output_dfs()`     | `get_annotated_output()`                          |
+| `ValidationResult.save_dataframe()` | `pyarrow.parquet.write_table(df.to_arrow(), ...)` |
 
 `output_mode="failed_rows"` writes the older set of files, which group the
 failed rows of several checks together. `output_mode="both"` writes the

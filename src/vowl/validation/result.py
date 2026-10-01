@@ -1371,7 +1371,21 @@ class ValidationResult:
         filesystem: Any | None = None,
         **kwargs,
     ) -> None:
-        """Write *df* to *filepath*, a local path or a URI (see :meth:`save`)."""
+        """Write *df* to *filepath*, a local path or a URI (see :meth:`save`).
+
+        .. deprecated::
+            Write the frame with its own library instead, for example
+            ``pyarrow.parquet.write_table(df.to_arrow(), "s3://...", filesystem=fs)``.
+            This helper will be removed in a future release.
+        """
+        warnings.warn(
+            "ValidationResult.save_dataframe() is deprecated and will be removed in a "
+            "future release. Write the frame with its own library instead, for example "
+            "pyarrow.parquet.write_table(df.to_arrow(), path, filesystem=fs), "
+            "df.to_native().to_parquet(path) or df.to_native().write_parquet(path).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         fmt = file_format.lower()
         if fmt not in ("csv", "parquet", "json"):
             raise ValueError(f"Unsupported format: {file_format}. Use 'csv', 'parquet', or 'json'")

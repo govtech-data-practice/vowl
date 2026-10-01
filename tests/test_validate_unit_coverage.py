@@ -978,6 +978,7 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
     assert output_dfs["users::rule_a"].to_pandas()["tables_in_query"].tolist() == ["orders, users"]
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 def test_validation_result_save_and_save_dataframe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     result = _sample_validation_result()
 
@@ -1002,6 +1003,7 @@ def test_validation_result_save_and_save_dataframe(tmp_path: Path, capsys: pytes
     assert "Saved to:" in capsys.readouterr().out
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 def test_validation_result_save_dataframe_supports_arrow_tables_and_native_to_arrow(tmp_path: Path):
     arrow_table = pa.table({"id": [1]})
     ValidationResult.save_dataframe(arrow_table, str(tmp_path / "arrow.csv"), "csv")
@@ -1016,12 +1018,20 @@ def test_validation_result_save_dataframe_supports_arrow_tables_and_native_to_ar
     assert (tmp_path / "native.csv").exists()
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 def test_validation_result_save_dataframe_wraps_plain_native_dataframes(tmp_path: Path):
     plain_df = pd.DataFrame({"id": [3], "value": ["plain"]})
 
     ValidationResult.save_dataframe(plain_df, str(tmp_path / "plain.csv"), "csv")
 
     assert (tmp_path / "plain.csv").exists()
+
+
+def test_validation_result_save_dataframe_is_deprecated(tmp_path: Path):
+    with pytest.warns(DeprecationWarning, match=r"save_dataframe\(\) is deprecated"):
+        ValidationResult.save_dataframe(_nw_df({"id": [1]}), str(tmp_path / "out.csv"), "csv")
+
+    assert (tmp_path / "out.csv").exists()
 
 
 def test_validation_result_display_full_report_returns_self(capsys: pytest.CaptureFixture[str]):
