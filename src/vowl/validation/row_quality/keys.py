@@ -8,11 +8,12 @@ SQLite's mixed types cannot merge rows the checks tell apart. See "Key" in
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from functools import lru_cache
 from typing import Any
 
 from sqlglot import exp
+
+from vowl.contracts.keys import primary_key_columns as primary_key_columns  # re-exported
 
 # Dialects with a tested binary key entry. Any other dialect groups on the
 # plain column and reports ``exact = false``.
@@ -135,19 +136,3 @@ def value_aggregate(value_sql: str, dialect: str) -> str:
         # Postgres has no MIN for boolean, bytea or json, and ANY_VALUE needs 16.
         return f"(ARRAY_AGG({value_sql}))[1]"
     return f"MIN({value_sql})"
-
-
-def primary_key_columns(properties: Sequence[dict[str, Any]]) -> list[str]:
-    """The declared primary key columns of a schema, in key order."""
-    keyed = [
-        (index, prop)
-        for index, prop in enumerate(properties)
-        if isinstance(prop, dict) and prop.get("name") and prop.get("primaryKey") is True
-    ]
-
-    def position(item: tuple[int, dict[str, Any]]) -> tuple[int, int]:
-        index, prop = item
-        declared = prop.get("primaryKeyPosition")
-        return (declared if isinstance(declared, int) and declared >= 0 else 1_000_000 + index, index)
-
-    return [prop["name"] for _, prop in sorted(keyed, key=position)]

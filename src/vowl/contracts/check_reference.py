@@ -8,6 +8,7 @@ from .check_reference_custom import (
 )
 from .check_reference_generated import (
     ArrayItemsCheckReference,
+    CompositePrimaryKeyCheckReference,
     DeclaredColumnExistsCheckReference,
     EnumCheckReference,
     GeneratedColumnCheckReference,
@@ -60,6 +61,7 @@ __all__ = [
     "RequiredCheckReference",
     "UniqueCheckReference",
     "PrimaryKeyCheckReference",
+    "CompositePrimaryKeyCheckReference",
     "PropertyForeignKeyCheckReference",
     "SchemaForeignKeyCheckReference",
     "LOGICAL_TYPE_TO_SQL",

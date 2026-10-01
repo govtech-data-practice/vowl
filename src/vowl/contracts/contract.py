@@ -12,6 +12,7 @@ from urllib.parse import urljoin, urlparse
 import yaml
 from jsonpath_ng import parse as jsonpath_parse
 
+from .keys import primary_key_columns
 from .models import SUPPORTED_VERSIONS, validate_contract
 from .models.ODCS_types import DataContract, Server
 
@@ -680,6 +681,7 @@ class Contract:
             LOGICAL_TYPE_TO_SQL,
             ArrayItemsCheckReference,
             CheckReference,
+            CompositePrimaryKeyCheckReference,
             DeclaredColumnExistsCheckReference,
             EnumCheckReference,
             LogicalTypeCheckReference,
@@ -726,6 +728,10 @@ class Contract:
 
             # Auto-generated checks from property attributes (run first)
             properties = schema_obj.get("properties", [])
+            # ODCS: all primaryKey columns together form one key. A single
+            # column keeps its per-column check, two or more get one
+            # composite check after the property loop.
+            pk_columns = primary_key_columns(properties or [])
             for prop_idx, prop in enumerate(properties):
                 prop_path = f"$.schema[{schema_idx}].properties[{prop_idx}]"
                 prop_name = prop.get("name", f"property[{prop_idx}]")
@@ -846,7 +852,7 @@ class Contract:
                     refs_by_schema[schema_name].append(UniqueCheckReference(self, prop_path))
 
                 # Primary key checks for columns with primaryKey: true
-                if prop.get("primaryKey") is True:
+                if prop.get("primaryKey") is True and len(pk_columns) < 2:
                     refs_by_schema[schema_name].append(PrimaryKeyCheckReference(self, prop_path))
 
                 # Property-level relationships (foreign keys)
@@ -856,6 +862,13 @@ class Contract:
                         refs_by_schema[schema_name].append(PropertyForeignKeyCheckReference(self, prop_path, rel_idx))
                     except ValueError as exc:
                         refs_by_schema[schema_name].append(UnsupportedColumnCheckReference(self, rel_path, str(exc)))
+
+            if len(pk_columns) >= 2:
+                pk_path = f"$.schema[{schema_idx}].primaryKey"
+                try:
+                    refs_by_schema[schema_name].append(CompositePrimaryKeyCheckReference(self, schema_idx, pk_columns))
+                except ValueError as exc:
+                    refs_by_schema[schema_name].append(UnsupportedTableCheckReference(self, pk_path, str(exc)))
 
             # Schema-level relationships (foreign keys)
             for rel_idx, _rel in enumerate(schema_obj.get("relationships", []) or []):

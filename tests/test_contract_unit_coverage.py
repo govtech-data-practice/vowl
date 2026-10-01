@@ -639,6 +639,41 @@ def test_contract_get_check_references_by_schema_covers_remaining_branch_paths(
     assert any("Unsupported logicalTypeOptions key 'unsupportedOption'" in message for message in warning_messages)
 
 
+def test_composite_primary_key_that_cannot_be_built_degrades_to_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from vowl.contracts.check_reference import CompositePrimaryKeyCheckReference, PrimaryKeyCheckReference
+    from vowl.contracts.check_reference_unsupported import UnsupportedTableCheckReference
+
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    contract = Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-contract",
+            "status": "active",
+            "schema": [
+                {
+                    "name": "regions",
+                    # The same column declared twice cannot form a composite key.
+                    "properties": [
+                        {"name": "country", "logicalType": "string", "primaryKey": True},
+                        {"name": "country", "logicalType": "string", "primaryKey": True},
+                    ],
+                },
+            ],
+        }
+    )
+
+    refs = contract.get_check_references_by_schema()["regions"]
+
+    assert not any(isinstance(ref, (PrimaryKeyCheckReference, CompositePrimaryKeyCheckReference)) for ref in refs)
+    unsupported = [ref for ref in refs if isinstance(ref, UnsupportedTableCheckReference)]
+    assert [ref.path for ref in unsupported] == ["$.schema[0].primaryKey"]
+    assert "repeats a column" in unsupported[0].error_message
+
+
 def test_get_check_references_yields_enum_check_when_property_has_enum(
     monkeypatch: pytest.MonkeyPatch,
 ):

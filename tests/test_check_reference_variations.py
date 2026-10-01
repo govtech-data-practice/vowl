@@ -14,6 +14,7 @@ import pytest
 
 from vowl.contracts.check_reference import (
     ArrayItemsCheckReference,
+    CompositePrimaryKeyCheckReference,
     CustomColumnCheckReference,
     CustomTableCheckReference,
     DeclaredColumnExistsCheckReference,
@@ -1786,3 +1787,157 @@ class TestForeignKeyCheck:
         ref = _fk_refs(contract, "orders")[0]
         # The generated anti-join query passes the security validator.
         validate_query_security(ref.get_query("duckdb"), "duckdb")
+
+
+# ===================================================================
+# Composite primary keys
+# ===================================================================
+
+
+class TestCompositePrimaryKeyCheck:
+    _SQL = (
+        'SELECT COUNT(*) FROM "regions" WHERE "country" IS NULL OR "zone" IS NULL OR ("country", "zone") IN '
+        '(SELECT "country", "zone" FROM "regions" WHERE NOT "country" IS NULL AND NOT "zone" IS NULL '
+        'GROUP BY "country", "zone" HAVING COUNT(*) > 1)'
+    )
+
+    def _refs(self, monkeypatch: pytest.MonkeyPatch, properties: list[dict]) -> list[CheckReference]:
+        contract = _make_contract(monkeypatch, schema_name="regions", properties=properties)
+        return contract.get_check_references_by_schema()["regions"]
+
+    def test_composite_key_yields_one_table_check(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 1},
+                {"name": "zone", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 2},
+            ],
+        )
+        assert not any(isinstance(r, PrimaryKeyCheckReference) for r in refs)
+        composite = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        assert len(composite) == 1
+        ref = composite[0]
+        assert ref.path == "$.schema[0].primaryKey"
+        assert ref.get_schema_name() == "regions"
+        check = ref.get_check()
+        assert check["name"] == "regions_country_zone_primary_key_check"
+        assert check["description"] == "Primary key (country, zone) must be unique and not null"
+        assert check["dimension"] == "consistency"
+        assert check["mustBe"] == 0
+        assert ref.get_query("postgres") == self._SQL
+        assert ref.supports_row_level_output is True
+        assert ref.get_failed_rows_query("postgres") == self._SQL.replace("SELECT COUNT(*)", "SELECT *", 1)
+
+    def test_order_follows_primary_key_position(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "zone", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 2},
+                {"name": "other", "logicalType": "string"},
+                {"name": "country", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 1},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        assert ref.get_columns() == ["country", "zone"]
+        assert ref.get_check()["name"] == "regions_country_zone_primary_key_check"
+        assert ref.get_query("postgres") == self._SQL
+
+    def test_unique_columns_keep_their_own_check(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True, "unique": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        assert [r.get_column_name() for r in refs if isinstance(r, UniqueCheckReference)] == ["country"]
+        assert sum(isinstance(r, CompositePrimaryKeyCheckReference) for r in refs) == 1
+
+    def test_single_column_key_is_unchanged(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 1},
+                {"name": "zone", "logicalType": "string"},
+            ],
+        )
+        assert not any(isinstance(r, CompositePrimaryKeyCheckReference) for r in refs)
+        (ref,) = [r for r in refs if isinstance(r, PrimaryKeyCheckReference)]
+        assert ref.path == "$.schema[0].properties[0].primaryKey"
+        assert ref.get_check()["name"] == "country_primary_key_check"
+
+    def test_counts_nulls_and_duplicate_tuples(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        con = ibis.duckdb.connect()
+        # Valid composite data: each column repeats but no (country, zone) pair does.
+        con.create_table("regions", pa.table({"country": ["SG", "SG", "MY"], "zone": ["A", "B", "A"]}))
+        assert _scalar(con, ref.get_query("duckdb")) == 0
+        con.create_table(
+            "regions",
+            pa.table({"country": ["SG", "SG", "SG", None], "zone": ["A", "B", "A", "C"]}),
+            overwrite=True,
+        )
+        assert _scalar(con, ref.get_query("duckdb")) == 3
+
+    @pytest.mark.parametrize(
+        ("dialect", "open_quote", "close_quote"),
+        [("tsql", "[", "]"), ("bigquery", "`", "`"), ("trino", '"', '"')],
+    )
+    def test_row_value_in_is_rewritten_as_exists(
+        self, monkeypatch: pytest.MonkeyPatch, dialect: str, open_quote: str, close_quote: str
+    ):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        expected = (
+            'SELECT COUNT(*) FROM "regions" WHERE "country" IS NULL OR "zone" IS NULL OR EXISTS(SELECT 1 FROM '
+            '(SELECT "country", "zone" FROM "regions" WHERE NOT "country" IS NULL AND NOT "zone" IS NULL '
+            'GROUP BY "country", "zone" HAVING COUNT(*) > 1) AS "_vowl_pk_dup" '
+            'WHERE "_vowl_pk_dup"."country" = "regions"."country" AND "_vowl_pk_dup"."zone" = "regions"."zone")'
+        )
+        expected = (
+            expected.replace(' "', f" {open_quote}").replace('("', f"({open_quote}").replace('."', f".{open_quote}")
+        )
+        expected = (
+            expected.replace('" ', f"{close_quote} ").replace('")', f"{close_quote})").replace('".', f"{close_quote}.")
+        )
+        expected = expected.replace('",', f"{close_quote},")
+        assert ref.get_query(dialect) == expected
+        # The single-column check has no row value, so it keeps its IN.
+        single = self._refs(monkeypatch, [{"name": "country", "logicalType": "string", "primaryKey": True}])
+        (pk,) = [r for r in single if isinstance(r, PrimaryKeyCheckReference)]
+        assert " IN (SELECT" in pk.get_query(dialect)
+
+    def test_row_value_in_rewrite_matches_in_semantics(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+        import sqlglot
+
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        con = ibis.duckdb.connect()
+        con.create_table(
+            "regions",
+            pa.table({"country": ["SG", "SG", "SG", None], "zone": ["A", "B", "A", "C"]}),
+        )
+        rewritten = sqlglot.transpile(ref.get_query("trino"), read="trino", write="duckdb")[0]
+        assert _scalar(con, rewritten) == _scalar(con, ref.get_query("duckdb")) == 3

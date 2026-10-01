@@ -1058,6 +1058,30 @@ class TestGeneratedChecksMergeEndToEnd:
         assert len(marked) == 3
         assert "pk_primary_key_check" not in self._residue_check_names(out)
 
+    def test_composite_primary_key_merges_nulls_and_dups(self, monkeypatch: pytest.MonkeyPatch):
+        table = pa.table(
+            {
+                "a": pa.array([1, 1, 1, None], type=pa.int64()),
+                "b": pa.array([1, 2, 1, 3], type=pa.int64()),
+            }
+        )
+        out = self._validate(
+            monkeypatch,
+            properties=[
+                {"name": "a", "logicalType": "integer", "primaryKey": True, "primaryKeyPosition": 1},
+                {"name": "b", "logicalType": "integer", "primaryKey": True, "primaryKeyPosition": 2},
+            ],
+            table_quality=[],
+            table=table,
+        )
+        annotated = out["annotated"]["people"]
+        marked = [r for r in annotated.to_arrow().to_pylist() if r["check_info"]]
+        # The two (1, 1) rows + the NULL row = 3. (1, 2) is unique as a pair.
+        assert len(marked) == 3
+        assert {(r["a"], r["b"]) for r in marked} == {(1, 1), (None, 3)}
+        assert all("people_a_b_primary_key_check" in _check_names_of(r["check_info"]) for r in marked)
+        assert "people_a_b_primary_key_check" not in self._residue_check_names(out)
+
     def test_duplicate_values_table_merges(self, monkeypatch: pytest.MonkeyPatch):
         table = pa.table({"a": ["x", "x", "y"], "b": ["1", "1", "2"]})
         out = self._validate(

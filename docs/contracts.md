@@ -120,7 +120,7 @@ vowl builds these checks from the column details in your contract. You don't wri
 | `enum`                                | Non-null values are within the declared allowed set (`enum` value list)                                                                           |
 | `required: true`                      | Column contains no `NULL` values                                                                                                                  |
 | `unique: true`                        | Non-null values are unique                                                                                                                        |
-| `primaryKey: true`                    | Values are both unique and non-null                                                                                                               |
+| `primaryKey: true`                    | Values are unique and non-null. Two or more key columns form one key, see [Composite Primary Keys](#composite-primary-keys)                       |
 | `relationships` (`foreignKey`)        | Every non-null key value exists in the referenced target (referential integrity). See [Relationships (Foreign Keys)](#relationships-foreign-keys) |
 
 In practice, a property like this:
@@ -138,6 +138,23 @@ produces three generated checks: the column exists, no value is longer than 10 c
 !!! note
 
     `logicalType: string` makes no check of its own, because any value can be read as a string. It only tells vowl which `logicalTypeOptions` apply. For `integer`, `number`, `boolean`, `date`, `timestamp` and `time`, vowl also checks that every value can be converted to that type.
+
+### Composite Primary Keys
+
+When two or more properties of a schema set `primaryKey: true`, ODCS reads them together as one key, ordered by `primaryKeyPosition` (starting from 1). vowl then generates a single check for the whole key instead of one per column. It is named `<schema>_<col1>_<col2>_primary_key_check` and fails every row that has a `NULL` in any key column or whose key tuple appears more than once. One key column repeating on its own is fine.
+
+```yaml
+- name: products
+  properties:
+    - name: category
+      primaryKey: true
+      primaryKeyPosition: 1
+    - name: sku
+      primaryKey: true
+      primaryKeyPosition: 2
+```
+
+This generates `products_category_sku_primary_key_check`. Columns without a `primaryKeyPosition` follow the positioned ones in the order they are declared. A schema with a single key column keeps the per-column `<col>_primary_key_check`. A column that also sets `unique: true` still gets its own unique check.
 
 ## Library Checks (`type: library`)
 
@@ -265,6 +282,8 @@ schema:
 ```
 
 A composite row is skipped if **any** of its key columns is `NULL`.
+
+The two `primaryKey` columns of `products` form one composite key, so vowl checks that each `(category, sku)` pair is unique, not each column. See [Composite Primary Keys](#composite-primary-keys).
 
 ### Reference notations
 
@@ -426,5 +445,6 @@ Each reference records where in the contract its check came from, as a JSONPath:
 | Required check               | `required: true`                               | `$.schema[N].properties[M].required`                       |
 | Unique check                 | `unique: true`                                 | `$.schema[N].properties[M].unique`                         |
 | Primary key check            | `primaryKey: true`                             | `$.schema[N].properties[M].primaryKey`                     |
+| Composite primary key check  | `primaryKey: true` on two or more properties   | `$.schema[N].primaryKey`                                   |
 | Property foreign-key check   | `relationships` entry on a property            | `$.schema[N].properties[M].relationships[K]`               |
 | Schema foreign-key check     | `relationships` entry on a schema              | `$.schema[N].relationships[K]`                             |

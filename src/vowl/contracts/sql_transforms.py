@@ -152,6 +152,61 @@ def oracle_quote_column_identifiers(ast: exp.Expression) -> exp.Expression:
 
 
 # ---------------------------------------------------------------------------
+# Row-value IN rewrite
+# ---------------------------------------------------------------------------
+
+_TUPLE_IN_ALIAS = "_vowl_pk_dup"
+
+
+def tuple_in_subquery_to_exists(ast: exp.Expression) -> exp.Expression:
+    """Rewrite ``(a, b) IN (SELECT x, y ...)`` as an ``EXISTS`` over a derived table.
+
+    SQL Server, BigQuery and Trino reject a row value on the left of ``IN``
+    with a subquery. The rewrite keeps the subquery uncorrelated inside a
+    derived table and correlates only the equality chain::
+
+        EXISTS (SELECT 1 FROM (<subquery>) AS _vowl_pk_dup
+                WHERE _vowl_pk_dup.x = t.a AND _vowl_pk_dup.y = t.b)
+
+    The columns are qualified with the enclosing SELECT's table, so the
+    rewrite applies only when that SELECT reads a single table without joins.
+    NULL keys never match either way, so the result is the same.
+    """
+
+    def _transform(node: exp.Expression) -> exp.Expression:
+        if not isinstance(node, exp.In) or not isinstance(node.this, exp.Tuple):
+            return node
+        query = node.args.get("query")
+        if query is None:
+            return node
+        inner = query.this if isinstance(query, exp.Subquery) else query
+        if not isinstance(inner, exp.Select):
+            return node
+        keys = node.this.expressions
+        outputs = [projection.alias_or_name for projection in inner.expressions]
+        if len(keys) != len(outputs) or not all(outputs) or not all(isinstance(k, exp.Column) for k in keys):
+            return node
+        outer = node.parent_select
+        from_clause = outer.args.get("from_") or outer.args.get("from") if outer is not None else None
+        if outer is None or from_clause is None or outer.args.get("joins"):
+            return node
+        source = from_clause.this
+        if not isinstance(source, exp.Table):
+            return node
+        qualifier = source.alias_or_name
+        condition: exp.Expression | None = None
+        for key, output in zip(keys, outputs, strict=True):
+            eq = exp.column(output, table=_TUPLE_IN_ALIAS, quoted=True).eq(
+                exp.column(key.name, table=qualifier, quoted=True)
+            )
+            condition = eq if condition is None else exp.And(this=condition, expression=eq)
+        derived = inner.copy().subquery(exp.to_identifier(_TUPLE_IN_ALIAS, quoted=True))
+        return exp.Exists(this=sqlglot.select(exp.Literal.number(1)).from_(derived).where(condition))
+
+    return ast.transform(_transform)
+
+
+# ---------------------------------------------------------------------------
 # Dialect AST transform registry
 # ---------------------------------------------------------------------------
 
@@ -174,6 +229,9 @@ _DIALECT_AST_TRANSFORMS: dict[str, list] = {
         oracle_quote_underscore_aliases,
         oracle_quote_column_identifiers,
     ],
+    "tsql": [tuple_in_subquery_to_exists],
+    "bigquery": [tuple_in_subquery_to_exists],
+    "trino": [tuple_in_subquery_to_exists],
 }
 
 
