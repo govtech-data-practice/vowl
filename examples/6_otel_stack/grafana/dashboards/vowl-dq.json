@@ -113,7 +113,8 @@
             "lastNotNull"
           ]
         },
-        "colorMode": "background"
+        "colorMode": "value",
+        "graphMode": "none"
       },
       "fieldConfig": {
         "defaults": {
@@ -123,7 +124,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "#8ea8c3",
                 "value": null
               }
             ]
@@ -166,7 +167,8 @@
             "lastNotNull"
           ]
         },
-        "colorMode": "background"
+        "colorMode": "value",
+        "graphMode": "none"
       },
       "fieldConfig": {
         "defaults": {
@@ -176,11 +178,11 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#6baf7b",
                 "value": null
               },
               {
-                "color": "red",
+                "color": "#d16d6d",
                 "value": 1
               }
             ]
@@ -223,7 +225,8 @@
             "lastNotNull"
           ]
         },
-        "colorMode": "background"
+        "colorMode": "value",
+        "graphMode": "none"
       },
       "fieldConfig": {
         "defaults": {
@@ -233,15 +236,15 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#d16d6d",
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "#d9a54a",
                 "value": 0.9
               },
               {
-                "color": "green",
+                "color": "#6baf7b",
                 "value": 0.99
               }
             ]
@@ -284,7 +287,8 @@
             "lastNotNull"
           ]
         },
-        "colorMode": "background"
+        "colorMode": "value",
+        "graphMode": "none"
       },
       "fieldConfig": {
         "defaults": {
@@ -294,11 +298,11 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#6baf7b",
                 "value": null
               },
               {
-                "color": "red",
+                "color": "#d16d6d",
                 "value": 1
               }
             ]
@@ -444,7 +448,7 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 1
               },
               {
                 "id": "thresholds",
@@ -452,24 +456,34 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "red",
+                      "color": "#d16d6d",
                       "value": null
                     },
                     {
-                      "color": "orange",
+                      "color": "#d9a54a",
                       "value": 0.9
                     },
                     {
-                      "color": "green",
+                      "color": "#6baf7b",
                       "value": 0.99
                     }
                   ]
                 }
               },
               {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background"
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
                 }
               }
             ]
@@ -490,7 +504,7 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 1
               },
               {
                 "id": "thresholds",
@@ -498,24 +512,34 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "red",
+                      "color": "#d16d6d",
                       "value": null
                     },
                     {
-                      "color": "orange",
+                      "color": "#d9a54a",
                       "value": 0.9
                     },
                     {
-                      "color": "green",
+                      "color": "#6baf7b",
                       "value": 0.99
                     }
                   ]
                 }
               },
               {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background"
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
                 }
               }
             ]
@@ -556,11 +580,11 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "#6baf7b",
                       "value": null
                     },
                     {
-                      "color": "red",
+                      "color": "#d16d6d",
                       "value": 1
                     }
                   ]
@@ -569,7 +593,7 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background"
+                  "type": "color-text"
                 }
               }
             ]
@@ -594,11 +618,11 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "#6baf7b",
                       "value": null
                     },
                     {
-                      "color": "red",
+                      "color": "#d16d6d",
                       "value": 1
                     }
                   ]
@@ -607,7 +631,7 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background"
+                  "type": "color-text"
                 }
               }
             ]
@@ -663,8 +687,11 @@
           "max": 1,
           "custom": {
             "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
             "showPoints": "auto",
-            "pointSize": 5,
+            "pointSize": 4,
             "spanNulls": true,
             "stacking": {
               "mode": "none"
@@ -714,8 +741,11 @@
           "max": 1,
           "custom": {
             "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
             "showPoints": "auto",
-            "pointSize": 5,
+            "pointSize": 4,
             "spanNulls": true,
             "stacking": {
               "mode": "none"
@@ -765,8 +795,11 @@
           "max": 1,
           "custom": {
             "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
             "showPoints": "auto",
-            "pointSize": 5,
+            "pointSize": 4,
             "spanNulls": true,
             "stacking": {
               "mode": "none"
@@ -816,8 +849,11 @@
           "max": 1,
           "custom": {
             "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
             "showPoints": "auto",
-            "pointSize": 5,
+            "pointSize": 4,
             "spanNulls": true,
             "stacking": {
               "mode": "none"
@@ -869,25 +905,29 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "min": 0,
+          "max": 1,
           "custom": {
             "cellOptions": {
-              "type": "color-background"
+              "type": "gauge",
+              "mode": "basic",
+              "valueDisplayMode": "text"
             }
           },
-          "decimals": 3,
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#d16d6d",
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "#d9a54a",
                 "value": 0.9
               },
               {
-                "color": "green",
+                "color": "#6baf7b",
                 "value": 0.99
               }
             ]
@@ -965,9 +1005,10 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
             "cellOptions": {
-              "type": "color-background"
+              "type": "color-text"
             }
           },
           "decimals": 0,
@@ -975,11 +1016,11 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#6baf7b",
                 "value": null
               },
               {
-                "color": "red",
+                "color": "#d16d6d",
                 "value": 1
               }
             ]

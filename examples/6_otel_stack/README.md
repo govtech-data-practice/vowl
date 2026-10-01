@@ -230,11 +230,13 @@ contracts are left:
 - **Failed rows (latest runs)** adds up the failed rows of every contract's
   latest run.
 - **Contract scorecard** has one row per contract, worst check pass rate
-  first. Start here to decide which contract to look at. Failed checks counts
-  both FAILED and ERROR.
+  first. Start here to decide which contract to look at. Pass rates show as a
+  bar, and failed checks counts both FAILED and ERROR.
 
-In this data every contract has some failing checks on purpose, so the tiles
-are red. The payroll contract shows a row pass rate of 0% because its tables
+The colours are muted on purpose. A pass rate is green at 99% or more, amber
+at 90% or more and red below that. A count turns red above 0. In this data
+every contract has some failing checks on purpose, so the failure tiles are
+red. The payroll contract shows a row pass rate of 0% because its tables
 have only 2 and 3 rows and every row fails at least one check. On tiny tables
 the row pass rate swings hard, so read it with the row counts.
 
@@ -270,7 +272,7 @@ Both tables show the latest run of each contract. Each row is
 
 - **Check row pass rate** lists checks from worst to best. A check below 100%
   failed at least one row.
-- **Failed rows per check** lists checks by failed row count. Red rows are the
+- **Failed rows per check** lists checks by failed row count. Red numbers are the
   checks to fix.
 
 ### Traces and logs

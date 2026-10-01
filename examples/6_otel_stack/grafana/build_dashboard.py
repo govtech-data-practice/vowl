@@ -8,8 +8,14 @@ LOKI = {"type": "loki", "uid": "loki"}
 TEMPO = {"type": "tempo", "uid": "tempo"}
 # Every Prometheus query is filtered by the three dashboard variables.
 F = 'service_name=~"$service", vowl_domain=~"$domain", vowl_contract_name=~"$contract"'
+# Muted colours, so a dashboard full of failing checks does not glare.
+BAD, WARN, GOOD, NEUTRAL = "#d16d6d", "#d9a54a", "#6baf7b", "#8ea8c3"
 PCT_THRESHOLDS = {"mode": "absolute", "steps": [
-    {"color": "red", "value": None}, {"color": "orange", "value": 0.9}, {"color": "green", "value": 0.99}]}
+    {"color": BAD, "value": None}, {"color": WARN, "value": 0.9}, {"color": GOOD, "value": 0.99}]}
+RED_IF_ANY = {"mode": "absolute", "steps": [{"color": GOOD, "value": None}, {"color": BAD, "value": 1}]}
+# Pass rates as a thin bar with the number beside it, counts as coloured text.
+BAR_CELL = {"type": "gauge", "mode": "basic", "valueDisplayMode": "text"}
+TEXT_CELL = {"type": "color-text"}
 
 _next_id = iter(range(1, 1000))
 
@@ -24,12 +30,10 @@ def stat(title, expr, x, unit="percentunit", w=6, thresholds=None):
         "id": next(_next_id), "type": "stat", "title": title, "datasource": PROM,
         "gridPos": {"x": x, "y": 0, "w": w, "h": 4},
         "targets": [prom(expr)],
-        "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+        "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "none"},
         "fieldConfig": {"defaults": {
             "unit": unit, "decimals": 2 if unit == "percentunit" else 0,
-            "thresholds": thresholds or {"mode": "absolute", "steps": [
-                {"color": "red", "value": None}, {"color": "orange", "value": 0.9},
-                {"color": "green", "value": 0.99}]},
+            "thresholds": thresholds or PCT_THRESHOLDS,
         }, "overrides": []},
     }
 
@@ -40,7 +44,8 @@ def timeseries(title, targets, gp, unit="percentunit", stack=False, legend="bott
         "gridPos": gp, "targets": targets,
         "options": {"legend": {"displayMode": "list", "placement": legend}},
         "fieldConfig": {"defaults": {"unit": unit, **({"max": 1} if unit == "percentunit" else {}), "custom": {
-            "drawStyle": "line", "showPoints": "auto", "pointSize": 5, "spanNulls": True,
+            "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "gradientMode": "opacity",
+            "showPoints": "auto", "pointSize": 4, "spanNulls": True,
             "stacking": {"mode": "normal" if stack else "none"}}}, "overrides": []},
     }
 
@@ -51,11 +56,10 @@ def latest_table(title, expr, gp, unit="percentunit", thresholds=None, desc=Fals
         "id": next(_next_id), "type": "table", "title": title, "datasource": PROM,
         "gridPos": gp, "targets": [prom(expr, legend="{{vowl_contract_name}} / {{schema_name}} / {{check_name}} ({{dimension}})")],
         "transformations": [{"id": "reduce", "options": {"reducers": ["lastNotNull"], "mode": "seriesToRows"}}],
-        "fieldConfig": {"defaults": {"unit": unit, "custom": {"cellOptions": {"type": "color-background"}},
-                                     "decimals": 3 if unit == "percentunit" else 0,
-                                     "thresholds": thresholds or {"mode": "absolute", "steps": [
-                                         {"color": "red", "value": None}, {"color": "orange", "value": 0.9},
-                                         {"color": "green", "value": 0.99}]}},
+        "fieldConfig": {"defaults": {"unit": unit, "min": 0, **({"max": 1} if unit == "percentunit" else {}),
+                                     "custom": {"cellOptions": BAR_CELL if unit == "percentunit" else TEXT_CELL},
+                                     "decimals": 1 if unit == "percentunit" else 0,
+                                     "thresholds": thresholds or PCT_THRESHOLDS},
                         "overrides": [{"matcher": {"id": "byName", "options": "Field"},
                                        "properties": [{"id": "custom.cellOptions", "value": {"type": "auto"}},
                                                       {"id": "displayName", "value": "Check"}]}]},
@@ -78,7 +82,6 @@ def scorecard(gp):
         ("E", "Failed rows", f'max by (vowl_domain, vowl_contract_name) '
                              f'(last_over_time(vowl_run_row_count{{{F}, status="FAILED"}}[$__range]))', "short"),
     ]
-    red_if_any = {"mode": "absolute", "steps": [{"color": "green", "value": None}, {"color": "red", "value": 1}]}
     overrides = [{"matcher": {"id": "byName", "options": "vowl_contract_name"},
                   "properties": [{"id": "displayName", "value": "Contract"}]},
                  {"matcher": {"id": "byName", "options": "vowl_domain"},
@@ -86,11 +89,12 @@ def scorecard(gp):
     for ref, name, _, unit in cols:
         props = [{"id": "displayName", "value": name}, {"id": "unit", "value": unit}]
         if unit == "percentunit":
-            props += [{"id": "decimals", "value": 2}, {"id": "thresholds", "value": PCT_THRESHOLDS},
-                      {"id": "custom.cellOptions", "value": {"type": "color-background"}}]
+            props += [{"id": "decimals", "value": 1}, {"id": "thresholds", "value": PCT_THRESHOLDS},
+                      {"id": "min", "value": 0}, {"id": "max", "value": 1},
+                      {"id": "custom.cellOptions", "value": BAR_CELL}]
         elif name != "Checks":
-            props += [{"id": "thresholds", "value": red_if_any},
-                      {"id": "custom.cellOptions", "value": {"type": "color-background"}}]
+            props += [{"id": "thresholds", "value": RED_IF_ANY},
+                      {"id": "custom.cellOptions", "value": TEXT_CELL}]
         overrides.append({"matcher": {"id": "byName", "options": f"Value #{ref}"}, "properties": props})
     return {
         "id": next(_next_id), "type": "table", "title": "Contract scorecard (latest run of each contract)",
@@ -106,12 +110,10 @@ def scorecard(gp):
     }
 
 
-RED_IF_ANY = {"mode": "absolute", "steps": [{"color": "green", "value": None}, {"color": "red", "value": 1}]}
-
 panels = [
     # Catalog: every contract that matches the filters, one number or row each.
     stat("Contracts", f"count(max by (vowl_contract_name) (last_over_time(vowl_run_check_pass_rate_ratio{{{F}}}[$__range])))",
-         0, unit="short", thresholds={"mode": "absolute", "steps": [{"color": "blue", "value": None}]}),
+         0, unit="short", thresholds={"mode": "absolute", "steps": [{"color": NEUTRAL, "value": None}]}),
     stat("Contracts with failing checks",
          f"count(max by (vowl_contract_name) (last_over_time(vowl_run_check_pass_rate_ratio{{{F}}}[$__range])) < 1)"
          " or vector(0)", 6, unit="short", thresholds=RED_IF_ANY),
