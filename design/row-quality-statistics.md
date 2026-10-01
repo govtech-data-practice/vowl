@@ -896,7 +896,14 @@ case-insensitive collation, duplicates, table match, and boolean, `json` and
 boolean, `bytea` or `json`, so the value aggregate there is
 `(ARRAY_AGG(x))[1]`.
 
-Not yet covered by automated tests: Spark UTF8_LCASE and parity on Employee.
+`tests/test_row_quality.py` also covers Spark UTF8_LCASE, where 'a' and 'A'
+caught by different checks stay two rows. The test asserts the per-dimension
+counts, because the single-scan form counts `COUNT(*)` per group and gives the
+same schema total with a plain column key. The Employee parity test checks that
+annotated output flags as many rows as `failed_rows` reports on both tables, once
+with both tables on one connection (the joins go by table match) and once on two
+connections (the joins go by fetched rows, and the payroll numbers report
+`exact = false` because those checks are not certified).
 
 ## Implementation
 

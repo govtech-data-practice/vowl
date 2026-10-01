@@ -1103,11 +1103,13 @@ class TestArrayChecks:
     # ---- cardinality: AST / SQL shape -----------------------------------
 
     def test_min_items_uses_array_size(self, monkeypatch: pytest.MonkeyPatch):
-        import sqlglot
         from sqlglot import exp
 
         ref = self._cardinality_ref(monkeypatch, "minItems", 2)
-        parsed = sqlglot.parse_one(ref._build_ast().sql("postgres"), read="postgres")
+        # Inspect the AST, not a Postgres round trip. Importing ibis's Postgres
+        # backend makes sqlglot render ArraySize as CARDINALITY, which parses
+        # back as an anonymous function.
+        parsed = ref._build_ast()
         assert len(list(parsed.find_all(exp.ArraySize))) == 1
         check = ref.get_check()
         assert check["name"] == "tags_logical_type_options_minItems_check"
@@ -1115,11 +1117,10 @@ class TestArrayChecks:
         assert check["mustBe"] == 0
 
     def test_unique_items_uses_array_distinct(self, monkeypatch: pytest.MonkeyPatch):
-        import sqlglot
         from sqlglot import exp
 
         ref = self._cardinality_ref(monkeypatch, "uniqueItems", True)
-        parsed = sqlglot.parse_one(ref._build_ast().sql("postgres"), read="postgres")
+        parsed = ref._build_ast()
         assert len(list(parsed.find_all(exp.ArrayDistinct))) == 1
 
     def test_unique_items_false_degrades_to_unsupported(self, monkeypatch: pytest.MonkeyPatch):

@@ -913,6 +913,29 @@ def test_spark_single_scan_keeps_negative_zero_and_nan_apart(spark_session):
     assert rows_by_check["distinct"]["failed_rows"] == 2
 
 
+def test_spark_utf8_lcase_values_caught_by_different_checks_stay_apart(spark_session):
+    spark_session.sql(
+        "CREATE OR REPLACE TEMP VIEW t AS SELECT id, collate(c, 'UTF8_LCASE') AS c "
+        "FROM VALUES (1, 'a'), (1, 'A'), (1, 'a'), (2, 'b') AS v(id, c)"
+    )
+    # The collation makes 'a' and 'A' one group, so a plain column key would merge them.
+    assert spark_session.sql("SELECT COUNT(DISTINCT c) FROM t WHERE id = 1").collect()[0][0] == 1
+    con = ibis.pyspark.connect(session=spark_session)
+    checks = [
+        _check("lower", "CAST(c AS STRING) COLLATE UTF8_BINARY = 'a'"),
+        _check("upper", "CAST(c AS STRING) COLLATE UTF8_BINARY = 'A'", dimension="conformity"),
+    ]
+
+    result = _run_validation(_contract([_schema("t", checks)]), adapters={"t": IbisAdapter(con)})
+
+    schema = _schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (4, 3, True)
+    # With a plain column key the merged group lands in one dimension, so they would not split 2 and 1.
+    dimensions = _dimension_rows(result)
+    assert (dimensions["validity"]["failed_rows"], dimensions["conformity"]["failed_rows"]) == (2, 1)
+    assert {row["route"] for row in _check_rows(result).values() if row["status"] == "FAILED"} == {"pushdown"}
+
+
 # ---------------------------------------------------------------------------
 # Statement shapes
 # ---------------------------------------------------------------------------
@@ -1073,3 +1096,40 @@ def test_hdb_resale_numbers_match_annotated_output(hdb_frame, cap: int | None):
     if cap is None:
         annotated = result.get_annotated_output()["annotated"]["hdb_resale_prices"]
         assert sum(1 for info in annotated.to_arrow().column("check_info").to_pylist() if info) == 10_571
+
+
+# ---------------------------------------------------------------------------
+# Employee parity
+# ---------------------------------------------------------------------------
+
+_EMPLOYEE_DIR = Path(__file__).parent / "employee"
+
+
+@pytest.mark.parametrize("sources", ["one_connection", "two_connections"])
+def test_employee_numbers_match_annotated_output(sources: str):
+    import pandas as pd
+
+    frames = {
+        name: pd.read_csv(_EMPLOYEE_DIR / f"{name}.csv") for name in ("demo_employee_payroll", "demo_employee_list")
+    }
+    contract = str(_EMPLOYEE_DIR / "employee_payroll_datacontract.yaml")
+    if sources == "one_connection":
+        con = ibis.duckdb.connect()
+        for name, frame in frames.items():
+            con.create_table(name, frame)
+        result = _run_validation(contract, adapter=IbisAdapter(con))
+    else:
+        adapters = {}
+        for name, frame in frames.items():
+            con = ibis.duckdb.connect()
+            con.create_table(name, frame)
+            adapters[name] = IbisAdapter(con)
+        result = _run_validation(contract, adapters=adapters)
+
+    annotated = result.get_annotated_output()["annotated"]
+    for name, failed in {"demo_employee_payroll": 3, "demo_employee_list": 2}.items():
+        flagged = sum(1 for info in annotated[name].to_arrow().column("check_info").to_pylist() if info)
+        assert _schema_row(result, name)["failed_rows"] == flagged == failed
+    routes = {row["route"] for row in _check_rows(result).values() if row["status"] == "FAILED"}
+    # On two connections the joins are cross-source, so they go by fetched rows.
+    assert routes == ({"pushdown", "table_match"} if sources == "one_connection" else {"pushdown", "fetched_rows"})
