@@ -142,7 +142,9 @@ For the last rule, the failed rows must have exactly the same columns as your
 table. If the table has a declared primary key (`primaryKey: true` in the
 contract), no value of it appears twice, and the data source is DuckDB,
 SQLite, Spark or Postgres, failed rows that hold the primary key columns are
-enough.
+enough. vowl then matches every check's rows on the primary key. When a key
+value does appear twice, the `reason` of such a check in
+`get_row_quality_df(by="check")` is `primary key has duplicate values`.
 
 ### Checks that pass with some failed rows
 
@@ -291,6 +293,9 @@ Both start from the same list of counted checks, and both count every copy of a
 duplicated row. So in most runs `failed_rows` equals the number of marked rows,
 as in the [small example](#a-small-example). vowl never uses the annotated
 table to work out the row counts.
+
+[How Failed Rows Are Merged](merging-failed-rows.md) walks through both, step
+by step.
 
 ### How the two work
 

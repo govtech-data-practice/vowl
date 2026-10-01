@@ -37,7 +37,8 @@ These numbers must be:
 - **Cheap.** Never export the full table to count.
 - **Consistent.** The same numbers that `print_summary`, the OTEL gauges and a
   public API report. Equal to what annotated output flags where both are exact.
-  Annotated output merges on the primary key whenever the numbers do.
+  Annotated output matches on the same key as the numbers: the declared primary
+  key when it is proven unique, else the full columns.
 - **Engine-neutral.** Work for SQL checks, the upcoming Python engine and
   cross-source checks.
 
@@ -134,11 +135,16 @@ whether its rows are complete (not cut by `max_failed_rows`).
 
 ### Step 4: Merge
 
-Match rows across checks by value tuple over the table's full columns. The
-declared primary key is used instead only when pushdown is available, a
-column-subset check needs it to merge, and a duplicate-key probe over the table
-returns 0 (see P6 in [Preconditions](#preconditions)). For each distinct row
-keep:
+Match rows across checks by value tuple over the table's full columns, or over
+the declared primary key when pushdown is available, the key leaves out at least
+one column, and a duplicate-key probe over the table returns 0 (see P6 in
+[Preconditions](#preconditions)). A unique key groups the rows exactly as the
+full columns do. It gives a narrower GROUP BY and smaller table-match
+statements, avoids comparing float, NaN, nested and timestamp values outside
+the key, and lets column-subset checks that hold the key merge. The probe runs
+at most once per schema. When it finds a duplicate, or fails, a check that
+holds the key but not every column is left out with its own reason. For each
+distinct row keep:
 
 - **copies**: the largest number of times any single check returned it
 - **checks**: the set of checks that caught it
@@ -515,6 +521,10 @@ Grouped tables are rebuilt with `take()` on the original Arrow table, so every
 column keeps its source type. The `.unique()` calls are gone. The grouping
 already collapses duplicate rows, and residues dedupe on the same keys.
 
+When a unique declared primary key is the match key, only the key columns are
+compared. Float, nested and temporal values in the other columns then never
+reach the merge, so the rules above matter only for key columns.
+
 Still out of scope:
 
 - INTERVAL (ibis casts it to a duration), BIT (invalid UTF8) and UNION (no cast
@@ -551,7 +561,7 @@ hardened pushdown is provably exact under stated conditions.
 | P3  | Every column type can be grouped                                          | Partly. The `MD5` fallback in dialects without a key entry, and the grouped preflight, which sends the schema to fetched rows ([Key](#key), [Probe](#probe)) |
 | P4  | All branches read one snapshot                                            | A single statement. Lost under [chunking](#chunking).                                                                                                        |
 | P5  | No row cap on branches                                                    | By construction. The pushdown never goes through the `max_failed_rows` fetch.                                                                                |
-| P6  | A declared primary key used as the key is actually unique                 | A duplicate-key probe. The primary key is used only when the probe returns 0 ([step 4](#step-4-merge)).                                                      |
+| P6  | A declared primary key used as the key is actually unique                 | A duplicate-key probe, run once per schema. The primary key is used only when it returns 0 ([step 4](#step-4-merge)).                                        |
 
 **Theorem.** Under P0 to P4 the pushdown's failed-row count equals the number of
 physical rows that fail at least one counted check. The pattern histogram is
@@ -649,13 +659,38 @@ Annotated output stays as a row-level evidence artifact and does not produce the
 numbers. It reads the same check selection as the statistics (step 2), then
 does its own Python merge over the fetched rows. It matches rows on the key the
 statistics chose in step 4 (`RowQuality.merge_key`): the full columns, or the
-declared primary key when a column-subset check needed it and it was found
-unique. Its flagged-row counts equal the statistics where both paths are exact
+declared primary key when it was found unique. Both paths decide whether a
+check's rows can be merged with one function, `rows_mergeable` in
+`row_quality/mergeable.py`. Counting passes the columns it knows, and marking
+the columns of the exported table. Its flagged-row counts equal the statistics where both paths are exact
 (see [Where each path fails](#where-each-path-fails)).
 
 A later step can let annotated output read the engine-side flags directly, which
 would carry the pushdown's remaining advantages (no cap, and types that fail on
 export) into the artifact.
+
+#### Future work: marking from engine keys
+
+Deferred plan. Annotated output would export the table together with the same
+binary key expressions the pushdown groups on
+(`SELECT *, <KeySpec key expressions> AS _vowl_cN FROM <anchor>`). It would
+look up each exported row's key in `PushdownOutcome.rows`, which maps a key to
+a check mask, and decode the mask bits into `check_info`. Marking would then no
+longer need each check's fetched failed rows, so the `max_failed_rows` error
+goes away for `pushdown` and `table_match` checks, and so does the per-check
+fetch.
+
+It needs:
+
+- an adapter export API that takes extra projections and an explicit ibis
+  schema,
+- a pushdown run that returns per-row entries instead of the histogram,
+- parity tests against the current marking.
+
+It does not help with types that fail on export (INTERVAL, BIT, UNION), since
+the table is still exported. An engine-side `LEFT JOIN` of the table to the
+flags was rejected. It would hit the chunk limits, needs temporary tables that
+vowl does not create, and its Arrow types drift from the plain export.
 
 ### 3. Inverted checks are excluded
 
@@ -769,6 +804,8 @@ only the schema and dimension numbers inexact.
 | `check ended in ERROR`                                                 | no                               | empty                           |
 | `dropped at run time (probe failure)`                                  | no                               | empty                           |
 | `failed rows do not have the table's columns or primary key`           | no                               | empty                           |
+| `primary key has duplicate values`                                     | no                               | empty                           |
+| `primary key uniqueness could not be checked`                          | no                               | empty                           |
 | `not certified for pushdown: uses <rule>`, for example `uses DISTINCT` | yes                              | `table_match` or `fetched_rows` |
 | `checks tables from more than one data source`                         | yes                              | `fetched_rows`                  |
 | `data source does not support pushdown`                                | yes                              | `fetched_rows`                  |
@@ -827,8 +864,11 @@ Four annotated-output bugs found by the investigation are already fixed:
   and a collation test. Until then they report `exact = false`.
 - **Declared primary keys.** A duplicated key would merge distinct rows (P6).
   The implementation guards it. The primary key is used only when a
-  duplicate-key query over the binary keys returns 0, and only when a
-  column-subset check needs it.
+  duplicate-key query over the binary keys returns 0. A check that holds the
+  key but not every column reports `primary key has duplicate values` or
+  `primary key uniqueness could not be checked` when the key is not used. The
+  fallback is logged at debug level only, because the generated primary key
+  check already reports the duplicates.
 - **Cross-route equality.** The mixed route merges on normalised Python keys (see
   [Cross-route merge](#cross-route-merge)). Types that fail on export cannot be
   matched and mark the schema `exact = false`.
@@ -877,6 +917,17 @@ Four annotated-output bugs found by the investigation are already fixed:
   and a unit test of the Arrow cross-route merge.
 - Primary key: a column-subset check merges through a declared primary key, and
   a duplicated primary key is not trusted.
+
+`tests/test_row_quality_merge_key.py` covers the primary key as the default
+match key: the same numbers as a contract without a key, the two fallback
+reasons, one probe per schema, a table-match check with changed values that
+matches on the key, and `rows_mergeable`. `tests/test_marks_match_counts.py`
+checks that annotated output marks as many rows as `failed_rows` on every exact
+schema, over duplicates, `all_violations`, a column-subset check, a join that
+projects the anchor's columns and mixed routes. It also covers a contract that
+lists fewer columns than the table when the column types are unknown, which
+reports `exact = false`.
+
 - Filter conditions: they apply to the total and to the rows.
 - Operator rule: each operator in decision 3 is counted or excluded as specified.
 - Tolerance: both `row_issue_scope` values on a check that passes with non-zero
@@ -935,11 +986,15 @@ Details that the sections above leave open:
   The headline number does not need them, and their fetch can be large.
 - **Unknown columns.** When neither the adapter nor the contract lists the
   table's columns, fetched rows are keyed by their own column names, with
-  `exact = false`, and checks across tables are left out.
+  `exact = false`, and checks across tables are left out. When only the
+  contract lists them, a check left out as not mergeable reports
+  `exact = false`, because the contract can list fewer columns than the table
+  and annotated output compares with the exported table.
 - **Annotated output** reads the same step 2 selection, so inverted checks are
   not flagged and tolerated checks are flagged only under `all_violations`. It
-  then merges the fetched rows in Python on full columns, never on the primary
-  key.
+  then merges the fetched rows in Python on `RowQuality.merge_key`, the same
+  key the statistics chose. That is the full columns, or the declared primary
+  key when the key was found unique.
 - **OTEL.** The schema and dimension row gauges carry a
   `vowl.row_quality.exact` attribute. A gauge is left out when its number is
   missing. The row counts need a total and a failed count, and the rate also

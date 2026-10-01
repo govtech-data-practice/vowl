@@ -158,6 +158,13 @@ could be off, for example because a check that would have been counted ended
 in `ERROR`. At run level it is `true` only when every schema is exact. See
 [Handling of Failed Rows](../failed-rows.md#how-vowl-counts-failed-rows).
 
+The check row count is the check's own count, not merged with other checks.
+So it can differ from the check's `failed_rows` in
+`get_row_quality_df(by="check")`. For example, a `DISTINCT` check that returns
+one row for three identical rows shows 1 here and 3 there.
+[How Failed Rows Are Merged](../merging-failed-rows.md) walks through every
+step behind the dimension, schema and run numbers.
+
 ## Attributes
 
 Each reading carries attributes that say what it is for. All levels also

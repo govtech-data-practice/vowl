@@ -53,6 +53,7 @@ nav:
       - Loading Contracts: loading-contracts.md
       - Reading Results: results.md
       - Handling of Failed Rows: failed-rows.md
+      - How Failed Rows Are Merged: merging-failed-rows.md
       - DQ Metrics:
           - dq-metrics/index.md
           - Exporting to OpenTelemetry: dq-metrics/otel-export.md

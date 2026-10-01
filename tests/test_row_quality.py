@@ -405,6 +405,36 @@ def test_certification_accepts_a_single_count():
     assert certify_scalar_query("SELECT * FROM t", "none", "duckdb") == (True, "")
 
 
+_COMPOSITE_KEY = [
+    {"name": "a", "logicalType": "integer", "primaryKey": True, "primaryKeyPosition": 1},
+    {"name": "b", "logicalType": "integer", "primaryKey": True, "primaryKeyPosition": 2},
+]
+
+
+@pytest.mark.parametrize("dialect", ["duckdb", "sqlite", "postgres", "spark", "tsql", "bigquery", "trino"])
+def test_composite_primary_key_certifies_as_a_row_filter(dialect: str):
+    from vowl.contracts.check_reference import CompositePrimaryKeyCheckReference
+    from vowl.validation.row_quality.certify import certify_check
+
+    refs = _contract([_schema("t", [], properties=_COMPOSITE_KEY)]).get_check_references_by_schema()["t"]
+    (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+    assert certify_check(ref, "t", dialect, use_try_cast=False) == (True, "")
+    assert certify_failed_rows_query(ref.get_failed_rows_query(dialect), "t", dialect) == (True, "")
+
+
+@pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
+def test_composite_primary_key_is_pushed_down(backend: str):
+    con = _connect(backend)
+    con.raw_sql("CREATE TABLE t (a INTEGER, b INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, 1), (1, 2), (1, 1), (NULL, 3), (2, 1)")
+
+    result = _validate(con, [_schema("t", [], properties=_COMPOSITE_KEY)])
+
+    check = _check_rows(result)["t_a_b_primary_key_check"]
+    assert (check["status"], check["route"], check["failed_rows"]) == ("FAILED", "pushdown", 3)
+    assert _schema_row(result)["failed_rows"] == 3
+
+
 def test_count_of_an_expression_skips_null_rows_and_is_pushed_down():
     con = _connect("duckdb")
     con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
@@ -666,7 +696,9 @@ def test_a_duplicated_primary_key_is_not_trusted():
 
     result = _validate(con, [_schema("t", [subset], with_pk)])
 
-    assert _check_rows(result)["ids_negative"]["reason"] == REASON_NOT_MERGEABLE
+    from vowl.validation.row_quality.selection import REASON_PK_NOT_UNIQUE
+
+    assert _check_rows(result)["ids_negative"]["reason"] == REASON_PK_NOT_UNIQUE
     assert "t::ids_negative" in result.get_annotated_output()["residues"]
 
 

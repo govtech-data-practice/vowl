@@ -48,6 +48,7 @@ from .row_quality import (
     SchemaRowQuality,
     flagged_checks,
 )
+from .row_quality.mergeable import METADATA_COLUMNS, rows_mergeable
 from .row_quality.selection import REASON_OPERATOR, resolve_check_dimension
 
 if TYPE_CHECKING:
@@ -56,17 +57,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 #: Metadata columns that tag failed-rows output but are not part of the
-#: underlying table's identity.  Stripped before matching annotated rows.
-#: Legacy ``check_id``/``check_ids`` are kept (still used by the untouched
-#: consolidated/residue path); ``check_info``/``check_info_item`` are the
-#: annotated path's enriched columns.
-_METADATA_COLUMNS = (
-    "check_id",
-    "check_ids",
-    "check_info",
-    "check_info_item",
-    "tables_in_query",
-)
+#: underlying table's identity. Stripped before matching annotated rows.
+_METADATA_COLUMNS = METADATA_COLUMNS
 
 # Characters allowed in a generated output filename component. Everything else
 # (path separators, "..", NUL, etc.) is collapsed to "_" so that table/schema
@@ -578,12 +570,11 @@ class ValidationResult:
 
         When *key_columns* is given, the schema's rows are matched on its
         declared primary key instead (see :meth:`RowQuality.merge_key`), and
-        rows that carry every key column merge.
+        rows that carry every key column merge. The rule is
+        :func:`~vowl.validation.row_quality.mergeable.rows_mergeable`, the same
+        one the row numbers use.
         """
-        failed_cols = set(rows.columns) - set(_METADATA_COLUMNS)
-        if key_columns:
-            return set(key_columns) <= failed_cols
-        return failed_cols == full_table_columns
+        return rows_mergeable(rows.columns, full_table_columns, key_columns)
 
     def _failed_rows_truncated(self, row_count: int | None, rows: nw.DataFrame) -> bool:
         """True when a check's fetched failed rows were capped by ``max_failed_rows``.

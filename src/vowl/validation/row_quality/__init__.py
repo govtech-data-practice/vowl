@@ -40,6 +40,7 @@ from . import pushdown as _pushdown
 from .certify import certify_check
 from .keys import key_is_exact, primary_key_columns
 from .merge import FetchedRows, merge_routes
+from .mergeable import METADATA_COLUMNS, rows_mergeable
 from .pushdown import (
     Branch,
     KeySpec,
@@ -65,6 +66,8 @@ from .selection import (
     REASON_CROSS_SOURCE,
     REASON_NO_PUSHDOWN,
     REASON_NOT_MERGEABLE,
+    REASON_PK_NOT_UNIQUE,
+    REASON_PK_UNCHECKED,
     REASON_PROBE_FAILURE,
     REASON_TOLERATED_NOT_FETCHED,
     REASON_TRUNCATED,
@@ -92,12 +95,14 @@ __all__ = [
     "select",
 ]
 
-#: Columns vowl adds to failed-rows output. They are not table columns.
-METADATA_COLUMNS = ("check_id", "check_ids", "check_info", "check_info_item", "tables_in_query")
-
 ROUTE_PUSHDOWN = "pushdown"
 ROUTE_TABLE_MATCH = "table_match"
 ROUTE_FETCHED = "fetched_rows"
+
+# The outcome of the duplicate-key probe of a declared primary key.
+PK_UNIQUE = "unique"
+PK_DUPLICATED = "duplicated"
+PK_UNCHECKED = "unchecked"
 
 
 def strip_metadata_columns(table: pa.Table) -> pa.Table:
@@ -193,8 +198,10 @@ class RowQuality:
     def merge_key(self, schema_name: str) -> list[str] | None:
         """The primary key a schema's rows are matched on, or ``None`` for all columns.
 
-        Set only when a column-subset check needed the key and the key was
-        found unique, so annotated output merges the same checks.
+        Set whenever the schema declares a primary key that is shorter than
+        its columns, the data source can run the pushdown, and the key was
+        found unique. Annotated output matches on the same key, so both merge
+        the same checks.
         """
         self.report()
         key = self._merge_keys.get(schema_name)
@@ -315,6 +322,10 @@ class _SchemaComputation:
         self._primary_key = [name for name in primary_key_columns(properties) if name in self._columns]
         self._anchor_sql: str = self._filtered_anchor() or ""
         self._total_exact = True
+        # The duplicate-key probe's verdict: None until it runs, then one of
+        # PK_UNIQUE, PK_DUPLICATED or PK_UNCHECKED.
+        self._pk_status: str | None = None
+        self._pk_duplicates: int | None = None
 
     # -- setup ---------------------------------------------------------
 
@@ -494,26 +505,26 @@ class _SchemaComputation:
             work.reason, work.inexact = REASON_TRUNCATED, True
 
     def _choose_key(self, pushdown_ok: bool) -> tuple[list[str], bool]:
-        """Key on the full columns, or on the declared primary key.
+        """Key on the declared primary key when it is proven unique, else the full columns.
 
-        The primary key is used only when it lets a column-subset check merge,
-        the data source can check it, and no key value appears twice.
+        A unique primary key groups the rows exactly as the full columns do,
+        with a narrower GROUP BY, smaller table-match statements and no
+        comparison of float, nested or temporal values outside the key. It
+        also lets checks that return only some columns, the key among them,
+        merge. It is used when the data source can run the pushdown and the
+        duplicate-key probe finds no key value twice.
         """
         if not self._columns:
             return [], True
-        full = set(self._columns)
-        if pushdown_ok and self._primary_key:
-            pk = set(self._primary_key)
-            wants_pk = any(
-                work.columns is not None and set(work.columns) != full and pk <= set(work.columns)
-                for work in self._work
-                if work.counted and work.route
-            )
-            if wants_pk and self._primary_key_is_unique():
+        if pushdown_ok and self._primary_key and len(self._primary_key) < len(self._columns):
+            if self._primary_key_status() == PK_UNIQUE:
                 return list(self._primary_key), False
         return list(self._columns), False
 
-    def _primary_key_is_unique(self) -> bool:
+    def _primary_key_status(self) -> str:
+        """Probe the declared primary key for duplicates, once per schema."""
+        if self._pk_status is not None:
+            return self._pk_status
         spec = KeySpec(
             dialect=self._dialect,
             anchor_sql=self._anchor_sql,
@@ -522,10 +533,25 @@ class _SchemaComputation:
         )
         try:
             table = self._run_query(duplicate_key_statement(spec))
-        except Exception:
-            return False
-        values = table.column(0).to_pylist()
-        return bool(values) and values[0] == 0
+            values = table.column(0).to_pylist()
+            duplicates = int(values[0]) if values and values[0] is not None else None
+        except Exception as exc:
+            logger.debug("Primary key of %r could not be checked for duplicates: %s", self._schema, exc)
+            duplicates = None
+        if duplicates is None:
+            self._pk_status = PK_UNCHECKED
+        elif duplicates == 0:
+            self._pk_status = PK_UNIQUE
+        else:
+            # Not a warning: the generated primary key check reports it.
+            logger.debug(
+                "Primary key of %r has %d duplicated values, so its rows are matched on every column.",
+                self._schema,
+                duplicates,
+            )
+            self._pk_status = PK_DUPLICATED
+        self._pk_duplicates = duplicates
+        return self._pk_status
 
     def _check_mergeable(self, work: _Work, key_columns: Sequence[str], use_prefix: bool) -> None:
         if not work.counted or not work.route:
@@ -541,13 +567,22 @@ class _SchemaComputation:
                 work.inexact = True
             return
         columns = set(work.columns or [])
-        if len(key_columns) < len(self._columns):
-            mergeable = set(key_columns) <= columns
-        else:
-            mergeable = columns == set(self._columns)
-        if not mergeable:
-            work.drop(REASON_NOT_MERGEABLE, inexact=False)
-            work.rows = None
+        key = key_columns if len(key_columns) < len(self._columns) else None
+        if rows_mergeable(columns, self._columns, key):
+            return
+        reason = REASON_NOT_MERGEABLE
+        if key is None and self._primary_key and set(self._primary_key) <= columns:
+            # The check could have merged on the primary key, had it been unique.
+            if self._pk_status == PK_DUPLICATED:
+                reason = REASON_PK_NOT_UNIQUE
+            elif self._pk_status == PK_UNCHECKED:
+                reason = REASON_PK_UNCHECKED
+        # Without the adapter's column types the columns come from the
+        # contract, which can differ from the table's. Annotated output
+        # compares with the exported table instead, so it may mark rows this
+        # count leaves out, and the numbers are not exact.
+        work.drop(reason, inexact=not self._column_types)
+        work.rows = None
 
     def _branch(self, work: _Work) -> Branch:
         query = work.row_source.failed_rows_query
