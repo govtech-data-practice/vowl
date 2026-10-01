@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 
 import narwhals as nw
 import pyarrow as pa
@@ -881,6 +882,34 @@ class TestSaveModes:
         result.save(str(tmp_path), prefix="r")  # no explicit mode
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
+
+    def test_default_output_mode_is_annotated_and_does_not_warn(self, tmp_path):
+        assert ValidationConfig().output_mode == "annotated"
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            self._result_with_failures().save(str(tmp_path), prefix="r")  # no explicit mode
+        assert not [w for w in caught if issubclass(w.category, DeprecationWarning)]
+        files = {p.name for p in tmp_path.iterdir()}
+        assert "r_orders_annotated.csv" in files
+        assert "r_orders.csv" not in files  # no legacy failed-rows CSV
+
+    @pytest.mark.parametrize("mode", ["failed_rows", "both"])
+    def test_deprecated_mode_from_config_warns(self, tmp_path, mode):
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        check = _make_check("c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders")
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(output_mode=mode),
+        )
+        with pytest.warns(DeprecationWarning, match=f"output_mode='{mode}'"):
+            result.save(str(tmp_path), prefix="r")  # mode comes from the config
+        assert "r_orders.csv" in {p.name for p in tmp_path.iterdir()}
+
+    @pytest.mark.parametrize("mode", ["failed_rows", "both"])
+    def test_deprecated_mode_argument_warns(self, tmp_path, mode):
+        with pytest.warns(DeprecationWarning, match=f"output_mode='{mode}'"):
+            self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=mode)
 
     @staticmethod
     def _read_csv(path):

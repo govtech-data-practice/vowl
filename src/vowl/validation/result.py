@@ -1043,7 +1043,7 @@ class ValidationResult:
 
         Every surface reads the same cached numbers: ``print_summary``, the
         OTEL gauges and annotated output agree with this frame. See
-        docs/failed-rows.md.
+        docs/design-considerations/failed-rows/levels.md.
 
         Args:
             by: ``"schema"`` for one row per schema, ``"dimension"`` for one
@@ -1270,9 +1270,10 @@ class ValidationResult:
         for example an S3-compatible store with a custom endpoint. ``output_dir``
         is then a path inside that filesystem.
 
-        ``output_mode`` selects the row output shape:
+        ``output_mode`` selects the row output shape. When it is ``None`` the
+        config's ``output_mode`` is used, which defaults to ``"annotated"``:
 
-        - ``"annotated"`` -- **recommended.** Full in-scope tables with failing
+        - ``"annotated"`` -- **default.** Full in-scope tables with failing
           rows flagged in place via a per-row ``check_info`` column, plus
           per-check residues for non-mergeable checks.
         - ``"failed_rows"`` -- *deprecated.* The legacy consolidated CSVs
@@ -1283,32 +1284,19 @@ class ValidationResult:
         .. deprecated::
             ``output_mode="failed_rows"`` (and the ``"failed_rows"`` half of
             ``"both"``) is deprecated and will be removed in a future release.
-            The default is currently ``"failed_rows"`` and will change to
-            ``"annotated"`` in a future minor release -- pass ``output_mode``
-            explicitly to pin the behaviour you want.
+            Either value emits a ``DeprecationWarning``, whether it is passed
+            to ``save()`` or set through ``ValidationConfig(output_mode=...)``.
         """
         mode = output_mode if output_mode is not None else self._config.output_mode
         if mode not in ("failed_rows", "annotated", "both"):
             raise ValueError(f"Unknown output_mode: {mode!r}. Expected one of 'failed_rows', 'annotated', 'both'.")
 
+        # The mode may come from the argument or from ValidationConfig, so
+        # the messages below fit both.
         if mode in ("failed_rows", "both"):
-            if output_mode is None:
-                # Relying on the implicit default, which still writes the
-                # deprecated consolidated failed-rows CSVs. The default will
-                # change to "annotated" in a future minor release.
-                warnings.warn(
-                    "save() currently defaults to output_mode='failed_rows', which writes the "
-                    "deprecated consolidated failed-rows CSVs (grouped rows with a 'check_ids' "
-                    "column). This default will change to 'annotated' in a future release. Pass "
-                    "output_mode='annotated' now to opt in early (full tables with a per-row "
-                    "'check_info' column plus per-check residues), or output_mode='failed_rows' "
-                    "to keep the old shape explicitly and silence this warning.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-            elif mode == "both":
-                # Explicitly asked for both — annotated CSVs are written too, so
-                # this is a valid migration bridge; just flag the deprecated half.
+            if mode == "both":
+                # Annotated CSVs are written too, so this is a valid migration
+                # bridge; just flag the deprecated half.
                 warnings.warn(
                     "output_mode='both' still writes the deprecated consolidated failed-rows "
                     "CSVs alongside the annotated tables. The failed-rows shape will be removed "
@@ -1317,7 +1305,7 @@ class ValidationResult:
                     stacklevel=2,
                 )
             else:
-                # Explicit output_mode="failed_rows": honoured, but deprecated.
+                # output_mode="failed_rows": honoured, but deprecated.
                 warnings.warn(
                     "output_mode='failed_rows' writes the deprecated consolidated failed-rows "
                     "CSVs (grouped rows with a 'check_ids' column) and will be removed in a "

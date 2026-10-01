@@ -750,23 +750,26 @@ class TestValidationResultAPI:
         original_dir = os.getcwd()
         os.chdir(tmp_path)
         try:
-            # Default output_mode is still "failed_rows" (deprecated), so calling
-            # save() with no explicit mode warns about the upcoming default flip.
-            with pytest.warns(DeprecationWarning, match="default"):
+            # The default output_mode is "annotated", so save() with no
+            # explicit mode writes annotated tables and does not warn.
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
                 chained = result.save(prefix="test_readme_results")
             assert chained is result
+            assert not [w for w in caught if "output_mode" in str(w.message)]
 
-            files = list(tmp_path.iterdir())
-            assert len(files) >= 1
+            files = {p.name for p in tmp_path.iterdir()}
+            assert any(f.startswith("test_readme_results_") and f.endswith("_annotated.csv") for f in files)
 
             # Explicit deprecated modes each warn; the new "annotated" mode does not.
             with pytest.warns(DeprecationWarning, match="failed_rows"):
                 result.save(prefix="fr_run", output_mode="failed_rows")
             with pytest.warns(DeprecationWarning, match="both"):
                 result.save(prefix="both_run", output_mode="both")
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", DeprecationWarning)
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
                 result.save(prefix="annotated_run", output_mode="annotated")
+            assert not [w for w in caught if "output_mode" in str(w.message)]
         finally:
             os.chdir(original_dir)
 
