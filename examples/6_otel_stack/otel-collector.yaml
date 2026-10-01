@@ -1,0 +1,62 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+  # vowl sends counters and histograms as delta. Prometheus stores cumulative.
+  deltatocumulative: {}
+  # Each Python process gets its own service.instance.id, which Prometheus turns
+  # into the `instance` label. Dropping it keeps one series per service, so the
+  # newest run of a service replaces the last one instead of sitting beside it.
+  resource/drop_instance:
+    attributes:
+      - key: service.instance.id
+        action: delete
+
+exporters:
+  # `docker compose logs -f collector` shows every metric, span and log record that arrives.
+  debug:
+    verbosity: detailed
+  otlphttp/prometheus:
+    endpoint: http://prometheus:9090/api/v1/otlp
+    tls:
+      insecure: true
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  # Archive: every batch also goes to S3 as OTLP JSON, partitioned by time, kept forever.
+  awss3/archive:
+    s3uploader:
+      region: us-east-1
+      endpoint: http://s3:8333
+      s3_force_path_style: true
+      disable_ssl: true
+      s3_bucket: vowl-otel-archive
+      s3_prefix: otlp
+      s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H"
+    marshaler: otlp_json
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [resource/drop_instance, deltatocumulative, batch]
+      exporters: [otlphttp/prometheus, awss3/archive, debug]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo, awss3/archive, debug]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/loki, awss3/archive, debug]

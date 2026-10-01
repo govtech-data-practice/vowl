@@ -15,6 +15,7 @@ runs top-to-bottom on its own.
 | `3_real_databases/`   | `real_databases.ipynb`   | Server-side validation with Testcontainers (Postgres/MySQL/Spark/DuckDB ATTACH)                                               |
 | `4_advanced_usage/`   | `advanced_usage.ipynb`   | Explicitly defined adapters (incl. `PooledAdapter`) and filtering rows before validation                                      |
 | `5_outputs/`          | `outputs_tour.ipynb`     | Every result shape: annotated tables, residual rows, saving to disk, and OpenTelemetry export (OTEL needs the `[otel]` extra) |
+| `6_otel_stack/`       | `README.md`              | A local OTel stack (Collector, Prometheus, Tempo, Loki, Grafana) and a DQ dashboard for four sample contracts. Needs Docker   |
 
 Notebooks 1, 2, and 5 write generated artifacts into their own local `outputs/`
 folder, which also holds pre-generated files for reference. `5_outputs/` is the
@@ -44,3 +45,7 @@ jupyter lab examples/1_basic_tutorial/basic_tutorial.ipynb
 > `5_outputs/outputs_tour.ipynb` needs the `[otel]` extra (`pip install 'vowl[otel]'`)
 > but runs fully offline against in-memory OpenTelemetry providers. The other
 > notebooks run on pandas, Polars, and in-memory DuckDB with no external services.
+>
+> `6_otel_stack/` also needs Docker. Start it with `make otel-up` in that folder, send sample
+> runs with `make otel-add-vowl-runs`, and open <http://localhost:3000/d/vowl-dq>. See its
+> [README](6_otel_stack/README.md).
