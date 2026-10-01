@@ -43,25 +43,29 @@ theme:
     - toc.follow
 
 nav:
-  - Get Started:
-      - Overview: index.md
-      - Quick Start: getting-started.md
-      - Key Terms: key-terms.md
+  - Home: index.md
+  - Get Started: getting-started.md
   - Guides:
-      - Writing Data Contracts: contracts.md
+      - Data Quality with Data Contracts: contracts.md
       - Connecting to Your Data: usage-patterns.md
-      - Loading Contracts: loading-contracts.md
-      - Reading Results: results.md
-      - Handling of Failed Rows: failed-rows.md
-      - How Failed Rows Are Merged: merging-failed-rows.md
+      - The Results Object: results.md
+      - Run Settings: run-settings.md
       - DQ Metrics:
           - dq-metrics/index.md
           - Exporting to OpenTelemetry: dq-metrics/otel-export.md
           - Exporting to dq_metrics.json: dq-metrics/json-export.md
-  - Reference:
+  - Design Considerations:
       - How vowl Works: architecture.md
-      - Design Decisions: design-considerations.md
+      - How Failed Rows Are Derived:
+          - The Count Query and the Failed Rows Query: design-considerations/failed-rows/queries.md
+          - Which Checks Contribute Failed Rows: design-considerations/failed-rows/which-checks.md
+          - Failed Rows at Each Level: design-considerations/failed-rows/levels.md
+          - Capping Failed Rows: design-considerations/failed-rows/capping.md
+      - Cross-Server and Cross-Table Checks:
+          - How Cross-Server and Cross-Table Checks Work: design-considerations/cross-table/how-it-works.md
+          - Using Relationship References: design-considerations/cross-table/relationship-references.md
       - Known Issues & Caveats: known-issues.md
+  - Glossary: glossary.md
   - Roadmap: roadmap.md
 
 markdown_extensions:

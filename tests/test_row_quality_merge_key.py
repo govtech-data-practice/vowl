@@ -2,7 +2,7 @@
 
 A unique declared primary key groups the rows as the full columns do, so it is
 the match key whenever the data source can run the pushdown and no key value
-appears twice. See "Shared step 2" in docs/merging-failed-rows.md.
+appears twice. See docs/design-considerations/failed-rows/levels.md.
 """
 
 from __future__ import annotations

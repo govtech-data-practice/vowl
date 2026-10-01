@@ -1,7 +1,7 @@
 """Annotated output marks as many rows as the row numbers count, wherever both are exact.
 
 Counting and marking merge failed rows separately (see
-docs/merging-failed-rows.md). They pick the same checks and the same match
+docs/design-considerations/failed-rows/levels.md). They pick the same checks and the same match
 key, so on an exact schema the rows with a ``check_info`` in the annotated
 table must equal the schema's ``failed_rows``.
 """

@@ -148,7 +148,7 @@ Row counts are only sent for checks that look at rows one by one, such as
 "`email` must not be empty". A check on the whole table, such as `rowCount`,
 has no failing rows to count. Checks that could not run are skipped too. The
 dimension, schema and run row counts are left out when no check in them was
-counted. [Which checks are counted](../failed-rows.md#which-checks-are-counted)
+counted. [Which Checks Contribute Failed Rows](../design-considerations/failed-rows/which-checks.md)
 has the full rules.
 
 The dimension, schema and run row counts are the same numbers as
@@ -156,13 +156,13 @@ The dimension, schema and run row counts are the same numbers as
 carry a `vowl.row_quality.exact` attribute, which is `false` when a number
 could be off, for example because a check that would have been counted ended
 in `ERROR`. At run level it is `true` only when every schema is exact. See
-[Handling of Failed Rows](../failed-rows.md#how-vowl-counts-failed-rows).
+[Exact numbers](../design-considerations/failed-rows/levels.md#exact-numbers).
 
 The check row count is the check's own count, not merged with other checks.
 So it can differ from the check's `failed_rows` in
 `get_row_quality_df(by="check")`. For example, a `DISTINCT` check that returns
 one row for three identical rows shows 1 here and 3 there.
-[How Failed Rows Are Merged](../merging-failed-rows.md) walks through every
+[Failed Rows at Each Level](../design-considerations/failed-rows/levels.md) walks through every
 step behind the dimension, schema and run numbers.
 
 ## Attributes

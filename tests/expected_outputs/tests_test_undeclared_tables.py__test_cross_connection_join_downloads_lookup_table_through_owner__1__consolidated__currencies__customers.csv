@@ -1,0 +1,2 @@
+customer_id,currency,code,is_active,check_ids,tables_in_query
+3,EUR,,,customers_vs_sales_currencies,"currencies, customers"

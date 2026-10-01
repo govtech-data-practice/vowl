@@ -538,16 +538,16 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                                             | `self` (chainable)              |
 | **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                                             | `self` (chainable)              |
 | **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                                | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV, summary JSON and DQ metrics JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV, summary JSON and DQ metrics JSON to disk. `output_mode` can be `"annotated"` (default), `"failed_rows"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
 | **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                                               | Dict[str, DataFrame]            |
-| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) marking failed rows                                                                                                                    | Dict[str, Dict[str, DataFrame]] |
+| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                                 | Dict[str, Dict[str, DataFrame]] |
 | **`get_row_quality_df(by="schema")`**                                                | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                                   | DataFrame                       |
 | **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [DQ Metrics](docs/dq-metrics/index.md)                                                                   | dict                            |
 | **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                                | `True`/`False`                  |
 
 #### Row Quality
 
-`get_row_quality_df()` returns the row numbers behind **Passed Rows** in the summary: for each table, how many rows failed at least one check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `exact` flag for the cases where it could be off. See [Counting and marking compared](docs/failed-rows.md#counting-and-marking-compared) for how the row numbers relate to annotated output.
+`get_row_quality_df()` returns the row numbers behind **Passed Rows** in the summary: for each table, how many rows failed at least one check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `exact` flag for the cases where it could be off. See [Failed Rows at Each Level](docs/design-considerations/failed-rows/levels.md#when-counting-and-annotating-differ) for how the row numbers relate to annotated output.
 
 ```python
 result.get_row_quality_df()                  # one row per table
@@ -555,18 +555,18 @@ result.get_row_quality_df(by="dimension")    # one row per table and dimension
 result.get_row_quality_df(by="check")        # which checks were counted, and how
 ```
 
-Rows caught by a check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) are reported as `tolerated_rows`. Set `ValidationConfig(row_issue_scope="all_violations")` to count them as failed rows too. See [Handling of Failed Rows](docs/failed-rows.md#how-vowl-counts-failed-rows).
+Rows caught by a check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) are reported as `tolerated_rows`. Set `ValidationConfig(row_issue_scope="all_violations")` to count them as failed rows too. See [Tolerated rows](docs/design-considerations/failed-rows/which-checks.md#tolerated-rows).
 
 #### Annotated Output
 
-`get_annotated_output()` returns the **full in-scope table** with a `check_info` column that marks which rows failed which checks. Passing rows have `null` in the `check_info` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
+`get_annotated_output()` returns the **full in-scope table** with a `check_info` column that annotates which rows failed which checks. Passing rows have `null` in the `check_info` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
 
-> New to this? [Handling of Failed Rows](docs/failed-rows.md) explains failed rows, annotated output and residues in plain language, with a small worked example.
+> New to this? [How Failed Rows Are Derived](docs/design-considerations/failed-rows/queries.md) explains failed rows, annotated output and residues in plain language, with a small worked example.
 
 It returns a nested dict with two reserved keys:
 
 - **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (aggregation and column-subset checks, plus cross-table checks whose failed rows carry columns from more than the anchor table). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its failed-rows query to project only that schema's columns — see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged).)
+- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (aggregation and column-subset checks, plus cross-table checks whose failed rows carry columns from more than the anchor table). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its failed-rows query to project only that schema's columns — see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -665,22 +665,23 @@ Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed 
 
 </details>
 
-> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Where each failed check ends up](docs/design-considerations/failed-rows/levels.md#where-each-failed-check-ends-up). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
 
-The `save()` method also supports annotated output via `output_mode`:
+`save()` writes annotated output by default. The `output_mode` argument picks the layout:
 
 ```python
-# Save annotated tables (full tables with check_info marking failures)
+# Save annotated tables (full tables with check_info annotating failures).
+# This is the default, the same as result.save().
 result.save(output_mode="annotated")
 
 # Shape the check_info column: "names" (default), "summary", or "full"
 result.save(output_mode="annotated", check_info="summary")
 
-# Save both failed-rows CSVs and annotated tables
+# Save both failed-rows CSVs and annotated tables (deprecated)
 result.save(output_mode="both")
 ```
 
-> **Deprecation:** `output_mode="failed_rows"` / `"both"` (the legacy failed-rows CSVs) are deprecated in favour of `"annotated"`. They still work but emit a `DeprecationWarning`. The `save()` default is currently `"failed_rows"` and will change to `"annotated"` in a future minor release — pass `output_mode` explicitly to pin the behaviour you want.
+> **Deprecation:** `output_mode="failed_rows"` / `"both"` (the legacy failed-rows CSVs) are deprecated in favour of `"annotated"`, the default. They still work but emit a `DeprecationWarning`. Pass `output_mode="failed_rows"` to keep the old files until you migrate.
 
 You can also set the output mode globally via `ValidationConfig`:
 
@@ -688,9 +689,9 @@ You can also set the output mode globally via `ValidationConfig`:
 from vowl import validate_data
 from vowl.config import ValidationConfig
 
-config = ValidationConfig(output_mode="annotated")
+config = ValidationConfig(output_mode="annotated", annotated_check_info="summary")
 result = validate_data("contract.yaml", df=df, config=config)
-result.save()  # uses the configured output_mode
+result.save()  # uses the configured output_mode and check_info
 ```
 
 `save()` can also write straight to cloud storage. Pass a URI instead of a folder:
@@ -699,7 +700,7 @@ result.save()  # uses the configured output_mode
 result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
 ```
 
-It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-results-to-cloud-storage).
+It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-to-cloud-storage).
 
 ## Architecture
 
@@ -868,7 +869,7 @@ result.display_full_report()
 the whole run. Schemas given the same pool share that cap and run side by side.
 A join between tables on one pool runs in the database on one of the pool's
 connections. A join across two pools, or between a pool and another adapter,
-is copied to a local DuckDB. See [PooledAdapter: Joins Across Pools Are Copied](docs/known-issues.md#pooledadapter-joins-across-pools-are-copied).
+is copied to a local DuckDB. See [PooledAdapter](docs/design-considerations/cross-table/how-it-works.md#pooledadapter).
 
 The pool keeps its adapters after the run, so you can pass it to another
 `validate_data` call. Call `pooled.cleanup()` when you are done with it. This
@@ -987,7 +988,7 @@ result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
 
-> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). Single-table checks run inside each table's own database. For a cross-table check across different connections, the `MultiSourceAdapter` **downloads each table it reads in full** (after filter conditions) via Arrow into a local DuckDB instance, so prefer ATTACH for large tables when your sources support it. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). Both options share a [known dark pattern](docs/known-issues.md#queries-that-read-tables-outside-the-contract): SQL checks can reference tables not declared in the contract's `schema` block. vowl reads an undeclared table through the connection of the schema the check sits under, whether the check reads it alone or joins it to other tables, and the check runs whenever that connection can see the table.
+> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). Single-table checks run inside each table's own database. For a cross-table check across different connections, the `MultiSourceAdapter` **downloads each table it reads in full** (after filter conditions) via Arrow into a local DuckDB instance, so prefer ATTACH for large tables when your sources support it. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/design-considerations/cross-table/how-it-works.md#why-vowl-copies-instead-of-using-attach). Both options share a [known dark pattern](docs/design-considerations/cross-table/how-it-works.md#tables-outside-the-contract): SQL checks can reference tables not declared in the contract's `schema` block. vowl reads an undeclared table through the connection of the schema the check sits under, whether the check reads it alone or joins it to other tables, and the check runs whenever that connection can see the table.
 
 ### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
 

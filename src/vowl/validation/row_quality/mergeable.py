@@ -4,7 +4,7 @@ Counting (``_SchemaComputation._check_mergeable``) and marking
 (``ValidationResult._is_mergeable_for_full_table``) both use
 :func:`rows_mergeable`, so they apply the same rule. Each passes its own
 columns: counting the table columns it knows, marking the columns of the
-exported table. See "Shared step 2" in ``docs/merging-failed-rows.md``.
+exported table. See ``docs/design-considerations/failed-rows/levels.md``.
 """
 
 from __future__ import annotations

@@ -131,7 +131,7 @@ The summary groups the numbers for each schema (one table in the contract):
 - **ERRORED Checks** are checks that could not run, for example because the
   query names a missing column.
 - **Passed Rows** is the share of rows in the table that failed no check. See
-  [Failed rows](failed-rows.md).
+  [Failed Rows at Each Level](design-considerations/failed-rows/levels.md).
 - **Single Table** covers checks that read only this schema's table.
   **Multi Table** covers cross-table checks, which read more than one table.
 - **Non-unique Failed Rows** adds up the failed rows of the cross-table
@@ -142,10 +142,11 @@ In the **CHECK RESULTS** table, `check_id` is the check's name, and
 
 ## Next steps
 
-- [Key terms](key-terms.md) defines the words used across these docs.
+- [Glossary](glossary.md) defines the words used across these docs.
 - [Writing contracts](contracts.md) shows how to describe your data and its
   checks.
 - [Connecting to data](usage-patterns.md) covers databases, Spark and
   multi-source runs.
-- [Reading results](results.md) lists everything you can do with the
-  `ValidationResult` that `validate_data` returns, including saving it.
+- [The Results Object](results.md) shows how to use the `ValidationResult`
+  that `validate_data` returns, including saving it.
+- [Run Settings](run-settings.md) lists the `ValidationConfig` settings.

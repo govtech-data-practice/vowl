@@ -301,19 +301,19 @@ values. They are named without the level because the span is the run. A span
 holds one value per name, so the status is part of the name:
 `vowl.run.check.count{status="FAILED"}` becomes `check.count.failed`.
 
-| Attribute                | Same as                                  | Description                                                                      | Presence                           |
-| ------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
-| `check.count.passed`     | `vowl.run.check.count{status="PASSED"}`  | Number of checks that passed                                                     | Always                             |
-| `check.count.failed`     | `vowl.run.check.count{status="FAILED"}`  | Number of checks that found bad data                                             | Always                             |
-| `check.count.error`      | `vowl.run.check.count{status="ERROR"}`   | Number of checks that could not run                                              | Always                             |
-| `check.pass_rate`        | `vowl.run.check.pass_rate`               | Share of checks that passed, 0 to 1. Checks that could not run count against it. | When the run has checks            |
-| `schema.count.passed`    | `vowl.run.schema.count{status="PASSED"}` | Number of schemas whose checks all passed                                        | Always                             |
-| `schema.count.failed`    | `vowl.run.schema.count{status="FAILED"}` | Number of schemas with a check that found bad data                               | Always                             |
-| `schema.count.error`     | `vowl.run.schema.count{status="ERROR"}`  | Number of schemas with a check that could not run, and none that failed          | Always                             |
-| `row.count.passed`       | `vowl.run.row.count{status="PASSED"}`    | Rows that passed every counted check, over all schemas                           | When the run has row counts        |
-| `row.count.failed`       | `vowl.run.row.count{status="FAILED"}`    | Rows that failed at least one counted check, over all schemas                    | When the run has row counts        |
-| `row.pass_rate`          | `vowl.run.row.pass_rate`                 | Share of rows that passed, 0 to 1                                                | When the run has rows              |
-| `vowl.row_quality.exact` | `vowl.row_quality.exact`                 | Whether the row numbers are exact                                                | When the run has row counts        |
+| Attribute                | Same as                                  | Description                                                                      | Presence                    |
+| ------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------- | --------------------------- |
+| `check.count.passed`     | `vowl.run.check.count{status="PASSED"}`  | Number of checks that passed                                                     | Always                      |
+| `check.count.failed`     | `vowl.run.check.count{status="FAILED"}`  | Number of checks that found bad data                                             | Always                      |
+| `check.count.error`      | `vowl.run.check.count{status="ERROR"}`   | Number of checks that could not run                                              | Always                      |
+| `check.pass_rate`        | `vowl.run.check.pass_rate`               | Share of checks that passed, 0 to 1. Checks that could not run count against it. | When the run has checks     |
+| `schema.count.passed`    | `vowl.run.schema.count{status="PASSED"}` | Number of schemas whose checks all passed                                        | Always                      |
+| `schema.count.failed`    | `vowl.run.schema.count{status="FAILED"}` | Number of schemas with a check that found bad data                               | Always                      |
+| `schema.count.error`     | `vowl.run.schema.count{status="ERROR"}`  | Number of schemas with a check that could not run, and none that failed          | Always                      |
+| `row.count.passed`       | `vowl.run.row.count{status="PASSED"}`    | Rows that passed every counted check, over all schemas                           | When the run has row counts |
+| `row.count.failed`       | `vowl.run.row.count{status="FAILED"}`    | Rows that failed at least one counted check, over all schemas                    | When the run has row counts |
+| `row.pass_rate`          | `vowl.run.row.pass_rate`                 | Share of rows that passed, 0 to 1                                                | When the run has rows       |
+| `vowl.row_quality.exact` | `vowl.row_quality.exact`                 | Whether the row numbers are exact                                                | When the run has row counts |
 
 ### Check span: `vowl.check`
 
@@ -327,7 +327,7 @@ check's message (such as the database error) is the status description.
 The row attributes are on the same checks as the check-level row metrics. A
 check that returns one number instead of rows (such as an average), or that
 could not run, has none. A `0` there would wrongly say every row passed. See
-[Which checks are counted](../failed-rows.md#which-checks-are-counted).
+[Which Checks Contribute Failed Rows](../design-considerations/failed-rows/which-checks.md).
 
 Each check span lasts as long as the check did. vowl does not record the exact
 moment each check started, so the spans are placed one after another from the

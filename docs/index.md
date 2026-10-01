@@ -24,25 +24,12 @@ vowl (vee-owl 🦉): a validation engine for [Open Data Contract Standard (ODCS)
 - **Multi-Source Validation:** One contract can cover tables in different databases, with checks that compare them.
 - **Declarative ODCS Contracts:** Define validation rules in YAML following the [Open Data Contract Standard](https://github.com/bitol-io/open-data-contract-standard).
 - **Flexible Filtering:** Filter conditions with wildcard pattern matching, ideal for incremental validation of new data.
-- **Clear Results:** Summaries, your tables with failed rows marked, row pass rates, files you can save, and [DQ metrics](dq-metrics/index.md) for dashboards.
+- **Clear Results:** Summaries, your tables with failed rows annotated, row pass rates, files you can save, and [DQ metrics](dq-metrics/index.md) for dashboards.
 - **No Silent Gaps:** Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
 
-## Quick Start
+## Next Steps
 
-```bash
-pip install vowl
-```
-
-```python
-import pandas as pd
-from vowl import validate_data
-
-df = pd.read_csv("data.csv")
-result = validate_data("contract.yaml", df=df)
-result.display_full_report()
-```
-
-Optional extras: `vowl[spark]`, `vowl[otel]`, `vowl[all]`. The [Quick Start](getting-started.md) walks through a first run, and [Key Terms](key-terms.md) explains the words the docs use.
+- [Get Started](getting-started.md) installs vowl and walks through a first run.
 
 ## License
 

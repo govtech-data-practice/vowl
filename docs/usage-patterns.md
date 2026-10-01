@@ -1,5 +1,5 @@
 ---
-description: Connect vowl to your data. Local DataFrames, PySpark, 20+ databases through Ibis, filter conditions, concurrent checks, multi-source runs and custom adapters.
+description: Connect vowl to your data and load contracts. Local DataFrames, PySpark, 20+ databases through Ibis, filter conditions, concurrent checks, multi-source runs, custom adapters, and contracts from Git or S3.
 ---
 
 # Connecting to Your Data
@@ -85,6 +85,35 @@ databases handle nulls, regex or arrays differently. See
     includes the database name. vowl does not run `USE database`. It runs
     read-only `SELECT` queries on the connection's current database.
 
+### Using servers defined in the contract
+
+An ODCS contract can list the servers its data lives on. `get_server` returns
+one of them as a `dict`, so you can connect without repeating the details:
+
+```python
+import ibis
+from vowl import validate_data
+from vowl.adapters import IbisAdapter
+from vowl.contracts import Contract
+
+contract = Contract.load("contract.yaml")
+server = contract.get_server("my-postgres-server")  # matches the server's `server` field
+# contract.get_server("uat")                        # or its `environment`
+# contract.get_server()                             # or the first server
+
+con = ibis.postgres.connect(
+    host=server["host"],
+    port=server.get("port", 5432),
+    database=server.get("database", ""),
+)
+
+result = validate_data(contract, adapter=IbisAdapter(con))
+```
+
+`get_server` looks for a server whose `server` field matches, then for one
+whose `environment` matches. It raises a `ValueError` when the contract has no
+servers or none match. `contract.get_servers()` returns them all.
+
 ## Filter Conditions
 
 Filter conditions limit which rows vowl checks, for example only the last
@@ -162,7 +191,7 @@ result = validate_data("contract.yaml", adapter=pooled)
 - A cross-table check between tables on one pool runs in the database. A check
   that joins two pools, or a pool and another adapter, copies the tables into
   memory first. See
-  [PooledAdapter: Joins Across Pools Are Copied](known-issues.md#pooledadapter-joins-across-pools-are-copied).
+  [PooledAdapter](design-considerations/cross-table/how-it-works.md#pooledadapter).
 - The pool keeps its connections after the run, so you can reuse it. Call
   `pooled.cleanup()` when you are done. It drops the pooled adapters but does
   not close Ibis connections, so close those yourself if they need it.
@@ -279,25 +308,14 @@ result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
 
-The keys must match the schema `name`s in your contract. vowl then runs each
-check like this:
-
-- **Single-table checks** (for example `required`, `unique`, or a SQL check
-  that reads only `users`) run inside that table's own database. Nothing is
-  copied.
-- **Cross-table checks on one connection** run inside that database, when
-  every table the check reads uses the same connection object. Each table
-  keeps the [filter conditions](#filter-conditions) of its own adapter.
-  Tables on one `PooledAdapter` count as one connection.
-- **Cross-table checks across connections** copy each table the check reads
-  into an in-memory DuckDB on your machine, and run the check there. The
-  [filter conditions](#filter-conditions) apply at the source, so only
-  matching rows are copied. Each table is copied once per run, however many
-  checks use it, and the copies are dropped when the run ends.
-- **Tables the contract does not declare** (a lookup table such as
-  `currencies`) are read through the adapter of the schema the check belongs
-  to. See
-  [Queries that read tables outside the contract](known-issues.md#queries-accessing-tables-outside-the-contract).
+The keys must match the schema `name`s in your contract. Single-table checks,
+and cross-table checks whose tables share one connection, run inside the
+database. A cross-table check across connections runs in DuckDB on your
+machine, on copies of the tables it reads. The
+[filter conditions](#filter-conditions) apply at the source, so only matching
+rows are copied. [How Cross-Server and Cross-Table Checks Work](design-considerations/cross-table/how-it-works.md)
+explains where each check runs, including `PooledAdapter` and tables the
+contract does not declare.
 
 !!! warning "Watch the data volume"
 
@@ -305,8 +323,7 @@ check like this:
     minus any rows your filter conditions leave out. Large tables can use a lot
     of memory and network. Add filter conditions to limit what is copied, or
     use Option A if your sources support it. See
-    [Known issues](known-issues.md#multi-source-adapters-tables-copied-into-memory)
-    for more, including why vowl does not use `ATTACH` itself.
+    [Copying tables into memory](design-considerations/cross-table/how-it-works.md#copying-tables-into-memory).
 
 ## Custom Adapters and Executors
 
@@ -369,10 +386,75 @@ For cross-table checks, a custom adapter can implement three more methods:
   joined tables have different filter conditions. Without it, vowl copies the
   tables.
 
-## Loading contracts and saving results
+## Loading contracts
 
-- [Loading contracts](loading-contracts.md) covers contracts from Git and S3,
-  and connecting with the servers a contract defines.
-- [Reading results](results.md) covers saving results, including to
-  [cloud storage](results.md#saving-results-to-cloud-storage), and
-  [row counts](results.md#row-counts).
+`validate_data` takes the contract as its first argument. It can be a local
+path, a URL, an S3 URI, or a `Contract` you loaded yourself. vowl checks the
+contract against the ODCS schema for its `apiVersion` when it loads it.
+
+```python
+from vowl import validate_data
+from vowl.contracts import Contract
+
+result = validate_data("contracts/orders.yaml", df=df)   # a local file
+
+contract = Contract.load("contracts/orders.yaml")        # or load it first
+result = validate_data(contract, df=df)
+```
+
+To connect with the servers a contract lists, see
+[Using servers defined in the contract](#using-servers-defined-in-the-contract).
+
+### From Git (GitHub or GitLab)
+
+Pass the file's URL. A GitHub or GitLab `blob` URL, the one in your browser's
+address bar, is turned into its raw URL for you.
+
+```python
+from vowl import validate_data
+
+# GitHub blob URL
+result = validate_data(
+    "https://github.com/org/repo/blob/main/contracts/my_contract.yaml",
+    df=df,
+)
+
+# GitHub raw URL
+result = validate_data(
+    "https://raw.githubusercontent.com/org/repo/main/contracts/my_contract.yaml",
+    df=df,
+)
+
+# GitLab blob URL
+result = validate_data(
+    "https://gitlab.com/org/repo/-/blob/main/contracts/my_contract.yaml",
+    df=df,
+)
+```
+
+vowl only fetches contracts over `http` or `https` from public addresses. A
+URL whose host resolves to a private, internal or loopback address (such as
+`localhost`, `10.x.x.x`, or a cloud metadata address) is refused with a
+`ContractURLError`. This stops a contract link from being used to reach
+machines inside your network. For a contract on an internal Git server,
+download the file and pass its local path.
+
+### From S3
+
+```python
+from vowl import validate_data
+
+result = validate_data("s3://my-bucket/contracts/my_contract.yaml", df=df)
+```
+
+!!! note
+
+    Loading from S3 needs `boto3`, which the base install leaves out. Install
+    it with `pip install 'vowl[all]'` or `pip install boto3`. vowl uses your
+    default AWS credentials: environment variables, `~/.aws/credentials`, or an
+    IAM role. For an S3-compatible store such as MinIO, set
+    `AWS_ENDPOINT_URL` to its address.
+
+To save results, including to
+[cloud storage](results.md#saving-to-cloud-storage), see
+[The Results Object](results.md).

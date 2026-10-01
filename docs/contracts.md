@@ -2,7 +2,7 @@
 description: Learn how to define data quality rules in declarative YAML using the Open Data Contract Standard (ODCS) with vowl.
 ---
 
-# Writing Data Contracts
+# Data Quality with Data Contracts
 
 ## The Core Concept
 
@@ -10,10 +10,8 @@ Instead of writing validation logic in Python, you declare it in a YAML file fol
 
 A contract has one entry under `schema` for each table. Each **schema** lists its columns under `properties`. Checks come from two places:
 
-- **Checks you write**, under `quality`, either as SQL (`type: sql`) or as [library checks](#library-checks-type-library) (`type: library`), where vowl writes the SQL for you.
-- **[Generated checks](#generated-checks)**, which vowl builds from the column details you declare, such as `logicalType`, `required` or `unique`.
-
-A check under a property's `quality` is about that column. A check under the schema's `quality` is about the whole table. Give each check a `dimension` (such as `completeness` or `conformity`) to group it in the results.
+- **Checks you write**, in a [`quality` block](#data-quality), either as SQL (`type: sql`) or as [library checks](#library-checks) (`type: library`), where vowl writes the SQL for you.
+- **[Generated checks](#auto-generated-checks)**, which vowl builds from the column details you declare, such as `logicalType`, `required` or `unique`.
 
 **Example `hdb_resale_simple.yaml`** (trimmed for readability):
 
@@ -94,9 +92,72 @@ schema:
         dimension: completeness
 ```
 
-## Generated Checks
+## Data Quality
 
-vowl builds these checks from the column details in your contract. You don't write them.
+A `quality` block is a list of checks. Where you put it decides what the check is about:
+
+- Under a **property**, the check is about that column.
+- Under the **schema**, the check is about the whole table.
+
+```yaml
+schema:
+  - name: hdb_resale_prices
+    properties:
+      - name: resale_price
+        quality: # column-level checks
+          - name: resale_price_must_be_positive
+            type: sql
+            description: Resale price must be above zero
+            dimension: conformity
+            query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price <= 0
+            mustBe: 0
+    quality: # table-level checks
+      - name: at_least_one_row
+        type: library
+        metric: rowCount
+        mustBeGreaterThan: 0
+        dimension: completeness
+```
+
+### Fields of a check
+
+| Field         | What it does                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`        | `sql` (the default) runs your `query`. `library` runs a built-in [library check](#library-checks) named by `metric`.                              |
+| `name`        | The check's name in every result. If you leave it out, vowl names it `<column or schema>_<metric or dimension>`.                                  |
+| `query`       | For `type: sql`. A query that returns one number, usually `SELECT COUNT(*) ... WHERE <rows that break the rule>`.                                 |
+| `metric`      | For `type: library`. Which library check to run, such as `nullValues` or `rowCount`.                                                              |
+| `dimension`   | The group the check belongs to in the results: `accuracy`, `completeness`, `conformity`, `consistency`, `coverage`, `timeliness` or `uniqueness`. |
+| `description` | Free text, shown next to failed checks in the report.                                                                                             |
+| `unit`        | `percent` turns a library check's count into a percentage of all rows.                                                                            |
+| An operator   | What the number must be for the check to pass. See below.                                                                                         |
+
+### Operators
+
+Each check takes one operator. vowl compares the number the check returns with it.
+
+| Operator                 | Passes when the number is       | Example                        |
+| ------------------------ | ------------------------------- | ------------------------------ |
+| `mustBe`                 | equal to the value              | `mustBe: 0`                    |
+| `mustNotBe`              | not equal to the value          | `mustNotBe: 0`                 |
+| `mustBeGreaterThan`      | greater than the value          | `mustBeGreaterThan: 0`         |
+| `mustBeGreaterOrEqualTo` | greater than or equal to it     | `mustBeGreaterOrEqualTo: 100`  |
+| `mustBeLessThan`         | less than the value             | `mustBeLessThan: 10`           |
+| `mustBeLessOrEqualTo`    | less than or equal to it        | `mustBeLessOrEqualTo: 10`      |
+| `mustBeBetween`          | inside the range, ends included | `mustBeBetween: [0, 30000000]` |
+| `mustNotBeBetween`       | outside the range               | `mustNotBeBetween: [1, 5]`     |
+
+### Writing the SQL
+
+Write `query` in PostgreSQL syntax. vowl translates it with [SQLGlot](https://github.com/tobymao/sqlglot) to the SQL of whichever data source the check runs on, so one contract works on DuckDB, Spark, Snowflake and the rest. Refer to the table by its schema `name`.
+
+A query that counts rows, such as `SELECT COUNT(*) ... WHERE ...`, also lets vowl fetch the rows that failed and show them in the report. A query that returns another kind of number, such as an average, still passes or fails but has no failed rows to show.
+
+A check with an unknown `type` or `metric` is not skipped. It ends as `ERROR`, so a typo shows up in the results.
+
+## Auto-generated Checks
+
+vowl writes the SQL for these checks. Most come from the column details in your contract, and you don't write them at all. [Library checks](#library-checks) are ones you declare by name.
 
 | Generated from                        | What vowl validates                                                                                                                               |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -111,7 +172,7 @@ vowl builds these checks from the column details in your contract. You don't wri
 | `logicalTypeOptions.exclusiveMaximum` | Value is strictly less than the configured maximum                                                                                                |
 | `logicalTypeOptions.multipleOf`       | Value is a multiple of the configured number                                                                                                      |
 | `logicalTypeOptions.format`           | Value satisfies the declared format (see [Format Checks](#format-checks) below)                                                                   |
-| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Checks](#array-checks) below)                           |
+| `logicalTypeOptions.minItems`         | Array (`logicalType: array`) contains at least the configured number of items (see [Array Formats](#array-formats) below)                         |
 | `logicalTypeOptions.maxItems`         | Array contains at most the configured number of items                                                                                             |
 | `logicalTypeOptions.uniqueItems`      | Array (`uniqueItems: true`) contains no duplicate items                                                                                           |
 | `items.logicalType`                   | Every element of an array casts to the declared element type                                                                                      |
@@ -133,13 +194,341 @@ In practice, a property like this:
   required: true
 ```
 
-produces three generated checks: the column exists, no value is longer than 10 characters, and no value is `NULL`.
+produces four generated checks. Each one counts the rows that break it and must return `0`:
+
+```sql
+-- block_column_exists_check: errors if the column is missing, reads no rows
+SELECT COUNT(*) FROM (SELECT "block" FROM "hdb_resale_prices" LIMIT 0) AS _vowl_column_exists;
+
+-- block_logical_type_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "block" IS NULL AND TRY_CAST("block" AS TEXT) IS NULL;
+
+-- block_logical_type_options_maxLength_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "block" IS NULL AND LENGTH(TRY_CAST("block" AS TEXT)) > 10;
+
+-- block_required_check
+SELECT COUNT(*) FROM "hdb_resale_prices" WHERE "block" IS NULL;
+```
+
+The SQL on this page is what vowl writes for DuckDB. On other data sources vowl writes the same query in that source's SQL.
 
 !!! note
 
-    `logicalType: string` makes no check of its own, because any value can be read as a string. It only tells vowl which `logicalTypeOptions` apply. For `integer`, `number`, `boolean`, `date`, `timestamp` and `time`, vowl also checks that every value can be converted to that type.
+    Any value can be read as a string, so the logical type check for `logicalType: string` always passes. It is still listed in the results. For `integer`, `number`, `boolean`, `date`, `timestamp` and `time`, the check fails every value that cannot be converted to that type.
 
-### Composite Primary Keys
+### Column Details
+
+Every check below skips `NULL` values, except `required`. Use `required: true` to forbid `NULL`.
+
+=== "logicalType"
+
+    ```yaml
+    - name: price
+      logicalType: number
+    - name: age
+      logicalType: integer
+    ```
+
+    ```sql
+    -- price_logical_type_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "price" IS NULL AND TRY_CAST("price" AS DOUBLE) IS NULL;
+
+    -- age_logical_type_check: a number with a fraction is not an integer
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "age" IS NULL
+      AND (TRY_CAST("age" AS DOUBLE) IS NULL
+           OR TRY_CAST("age" AS DOUBLE) <> TRY_CAST("age" AS BIGINT));
+    ```
+
+    `boolean`, `date` and `timestamp` cast to `BOOLEAN`, `DATE` and `TIMESTAMP` in the same way.
+
+=== "Length and pattern"
+
+    ```yaml
+    - name: code
+      logicalType: string
+      logicalTypeOptions:
+        minLength: 2
+        maxLength: 10
+        pattern: "^[A-Z]+$"
+    ```
+
+    ```sql
+    -- code_logical_type_options_minLength_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "code" IS NULL AND LENGTH(TRY_CAST("code" AS TEXT)) < 2;
+
+    -- code_logical_type_options_maxLength_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "code" IS NULL AND LENGTH(TRY_CAST("code" AS TEXT)) > 10;
+
+    -- code_logical_type_options_pattern_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "code" IS NULL AND NOT REGEXP_MATCHES(TRY_CAST("code" AS TEXT), '^[A-Z]+$');
+    ```
+
+=== "Numeric bounds"
+
+    ```yaml
+    - name: price
+      logicalType: number
+      logicalTypeOptions:
+        minimum: 0            # or exclusiveMinimum: 0
+        maximum: 2000000      # or exclusiveMaximum: 2000000
+        multipleOf: 0.01
+    ```
+
+    ```sql
+    -- price_logical_type_options_minimum_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "price" IS NULL AND TRY_CAST("price" AS DOUBLE) < 0;
+
+    -- price_logical_type_options_maximum_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "price" IS NULL AND TRY_CAST("price" AS DOUBLE) > 2000000;
+
+    -- price_logical_type_options_exclusiveMinimum_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "price" IS NULL AND TRY_CAST("price" AS DOUBLE) <= 0;
+
+    -- price_logical_type_options_exclusiveMaximum_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "price" IS NULL AND TRY_CAST("price" AS DOUBLE) >= 2000000;
+
+    -- price_logical_type_options_multipleOf_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "price" IS NULL AND (TRY_CAST("price" AS DOUBLE) % 0.01) <> 0;
+    ```
+
+=== "enum"
+
+    ```yaml
+    - name: status
+      logicalType: string
+      enum:
+        - value: open
+        - value: closed
+    ```
+
+    ```sql
+    -- status_enum_check
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "status" IS NULL AND NOT "status" IN ('open', 'closed');
+    ```
+
+=== "required and unique"
+
+    ```yaml
+    - name: code
+      required: true
+      unique: true
+    ```
+
+    ```sql
+    -- code_required_check
+    SELECT COUNT(*) FROM "hdb_resale_prices" WHERE "code" IS NULL;
+
+    -- code_unique_check: counts every copy of a repeated value
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE "code" IN (
+      SELECT "code" FROM "hdb_resale_prices"
+      WHERE NOT "code" IS NULL
+      GROUP BY "code" HAVING COUNT(*) > 1
+    );
+    ```
+
+### Format Checks
+
+The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`:
+
+#### Integer formats
+
+Validates that values fall within the range of a fixed-width integer type.
+
+| `format` | Min                        | Max                        |
+| -------- | -------------------------- | -------------------------- |
+| `i8`     | -128                       | 127                        |
+| `i16`    | -32,768                    | 32,767                     |
+| `i32`    | -2,147,483,648             | 2,147,483,647              |
+| `i64`    | -9,223,372,036,854,775,808 | 9,223,372,036,854,775,807  |
+| `u8`     | 0                          | 255                        |
+| `u16`    | 0                          | 65,535                     |
+| `u32`    | 0                          | 4,294,967,295              |
+| `u64`    | 0                          | 18,446,744,073,709,551,615 |
+
+`i128` and `u128` are recognised but skipped because their ranges exceed what SQL engines can represent.
+
+```yaml
+- name: age
+  logicalType: integer
+  logicalTypeOptions:
+    format: u8 # 0 – 255
+```
+
+```sql
+-- age_logical_type_options_format_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "age" IS NULL
+  AND (TRY_CAST("age" AS DOUBLE) < 0 OR TRY_CAST("age" AS DOUBLE) > 255);
+```
+
+#### String formats
+
+Validates values against a built-in regex pattern.
+
+| `format`   | What it checks                                                 |
+| ---------- | -------------------------------------------------------------- |
+| `uuid`     | UUID v1–v5 hex format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
+| `email`    | Basic `local@domain.tld` structure                             |
+| `ipv4`     | Dotted-decimal IPv4 address (`0.0.0.0` – `255.255.255.255`)    |
+| `ipv6`     | Full-form colon-separated IPv6 address                         |
+| `hostname` | RFC-952 hostname with TLD                                      |
+| `uri`      | URI with a valid scheme prefix (e.g. `https:`, `s3:`)          |
+
+`password`, `byte`, and `binary` are recognised but skipped because they cannot be validated against data.
+
+```yaml
+- name: request_id
+  logicalType: string
+  logicalTypeOptions:
+    format: uuid
+```
+
+```sql
+-- request_id_logical_type_options_format_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "request_id" IS NULL
+  AND NOT REGEXP_MATCHES(
+    TRY_CAST("request_id" AS TEXT),
+    '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+  );
+```
+
+#### Number formats
+
+`f32` and `f64` are recognised but produce no check. SQL engines do not tell them apart when they read the data.
+
+#### Date, timestamp and time formats
+
+For `date`, `timestamp` and `time` logical types, `format` takes a pattern such as `yyyy-MM-dd` or `yyyy-MM-dd HH:mm:ss`. These are Java date patterns ([`DateTimeFormatter`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html)): `yyyy` is a four-digit year, `MM` a two-digit month, and so on. vowl turns the pattern into a regex and checks that each value, read as text, matches it.
+
+Supported tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`, `h`, `mm`, `ss`, `SSS` (fractional seconds), and timezone offsets (`X`/`XX`/`XXX`/`Z`). Literal characters such as `-`, `:`, `T`, and quoted sections (`'T'`) are preserved. If a pattern contains tokens vowl cannot translate, the check is skipped with a warning.
+
+```yaml
+- name: created_at
+  logicalType: timestamp
+  logicalTypeOptions:
+    format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
+```
+
+```sql
+-- created_at_logical_type_options_format_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "created_at" IS NULL
+  AND NOT REGEXP_MATCHES(
+    TRY_CAST("created_at" AS TEXT),
+    '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d\.\d{3}(Z|[+-]\d{2}:\d{2})$'
+  );
+```
+
+#### Array Formats
+
+When a property declares `logicalType: array`, vowl checks the array's size, and it uses the `items` sub-schema to check the elements inside it. These checks run only when `logicalType: array` is set. On any other property, the same options or an `items` block are reported as unsupported checks.
+
+```yaml
+- name: tags
+  logicalType: array
+  logicalTypeOptions:
+    minItems: 1
+    maxItems: 10
+    uniqueItems: true
+  items:
+    logicalType: string
+    logicalTypeOptions:
+      minLength: 2
+    enum:
+      - value: red
+      - value: green
+      - value: blue
+```
+
+This produces a column-exists check plus one check per array constraint:
+
+| Constraint                           | What vowl validates                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `logicalTypeOptions.minItems`        | Array has at least `minItems` elements                                    |
+| `logicalTypeOptions.maxItems`        | Array has at most `maxItems` elements                                     |
+| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`, `false` is a no-op) |
+| `items.logicalType`                  | Every element casts to the element type                                   |
+| `items.logicalTypeOptions.minLength` | Every element satisfies the element option                                |
+| `items.enum`                         | Every element is one of the allowed values                                |
+
+```sql
+-- tags_logical_type_options_minItems_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "tags" IS NULL AND ARRAY_LENGTH("tags") < 1;
+
+-- tags_logical_type_options_maxItems_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "tags" IS NULL AND ARRAY_LENGTH("tags") > 10;
+
+-- tags_logical_type_options_uniqueItems_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "tags" IS NULL AND ARRAY_LENGTH(LIST_DISTINCT("tags")) <> ARRAY_LENGTH("tags");
+
+-- tags_array_items_logical_type_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "tags" IS NULL AND EXISTS(
+  SELECT 1 FROM UNNEST("tags") AS "_vowl_arr"("_vowl_elem")
+  WHERE TRY_CAST("_vowl_elem" AS TEXT) IS NULL
+);
+
+-- tags_array_items_minLength_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "tags" IS NULL AND EXISTS(
+  SELECT 1 FROM UNNEST("tags") AS "_vowl_arr"("_vowl_elem")
+  WHERE LENGTH(TRY_CAST("_vowl_elem" AS TEXT)) < 2
+);
+
+-- tags_array_items_enum_check
+SELECT COUNT(*) FROM "hdb_resale_prices"
+WHERE NOT "tags" IS NULL AND EXISTS(
+  SELECT 1 FROM UNNEST("tags") AS "_vowl_arr"("_vowl_elem")
+  WHERE NOT "_vowl_elem" IN ('red', 'green', 'blue')
+);
+```
+
+**NULL vs empty.** A `NULL` array is skipped by every array check (use `required` to forbid NULLs). An empty array `[]` only fails `minItems`. With no elements, `uniqueItems` and the `items` checks have nothing to flag, so they pass.
+
+**Backend support.** These checks are tested on DuckDB. Size checks (`minItems`/`maxItems`) use `ARRAY_LENGTH`, which most engines with arrays support. `uniqueItems` and element checks use `ARRAY_DISTINCT` and `UNNEST`, which not every engine has. For other engines the behaviour is worked out from the SQL vowl writes, not tested, so see [Known Issues](known-issues.md#native-array-checks) for the per-engine expectations. Where a construct isn't supported, the check returns `ERROR` rather than silently passing.
+
+### Primary Keys
+
+`primaryKey: true` on one column generates `<col>_primary_key_check`, which fails every row whose key is `NULL` or appears more than once.
+
+```yaml
+- name: customers
+  properties:
+    - name: customer_id
+      logicalType: integer
+      primaryKey: true
+```
+
+```sql
+-- customer_id_primary_key_check
+SELECT COUNT(*) FROM "customers"
+WHERE "customer_id" IS NULL
+   OR "customer_id" IN (
+     SELECT "customer_id" FROM "customers"
+     WHERE NOT "customer_id" IS NULL
+     GROUP BY "customer_id" HAVING COUNT(*) > 1
+   );
+```
+
+#### Composite Primary Keys
 
 When two or more properties of a schema set `primaryKey: true`, ODCS reads them together as one key, ordered by `primaryKeyPosition` (starting from 1). vowl then generates a single check for the whole key instead of one per column. It is named `<schema>_<col1>_<col2>_primary_key_check` and fails every row that has a `NULL` in any key column or whose key tuple appears more than once. One key column repeating on its own is fine.
 
@@ -154,13 +543,125 @@ When two or more properties of a schema set `primaryKey: true`, ODCS reads them 
       primaryKeyPosition: 2
 ```
 
-This generates `products_category_sku_primary_key_check`. Columns without a `primaryKeyPosition` follow the positioned ones in the order they are declared. A schema with a single key column keeps the per-column `<col>_primary_key_check`. A column that also sets `unique: true` still gets its own unique check.
+This generates `products_category_sku_primary_key_check`:
 
-## Library Checks (`type: library`)
+```sql
+SELECT COUNT(*) FROM "products"
+WHERE "category" IS NULL
+   OR "sku" IS NULL
+   OR ("category", "sku") IN (
+     SELECT "category", "sku" FROM "products"
+     WHERE NOT "category" IS NULL AND NOT "sku" IS NULL
+     GROUP BY "category", "sku" HAVING COUNT(*) > 1
+   );
+```
+
+Columns without a `primaryKeyPosition` follow the positioned ones in the order they are declared. A schema with a single key column keeps the per-column `<col>_primary_key_check`. A column that also sets `unique: true` still gets its own unique check.
+
+#### Relationships (Foreign Keys)
+
+A `relationships` entry of type `foreignKey` requires every non-`NULL` key value to exist in the table it points to. vowl runs this as a real check (`dimension: consistency`, `mustBe: 0`).
+
+##### Property-level, single column
+
+Declare the relationship on the property that holds the key. The `to` target uses **shorthand** notation (`<object>.<property>`), resolved by property `name`:
+
+```yaml
+schema:
+  - name: customers
+    properties:
+      - name: customer_id
+        logicalType: integer
+        primaryKey: true
+  - name: orders
+    properties:
+      - name: customer_id
+        logicalType: integer
+        required: false
+        relationships:
+          - type: foreignKey
+            to: customers.customer_id
+```
+
+This generates a check named `orders_customer_id_foreign_key_check`. Rows with a `NULL` key are skipped, so an optional foreign key is allowed. A value fails only when it is present but has no match in the target.
+
+```sql
+-- orders_customer_id_foreign_key_check
+SELECT COUNT(*) FROM "orders" AS "_vowl_fk_from"
+WHERE NOT "_vowl_fk_from"."customer_id" IS NULL
+  AND NOT EXISTS(
+    SELECT 1 FROM "customers" AS "_vowl_fk_to"
+    WHERE "_vowl_fk_to"."customer_id" = "_vowl_fk_from"."customer_id"
+  );
+```
+
+When the two tables are on different data sources, vowl runs this query on copies of both tables. See [Using Relationship References](design-considerations/cross-table/relationship-references.md).
+
+##### Schema-level, composite key
+
+For multi-column keys, declare the relationship at the **schema** level with parallel `from`/`to` lists. Here the target columns use **fully-qualified** notation (`/schema/<schemaId>/properties/<propertyId>`), resolved by `id`:
+
+```yaml
+schema:
+  - id: products_schema
+    name: products
+    properties:
+      - id: products_category
+        name: category
+        primaryKey: true
+        primaryKeyPosition: 1
+      - id: products_sku
+        name: sku
+        primaryKey: true
+        primaryKeyPosition: 2
+  - name: order_items
+    properties:
+      - name: category
+      - name: sku
+    relationships:
+      - type: foreignKey
+        from:
+          - order_items.category
+          - order_items.sku
+        to:
+          - /schema/products_schema/properties/products_category
+          - /schema/products_schema/properties/products_sku
+```
+
+A composite row is skipped if **any** of its key columns is `NULL`.
+
+```sql
+-- order_items_category_sku_foreign_key_check
+SELECT COUNT(*) FROM "order_items" AS "_vowl_fk_from"
+WHERE NOT "_vowl_fk_from"."category" IS NULL
+  AND NOT "_vowl_fk_from"."sku" IS NULL
+  AND NOT EXISTS(
+    SELECT 1 FROM "products" AS "_vowl_fk_to"
+    WHERE "_vowl_fk_to"."category" = "_vowl_fk_from"."category"
+      AND "_vowl_fk_to"."sku" = "_vowl_fk_from"."sku"
+  );
+```
+
+The two `primaryKey` columns of `products` form one composite key, so vowl checks that each `(category, sku)` pair is unique, not each column. See [Composite Primary Keys](#composite-primary-keys).
+
+##### Reference notations
+
+| Notation        | Example                                                     | Resolves by                         |
+| --------------- | ----------------------------------------------------------- | ----------------------------------- |
+| Shorthand       | `customers.customer_id`                                     | property `name`                     |
+| Fully-qualified | `/schema/customers_schema/properties/customer_id`           | property `id`                       |
+| External file   | `customers.yaml#/schema/<schemaId>/properties/<propertyId>` | another contract file, then by `id` |
+
+Give one adapter per schema, keyed by schema `name`, including the target of
+an external reference. [Using Relationship References](design-considerations/cross-table/relationship-references.md)
+explains how vowl finds each target, how to point at another contract file,
+and where the check runs when the two schemas are on different data sources.
+
+### Library Checks
 
 Instead of writing SQL by hand, you can declare common checks with `type: library` in your `quality` blocks. vowl writes the SQL for you when the check runs.
 
-### Column-Level Checks
+#### Column-Level Checks
 
 Under a property's `quality`:
 
@@ -171,7 +672,7 @@ Under a property's `quality`:
 | `invalidValues`   | Count of values that fail valid-value or pattern criteria   | `arguments.validValues`: allowed values list and/or `arguments.pattern`: regex                           |
 | `duplicateValues` | Count of duplicate non-NULL values in the column            | -                                                                                                        |
 
-### Table-Level Checks
+#### Table-Level Checks
 
 Under a schema's `quality`:
 
@@ -182,7 +683,7 @@ Under a schema's `quality`:
 
 All library checks support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
 
-### Example
+#### Example
 
 ```yaml
 properties:
@@ -223,209 +724,96 @@ quality:
         - street_name
 ```
 
-## Relationships (Foreign Keys)
+#### Generated SQL
 
-A `relationships` entry of type `foreignKey` requires every non-`NULL` key value to exist in the table it points to. vowl runs this as a real check (`dimension: consistency`, `mustBe: 0`).
+The table name is the schema `name`, here `hdb_resale_prices`.
 
-### Property-level, single column
+=== "nullValues"
 
-Declare the relationship on the property that holds the key. The `to` target uses **shorthand** notation (`<object>.<property>`), resolved by property `name`:
+    ```sql
+    -- town_nullValues
+    SELECT COUNT(*) FROM "hdb_resale_prices" WHERE "town" IS NULL;
+    ```
 
-```yaml
-schema:
-  - name: customers
-    properties:
-      - name: customer_id
-        logicalType: integer
-        primaryKey: true
-  - name: orders
-    properties:
-      - name: customer_id
-        logicalType: integer
-        required: false
-        relationships:
-          - type: foreignKey
-            to: customers.customer_id
-```
+=== "missingValues"
 
-This generates a check named `orders_customer_id_foreign_key_check`. Rows with a `NULL` key are skipped, so an optional foreign key is allowed. A value fails only when it is present but has no match in the target.
+    With `arguments.missingValues: ["", "N/A", null]`:
 
-### Schema-level, composite key
+    ```sql
+    -- town_missingValues
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE "town" IS NULL OR TRY_CAST("town" AS TEXT) IN ('', 'N/A');
+    ```
 
-For multi-column keys, declare the relationship at the **schema** level with parallel `from`/`to` lists. Here the target columns use **fully-qualified** notation (`/schema/<schemaId>/properties/<propertyId>`), resolved by `id`:
+=== "invalidValues"
 
-```yaml
-schema:
-  - id: products_schema
-    name: products
-    properties:
-      - id: products_category
-        name: category
-        primaryKey: true
-        primaryKeyPosition: 1
-      - id: products_sku
-        name: sku
-        primaryKey: true
-        primaryKeyPosition: 2
-  - name: order_items
-    properties:
-      - name: category
-      - name: sku
-    relationships:
-      - type: foreignKey
-        from:
-          - order_items.category
-          - order_items.sku
-        to:
-          - /schema/products_schema/properties/products_category
-          - /schema/products_schema/properties/products_sku
-```
+    With `arguments.validValues`:
 
-A composite row is skipped if **any** of its key columns is `NULL`.
+    ```sql
+    -- flat_type_invalidValues
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "flat_type" IS NULL
+      AND NOT TRY_CAST("flat_type" AS TEXT) IN ('3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE');
+    ```
 
-The two `primaryKey` columns of `products` form one composite key, so vowl checks that each `(category, sku)` pair is unique, not each column. See [Composite Primary Keys](#composite-primary-keys).
+    With `arguments.pattern: "^[0-9] ROOM$"`:
 
-### Reference notations
+    ```sql
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE NOT "flat_type" IS NULL
+      AND NOT REGEXP_MATCHES(TRY_CAST("flat_type" AS TEXT), '^[0-9] ROOM$');
+    ```
 
-| Notation        | Example                                                     | Resolves by                         |
-| --------------- | ----------------------------------------------------------- | ----------------------------------- |
-| Shorthand       | `customers.customer_id`                                     | property `name`                     |
-| Fully-qualified | `/schema/customers_schema/properties/customer_id`           | property `id`                       |
-| External file   | `customers.yaml#/schema/<schemaId>/properties/<propertyId>` | another contract file, then by `id` |
+=== "duplicateValues (column)"
 
-An external reference points at a property in **another contract file**, written as `customers.yaml#/schema/<id>/properties/<id>`. Two things to know:
+    ```sql
+    -- town_duplicateValues: counts every copy of a repeated value
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE "town" IN (
+      SELECT "town" FROM "hdb_resale_prices"
+      WHERE NOT "town" IS NULL
+      GROUP BY "town" HAVING COUNT(*) > 1
+    );
+    ```
 
-- The part after `#` must use the full `/schema/.../properties/...` form. Shorthand like `customers.customer_id` is fine for same-file references, but ODCS doesn't allow it after a `file.yaml#` prefix, so `customers.yaml#customers.customer_id` won't pass contract validation.
-- vowl looks for the external file **relative to the contract that references it**. When you pass a file path or URL to `validate_data` (for example `validate_data(contract="orders.yaml", …)`), vowl resolves the external file next to `orders.yaml` for you. The one case that breaks is building a `Contract` object yourself from an in-memory dict. That object has no location, so vowl can't find the external file, and reports the check as unsupported.
+=== "rowCount"
 
-### How relationship checks run
+    ```sql
+    -- hdb_resale_prices_rowCount
+    SELECT COUNT(*) FROM "hdb_resale_prices";
+    ```
 
-- **Adapters are keyed by schema `name`.** vowl does not connect using the contract's `servers` on its own. You give one adapter per schema. When the two sides are in different databases, vowl runs the check across them for you.
-- **External references still need an adapter for the target schema.** Loading `customers.yaml` only tells vowl the target's schema `name` and column. It never opens a connection. Give the adapter under that schema's **`name`** as declared in the external file (not its `id`, and not the file name). vowl accepts it without the "no schema with that name" warning, even though the schema is not in the contract you loaded. Load the referencing contract from a path or URL, so vowl knows where to look for the external file:
+=== "duplicateValues (table)"
 
-  ```python
-  validate_data(
-      contract="orders.yaml",                      # loaded from a path -> has an origin
-      adapters={
-          "orders": IbisAdapter(orders_con),       # the referencing schema
-          "customers": IbisAdapter(customers_con),  # the external target, keyed by its schema `name`
-      },
-  )
-  ```
+    With `arguments.properties: [month, block, street_name]`:
 
-  See [`examples/2_multiple_sources`](https://github.com/govtech-data-practice/vowl/blob/main/examples/2_multiple_sources/multiple_sources.ipynb) for a runnable version.
+    ```sql
+    -- hdb_resale_prices_duplicateValues
+    SELECT COUNT(*) FROM "hdb_resale_prices"
+    WHERE EXISTS(
+      SELECT 1 FROM "hdb_resale_prices" AS "dup_src"
+      WHERE "dup_src"."month" = "hdb_resale_prices"."month"
+        AND NOT "dup_src"."month" IS NULL
+        AND "dup_src"."block" = "hdb_resale_prices"."block"
+        AND NOT "dup_src"."block" IS NULL
+        AND "dup_src"."street_name" = "hdb_resale_prices"."street_name"
+        AND NOT "dup_src"."street_name" IS NULL
+      GROUP BY "dup_src"."month", "dup_src"."block", "dup_src"."street_name"
+      HAVING COUNT(*) > 1
+    );
+    ```
 
-- **Self-referential** keys (a table referencing itself) run as a single-table check.
-- Failed rows hold only the referencing table's columns, so they are marked on that table's annotated output instead of becoming a residue.
-- If the **reference itself** can't be resolved (missing target property, or an external path with no known contract location to resolve against), vowl logs a warning and reports the check as unsupported. The rest of the run goes ahead.
-- If the reference resolves to an external schema but you **don't register an adapter** for it, vowl reads the target table through the referencing schema's adapter, as it does for any [table outside the contract](known-issues.md#queries-accessing-tables-outside-the-contract). The check runs if that connection has the table. Otherwise it comes back `ERROR` with the database's "table not found" message, and the rest of the run still executes.
+=== "unit: percent"
 
-See [Reference resolution for relationships](design-considerations.md#reference-resolution-for-relationships) for the exact rules vowl uses to find `relationships` targets.
+    `unit: percent` divides the count by the number of rows:
 
-## Format Checks
+    ```sql
+    SELECT
+      (SELECT COUNT(*) FROM "hdb_resale_prices" WHERE "town" IS NULL) * 100.0
+      / NULLIF((SELECT COUNT(*) FROM "hdb_resale_prices"), 0);
+    ```
 
-The `logicalTypeOptions.format` key validates that column values conform to a declared format. The check generated depends on the column's `logicalType`:
-
-### Integer formats
-
-Validates that values fall within the range of a fixed-width integer type.
-
-| `format` | Min                        | Max                        |
-| -------- | -------------------------- | -------------------------- |
-| `i8`     | -128                       | 127                        |
-| `i16`    | -32,768                    | 32,767                     |
-| `i32`    | -2,147,483,648             | 2,147,483,647              |
-| `i64`    | -9,223,372,036,854,775,808 | 9,223,372,036,854,775,807  |
-| `u8`     | 0                          | 255                        |
-| `u16`    | 0                          | 65,535                     |
-| `u32`    | 0                          | 4,294,967,295              |
-| `u64`    | 0                          | 18,446,744,073,709,551,615 |
-
-`i128` and `u128` are recognised but skipped because their ranges exceed what SQL engines can represent.
-
-```yaml
-- name: age
-  logicalType: integer
-  logicalTypeOptions:
-    format: u8 # 0 – 255
-```
-
-### String formats
-
-Validates values against a built-in regex pattern.
-
-| `format`   | What it checks                                                 |
-| ---------- | -------------------------------------------------------------- |
-| `uuid`     | UUID v1–v5 hex format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
-| `email`    | Basic `local@domain.tld` structure                             |
-| `ipv4`     | Dotted-decimal IPv4 address (`0.0.0.0` – `255.255.255.255`)    |
-| `ipv6`     | Full-form colon-separated IPv6 address                         |
-| `hostname` | RFC-952 hostname with TLD                                      |
-| `uri`      | URI with a valid scheme prefix (e.g. `https:`, `s3:`)          |
-
-`password`, `byte`, and `binary` are recognised but skipped because they cannot be validated against data.
-
-```yaml
-- name: request_id
-  logicalType: string
-  logicalTypeOptions:
-    format: uuid
-```
-
-### Number formats
-
-`f32` and `f64` are recognised but produce no check. SQL engines do not tell them apart when they read the data.
-
-### Date, timestamp and time formats
-
-For `date`, `timestamp` and `time` logical types, `format` takes a pattern such as `yyyy-MM-dd` or `yyyy-MM-dd HH:mm:ss`. These are Java date patterns ([`DateTimeFormatter`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html)): `yyyy` is a four-digit year, `MM` a two-digit month, and so on. vowl turns the pattern into a regex and checks that each value, read as text, matches it.
-
-Supported tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`, `h`, `mm`, `ss`, `SSS` (fractional seconds), and timezone offsets (`X`/`XX`/`XXX`/`Z`). Literal characters such as `-`, `:`, `T`, and quoted sections (`'T'`) are preserved. If a pattern contains tokens vowl cannot translate, the check is skipped with a warning.
-
-```yaml
-- name: created_at
-  logicalType: timestamp
-  logicalTypeOptions:
-    format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
-```
-
-## Array Checks
-
-When a property declares `logicalType: array`, vowl checks the array's size, and it uses the `items` sub-schema to check the elements inside it. These checks run only when `logicalType: array` is set. On any other property, the same options or an `items` block are reported as unsupported checks.
-
-```yaml
-- name: tags
-  logicalType: array
-  logicalTypeOptions:
-    minItems: 1
-    maxItems: 10
-    uniqueItems: true
-  items:
-    logicalType: string
-    logicalTypeOptions:
-      minLength: 2
-    enum:
-      - value: red
-      - value: green
-      - value: blue
-```
-
-This produces a column-exists check plus one check per array constraint:
-
-| Constraint                           | What vowl validates                                                       |
-| ------------------------------------ | ------------------------------------------------------------------------- |
-| `logicalTypeOptions.minItems`        | Array has at least `minItems` elements                                    |
-| `logicalTypeOptions.maxItems`        | Array has at most `maxItems` elements                                     |
-| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`, `false` is a no-op) |
-| `items.logicalType`                  | Every element casts to the element type                                   |
-| `items.logicalTypeOptions.minLength` | Every element satisfies the element option                                |
-| `items.enum`                         | Every element is one of the allowed values                                |
-
-**NULL vs empty.** A `NULL` array is skipped by every array check (use `required` to forbid NULLs). An empty array `[]` only fails `minItems`. With no elements, `uniqueItems` and the `items` checks have nothing to flag, so they pass.
-
-**Backend support.** These checks are tested on DuckDB. Size checks (`minItems`/`maxItems`) use `ARRAY_LENGTH`, which most engines with arrays support. `uniqueItems` and element checks use `ARRAY_DISTINCT` and `UNNEST`, which not every engine has. For other engines the behaviour is worked out from the SQL vowl writes, not tested, so see [Known Issues](known-issues.md#native-array-checks) for the per-engine expectations. Where a construct isn't supported, the check returns `ERROR` rather than silently passing.
-
-## How vowl Finds Each Check
+### How vowl Derives Auto Checks
 
 This section is for readers working with vowl's Python objects. When a contract loads, vowl creates one `CheckReference` for every check, both the ones you wrote and the generated ones. `Contract.get_check_references_by_schema()` returns them grouped by schema. Generated checks run before the ones in `quality`.
 

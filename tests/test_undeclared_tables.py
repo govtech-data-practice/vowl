@@ -1,6 +1,6 @@
 """Checks that read tables the contract does not declare as schemas.
 
-A lookup table such as ``audit_log`` is served by the adapter of the schema
+A lookup table such as ``currencies`` is served by the adapter of the schema
 the check sits under. These tests pin that rule for single-table checks and
 for joins, and record which tables get downloaded so the execution mode is
 visible: no download means the check ran natively on the source connection.
@@ -19,29 +19,33 @@ from vowl import validate_data
 from vowl.adapters import IbisAdapter, MultiSourceAdapter
 from vowl.adapters.pooled_adapter import PooledAdapter
 
-# db1 holds t1 and a lookup table audit_log that no schema declares.
-# db2 holds t2 and its own, different audit_log.
-DB1_SQL = [
-    "CREATE TABLE t1 AS SELECT * FROM (VALUES (1), (2), (3)) v(id)",
-    "CREATE TABLE audit_log AS SELECT * FROM (VALUES (1, 0), (2, 0)) v(record_id, flagged)",
+# The sales database holds orders and a currencies lookup that no schema
+# declares. The CRM database holds customers and its own copy of currencies.
+# The sales copy is out of date and has no EUR row.
+SALES_SQL = [
+    "CREATE TABLE orders AS SELECT * FROM (VALUES (1, 'SGD'), (2, 'USD'), (3, 'EUR')) v(order_id, currency)",
+    "CREATE TABLE currencies AS SELECT * FROM (VALUES ('SGD', TRUE), ('USD', TRUE)) v(code, is_active)",
 ]
-DB2_SQL = [
-    "CREATE TABLE t2 AS SELECT * FROM (VALUES (1), (2), (3)) v(id)",
-    "CREATE TABLE audit_log AS SELECT * FROM (VALUES (1, 1), (2, 1), (3, 1)) v(record_id, flagged)",
+CRM_SQL = [
+    "CREATE TABLE customers AS SELECT * FROM (VALUES (1, 'SGD'), (2, 'USD'), (3, 'EUR')) v(customer_id, currency)",
+    "CREATE TABLE currencies AS SELECT * FROM (VALUES ('SGD', TRUE), ('USD', TRUE), ('EUR', TRUE)) v(code, is_active)",
 ]
 
-# Rows of the joined table with no audit_log entry. t1 and t2 both hold ids
-# 1 to 3, so the db1 copy of audit_log leaves 1 row out and the db2 copy 0.
-MISSING_FROM_AUDIT = (
-    "SELECT COUNT(*) FROM {table} LEFT JOIN audit_log a ON {table}.id = a.record_id WHERE a.record_id IS NULL"
+# Rows of the joined table whose currency has no currencies entry. orders and
+# customers both use SGD, USD and EUR, so the sales copy of currencies leaves
+# 1 row out and the CRM copy 0.
+UNKNOWN_CURRENCY = (
+    "SELECT COUNT(*) FROM {table} LEFT JOIN currencies c ON {table}.currency = c.code WHERE c.code IS NULL"
 )
-FLAGGED_JOIN = "SELECT COUNT(*) FROM {table} JOIN audit_log a ON {table}.id = a.record_id WHERE a.flagged = 1"
+INACTIVE_CURRENCY = "SELECT COUNT(*) FROM {table} JOIN currencies c ON {table}.currency = c.code WHERE NOT c.is_active"
+
+KEY_COLUMNS = {"orders": "order_id", "customers": "customer_id"}
 
 
 @pytest.fixture
 def dbs(tmp_path: Path) -> tuple[str, str]:
     paths = []
-    for name, statements in (("db1", DB1_SQL), ("db2", DB2_SQL)):
+    for name, statements in (("sales", SALES_SQL), ("crm", CRM_SQL)):
         path = str(tmp_path / f"{name}.duckdb")
         con = duckdb.connect(path)
         for statement in statements:
@@ -80,8 +84,10 @@ def write_contract(tmp_path: Path, checks_by_schema: dict[str, dict[str, str]]) 
             f"  - name: {schema}",
             "    physicalType: table",
             "    properties:",
-            "      - name: id",
+            f"      - name: {KEY_COLUMNS[schema]}",
             "        logicalType: integer",
+            "      - name: currency",
+            "        logicalType: string",
         ]
         if checks:
             lines.append("    quality:")
@@ -101,114 +107,127 @@ def run(contract: str, **kwargs) -> dict[str, object]:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         result = validate_data(contract, **kwargs)
-    return {cr.check_name: cr for cr in result.check_results if not cr.check_name.startswith("id_")}
+    return {cr.check_name: cr for cr in result.check_results if not cr.metadata.get("is_generated")}
 
 
 def test_single_adapter_join_with_lookup_table_runs_natively(tmp_path, dbs, downloads):
-    db1, _ = dbs
-    contract = write_contract(tmp_path, {"t1": {"join_lookup": FLAGGED_JOIN.format(table="t1")}})
+    sales_db, _ = dbs
+    contract = write_contract(tmp_path, {"orders": {"inactive_currency": INACTIVE_CURRENCY.format(table="orders")}})
 
-    results = run(contract, adapter=IbisAdapter(ibis.duckdb.connect(db1)))
+    results = run(contract, adapter=IbisAdapter(ibis.duckdb.connect(sales_db)))
 
-    assert results["join_lookup"].status == "PASSED"
+    assert results["inactive_currency"].status == "PASSED"
     assert downloads == []
 
 
 def test_join_with_lookup_table_on_own_connection_runs_natively(tmp_path, dbs, downloads):
-    db1, db2 = dbs
+    sales_db, crm_db = dbs
     contract = write_contract(
         tmp_path,
-        {"t1": {"join_lookup": MISSING_FROM_AUDIT.format(table="t1")}, "t2": {}},
+        {"orders": {"unknown_currency": UNKNOWN_CURRENCY.format(table="orders")}, "customers": {}},
     )
 
     results = run(
         contract,
-        adapters={"t1": IbisAdapter(ibis.duckdb.connect(db1)), "t2": IbisAdapter(ibis.duckdb.connect(db2))},
+        adapters={
+            "orders": IbisAdapter(ibis.duckdb.connect(sales_db)),
+            "customers": IbisAdapter(ibis.duckdb.connect(crm_db)),
+        },
     )
 
-    assert results["join_lookup"].status == "FAILED"
-    assert results["join_lookup"].failed_rows_count == 1
+    assert results["unknown_currency"].status == "FAILED"
+    assert results["unknown_currency"].failed_rows_count == 1
     assert downloads == []
 
 
 def test_cross_connection_join_downloads_lookup_table_through_owner(tmp_path, dbs, downloads):
-    db1, db2 = dbs
-    con1, con2 = ibis.duckdb.connect(db1), ibis.duckdb.connect(db2)
+    sales_db, crm_db = dbs
+    sales_con, crm_con = ibis.duckdb.connect(sales_db), ibis.duckdb.connect(crm_db)
     contract = write_contract(
         tmp_path,
-        {"t1": {"t2_vs_db1_audit": MISSING_FROM_AUDIT.format(table="t2")}, "t2": {}},
+        {"orders": {"customers_vs_sales_currencies": UNKNOWN_CURRENCY.format(table="customers")}, "customers": {}},
     )
 
-    results = run(contract, adapters={"t1": IbisAdapter(con1), "t2": IbisAdapter(con2)})
+    results = run(contract, adapters={"orders": IbisAdapter(sales_con), "customers": IbisAdapter(crm_con)})
 
-    # t2 comes from db2 and audit_log from db1, the connection of schema t1.
+    # customers comes from the CRM database and currencies from the sales
+    # database, the connection of schema orders.
     # Compared as a set because fetching failed rows later downloads again.
-    assert results["t2_vs_db1_audit"].status == "FAILED"
-    assert results["t2_vs_db1_audit"].failed_rows_count == 1
-    assert set(downloads) == {("t2", id(con2)), ("audit_log", id(con1))}
+    assert results["customers_vs_sales_currencies"].status == "FAILED"
+    assert results["customers_vs_sales_currencies"].failed_rows_count == 1
+    assert set(downloads) == {("customers", id(crm_con)), ("currencies", id(sales_con))}
 
 
 def _crossed_contract(tmp_path: Path) -> str:
     # Each check joins the other schema's table, so both run in local DuckDB,
-    # and each reads audit_log through its own schema's connection.
+    # and each reads currencies through its own schema's connection.
     return write_contract(
         tmp_path,
         {
-            "t1": {"t2_vs_db1_audit": MISSING_FROM_AUDIT.format(table="t2")},
-            "t2": {"t1_vs_db2_audit": MISSING_FROM_AUDIT.format(table="t1")},
+            "orders": {"customers_vs_sales_currencies": UNKNOWN_CURRENCY.format(table="customers")},
+            "customers": {"orders_vs_crm_currencies": UNKNOWN_CURRENCY.format(table="orders")},
         },
     )
 
 
 def test_lookup_table_with_same_name_resolves_per_owning_schema(tmp_path, dbs, downloads):
-    db1, db2 = dbs
-    con1, con2 = ibis.duckdb.connect(db1), ibis.duckdb.connect(db2)
+    sales_db, crm_db = dbs
+    sales_con, crm_con = ibis.duckdb.connect(sales_db), ibis.duckdb.connect(crm_db)
 
-    results = run(_crossed_contract(tmp_path), adapters={"t1": IbisAdapter(con1), "t2": IbisAdapter(con2)})
+    results = run(
+        _crossed_contract(tmp_path), adapters={"orders": IbisAdapter(sales_con), "customers": IbisAdapter(crm_con)}
+    )
 
-    assert results["t2_vs_db1_audit"].failed_rows_count == 1
-    assert results["t1_vs_db2_audit"].status == "PASSED"
-    assert ("audit_log", id(con1)) in downloads
-    assert ("audit_log", id(con2)) in downloads
+    assert results["customers_vs_sales_currencies"].failed_rows_count == 1
+    assert results["orders_vs_crm_currencies"].status == "PASSED"
+    assert ("currencies", id(sales_con)) in downloads
+    assert ("currencies", id(crm_con)) in downloads
 
 
 def test_lookup_table_with_same_name_resolves_per_owning_schema_in_parallel(tmp_path, dbs):
-    db1, db2 = dbs
+    sales_db, crm_db = dbs
     adapters = MultiSourceAdapter(
         {
-            "t1": PooledAdapter(lambda: IbisAdapter(ibis.duckdb.connect(db1, read_only=True)), max_concurrency=2),
-            "t2": PooledAdapter(lambda: IbisAdapter(ibis.duckdb.connect(db2, read_only=True)), max_concurrency=2),
+            "orders": PooledAdapter(
+                lambda: IbisAdapter(ibis.duckdb.connect(sales_db, read_only=True)), max_concurrency=2
+            ),
+            "customers": PooledAdapter(
+                lambda: IbisAdapter(ibis.duckdb.connect(crm_db, read_only=True)), max_concurrency=2
+            ),
         }
     )
 
     results = run(_crossed_contract(tmp_path), adapters=adapters)
 
-    assert results["t2_vs_db1_audit"].failed_rows_count == 1
-    assert results["t1_vs_db2_audit"].status == "PASSED"
+    assert results["customers_vs_sales_currencies"].failed_rows_count == 1
+    assert results["orders_vs_crm_currencies"].status == "PASSED"
 
 
 def test_lookup_table_missing_from_owner_connection_reports_database_error(tmp_path, dbs):
-    db1, db2 = dbs
-    # audit_log lives in db1 and db2 in the fixture, so drop it from db2.
-    con = duckdb.connect(db2)
-    con.execute("DROP TABLE audit_log")
+    sales_db, crm_db = dbs
+    # currencies lives in both databases in the fixture, so drop the CRM copy.
+    con = duckdb.connect(crm_db)
+    con.execute("DROP TABLE currencies")
     con.close()
     contract = write_contract(
         tmp_path,
-        {"t1": {}, "t2": {"t1_vs_db2_audit": MISSING_FROM_AUDIT.format(table="t1")}},
+        {"orders": {}, "customers": {"orders_vs_crm_currencies": UNKNOWN_CURRENCY.format(table="orders")}},
     )
 
     from conftest import _ALLOWED_ERROR_SUBSTRINGS
 
-    token = _ALLOWED_ERROR_SUBSTRINGS.set(("audit_log does not exist",))
+    token = _ALLOWED_ERROR_SUBSTRINGS.set(("currencies does not exist",))
     try:
         results = run(
             contract,
-            adapters={"t1": IbisAdapter(ibis.duckdb.connect(db1)), "t2": IbisAdapter(ibis.duckdb.connect(db2))},
+            adapters={
+                "orders": IbisAdapter(ibis.duckdb.connect(sales_db)),
+                "customers": IbisAdapter(ibis.duckdb.connect(crm_db)),
+            },
         )
     finally:
         _ALLOWED_ERROR_SUBSTRINGS.reset(token)
 
-    assert results["t1_vs_db2_audit"].status == "ERROR"
-    assert "audit_log" in results["t1_vs_db2_audit"].details
-    assert "No adapter configured" not in results["t1_vs_db2_audit"].details
+    assert results["orders_vs_crm_currencies"].status == "ERROR"
+    assert "currencies" in results["orders_vs_crm_currencies"].details
+    assert "No adapter configured" not in results["orders_vs_crm_currencies"].details

@@ -1,2 +1,0 @@
-id,record_id,flagged,check_ids,tables_in_query
-3,,,join_lookup,"audit_log, t1"
