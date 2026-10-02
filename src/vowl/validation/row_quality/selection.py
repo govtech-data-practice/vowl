@@ -27,6 +27,9 @@ REASON_TRUNCATED = "truncated by max_failed_rows"
 REASON_CROSS_SOURCE = "checks tables from more than one data source"
 REASON_NO_PUSHDOWN = "data source does not support pushdown"
 REASON_TOLERATED_NOT_FETCHED = "tolerated rows not fetched under failed_checks"
+REASON_NO_EXPORT = "the table could not be exported"
+REASON_UNKEYABLE = "the failed rows could not be keyed"
+REASON_UNMATCHED = "some failed rows match no table row"
 
 
 def uncertified_reason(rule: str) -> str:

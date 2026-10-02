@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Hashable, Iterable, Sequence
 from typing import Any
 
 import pyarrow as pa
@@ -56,6 +56,9 @@ def _column_key_values(column: pa.ChunkedArray | pa.Array) -> list[Any]:
     arrow_type = column.type
     if pa.types.is_floating(arrow_type):
         return [_float_key(value) for value in column.to_pylist()]
+    if pa.types.is_date32(arrow_type):
+        # Days as integers, without building a Python date per row.
+        return column.cast(pa.int32()).to_pylist()
     if (
         pa.types.is_timestamp(arrow_type)
         or pa.types.is_duration(arrow_type)
@@ -111,3 +114,52 @@ def align_to_schema(table: pa.Table, target_schema: pa.Schema, columns: Sequence
             continue
         table = table.set_column(index, pa.field(name, target_type), column)
     return table
+
+
+def table_key_index(table: pa.Table, columns: Sequence[str]) -> dict[Hashable, list[int]]:
+    """Map each row key of *table* to the indices of the rows that have it."""
+    index: dict[Hashable, list[int]] = {}
+    for position, key in enumerate(row_keys(table, columns)):
+        index.setdefault(key, []).append(position)
+    return index
+
+
+def match_onto_table(
+    table: pa.Table,
+    rows: pa.Table,
+    columns: Sequence[str],
+    *,
+    index: dict[Hashable, list[int]] | None = None,
+) -> tuple[list[int], int]:
+    """Find the rows of *table* that equal a row of *rows* on *columns*.
+
+    *rows* is cast to the types of *table* first, so both sides build keys
+    from the same Arrow types. Every copy of a matching table row is returned,
+    however many times *rows* holds it.
+
+    Args:
+        table: The table to match onto.
+        rows: The rows to look up.
+        columns: The columns to compare.
+        index: ``table_key_index(table, columns)``, when already built.
+
+    Returns:
+        ``(indices, missing)``: the sorted indices of the matching table rows,
+        and the number of distinct keys of *rows* that match no table row.
+
+    Raises:
+        Whatever ``row_keys`` raises for a value it cannot turn into a key.
+    """
+    if index is None:
+        index = table_key_index(table, columns)
+    aligned = align_to_schema(rows, table.schema, columns)
+    matched: list[int] = []
+    missing = 0
+    for key in set(row_keys(aligned, columns)):
+        positions = index.get(key)
+        if positions is None:
+            missing += 1
+        else:
+            matched.extend(positions)
+    matched.sort()
+    return matched, missing

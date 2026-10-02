@@ -90,7 +90,9 @@ def test_negative_zero_nan_and_close_floats_are_kept_apart(con):
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, list(predicates.values())) == 6
     assert schema["exact"] is True
-    assert {row["route"] for row in rq._check_rows(result).values() if row["status"] == "FAILED"} == {"pushdown"}
+    assert {row["route"] for row in rq._check_rows(result).values() if row["status"] == "FAILED"} == {
+        "server_predicate"
+    }
 
 
 def test_case_insensitive_collation_values_stay_apart(con):
@@ -138,8 +140,8 @@ def test_an_uncertified_check_goes_by_table_match(con):
     result = rq._validate(con, [rq._schema("t", checks)])
 
     rows = rq._check_rows(result)
-    assert rows["negative"]["route"] == "pushdown"
-    assert rows["twos_distinct"]["route"] == "table_match"
+    assert rows["negative"]["route"] == "server_predicate"
+    assert rows["twos_distinct"]["route"] == "client_lookup"
     assert rows["twos_distinct"]["failed_rows"] == 3
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c = 2"]) == 4
@@ -173,8 +175,8 @@ def test_boolean_json_and_bytea_columns_merge_with_fetched_rows(con):
     result = rq._validate(con, schemas, adapters={"t": IbisAdapter(con), "u": IbisAdapter(other)})
 
     rows = rq._check_rows(result)
-    assert rows["flagged"]["route"] == "pushdown"
-    assert rows["id_in_u"]["route"] == "fetched_rows"
+    assert rows["flagged"]["route"] == "server_predicate"
+    assert rows["id_in_u"]["route"] == "client_lookup"
     # Rows 1 (twice) are flagged, row 3 has no match in u.
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["flag", "id NOT IN (1, 2)"]) == 3

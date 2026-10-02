@@ -21,7 +21,7 @@ import vowl.contracts.contract as contract_module
 from vowl.adapters.ibis_adapter import IbisAdapter
 from vowl.config import ValidationConfig
 from vowl.contracts.models import get_latest_version
-from vowl.validation.row_quality import pushdown
+from vowl.validation.row_quality import keys, pushdown
 from vowl.validation.row_quality.certify import certify_failed_rows_query, certify_scalar_query
 from vowl.validation.row_quality.selection import (
     REASON_CROSS_SOURCE,
@@ -159,10 +159,10 @@ def test_counts_match_the_truth_per_schema_and_dimension(backend: str):
     assert dimensions["completeness"]["tolerated_rows"] == 1
 
     checks = _check_rows(result)
-    assert checks["negative"]["route"] == "pushdown"
+    assert checks["negative"]["route"] == "server_predicate"
     assert checks["negative"]["failed_rows"] == 3
-    # DISTINCT returns one row for three copies, so it goes by table match.
-    assert checks["twos_distinct"]["route"] == "table_match"
+    # DISTINCT returns one row for three copies, so it is matched onto the table.
+    assert checks["twos_distinct"]["route"] == "client_lookup"
     assert checks["twos_distinct"]["reason"] == "not certified for pushdown: uses a FROM that is not the table itself"
     assert checks["twos_distinct"]["failed_rows"] == 3
     assert checks["ones_inverted"]["counted"] is False
@@ -277,7 +277,7 @@ def test_sqlite_rtrim_values_caught_by_different_checks_stay_apart():
 
     result = _validate(con, [_schema("t", checks)])
 
-    assert all(row["route"] == "pushdown" for row in _check_rows(result).values() if row["status"] == "FAILED")
+    assert all(row["route"] == "server_predicate" for row in _check_rows(result).values() if row["status"] == "FAILED")
     assert _schema_row(result)["failed_rows"] == 4
 
 
@@ -293,7 +293,7 @@ def test_duckdb_interval_and_bit_columns_are_counted_without_an_annotated_table(
 
     result = _validate(con, [_schema("t", checks, properties)])
 
-    assert _check_rows(result)["one_day"]["route"] == "pushdown"
+    assert _check_rows(result)["one_day"]["route"] == "server_predicate"
     assert _schema_row(result)["failed_rows"] == 3
     assert _schema_row(result)["exact"] is True
     # Arrow cannot export INTERVAL, so annotated output keeps the checks as residues.
@@ -431,7 +431,7 @@ def test_composite_primary_key_is_pushed_down(backend: str):
     result = _validate(con, [_schema("t", [], properties=_COMPOSITE_KEY)])
 
     check = _check_rows(result)["t_a_b_primary_key_check"]
-    assert (check["status"], check["route"], check["failed_rows"]) == ("FAILED", "pushdown", 3)
+    assert (check["status"], check["route"], check["failed_rows"]) == ("FAILED", "server_predicate", 3)
     assert _schema_row(result)["failed_rows"] == 3
 
 
@@ -444,7 +444,7 @@ def test_count_of_an_expression_skips_null_rows_and_is_pushed_down():
     result = _validate(con, [_schema("t", checks)])
 
     row = _check_rows(result)["count_c"]
-    assert row["route"] == "pushdown"
+    assert row["route"] == "server_predicate"
     assert row["failed_rows"] == 2
     assert _schema_row(result)["failed_rows"] == 2
     assert _schema_row(result)["exact"] is True
@@ -461,7 +461,7 @@ def test_aliased_count_is_counted_and_annotated():
     result = _validate(con, [_schema("t", checks)])
 
     row = _check_rows(result)["negative"]
-    assert row["route"] == "pushdown"
+    assert row["route"] == "server_predicate"
     assert row["failed_rows"] == 2
     assert _schema_row(result)["exact"] is True
     output = result.get_annotated_output()
@@ -492,7 +492,7 @@ def test_every_generated_check_is_certified():
 
     failed = [row for row in _check_rows(result).values() if row["status"] == "FAILED"]
     assert failed
-    assert all(row["route"] == "pushdown" for row in failed), failed
+    assert all(row["route"] == "server_predicate" for row in failed), failed
     assert _schema_row(result)["failed_rows"] == _truth(con, ["id = 1", "c IS NULL", "length(c) > 1"])
 
 
@@ -591,6 +591,132 @@ def test_max_failed_rows_does_not_change_pushdown_numbers(cap: int):
     assert _schema_row(result)["exact"] is True
 
 
+# ---------------------------------------------------------------------------
+# Dialects without a key entry
+# ---------------------------------------------------------------------------
+
+_CERTIFIED_CHECKS = [check for check in _MIXED_CHECKS if check["name"] != "twos_distinct"]
+
+
+@pytest.fixture
+def unkeyed(monkeypatch: pytest.MonkeyPatch):
+    """Treat every dialect as one without a key entry, which keys on plain columns."""
+    monkeypatch.setattr(keys, "KEYED_DIALECTS", frozenset())
+    monkeypatch.setattr(pushdown, "key_expression", lambda column_sql, dtype, dialect: column_sql)
+
+
+def _spy(monkeypatch: pytest.MonkeyPatch, fail_on: str | None = None) -> list[str]:
+    statements: list[str] = []
+    original = IbisAdapter.run_arrow_query
+
+    def spy(self, sql: str):
+        statements.append(sql)
+        if fail_on is not None and fail_on in sql:
+            raise RuntimeError("simulated failure")
+        return original(self, sql)
+
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", spy)
+    return statements
+
+
+def _certified(backend: str, config: ValidationConfig | None = None):
+    con = _connect(backend)
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql(f"INSERT INTO t VALUES {_ROWS}")
+    return con, _validate(con, [_schema("t", _CERTIFIED_CHECKS)], config)
+
+
+def test_collation_does_not_merge_rows_without_a_key_entry(unkeyed, monkeypatch: pytest.MonkeyPatch):
+    statements = _spy(monkeypatch)
+    con = _connect("sqlite")
+    con.raw_sql("CREATE TABLE t (name TEXT COLLATE NOCASE)")
+    con.raw_sql("INSERT INTO t VALUES ('a'), ('A'), ('A'), ('b')")
+    checks = [_check("lower_a", "unicode(name) = 97"), _check("upper_a", "unicode(name) = 65")]
+
+    result = _validate(con, [_schema("t", checks, properties=[{"name": "name"}])])
+
+    checks_df = _check_rows(result)
+    assert (checks_df["lower_a"]["route"], checks_df["lower_a"]["failed_rows"]) == ("server_predicate", 1)
+    assert (checks_df["upper_a"]["route"], checks_df["upper_a"]["failed_rows"]) == ("server_predicate", 2)
+    schema = _schema_row(result)
+    # Grouping on the plain NOCASE column merges the three rows into one of two copies.
+    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (4, 3, True)
+    assert not any("_vowl_per_row" in sql for sql in statements)
+
+
+def test_plain_column_keys_merge_rows_when_the_keyless_count_cannot_run(unkeyed, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(pushdown.PushdownRunner, "run_mask_histogram", lambda self, branches: None)
+    con = _connect("sqlite")
+    con.raw_sql("CREATE TABLE t (name TEXT COLLATE NOCASE)")
+    con.raw_sql("INSERT INTO t VALUES ('a'), ('A'), ('A'), ('b')")
+    checks = [_check("lower_a", "unicode(name) = 97"), _check("upper_a", "unicode(name) = 65")]
+
+    result = _validate(con, [_schema("t", checks, properties=[{"name": "name"}])])
+
+    schema = _schema_row(result)
+    assert (schema["failed_rows"], schema["exact"]) == (2, False)
+
+
+@pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
+def test_certified_checks_are_exact_without_a_key_entry(backend: str, request: pytest.FixtureRequest):
+    _, keyed = _certified(backend)
+    request.getfixturevalue("unkeyed")
+    con, unkeyed_result = _certified(backend)
+
+    schema = _schema_row(unkeyed_result)
+    assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c IS NULL"]) == _schema_row(keyed)["failed_rows"]
+    assert schema["tolerated_rows"] == _schema_row(keyed)["tolerated_rows"] == 1
+    assert schema["total_rows"] == 11
+    assert schema["exact"] is True
+    assert _dimension_rows(unkeyed_result) == _dimension_rows(keyed)
+    assert all(row["exact"] for row in _check_rows(unkeyed_result).values() if row["counted"])
+
+
+@pytest.mark.parametrize("cap", [0, 1])
+def test_max_failed_rows_does_not_change_keyless_numbers(unkeyed, cap: int):
+    con, result = _certified("duckdb", ValidationConfig(max_failed_rows=cap))
+
+    schema = _schema_row(result)
+    assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c IS NULL"])
+    assert schema["exact"] is True
+
+
+def test_uncertified_check_without_a_key_entry_is_exact_on_the_table(unkeyed):
+    con, result = _mixed("duckdb")
+
+    twos = _check_rows(result)["twos_distinct"]
+    assert (twos["route"], twos["failed_rows"], twos["exact"]) == ("client_lookup", 3, True)
+    schema = _schema_row(result)
+    assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"])
+    assert schema["exact"] is True
+
+
+def test_uncertified_check_without_a_key_entry_is_not_exact_when_fast(unkeyed):
+    con, result = _mixed("duckdb", ValidationConfig(row_count_accuracy="fast"))
+
+    twos = _check_rows(result)["twos_distinct"]
+    assert (twos["route"], twos["exact"]) == ("client_returned_rows", False)
+    schema = _schema_row(result)
+    # DISTINCT returns one of the three copies, so the count is low and flagged.
+    assert schema["failed_rows"] < _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"])
+    assert schema["exact"] is False
+
+
+@pytest.mark.parametrize("fallback", ["chunk_limit", "statement_fails"])
+def test_keyless_fallback_is_not_exact(unkeyed, monkeypatch: pytest.MonkeyPatch, fallback: str):
+    if fallback == "chunk_limit":
+        monkeypatch.setattr(pushdown, "MAX_BRANCHES", 1)
+    else:
+        # Only the keyless statement lacks key columns in its scan.
+        _spy(monkeypatch, fail_on="WITH _vowl_scan AS (SELECT CAST(")
+
+    con, result = _certified("duckdb")
+
+    schema = _schema_row(result)
+    assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c IS NULL"])
+    assert schema["exact"] is False
+
+
 def _two_sources(config: ValidationConfig | None = None):
     """t and u on separate connections, so a check that reads both runs in Mode 2."""
     t_con, u_con = _connect("duckdb"), _connect("duckdb")
@@ -621,9 +747,9 @@ def test_pushdown_table_match_and_cross_source_rows_merge():
     con, result = _two_sources()
 
     checks = _check_rows(result)
-    assert checks["negative"]["route"] == "pushdown"
-    assert checks["twos_distinct"]["route"] == "table_match"
-    assert checks["id_in_u"]["route"] == "fetched_rows"
+    assert checks["negative"]["route"] == "server_predicate"
+    assert checks["twos_distinct"]["route"] == "client_lookup"
+    assert checks["id_in_u"]["route"] == "client_lookup"
     assert checks["id_in_u"]["reason"] == REASON_CROSS_SOURCE
     # Rows (4, 5) twice and (9, 0) have no match in u. (2, 2) and (3, 2) have one.
     assert _schema_row(result)["failed_rows"] == _truth(con, ["c < 0", "c = 2", "id NOT IN (1, 2, 3)"]) == 7
@@ -641,7 +767,7 @@ def test_join_fan_out_counts_each_table_row_once():
     result = _validate(con, [_schema("t", checks)])
 
     row = _check_rows(result)["fan"]
-    assert row["route"] == "table_match"
+    assert row["route"] == "client_lookup"
     assert row["failed_rows"] == 3
     assert _schema_row(result)["failed_rows"] == _truth(con, ["c < 0"]) == 3
     annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
@@ -668,7 +794,7 @@ def test_primary_key_lets_a_column_subset_check_merge():
     keyed = _validate(con, [_schema("t", checks, with_pk)])
     unkeyed = _validate(con, [_schema("t", checks)])
 
-    assert _check_rows(keyed)["ids_negative"]["route"] == "table_match"
+    assert _check_rows(keyed)["ids_negative"]["route"] == "client_lookup"
     assert _schema_row(keyed)["failed_rows"] == 3
     assert _check_rows(unkeyed)["ids_negative"]["reason"] == REASON_NOT_MERGEABLE
     assert _schema_row(unkeyed)["failed_rows"] == 1
@@ -782,11 +908,12 @@ def test_a_tolerated_check_without_pushdown_is_skipped_under_failed_checks():
 
     checks = _check_rows(result)
     assert checks["threes_tolerated"]["reason"] == REASON_TOLERATED_NOT_FETCHED
-    assert checks["negative"]["route"] == "fetched_rows"
+    assert checks["negative"]["route"] == "client_lookup"
     schema = _schema_row(result)
     assert schema["tolerated_rows"] is None
-    assert schema["failed_rows"] == 7  # the DISTINCT check's fetched rows lost two copies
-    assert schema["exact"] is False
+    # Without pushdown every check is matched onto the table, so DISTINCT keeps its copies.
+    assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"]) == 9
+    assert schema["exact"] is True
 
 
 def test_error_check_makes_the_numbers_inexact():
@@ -940,8 +1067,9 @@ def test_spark_single_scan_keeps_negative_zero_and_nan_apart(spark_session):
     schema = _schema_row(result)
     assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (7, 7, True)
     rows_by_check = _check_rows(result)
-    assert rows_by_check["neg_zero"]["route"] == "pushdown"
-    assert rows_by_check["distinct"]["route"] == "table_match"
+    assert rows_by_check["neg_zero"]["route"] == "server_predicate"
+    # The default matches it onto the exported table, so the export must keep NaN.
+    assert rows_by_check["distinct"]["route"] == "client_lookup"
     assert rows_by_check["distinct"]["failed_rows"] == 2
 
 
@@ -965,7 +1093,7 @@ def test_spark_utf8_lcase_values_caught_by_different_checks_stay_apart(spark_ses
     # With a plain column key the merged group lands in one dimension, so they would not split 2 and 1.
     dimensions = _dimension_rows(result)
     assert (dimensions["validity"]["failed_rows"], dimensions["conformity"]["failed_rows"]) == (2, 1)
-    assert {row["route"] for row in _check_rows(result).values() if row["status"] == "FAILED"} == {"pushdown"}
+    assert {row["route"] for row in _check_rows(result).values() if row["status"] == "FAILED"} == {"server_predicate"}
 
 
 # ---------------------------------------------------------------------------
@@ -979,8 +1107,8 @@ def test_statements_are_single_selects_the_validator_accepts(dialect: str):
 
     spec = pushdown.KeySpec(dialect, "SELECT * FROM t", ["id", "c"], [None, None])
     branches = [
-        pushdown.Branch(0, "pushdown", "SELECT * FROM t WHERE c < 0"),
-        pushdown.Branch(1, "table_match", "SELECT DISTINCT * FROM t WHERE c = 2"),
+        pushdown.Branch(0, "server_predicate", "SELECT * FROM t WHERE c < 0"),
+        pushdown.Branch(1, "server_lookup", "SELECT DISTINCT * FROM t WHERE c = 2"),
     ]
     chunk = pushdown.Chunk(branches)
     for sql in (
@@ -998,7 +1126,7 @@ def test_statements_are_single_selects_the_validator_accepts(dialect: str):
 
 def test_mysql_casts_use_its_own_type_names():
     spec = pushdown.KeySpec("mysql", "SELECT * FROM t", ["id"], [None])
-    chunk = pushdown.Chunk([pushdown.Branch(0, "pushdown", "SELECT * FROM t WHERE id < 0")])
+    chunk = pushdown.Chunk([pushdown.Branch(0, "server_predicate", "SELECT * FROM t WHERE id < 0")])
 
     sql = pushdown.histogram_statement(spec, chunk)
 
@@ -1011,7 +1139,9 @@ def test_chunks_stay_within_the_byte_budget(monkeypatch: pytest.MonkeyPatch):
     columns = [f"column_{i}" for i in range(32)]
     spec = pushdown.KeySpec("duckdb", "SELECT * FROM t", columns, [None] * 32)
     branches = [
-        pushdown.Branch(i, "table_match" if i % 2 else "pushdown", f"SELECT * FROM t WHERE column_{i % 32} > {i}")
+        pushdown.Branch(
+            i, "server_lookup" if i % 2 else "server_predicate", f"SELECT * FROM t WHERE column_{i % 32} > {i}"
+        )
         for i in range(60)
     ]
 
@@ -1046,7 +1176,7 @@ def test_an_ungroupable_key_sends_the_schema_to_fetched_rows(monkeypatch: pytest
 
     result = _validate(con, [_schema("t", [_check("negative", "c < 0")])])
 
-    assert _check_rows(result)["negative"]["route"] == "fetched_rows"
+    assert _check_rows(result)["negative"]["route"] == "client_lookup"
     assert _schema_row(result)["failed_rows"] == 2
 
 
@@ -1077,10 +1207,15 @@ def test_a_total_below_a_checks_rows_is_not_exact():
     con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
     con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -2), (3, 4)")
     adapters = {"t": LowTotalsNoPushdown(con)}
+    contract = _contract([_schema("t", [_check("negative", "c < 0")])])
 
-    result = _run_validation(_contract([_schema("t", [_check("negative", "c < 0")])]), adapters=adapters)
+    fast = _run_validation(contract, adapters=adapters, config=ValidationConfig(row_count_accuracy="fast"))
+    assert _schema_row(fast)["exact"] is False
 
-    assert _schema_row(result)["exact"] is False
+    # The exported table gives the true total.
+    accurate = _run_validation(contract, adapters=adapters)
+    schema = _schema_row(accurate)
+    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (3, 2, True)
 
 
 def test_arrow_values_survive_the_cross_route_merge():
@@ -1163,5 +1298,5 @@ def test_employee_numbers_match_annotated_output(sources: str):
         flagged = sum(1 for info in annotated[name].to_arrow().column("check_info").to_pylist() if info)
         assert _schema_row(result, name)["failed_rows"] == flagged == failed
     routes = {row["route"] for row in _check_rows(result).values() if row["status"] == "FAILED"}
-    # On two connections the joins are cross-source, so they go by fetched rows.
-    assert routes == ({"pushdown", "table_match"} if sources == "one_connection" else {"pushdown", "fetched_rows"})
+    # The joins are matched onto the table, on one connection or two.
+    assert routes == {"server_predicate", "client_lookup"}

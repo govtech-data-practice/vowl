@@ -134,7 +134,7 @@ Both methods take `checks=["check_a", "check_b"]` to return only those checks.
 `get_row_quality_df()` returns, for each schema, how many rows failed at least
 one check and how many passed them all. A row that fails two checks counts
 once. These are the same numbers as **Passed Rows** in the summary and the row
-counts in the [DQ metrics](dq-metrics/index.md).
+counts in the [DQ metrics](dq-metrics/understanding-metrics.md).
 
 ```python
 result.get_row_quality_df()                     # one row per schema
@@ -155,7 +155,11 @@ The columns for `by="schema"` and `by="dimension"` are:
 | `checks_counted`, `checks_not_counted` | How many checks did and did not add to the row counts                                                                            |
 
 vowl counts rows inside the data source where it can, so the row counts stay
-exact on large tables and do not depend on `max_failed_rows`.
+exact on large tables and do not depend on `max_failed_rows`. For checks that
+are not plain row filters, the default `row_count_accuracy="accurate"`
+downloads the table and matches the failed rows onto it.
+`get_annotated_output()` reuses that download. See
+[Row count accuracy](run-settings.md#row-count-accuracy).
 [Counting the row counts](design-considerations/failed-rows/levels.md#counting-the-row-counts)
 explains which checks are counted and how.
 
@@ -164,11 +168,11 @@ explains which checks are counted and how.
 The DQ metrics are the counts and pass rates at check, dimension, schema and
 run level, ready for a dashboard.
 
-| Method or property | What it does                                                                                                                  |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `get_dq_metrics()` | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                            |
-| `export_otel(...)` | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).          |
-| `run_id`           | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/index.md#the-run-id). |
+| Method or property | What it does                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_dq_metrics()` | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
+| `export_otel(...)` | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
+| `run_id`           | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
 
 ## Saving results
 

@@ -39,6 +39,7 @@ from .result_row_quality import (
     align_to_schema,
     first_occurrence_indices,
     row_keys,
+    table_key_index,
 )
 from .row_quality import (
     CheckRowQuality,
@@ -112,6 +113,7 @@ class ValidationResult:
         self._schema_validation_breakdown: dict[str, SchemaValidationBreakdown] | None = None
         self._schema_column_names: dict[str, list[str]] = {}
         self._full_table_cache: dict[str, nw.DataFrame | None] = {}
+        self._key_index_cache: dict[tuple[str, tuple[str, ...]], dict[Any, list[int]]] = {}
         #: This run's id. ``save`` and ``export_otel`` both use it, so the saved
         #: files and the telemetry of one run share it. Set it to use your own.
         self.run_id: str = new_run_id()
@@ -533,22 +535,69 @@ class ValidationResult:
         rows the checks ran against, not the raw source.
 
         ``None`` is returned (and cached) when there is no adapter for the
-        schema or the adapter cannot export it.  Callers treat ``None`` as
-        "skip the annotated table for this schema; its residues survive".
+        schema or the adapter cannot export it.  Annotated output then skips
+        the schema and keeps its residues. The row-quality numbers count its
+        checks without the table.
+
+        The row-quality numbers and annotated output share this cache, so a
+        table is exported at most once per result.
         """
         if schema_name not in self._full_table_cache:
             result: nw.DataFrame | None = None
-            adapter = self._multi_adapter.get_adapter(schema_name)
+            get_adapter = getattr(self._multi_adapter, "get_adapter", None)
+            adapter = get_adapter(schema_name) if get_adapter is not None else None
             if adapter is None:
-                logger.warning("No adapter for schema %r; skipping annotated output.", schema_name)
+                logger.warning("No adapter for schema %r, so its table cannot be exported.", schema_name)
             else:
                 try:
                     arrow_table = adapter.export_table_as_arrow(schema_name)
                     result = nw.from_native(arrow_table, eager_only=True)
                 except Exception as exc:  # NotImplementedError + any backend export error
-                    logger.warning("Annotated export failed for %r: %s", schema_name, exc)
+                    logger.warning("Could not export the table of %r: %s", schema_name, exc)
             self._full_table_cache[schema_name] = result
         return self._full_table_cache[schema_name]
+
+    @staticmethod
+    def _concat_failures(tables: Sequence[pa.Table]) -> pa.Table:
+        """Concatenate the checks' tagged rows, whose column types can differ.
+
+        A column a check transformed (``c * 1.5`` of an integer column) keeps
+        its own type. Types that cannot be promoted to one are compared as
+        text instead. Those rows match no table row either way.
+        """
+        try:
+            return pa.concat_tables(tables, promote_options="permissive")
+        except (pa.ArrowInvalid, pa.ArrowTypeError, pa.ArrowNotImplementedError):
+            pass
+        types: dict[str, set[pa.DataType]] = {}
+        for table in tables:
+            for field in table.schema:
+                types.setdefault(field.name, set()).add(field.type)
+        mixed = {name for name, found in types.items() if len(found) > 1}
+        as_text = []
+        for table in tables:
+            for name in mixed & set(table.column_names):
+                index = table.schema.get_field_index(name)
+                column = pa.array(
+                    [None if value is None else str(value) for value in table.column(index).to_pylist()], pa.string()
+                )
+                table = table.set_column(index, pa.field(name, pa.string()), column)
+            as_text.append(table)
+        return pa.concat_tables(as_text, promote_options="permissive")
+
+    def _table_key_index(self, schema_name: str, columns: Sequence[str]) -> dict[Any, list[int]] | None:
+        """The exported table's row keys on *columns*, built once per result.
+
+        Maps each key to the indices of the rows that have it. ``None`` when
+        the table cannot be exported. Raises what ``row_keys`` raises.
+        """
+        full_table = self._fetch_full_table(schema_name)
+        if full_table is None:
+            return None
+        cache_key = (schema_name, tuple(columns))
+        if cache_key not in self._key_index_cache:
+            self._key_index_cache[cache_key] = table_key_index(full_table.to_arrow(), columns)
+        return self._key_index_cache[cache_key]
 
     @staticmethod
     def _is_mergeable_for_full_table(
@@ -726,6 +775,7 @@ class ValidationResult:
         *,
         schema_name: str,
         extra_cols: Sequence[str] = (),
+        index: dict[Any, list[int]] | None = None,
     ) -> nw.DataFrame:
         """Attach ``check_info`` (and any *extra_cols*) to matching full-table rows.
 
@@ -739,6 +789,9 @@ class ValidationResult:
         A value-based matcher cannot distinguish N byte-identical full-table
         rows: if one such row failed, all N receive ``check_info`` (the safe
         over-flagging direction).  See the plan's matching caveats §2.
+
+        *index* is ``table_key_index(full_table, data_cols)``, when already
+        built. The row-quality numbers build the same one.
         """
         marker_cols = ["check_info", *extra_cols]
         consolidated_arrow = consolidated.to_arrow()
@@ -750,14 +803,15 @@ class ValidationResult:
         for i, row_key in enumerate(row_keys(key_table, data_cols)):
             failed_map[row_key] = tuple(values[i] for values in marker_values)
 
-        outputs: dict[str, list] = {c: [] for c in marker_cols}
+        if index is None:
+            index = table_key_index(full_arrow, data_cols)
+        outputs: dict[str, list] = {c: [None] * full_arrow.num_rows for c in marker_cols}
         annotated_rows = 0
-        for row_key in row_keys(full_arrow, data_cols):
-            match = failed_map.get(row_key)
-            if match is not None:
+        for row_key, match in failed_map.items():
+            for position in index.get(row_key, ()):
                 annotated_rows += 1
-            for col_index, col_name in enumerate(marker_cols):
-                outputs[col_name].append(match[col_index] if match is not None else None)
+                for col_index, col_name in enumerate(marker_cols):
+                    outputs[col_name][position] = match[col_index]
 
         # Match-quality / NULL-join safety net (NOT a truncation guard): the
         # distinct annotated rows must equal the distinct failed rows fed in.
@@ -935,7 +989,8 @@ class ValidationResult:
                 annotated[schema_name] = self._with_null_marker(full_table)
                 continue
 
-            tagged_failures: list[nw.DataFrame] = []
+            full_schema = full_table.to_arrow().schema
+            tagged_failures: list[pa.Table] = []
             for selection in eligible:
                 # No .unique() here: _group_check_ids_by_row collapses duplicate
                 # rows itself, and .unique() cannot hash nested column types.
@@ -943,19 +998,27 @@ class ValidationResult:
                 if key_columns:
                     rows = rows.select(key_columns)
                 item = self._check_info_item_json(selection.result, preset, tolerated=selection.tolerated)
-                tagged_failures.append(rows.with_columns(nw.lit(item).alias("check_info_item")))
+                # Cast to the table's types first, so checks that return a
+                # column with different types can be concatenated.
+                tagged = align_to_schema(rows.to_arrow(), full_schema, rows.columns)
+                tagged_failures.append(tagged.append_column("check_info_item", pa.array([item] * tagged.num_rows)))
                 merged_check_keys.add(self._output_key(selection.result))
 
             # Collapse duplicate rows into a JSON-array check_info column.
-            union = pa.concat_tables([df.to_arrow() for df in tagged_failures], promote_options="default")
+            union = self._concat_failures(tagged_failures)
             consolidated = self._group_check_ids_by_row(nw.from_native(union, eager_only=True))
 
             data_cols = [c for c in consolidated.columns if c != "check_info"]
+            try:
+                index = self._table_key_index(schema_name, data_cols)
+            except Exception:
+                index = None
             annotated[schema_name] = self._annotate_full_table(
                 full_table,
                 consolidated,
                 data_cols,
                 schema_name=schema_name,
+                index=index,
             )
 
         # Step 2: residues = one entry per flagged check that was NOT merged
@@ -1184,6 +1247,12 @@ class ValidationResult:
         Reads this finished result only. Nothing is re-run against the data.
         Returns the run id (``vowl.run.id``), which is :attr:`run_id` unless
         *run_id* is passed. See docs/dq-metrics/otel-export.md.
+
+        The schema and dimension row gauges use the same row counts as
+        :meth:`get_row_quality_df`. If they were not counted yet, they are
+        counted now, per ``ValidationConfig.row_count_accuracy``. Under the
+        default ``"accurate"`` that can export a table. The
+        ``vowl.row_quality.exact`` attribute says whether each number is exact.
 
         Args:
             signals: Which signals to emit, any subset of ``"metrics"``,

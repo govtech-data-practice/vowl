@@ -17,7 +17,7 @@ from typing import Any
 
 import pyarrow as pa
 
-from ..result_row_quality import align_to_schema, row_keys
+from ..result_row_quality import align_to_schema, match_onto_table, row_keys
 from .pushdown import PushdownOutcome
 
 
@@ -130,3 +130,80 @@ def merge_routes(
             entry[1] = max(entry[1], copies)
 
     return [(mask, copies) for mask, copies in merged.values()], exact
+
+
+def merge_onto_table(
+    outcome: PushdownOutcome | None,
+    fetched: Sequence[FetchedRows],
+    key_columns: Sequence[str],
+    table: pa.Table,
+    index: dict[Any, list[int]],
+) -> tuple[list[tuple[int, int]], bool, dict[int, tuple[int, int] | None]]:
+    """Merge pushdown entries and fetched rows onto the rows of the exported table.
+
+    Each fetched check marks the table rows that equal one of its rows, so a
+    row's copies come from the table, not from the check's rows. A check that
+    returns a row once (``DISTINCT``) still counts all its copies, and one that
+    returns a row twice (a join) counts it once.
+
+    Args:
+        outcome: The pushdown outcome, run with values, or None when nothing
+            ran there.
+        fetched: The fetched checks, keyed on *key_columns*.
+        key_columns: The schema's key columns.
+        table: The exported table.
+        index: ``table_key_index(table, key_columns)``.
+
+    Returns:
+        ``(entries, exact, matched)``. ``entries`` holds one ``(mask, rows)``
+        per set of checks. ``exact`` is false when a pushdown row matched no
+        table row or a check's rows could not be keyed. ``matched`` maps each
+        fetched check to ``(table rows matched, distinct keys not found)``, or
+        to None when its rows could not be keyed.
+    """
+    exact = True
+    masks = [0] * table.num_rows
+    extra: list[tuple[int, int]] = []
+
+    if outcome is not None and outcome.histogram is not None:
+        # Not run with values, so its rows cannot be placed.
+        extra.extend(outcome.histogram)
+        exact = False
+    elif outcome is not None and outcome.rows:
+        values, entries = _pushdown_value_table(outcome, key_columns)
+        values = align_to_schema(values, table.schema, key_columns)
+        try:
+            keys = row_keys(values, key_columns)
+        except Exception:
+            keys = None
+        if keys is None:
+            extra.extend((entry[0], entry[1]) for entry in entries)
+            exact = False
+        else:
+            for key, entry in zip(keys, entries, strict=True):
+                positions = index.get(key)
+                if positions is None:
+                    extra.append((entry[0], entry[1]))
+                    exact = False
+                    continue
+                for position in positions:
+                    masks[position] |= entry[0]
+
+    matched: dict[int, tuple[int, int] | None] = {}
+    for rows in fetched:
+        try:
+            positions, missing = match_onto_table(table, rows.table, key_columns, index=index)
+        except Exception:
+            # Counted as rows of their own, so the schema still has them.
+            matched[rows.check_id] = None
+            exact = False
+            if rows.table.num_rows:
+                extra.append((1 << rows.check_id, rows.table.num_rows))
+            continue
+        bit = 1 << rows.check_id
+        for position in positions:
+            masks[position] |= bit
+        matched[rows.check_id] = (len(positions), missing)
+
+    entries_out = list(Counter(mask for mask in masks if mask).items())
+    return entries_out + extra, exact, matched

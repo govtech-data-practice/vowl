@@ -2,7 +2,7 @@
 description: The DQ metrics vowl reports for every run, at check, dimension, schema and run level.
 ---
 
-# DQ Metrics
+# Understanding DQ Metrics
 
 !!! tip "Interactive Demo"
 
@@ -159,7 +159,12 @@ The dimension, schema and run row counts are the same numbers as
 `result.get_row_quality_df()` and **Passed Rows** in `print_summary()`. They
 carry a `vowl.row_quality.exact` attribute, which is `false` when a number
 could be off, for example because a check that would have been counted ended
-in `ERROR`. At run level it is `true` only when every schema is exact. See
+in `ERROR`. At run level it is `true` only when every schema is exact. How
+often it holds depends on
+[`row_count_accuracy`](../run-settings.md#row-count-accuracy). Under the default
+`"accurate"`, checks that are not plain row filters are counted on the
+downloaded table, so they are usually exact. Under `"fast"` they can be
+approximate. See
 [Exact numbers](../design-considerations/failed-rows/levels.md#exact-numbers).
 
 The check row count is the check's own count, not merged with other checks.

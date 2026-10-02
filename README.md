@@ -542,7 +542,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                                               | Dict[str, DataFrame]            |
 | **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                                 | Dict[str, Dict[str, DataFrame]] |
 | **`get_row_quality_df(by="schema")`**                                                | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                                   | DataFrame                       |
-| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [DQ Metrics](docs/dq-metrics/index.md)                                                                   | dict                            |
+| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                                                                   | dict                            |
 | **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                                | `True`/`False`                  |
 
 #### Row Quality
@@ -556,6 +556,16 @@ result.get_row_quality_df(by="check")        # which checks were counted, and ho
 ```
 
 Rows caught by a check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) are reported as `tolerated_rows`. Set `ValidationConfig(row_issue_scope="all_violations")` to count them as failed rows too. See [Tolerated rows](docs/design-considerations/failed-rows/which-checks.md#tolerated-rows).
+
+Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, `ValidationConfig(row_count_accuracy=...)` picks how they are counted:
+
+```python
+ValidationConfig(row_count_accuracy="accurate")  # default: download the table and match failed rows onto it
+ValidationConfig(row_count_accuracy="balanced")  # download only where the data source cannot match the rows
+ValidationConfig(row_count_accuracy="fast")      # never download a table, some numbers are approximate
+```
+
+`"accurate"` holds the whole table in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download. Use `"balanced"` or `"fast"` on large tables. See [Row count accuracy](docs/run-settings.md#row-count-accuracy).
 
 #### Annotated Output
 
@@ -1156,7 +1166,7 @@ result.display_full_report()
 | ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
 | ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
-| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/index.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                                            |
+| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/understanding-metrics.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                                            |
 
 ### Planned
 

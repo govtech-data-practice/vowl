@@ -11,7 +11,7 @@ these tools accept.
 
 OTel has three kinds of data, called **signals**. vowl sends all three by default:
 
-- **Metrics** are the [DQ metrics](index.md), such as "how many rows failed".
+- **Metrics** are the [DQ metrics](understanding-metrics.md), such as "how many rows failed".
   Use them for dashboards and alerts.
 - **Traces** are a timeline of one run, with one bar per check. Use them to see
   what ran, how long it took, and what failed.
@@ -21,14 +21,35 @@ OTel has three kinds of data, called **signals**. vowl sends all three by defaul
 ```mermaid
 flowchart LR
     vowl["vowl validation run"] -->|"export_otel(...)"| collector["OpenTelemetry Collector<br/>or your monitoring tool"]
-    collector --> metrics["Metrics:<br/>dashboards and alerts"]
-    collector --> traces["Traces:<br/>a timeline of each run"]
-    collector --> logs["Logs:<br/>one message per failed check"]
+    subgraph longterm["Archive (optional)"]
+        archive[("Persistent store, such as S3:<br/>audits and historical analysis")]
+    end
+    subgraph live["Monitoring"]
+        metrics["Metrics:<br/>dashboards and alerts"]
+        traces["Traces:<br/>a timeline of each run"]
+        logs["Logs:<br/>one message per failed check"]
+    end
+    collector --> metrics
+    collector --> traces
+    collector --> logs
+    collector -.->|"optional"| archive
+    style longterm fill:transparent,stroke:#888,stroke-dasharray:6 4,color:#888
+    style archive fill:transparent,stroke:#888,stroke-dasharray:6 4,color:#888
+    linkStyle 4 stroke:#888,color:#888
 ```
+
+To keep every run for audits or long-term trends, have the Collector also
+write to a persistent store, such as object storage. The [local stack](https://github.com/govtech-data-practice/vowl/tree/main/examples/6_dq_metrics/otel_stack#where-the-data-is-kept) does this
+with an S3 archive.
 
 `export_otel` only reads the finished result. It never changes how the checks
 ran. It returns the run's ID (`vowl.run.id`, the same as `result.run_id`) so you
 can find this run again in your monitoring tool.
+
+The row gauges are counted the same way as `get_row_quality_df()`. If the run
+has not counted rows yet, `export_otel` counts them first, so under the default
+[`row_count_accuracy="accurate"`](../run-settings.md#row-count-accuracy) it can
+download a table. Use `"fast"` to avoid that.
 
 ## Installation
 
@@ -73,7 +94,7 @@ make otel-add-vowl-runs
 
 Then open <http://localhost:3000/d/vowl-dq>. See
 [`examples/6_dq_metrics/otel_stack/`](https://github.com/govtech-data-practice/vowl/tree/main/examples/6_dq_metrics/otel_stack)
-for details.
+for what runs, where the data is kept and how to read the dashboard.
 
 ## Where the data goes
 
@@ -125,19 +146,19 @@ the matching argument out:
 
 ## Parameters
 
-| Parameter                                                 | Default                         | Purpose                                                                                                                                                                                                                                                                             |
-| --------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `signals`                                                 | `("metrics", "traces", "logs")` | Which signals to send. Any mix of `"metrics"`, `"traces"`, and `"logs"`.                                                                                                                                                                                                            |
-| `endpoint`                                                | `None`                          | Address of your collector or monitoring tool. When left out, the [environment variables](#environment-variables) are used.                                                                                                                                                          |
-| `protocol`                                                | `None`                          | `"grpc"` or `"http/protobuf"`. When left out, vowl uses `OTEL_EXPORTER_OTLP_PROTOCOL`, and falls back to `"grpc"`.                                                                                                                                                                  |
-| `service_name`                                            | `"vowl"`                        | Names _where_ the validation runs, for example `"orders-dq"`, `"nightly-etl"`, or `"ci-validation"`. Sent as the OTel `service.name` attribute. See [What identifies a validation run](#what-identifies-a-validation-run).                                                          |
-| `prefix`                                                  | `"vowl"`                        | The start of every metric name, span name, and vowl attribute name. For example, `"myorg"` turns `vowl.check.check.count` into `myorg.check.check.count` and `vowl.contract.id` into `myorg.contract.id`.                                                                           |
-| `headers`                                                 | `None`                          | Extra headers to send, for example an API key.                                                                                                                                                                                                                                      |
-| `custom_attributes`                                       | `None`                          | Your own attributes, added to every metric, span, and log record. See [Custom attributes](#custom-attributes).                                                                                                                                                                      |
-| `run_id`                                                  | `None`                          | An ID for this export only. When left out, vowl uses `result.run_id`, the ID the run got when it ran and the one in `dq_metrics.json`. Either way, `export_otel` returns it. To change the ID for every output, set `result.run_id` instead. See [The run ID](index.md#the-run-id). |
-| `max_failed_rows_sample`                                  | `0`                             | How many failing rows per check to copy into traces and logs. `0` sends no row data. See [Capturing failed rows](#capturing-failed-rows).                                                                                                                                           |
-| `use_global_providers`                                    | `False`                         | Record into your application's existing OTel setup instead of connecting directly.                                                                                                                                                                                                  |
-| `metric_provider` / `tracer_provider` / `logger_provider` | `None`                          | Your own providers, for full control. They win over every other option for their signal.                                                                                                                                                                                            |
+| Parameter                                                 | Default                         | Purpose                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `signals`                                                 | `("metrics", "traces", "logs")` | Which signals to send. Any mix of `"metrics"`, `"traces"`, and `"logs"`.                                                                                                                                                                                                                            |
+| `endpoint`                                                | `None`                          | Address of your collector or monitoring tool. When left out, the [environment variables](#environment-variables) are used.                                                                                                                                                                          |
+| `protocol`                                                | `None`                          | `"grpc"` or `"http/protobuf"`. When left out, vowl uses `OTEL_EXPORTER_OTLP_PROTOCOL`, and falls back to `"grpc"`.                                                                                                                                                                                  |
+| `service_name`                                            | `"vowl"`                        | Names _where_ the validation runs, for example `"orders-dq"`, `"nightly-etl"`, or `"ci-validation"`. Sent as the OTel `service.name` attribute. See [What identifies a validation run](#what-identifies-a-validation-run).                                                                          |
+| `prefix`                                                  | `"vowl"`                        | The start of every metric name, span name, and vowl attribute name. For example, `"myorg"` turns `vowl.check.check.count` into `myorg.check.check.count` and `vowl.contract.id` into `myorg.contract.id`.                                                                                           |
+| `headers`                                                 | `None`                          | Extra headers to send, for example an API key.                                                                                                                                                                                                                                                      |
+| `custom_attributes`                                       | `None`                          | Your own attributes, added to every metric, span, and log record. See [Custom attributes](#custom-attributes).                                                                                                                                                                                      |
+| `run_id`                                                  | `None`                          | An ID for this export only. When left out, vowl uses `result.run_id`, the ID the run got when it ran and the one in `dq_metrics.json`. Either way, `export_otel` returns it. To change the ID for every output, set `result.run_id` instead. See [The run ID](understanding-metrics.md#the-run-id). |
+| `max_failed_rows_sample`                                  | `0`                             | How many failing rows per check to copy into traces and logs. `0` sends no row data. See [Capturing failed rows](#capturing-failed-rows).                                                                                                                                                           |
+| `use_global_providers`                                    | `False`                         | Record into your application's existing OTel setup instead of connecting directly.                                                                                                                                                                                                                  |
+| `metric_provider` / `tracer_provider` / `logger_provider` | `None`                          | Your own providers, for full control. They win over every other option for their signal.                                                                                                                                                                                                            |
 
 ## Run identity attributes
 
@@ -221,7 +242,7 @@ Collector.
 
 ## Metrics
 
-The metrics are the [DQ metrics](index.md): readings at check, dimension,
+The metrics are the [DQ metrics](understanding-metrics.md): readings at check, dimension,
 schema and run level, such as `vowl.run.check.count` and
 `vowl.schema.row.pass_rate`. That page lists every metric, its attributes,
 and which numbers add up. `dq_metrics.json` holds the same readings, so a
@@ -242,7 +263,7 @@ vowl uses the three OpenTelemetry metric types:
 | **Histogram** | `vowl.check.duration`, `vowl.run.duration`       | Show the average, or the slowest runs                      |
 
 Counters are for numbers that add up, gauges for numbers that do not. See
-[Which numbers add up](index.md#which-numbers-add-up).
+[Which numbers add up](understanding-metrics.md#which-numbers-add-up).
 
 ### Check counts for the latest run
 
@@ -296,7 +317,7 @@ check finishes. Its status is `ERROR` if any check could not run, and `OK`
 otherwise. The `check.count.failed` attribute counts the checks that found bad
 data.
 
-Its attributes are the run-level [DQ metrics](index.md), with the same
+Its attributes are the run-level [DQ metrics](understanding-metrics.md), with the same
 values. They are named without the level because the span is the run. A span
 holds one value per name, so the status is part of the name:
 `vowl.run.check.count{status="FAILED"}` becomes `check.count.failed`.
@@ -313,7 +334,7 @@ holds one value per name, so the status is part of the name:
 | `row.count.passed`       | `vowl.run.row.count{status="PASSED"}`    | Rows that passed every counted check, over all schemas                           | When the run has row counts |
 | `row.count.failed`       | `vowl.run.row.count{status="FAILED"}`    | Rows that failed at least one counted check, over all schemas                    | When the run has row counts |
 | `row.pass_rate`          | `vowl.run.row.pass_rate`                 | Share of rows that passed, 0 to 1                                                | When the run has rows       |
-| `vowl.row_quality.exact` | `vowl.row_quality.exact`                 | Whether the row numbers are exact                                                | When the run has row counts |
+| `vowl.row_quality.exact` | `vowl.row_quality.exact`                 | Whether the row numbers are exact. Depends on `row_count_accuracy`.              | When the run has row counts |
 
 ### Check span: `vowl.check`
 

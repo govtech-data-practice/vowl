@@ -14,7 +14,14 @@ reports the same physical-row counts. The process is described in
      data source (:mod:`.pushdown`).
    - ``table_match``: other checks on the table's own connection, counted as
      the table rows that match the check's failed rows.
+   - ``full_table``: other checks, whose fetched failed rows are matched onto
+     the exported table, so each row's copies come from the table.
    - ``fetched_rows``: everything else, from the check's fetched failed rows.
+
+   ``ValidationConfig.row_count_accuracy`` picks between them. ``"accurate"``
+   uses ``full_table`` for every check that is not a certified row filter,
+   ``"balanced"`` only where ``fetched_rows`` would be used, and ``"fast"``
+   never exports the table.
 
 4. Merge the routes into one entry per physical row (:mod:`.merge`).
 5. Roll up per schema, dimension and check (:mod:`.rollup`).
@@ -39,7 +46,7 @@ from ..result_rendering import is_cross_table_check
 from . import pushdown as _pushdown
 from .certify import certify_check
 from .keys import key_is_exact, primary_key_columns
-from .merge import FetchedRows, merge_routes
+from .merge import FetchedRows, merge_onto_table, merge_routes
 from .mergeable import METADATA_COLUMNS, rows_mergeable
 from .pushdown import (
     Branch,
@@ -64,6 +71,7 @@ from .rollup import (
 )
 from .selection import (
     REASON_CROSS_SOURCE,
+    REASON_NO_EXPORT,
     REASON_NO_PUSHDOWN,
     REASON_NOT_MERGEABLE,
     REASON_PK_NOT_UNIQUE,
@@ -71,6 +79,8 @@ from .selection import (
     REASON_PROBE_FAILURE,
     REASON_TOLERATED_NOT_FETCHED,
     REASON_TRUNCATED,
+    REASON_UNKEYABLE,
+    REASON_UNMATCHED,
     CheckSelection,
     flagged_checks,
     resolve_check_dimension,
@@ -95,9 +105,10 @@ __all__ = [
     "select",
 ]
 
-ROUTE_PUSHDOWN = "pushdown"
-ROUTE_TABLE_MATCH = "table_match"
-ROUTE_FETCHED = "fetched_rows"
+ROUTE_SERVER_PREDICATE = "server_predicate"
+ROUTE_SERVER_LOOKUP = "server_lookup"
+ROUTE_CLIENT_RETURNED_ROWS = "client_returned_rows"
+ROUTE_CLIENT_LOOKUP = "client_lookup"
 
 # The outcome of the duplicate-key probe of a declared primary key.
 PK_UNIQUE = "unique"
@@ -126,6 +137,8 @@ class _Work:
     columns: list[str] | None = None
     rows: pa.Table | None = None
     own_rows: int | None = None
+    # Count by matching the rows onto the exported table.
+    want_full: bool = False
 
     @property
     def result(self) -> CheckResult:
@@ -326,6 +339,9 @@ class _SchemaComputation:
         # PK_UNIQUE, PK_DUPLICATED or PK_UNCHECKED.
         self._pk_status: str | None = None
         self._pk_duplicates: int | None = None
+        self._accuracy: str = getattr(component._config, "row_count_accuracy", "accurate")
+        # The exported table, once a check is matched onto it.
+        self._export: pa.Table | None = None
 
     # -- setup ---------------------------------------------------------
 
@@ -361,22 +377,35 @@ class _SchemaComputation:
 
         for work in pending:
             self._assign_route(work, pushdown_ok)
+            self._mark_want_full(work)
         for work in pending:
-            if work.route == ROUTE_TABLE_MATCH:
+            if work.route == ROUTE_SERVER_LOOKUP and work.want_full:
+                self._fetch_for_match(work)
+            if work.route == ROUTE_SERVER_LOOKUP and not work.want_full:
                 self._probe_columns(work)
         for work in pending:
-            if work.route == ROUTE_FETCHED:
+            if work.route == ROUTE_CLIENT_RETURNED_ROWS:
                 self._fetch(work)
+                if work.reason == REASON_TRUNCATED or work.rows is None:
+                    work.want_full = False
+        self._export_table(pending)
 
         key_columns, use_prefix = self._choose_key(pushdown_ok)
         if not use_prefix and len(key_columns) < len(self._columns):
             self._component._merge_keys[self._schema] = list(key_columns)
         for work in pending:
             self._check_mergeable(work, key_columns, use_prefix)
+        index = self._export_index(pending, key_columns) if self._export is not None and not use_prefix else None
+        if index is not None:
+            return self._run_onto_table(pending, spec, key_columns, index)
 
-        engine_work = [work for work in pending if work.counted and work.route in (ROUTE_PUSHDOWN, ROUTE_TABLE_MATCH)]
+        engine_work = [
+            work for work in pending if work.counted and work.route in (ROUTE_SERVER_PREDICATE, ROUTE_SERVER_LOOKUP)
+        ]
         fetched_work = [
-            work for work in pending if work.counted and work.route == ROUTE_FETCHED and work.rows is not None
+            work
+            for work in pending
+            if work.counted and work.route == ROUTE_CLIENT_RETURNED_ROWS and work.rows is not None
         ]
 
         outcome: PushdownOutcome | None = None
@@ -388,12 +417,19 @@ class _SchemaComputation:
                 dtypes=[self._column_types.get(name) for name in key_columns],
                 with_values=bool(fetched_work),
             )
-            outcome = PushdownRunner(self._run_query, spec).run(
-                [self._branch(work) for work in engine_work], histogram=not fetched_work
-            )
+            runner = PushdownRunner(self._run_query, spec)
+            branches = [self._branch(work) for work in engine_work]
+            if self._keyless(engine_work, fetched_work):
+                outcome = runner.run_mask_histogram(branches)
+                if outcome is not None:
+                    for work in engine_work:
+                        work.inexact = False
+            if outcome is None:
+                outcome = runner.run(branches, histogram=not fetched_work)
             for work in engine_work:
                 if work.check_id in outcome.dropped:
                     work.drop(REASON_PROBE_FAILURE, inexact=True)
+            self._flag_unmatched(runner, engine_work)
 
         fetched = [
             FetchedRows(
@@ -416,6 +452,167 @@ class _SchemaComputation:
 
         total_rows = self._total_rows(outcome)
         return self._roll_up(entries, total_rows, merge_exact)
+
+    # -- the full-table match --------------------------------------------
+
+    def _mark_want_full(self, work: _Work) -> None:
+        """Mark a check to be counted on the exported table, per ``row_count_accuracy``."""
+        if not work.counted or not work.route or work.route == ROUTE_SERVER_PREDICATE:
+            return
+        if work.selection.tolerated and self._scope == "failed_checks":
+            # Its rows are not fetched under this scope.
+            return
+        if self._accuracy == "accurate" or (self._accuracy == "balanced" and work.route == ROUTE_CLIENT_RETURNED_ROWS):
+            work.want_full = True
+
+    def _fetch_for_match(self, work: _Work) -> None:
+        """Fetch a table-match check's rows to match onto the table.
+
+        A check whose rows cannot be fetched whole keeps its route, which
+        counts in SQL without fetching.
+        """
+        table = _safe(lambda: strip_metadata_columns(self._fetched_frame(work).to_arrow()))
+        count = work.selection.row_count
+        if table is None or table.num_columns == 0 or (count is not None and table.num_rows < count):
+            work.want_full = False
+            return
+        work.rows = table
+        work.columns = list(table.column_names)
+
+    def _export_table(self, pending: Sequence[_Work]) -> None:
+        """Export the table once, when a check is to be matched onto it."""
+        wanted = [work for work in pending if work.want_full and work.counted and work.rows is not None]
+        if not wanted:
+            return
+        frame = _safe(self._result._fetch_full_table, self._schema)
+        table = _safe(lambda: frame.to_arrow()) if frame is not None else None
+        if table is None:
+            self._fall_back(wanted, REASON_NO_EXPORT)
+            return
+        self._export = table
+        # Match on the exported columns, as annotated output does.
+        self._columns = list(table.column_names)
+        properties = _schema_properties(self._result, self._schema)
+        self._primary_key = [name for name in primary_key_columns(properties) if name in self._columns]
+        for work in pending:
+            if work.route == ROUTE_SERVER_PREDICATE:
+                work.columns = list(self._columns)
+        if not key_is_exact(self._dialect):
+            # Without a key entry the pushdown groups on plain columns, which
+            # can merge distinct values, and the keyless mask histogram cannot
+            # place the matched checks. The table is here, so match these too.
+            for work in pending:
+                if work.counted and work.route == ROUTE_SERVER_PREDICATE:
+                    work.want_full = True
+                    self._fetch_for_match(work)
+
+    def _export_index(self, pending: Sequence[_Work], key_columns: Sequence[str]) -> dict[Any, list[int]] | None:
+        try:
+            index = self._result._table_key_index(self._schema, key_columns)
+        except Exception as exc:
+            logger.debug("Rows of %r could not be keyed: %s", self._schema, exc)
+            index = None
+        if index is None:
+            self._export = None
+            self._fall_back([work for work in pending if work.want_full], REASON_UNKEYABLE)
+        return index
+
+    @staticmethod
+    def _fall_back(works: Sequence[_Work], reason: str) -> None:
+        """Count *works* as ``"fast"`` does, with its exactness, explaining why."""
+        for work in works:
+            work.want_full = False
+            if work.counted and work.route == ROUTE_CLIENT_RETURNED_ROWS:
+                work.reason = reason
+
+    def _run_onto_table(
+        self,
+        pending: Sequence[_Work],
+        spec: KeySpec | None,
+        key_columns: Sequence[str],
+        index: dict[Any, list[int]],
+    ) -> tuple[SchemaRowQuality, list[DimensionRowQuality], list[CheckRowQuality]]:
+        """Count the schema on the exported table: each check marks its rows there."""
+        table = self._export
+        assert table is not None
+        engine_work = [
+            work
+            for work in pending
+            if work.counted and not work.want_full and work.route in (ROUTE_SERVER_PREDICATE, ROUTE_SERVER_LOOKUP)
+        ]
+        matched_work = [
+            work
+            for work in pending
+            if work.counted and work.rows is not None and (work.want_full or work.route == ROUTE_CLIENT_RETURNED_ROWS)
+        ]
+
+        outcome: PushdownOutcome | None = None
+        if engine_work and spec is not None:
+            spec = KeySpec(
+                dialect=spec.dialect,
+                anchor_sql=spec.anchor_sql,
+                columns=list(key_columns),
+                dtypes=[self._column_types.get(name) for name in key_columns],
+                with_values=True,
+            )
+            runner = PushdownRunner(self._run_query, spec)
+            outcome = runner.run([self._branch(work) for work in engine_work], histogram=False)
+            for work in engine_work:
+                if work.check_id in outcome.dropped:
+                    work.drop(REASON_PROBE_FAILURE, inexact=True)
+            self._flag_unmatched(runner, engine_work)
+
+        fetched = [
+            FetchedRows(check_id=work.check_id, table=work.rows, key_columns=list(key_columns))
+            for work in matched_work
+            if work.counted
+        ]
+        entries, merge_exact, matched = merge_onto_table(outcome, fetched, key_columns, table, index)
+
+        engine_ids = [work.check_id for work in engine_work if work.counted]
+        for check_id, rows in own_rows_from_entries(entries, engine_ids).items():
+            self._work[check_id].own_rows = rows
+        for work in matched_work:
+            if not work.counted:
+                continue
+            match = matched.get(work.check_id)
+            if match is None:
+                work.route, work.reason, work.inexact = ROUTE_CLIENT_RETURNED_ROWS, REASON_UNKEYABLE, True
+                work.own_rows = work.rows.num_rows
+                continue
+            work.own_rows, missing = match
+            if not work.want_full:
+                # Truncated, so a lower bound. It stays inexact.
+                continue
+            work.route = ROUTE_CLIENT_LOOKUP
+            work.inexact = missing > 0
+            if missing:
+                work.reason = REASON_UNMATCHED
+
+        total_rows = outcome.total_rows if outcome is not None and outcome.total_rows is not None else table.num_rows
+        self._total_exact = True
+        return self._roll_up(entries, total_rows, merge_exact)
+
+    def _flag_unmatched(self, runner: PushdownRunner, engine_work: Sequence[_Work]) -> None:
+        """Mark a table-match check not exact when some of its failed keys match no table row.
+
+        Table match counts the table rows that hold a failed row's key, so a
+        check that returns changed values (``c * 1.5``, ``upper(s)``) finds
+        fewer rows than it failed. This is the same test as the full-table
+        match: per distinct key, on the same key expressions. A changed value
+        that equals another row's key matches that row and is not detected.
+        """
+        works = [work for work in engine_work if work.counted and work.route == ROUTE_SERVER_LOOKUP]
+        if not works:
+            return
+        unmatched = runner.count_unmatched([self._branch(work) for work in works])
+        for work in works:
+            count = unmatched.get(work.check_id)
+            if count is None:
+                # Not known whether every key matched.
+                work.inexact = True
+            elif count:
+                work.inexact, work.reason = True, REASON_UNMATCHED
 
     def _full_spec(self) -> KeySpec | None:
         if not (self._adapter and self._dialect and self._column_types and self._anchor_sql):
@@ -441,7 +638,7 @@ class _SchemaComputation:
     def _assign_route(self, work: _Work, pushdown_ok: bool) -> None:
         row_source = work.row_source
         if row_source is None:
-            work.route, work.reason = ROUTE_FETCHED, REASON_NO_PUSHDOWN
+            work.route, work.reason = ROUTE_CLIENT_RETURNED_ROWS, REASON_NO_PUSHDOWN
             return
         rendered = None
         if not row_source.filter_conditions:
@@ -454,20 +651,21 @@ class _SchemaComputation:
         if row_source.cross_source or not local:
             # Fetched rows of a check that is not a pure row filter can miss
             # copies (DISTINCT) or repeat them (a join), so they are not exact.
-            work.route = ROUTE_FETCHED
+            work.route = ROUTE_CLIENT_RETURNED_ROWS
             work.reason = REASON_CROSS_SOURCE if row_source.cross_source else REASON_NO_PUSHDOWN
             work.inexact = not ok
             return
         work.certified = ok
         if ok:
-            work.route = ROUTE_PUSHDOWN
+            work.route = ROUTE_SERVER_PREDICATE
             work.columns = list(self._columns)
-            # A dialect without a key entry groups on plain columns.
+            # A dialect without a key entry groups on plain columns. The
+            # keyless mask histogram clears this when it can count the schema.
             work.inexact = not key_is_exact(self._dialect)
         elif key_is_exact(self._dialect):
-            work.route, work.reason = ROUTE_TABLE_MATCH, uncertified_reason(rule)
+            work.route, work.reason = ROUTE_SERVER_LOOKUP, uncertified_reason(rule)
         else:
-            work.route, work.reason, work.inexact = ROUTE_FETCHED, uncertified_reason(rule), True
+            work.route, work.reason, work.inexact = ROUTE_CLIENT_RETURNED_ROWS, uncertified_reason(rule), True
 
     def _probe_columns(self, work: _Work) -> None:
         query = work.row_source.failed_rows_query
@@ -475,7 +673,7 @@ class _SchemaComputation:
             table = self._run_query(column_probe_statement(query, self._dialect))
         except Exception:
             # The fetch may still work where the wrapped probe does not.
-            work.route, work.inexact = ROUTE_FETCHED, True
+            work.route, work.inexact = ROUTE_CLIENT_RETURNED_ROWS, True
             self._fetch(work)
             return
         work.columns = [name for name in table.column_names if name not in METADATA_COLUMNS]
@@ -491,10 +689,7 @@ class _SchemaComputation:
             if fetch is None:
                 work.route, work.reason, work.skipped, work.inexact = "", REASON_NO_PUSHDOWN, True, True
                 return
-            frame = self._component.rows_for(selection)
-        else:
-            frame = work.result.failed_rows
-        table = strip_metadata_columns(frame.to_arrow())
+        table = strip_metadata_columns(self._fetched_frame(work).to_arrow())
         if table.num_columns == 0:
             work.drop(REASON_PROBE_FAILURE, inexact=True)
             return
@@ -503,6 +698,10 @@ class _SchemaComputation:
         count = selection.row_count
         if count is not None and table.num_rows < count:
             work.reason, work.inexact = REASON_TRUNCATED, True
+
+    def _fetched_frame(self, work: _Work) -> nw.DataFrame:
+        selection = work.selection
+        return self._component.rows_for(selection) if selection.tolerated else work.result.failed_rows
 
     def _choose_key(self, pushdown_ok: bool) -> tuple[list[str], bool]:
         """Key on the declared primary key when it is proven unique, else the full columns.
@@ -584,14 +783,25 @@ class _SchemaComputation:
         work.drop(reason, inexact=not self._column_types)
         work.rows = None
 
+    def _keyless(self, engine_work: Sequence[_Work], fetched_work: Sequence[_Work]) -> bool:
+        """Whether the schema can be counted without a key: every check a certified row filter."""
+        return (
+            not key_is_exact(self._dialect)
+            and not fetched_work
+            and all(work.route == ROUTE_SERVER_PREDICATE for work in engine_work)
+        )
+
     def _branch(self, work: _Work) -> Branch:
         query = work.row_source.failed_rows_query
-        if work.route == ROUTE_PUSHDOWN and self._dialect in _pushdown.SINGLE_SCAN_DIALECTS:
+        scan = self._dialect in _pushdown.SINGLE_SCAN_DIALECTS or not key_is_exact(self._dialect)
+        if work.route == ROUTE_SERVER_PREDICATE and scan:
             lifted = lift_scan(query, self._dialect)
             if lifted is not None:
                 scan_from, scan_alias, predicate = lifted
-                return Branch(work.check_id, "pushdown", query, scan_from, scan_alias, predicate)
-        return Branch(work.check_id, "pushdown" if work.route == ROUTE_PUSHDOWN else "table_match", query)
+                return Branch(work.check_id, "server_predicate", query, scan_from, scan_alias, predicate)
+        return Branch(
+            work.check_id, "server_predicate" if work.route == ROUTE_SERVER_PREDICATE else "server_lookup", query
+        )
 
     def _total_rows(self, outcome: PushdownOutcome | None) -> int | None:
         if outcome is not None and outcome.total_rows is not None:

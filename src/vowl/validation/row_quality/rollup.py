@@ -54,8 +54,9 @@ class CheckRowQuality:
     """How one check took part in the row-quality numbers.
 
     Attributes:
-        route: ``"pushdown"``, ``"table_match"`` or ``"fetched_rows"``, or
-            empty when the check's rows were not collected.
+        route: ``"server_predicate"``, ``"server_lookup"``, ``"client_lookup"`` or
+            ``"client_returned_rows"``, or empty when the check's rows were not
+            collected.
         reason: Why the check was not counted, or why it left pushdown.
         failed_rows: The check's own physical failing rows, before the merge.
         exact: False when this check's rows are incomplete or approximate.

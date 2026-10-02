@@ -19,6 +19,7 @@ from vowl.validation.row_quality.selection import (
     REASON_NOT_MERGEABLE,
     REASON_PK_NOT_UNIQUE,
     REASON_PK_UNCHECKED,
+    REASON_UNMATCHED,
 )
 
 _skip_contract_validation = rq._skip_contract_validation
@@ -140,10 +141,14 @@ def test_a_table_match_check_with_transformed_values_matches_on_the_primary_key(
     keyed = rq._validate(con, [rq._schema("t", [shifted], _PK)])
     unkeyed = rq._validate(con, [rq._schema("t", [shifted])])
 
-    assert rq._check_rows(keyed)["shifted"]["route"] == "table_match"
+    assert rq._check_rows(keyed)["shifted"]["route"] == "client_lookup"
+    assert rq._check_rows(keyed)["shifted"]["exact"] is True
     assert rq._schema_row(keyed)["failed_rows"] == 2
     assert _marked(keyed) == {1: {"shifted"}, 2: {"shifted"}}
     assert rq._schema_row(unkeyed)["failed_rows"] == 0
+    # No table row has the changed values, which the count reports.
+    shifted_row = rq._check_rows(unkeyed)["shifted"]
+    assert (shifted_row["reason"], shifted_row["exact"]) == (REASON_UNMATCHED, False)
 
 
 # ---------------------------------------------------------------------------

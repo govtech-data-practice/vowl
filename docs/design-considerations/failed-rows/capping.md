@@ -21,8 +21,8 @@ With a cap:
 - **Pass or fail does not change.** It comes from each check's count, which is
   never capped.
 - **The row counts do not change** for checks the data source counts itself
-  (the `pushdown` and `table_match` [routes](levels.md#c1-collect-each-checks-failed-rows)).
-  A check whose failed rows vowl had to download (`fetched_rows`) can be cut
+  (the `server_predicate` and `server_lookup` [routes](levels.md#c1-collect-each-checks-failed-rows)).
+  A check whose failed rows vowl had to download (`client_returned_rows`) can be cut
   short. Its numbers are then [not exact](levels.md#exact-numbers).
 - **`get_annotated_output()` stops with an error** if a check that annotates rows
   had more failed rows than the cap. Otherwise the rows past the cap would look

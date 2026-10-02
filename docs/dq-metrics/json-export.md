@@ -4,7 +4,7 @@ description: How vowl writes a run's DQ metrics to dq_metrics.json, and how to l
 
 # Exporting to dq_metrics.json
 
-`result.save(...)` writes the run's [DQ metrics](index.md) to
+`result.save(...)` writes the run's [DQ metrics](understanding-metrics.md) to
 `<prefix>_dq_metrics.json`, next to the check results and `summary.json`. The
 file holds the same readings that
 [Exporting to OpenTelemetry](otel-export.md) sends, with the same names,
@@ -25,7 +25,7 @@ To get the same content without writing a file, call
 
 ## Worked example
 
-This is the run from the [DQ Metrics worked example](index.md#worked-example).
+This is the run from the [Understanding DQ Metrics worked example](understanding-metrics.md#worked-example).
 The contract has two schemas:
 
 - `orders` has 100 rows. `email_required_check` (completeness) fails on 5 rows
@@ -95,7 +95,7 @@ are three of them, one of each type:
 
 ### Every metric in the file
 
-Every metric on the [All metrics](index.md#all-metrics) list is in the file.
+Every metric on the [All metrics](understanding-metrics.md#all-metrics) list is in the file.
 This table shows how many points each one has in this run, and one reading
 from each. Counts have one point per status, zeros included, so
 `vowl.check.check.count` has 7 checks times 3 statuses, which is 21 points.
@@ -126,7 +126,7 @@ A few things to notice:
 - Row counts carry a `status` of `PASSED` or `FAILED` only. Check and schema
   counts also have `ERROR`.
 - `orders` has 7 failed rows at schema level, not 5 + 3 = 8, because one row
-  failed both checks. See [How failed rows are counted](index.md#how-failed-rows-are-counted).
+  failed both checks. See [How failed rows are counted](understanding-metrics.md#how-failed-rows-are-counted).
 - The run level adds up the schemas: 7 + 2 = 9 failed rows.
 - The `row.count` points at dimension, schema and run level carry
   `vowl.row_quality.exact`. It is `true` for every point here, because every
@@ -223,11 +223,11 @@ Each entry in `points` has:
 
 | Key          | What it holds                                                                                                                                                                  |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `name`       | The metric name, for example `vowl.schema.row.pass_rate`. [All metrics](index.md#all-metrics) lists them.                                                                      |
-| `type`       | `counter`, `gauge` or `histogram`. It says whether the value adds up. See [Which numbers add up](index.md#which-numbers-add-up).                                               |
+| `name`       | The metric name, for example `vowl.schema.row.pass_rate`. [All metrics](understanding-metrics.md#all-metrics) lists them.                                                                      |
+| `type`       | `counter`, `gauge` or `histogram`. It says whether the value adds up. See [Which numbers add up](understanding-metrics.md#which-numbers-add-up).                                               |
 | `unit`       | `{check}`, `{row}` or `{schema}` for counts, `1` for pass rates, `ms` for durations.                                                                                           |
 | `value`      | The reading for this run. For a counter, it is this run's count. For a histogram, it is one timing.                                                                            |
-| `attributes` | What the reading is for, such as `schema_name` and `status`. The run identity is in `run` instead, not repeated. [Attributes](index.md#attributes) lists them for each metric. |
+| `attributes` | What the reading is for, such as `schema_name` and `status`. The run identity is in `run` instead, not repeated. [Attributes](understanding-metrics.md#attributes) lists them for each metric. |
 
 The metric names always start with `vowl`. The `prefix` of `save` only names
 the files.
@@ -253,7 +253,7 @@ The rules for combining runs are the same as on a dashboard:
 - **Counters** add up across runs. Summing `vowl.run.check.count` with
   `status = "FAILED"` over a week gives the failed checks of that week.
 - **Gauges** are readings of one run. To combine row counts, see
-  [Adding row counts across runs](index.md#adding-row-counts-across-runs). For
+  [Adding row counts across runs](understanding-metrics.md#adding-row-counts-across-runs). For
   a pass rate over many runs, add up the `PASSED` and `FAILED` row counts and
   divide, rather than averaging the rates.
 
@@ -261,7 +261,7 @@ The rules for combining runs are the same as on a dashboard:
 
 `summary.json` is unchanged. It is the record of the run: its settings, every
 check and what each check found. `dq_metrics.json` is the numbers computed
-from it, in the vocabulary on [DQ Metrics](index.md).
+from it, in the vocabulary on [Understanding DQ Metrics](understanding-metrics.md).
 
 Some fields in `summary.json` look like DQ metrics but follow older rules.
 Prefer `dq_metrics.json` for these:

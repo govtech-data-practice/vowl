@@ -51,7 +51,7 @@ nav:
       - The Results Object: results.md
       - Run Settings: run-settings.md
       - DQ Metrics:
-          - dq-metrics/index.md
+          - Understanding DQ Metrics: dq-metrics/understanding-metrics.md
           - Exporting to OpenTelemetry: dq-metrics/otel-export.md
           - Exporting to dq_metrics.json: dq-metrics/json-export.md
   - Design Considerations:

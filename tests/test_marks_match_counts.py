@@ -106,11 +106,7 @@ def test_statistics_off_does_not_break_the_helper():
     assert "t" in result.get_annotated_output()["annotated"]
 
 
-def test_unknown_column_types_with_a_partial_contract_are_not_exact(monkeypatch: pytest.MonkeyPatch):
-    # The contract lists two of the table's three columns, and the adapter
-    # cannot give the column types, so counting only knows the contract's
-    # columns. A SELECT * check returns all three, so counting cannot merge
-    # it, while annotated output marks it against the exported table.
+def _partial_contract(monkeypatch: pytest.MonkeyPatch, config: ValidationConfig | None = None):
     def no_types(self, schema_name):
         raise NotImplementedError
 
@@ -118,8 +114,26 @@ def test_unknown_column_types_with_a_partial_contract_are_not_exact(monkeypatch:
     con = rq._connect("duckdb")
     con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER, extra INTEGER)")
     con.raw_sql("INSERT INTO t VALUES (1, -1, 0), (2, 2, 0), (3, -3, 0)")
+    return rq._validate(con, [rq._schema("t", [rq._check("negative", "c < 0")])], config)
 
-    result = rq._validate(con, [rq._schema("t", [rq._check("negative", "c < 0")])])
+
+def test_unknown_column_types_with_a_partial_contract_count_on_the_exported_table(monkeypatch: pytest.MonkeyPatch):
+    # The contract lists two of the table's three columns, and the adapter
+    # cannot give the column types. Counting takes the columns from the
+    # exported table, as annotated output does.
+    result = _partial_contract(monkeypatch)
+
+    check = rq._check_rows(result)["negative"]
+    assert (check["counted"], check["route"], check["failed_rows"], check["exact"]) == (True, "client_lookup", 2, True)
+    assert rq._schema_row(result)["failed_rows"] == 2
+    assert _assert_marks_match_counts(result) == 1
+
+
+def test_unknown_column_types_with_a_partial_contract_are_not_exact_when_fast(monkeypatch: pytest.MonkeyPatch):
+    # Without the export, counting only knows the contract's columns. A
+    # SELECT * check returns all three, so counting cannot merge it, while
+    # annotated output marks it against the exported table.
+    result = _partial_contract(monkeypatch, ValidationConfig(row_count_accuracy="fast"))
 
     check = rq._check_rows(result)["negative"]
     assert check["counted"] is False

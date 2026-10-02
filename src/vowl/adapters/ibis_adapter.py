@@ -257,6 +257,15 @@ class IbisAdapter(BaseAdapter):
 
         validate_query_security(query, dialect=dialect)
 
+        if getattr(self._con, "name", "") == "pyspark":
+            # Ibis's to_pyarrow goes through pandas on PySpark, which turns NaN
+            # into NULL. Spark's own Arrow export keeps it, as the row-quality
+            # statements do.
+            from vowl.executors.ibis_sql_executor import raw_result_to_arrow
+
+            table = raw_result_to_arrow(self._con.raw_sql(query))
+            if table is not None:
+                return table
         return self._con.sql(query).to_pyarrow()
 
     def _filtered_table_query(self, schema_name: str) -> str:
