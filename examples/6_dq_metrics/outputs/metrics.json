@@ -6,7 +6,7 @@
           "telemetry.sdk.language": "python",
           "telemetry.sdk.name": "opentelemetry",
           "telemetry.sdk.version": "1.44.0",
-          "service.instance.id": "8eff7b2b-389b-4147-92e9-4e790f90712f",
+          "service.instance.id": "4439a385-be0a-4dfe-83ed-2fa41e80fb40",
           "service.name": "unknown_service"
         },
         "schema_url": ""
@@ -42,8 +42,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544679000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928721000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -63,8 +63,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544686000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928728000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -84,8 +84,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544690000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928733000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -105,8 +105,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544693000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928738000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -126,8 +126,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544697000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928741000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -147,8 +147,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544701000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928745000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -168,8 +168,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544704000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928748000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -189,8 +189,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544708000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928751000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -210,8 +210,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544711000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928755000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -231,8 +231,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544714000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928759000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -252,8 +252,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544717000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928762000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -273,8 +273,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544721000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928765000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -294,8 +294,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544725000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928768000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -315,8 +315,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544730000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928771000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -336,8 +336,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544734000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928778000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -357,8 +357,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544737000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928786000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -378,8 +378,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544740000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928790000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -399,8 +399,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544743000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928794000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -420,8 +420,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544746000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928798000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -441,8 +441,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544751000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928801000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -462,8 +462,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544754000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928804000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -483,8 +483,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544758000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928807000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -504,8 +504,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544761000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928811000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -525,8 +525,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544765000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928814000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -546,8 +546,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544768000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928817000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -567,8 +567,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544771000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928822000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -588,8 +588,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544774000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928825000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -609,8 +609,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544778000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928828000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -630,8 +630,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544781000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928832000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -651,8 +651,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544785000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928835000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -672,8 +672,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544789000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928838000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -693,8 +693,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544792000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928841000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -714,8 +714,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544795000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928844000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -735,8 +735,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544798000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928848000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -756,8 +756,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544802000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928852000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -777,8 +777,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544805000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928856000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -798,8 +798,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544808000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928859000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -819,8 +819,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544811000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928863000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -840,8 +840,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544815000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928866000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -861,8 +861,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544818000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928869000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -882,8 +882,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544821000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928872000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -903,8 +903,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544824000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928875000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -924,8 +924,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544827000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928878000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -945,8 +945,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544831000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928882000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -966,8 +966,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544833000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928885000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -987,8 +987,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544837000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928888000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -1008,8 +1008,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544840000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928890000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1029,8 +1029,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544843000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928893000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1050,8 +1050,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544846000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928896000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1071,8 +1071,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544849000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928900000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -1092,8 +1092,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544852000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928903000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1114,8 +1114,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544855000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928906000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1136,8 +1136,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544858000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928909000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -1158,8 +1158,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544862000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928916000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1179,8 +1179,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544865000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928921000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1200,8 +1200,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544868000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928925000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -1221,8 +1221,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544870000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928929000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1243,8 +1243,8 @@
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550544873000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928933000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -1265,8 +1265,8 @@
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550544877000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928936000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -1287,8 +1287,8 @@
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550544880000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928940000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -1315,12 +1315,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545001000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928966000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 5.17995800009885,
+                    "sum": 7.622707984410226,
                     "bucket_counts": [
                       0,
                       0,
@@ -1356,8 +1357,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 5.17995800009885,
-                    "max": 5.17995800009885,
+                    "min": 7.622707984410226,
+                    "max": 7.622707984410226,
                     "exemplars": []
                   },
                   {
@@ -1372,12 +1373,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545010000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928975000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 8.656459000121686,
+                    "sum": 8.623041008831933,
                     "bucket_counts": [
                       0,
                       0,
@@ -1413,8 +1415,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 8.656459000121686,
-                    "max": 8.656459000121686,
+                    "min": 8.623041008831933,
+                    "max": 8.623041008831933,
                     "exemplars": []
                   },
                   {
@@ -1429,19 +1431,20 @@
                       "vowl.domain": "real-estate",
                       "check_name": "town_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545015000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928980000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 4.50074999980643,
+                    "sum": 58.77783300820738,
                     "bucket_counts": [
                       0,
+                      0,
+                      0,
+                      0,
+                      0,
                       1,
-                      0,
-                      0,
-                      0,
-                      0,
                       0,
                       0,
                       0,
@@ -1470,8 +1473,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.50074999980643,
-                    "max": 4.50074999980643,
+                    "min": 58.77783300820738,
+                    "max": 58.77783300820738,
                     "exemplars": []
                   },
                   {
@@ -1486,12 +1489,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545020000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928985000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 4.796790999989753,
+                    "sum": 4.600207990733907,
                     "bucket_counts": [
                       0,
                       1,
@@ -1527,8 +1531,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.796790999989753,
-                    "max": 4.796790999989753,
+                    "min": 4.600207990733907,
+                    "max": 4.600207990733907,
                     "exemplars": []
                   },
                   {
@@ -1543,16 +1547,17 @@
                       "vowl.domain": "real-estate",
                       "check_name": "block_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545025000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928990000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 4.787541000041529,
+                    "sum": 6.517999980133027,
                     "bucket_counts": [
                       0,
-                      1,
                       0,
+                      1,
                       0,
                       0,
                       0,
@@ -1584,8 +1589,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.787541000041529,
-                    "max": 4.787541000041529,
+                    "min": 6.517999980133027,
+                    "max": 6.517999980133027,
                     "exemplars": []
                   },
                   {
@@ -1600,12 +1605,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "street_name_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545030000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170928996000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 4.367000000002008,
+                    "sum": 4.747166996821761,
                     "bucket_counts": [
                       0,
                       1,
@@ -1641,8 +1647,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.367000000002008,
-                    "max": 4.367000000002008,
+                    "min": 4.747166996821761,
+                    "max": 4.747166996821761,
                     "exemplars": []
                   },
                   {
@@ -1657,19 +1663,20 @@
                       "vowl.domain": "real-estate",
                       "check_name": "storey_range_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545035000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929002000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 57.15800000007221,
+                    "sum": 6.479834002675489,
                     "bucket_counts": [
                       0,
                       0,
-                      0,
-                      0,
-                      0,
                       1,
+                      0,
+                      0,
+                      0,
                       0,
                       0,
                       0,
@@ -1698,8 +1705,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 57.15800000007221,
-                    "max": 57.15800000007221,
+                    "min": 6.479834002675489,
+                    "max": 6.479834002675489,
                     "exemplars": []
                   },
                   {
@@ -1714,12 +1721,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545039000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929006000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 4.692500000146538,
+                    "sum": 4.573291982524097,
                     "bucket_counts": [
                       0,
                       1,
@@ -1755,8 +1763,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.692500000146538,
-                    "max": 4.692500000146538,
+                    "min": 4.573291982524097,
+                    "max": 4.573291982524097,
                     "exemplars": []
                   },
                   {
@@ -1771,16 +1779,17 @@
                       "vowl.domain": "real-estate",
                       "check_name": "flat_model_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545044000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929011000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 6.057625000266853,
+                    "sum": 4.696750023867935,
                     "bucket_counts": [
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -1812,8 +1821,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 6.057625000266853,
-                    "max": 6.057625000266853,
+                    "min": 4.696750023867935,
+                    "max": 4.696750023867935,
                     "exemplars": []
                   },
                   {
@@ -1828,16 +1837,17 @@
                       "vowl.domain": "real-estate",
                       "check_name": "lease_commence_date_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545048000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929016000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 5.2242920000935555,
+                    "sum": 4.612292017554864,
                     "bucket_counts": [
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -1869,8 +1879,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 5.2242920000935555,
-                    "max": 5.2242920000935555,
+                    "min": 4.612292017554864,
+                    "max": 4.612292017554864,
                     "exemplars": []
                   },
                   {
@@ -1885,12 +1895,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "remaining_lease_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545053000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929020000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 4.310750000058761,
+                    "sum": 4.594792000716552,
                     "bucket_counts": [
                       0,
                       1,
@@ -1926,8 +1937,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.310750000058761,
-                    "max": 4.310750000058761,
+                    "min": 4.594792000716552,
+                    "max": 4.594792000716552,
                     "exemplars": []
                   },
                   {
@@ -1942,16 +1953,17 @@
                       "vowl.domain": "real-estate",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545058000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929025000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 4.5218330001262075,
+                    "sum": 6.356249999953434,
                     "bucket_counts": [
                       0,
-                      1,
                       0,
+                      1,
                       0,
                       0,
                       0,
@@ -1983,8 +1995,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.5218330001262075,
-                    "max": 4.5218330001262075,
+                    "min": 6.356249999953434,
+                    "max": 6.356249999953434,
                     "exemplars": []
                   },
                   {
@@ -1999,12 +2011,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "hdb_resale_prices_rowCount",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "completeness",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545065000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929030000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 6.758125000033033,
+                    "sum": 7.098999980371445,
                     "bucket_counts": [
                       0,
                       0,
@@ -2040,8 +2053,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 6.758125000033033,
-                    "max": 6.758125000033033,
+                    "min": 7.098999980371445,
+                    "max": 7.098999980371445,
                     "exemplars": []
                   },
                   {
@@ -2056,12 +2069,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545070000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929172000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 19.436582999787788,
+                    "sum": 19.83595799538307,
                     "bucket_counts": [
                       0,
                       0,
@@ -2097,8 +2111,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 19.436582999787788,
-                    "max": 19.436582999787788,
+                    "min": 19.83595799538307,
+                    "max": 19.83595799538307,
                     "exemplars": []
                   },
                   {
@@ -2113,12 +2127,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "town_nullValues",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "completeness",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545074000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929179000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 12.177417000202695,
+                    "sum": 11.902708007255569,
                     "bucket_counts": [
                       0,
                       0,
@@ -2154,8 +2169,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 12.177417000202695,
-                    "max": 12.177417000202695,
+                    "min": 11.902708007255569,
+                    "max": 11.902708007255569,
                     "exemplars": []
                   },
                   {
@@ -2170,12 +2185,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "flat_type_invalidValues",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545079000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929185000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 19.35220899986234,
+                    "sum": 20.371165999677032,
                     "bucket_counts": [
                       0,
                       0,
@@ -2211,8 +2227,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 19.35220899986234,
-                    "max": 19.35220899986234,
+                    "min": 20.371165999677032,
+                    "max": 20.371165999677032,
                     "exemplars": []
                   },
                   {
@@ -2227,18 +2243,19 @@
                       "vowl.domain": "real-estate",
                       "check_name": "AddressBlockHouseNumber",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545086000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929190000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 18.518542000037996,
+                    "sum": 25.268083001719788,
                     "bucket_counts": [
                       0,
                       0,
                       0,
-                      1,
                       0,
+                      1,
                       0,
                       0,
                       0,
@@ -2268,8 +2285,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 18.518542000037996,
-                    "max": 18.518542000037996,
+                    "min": 25.268083001719788,
+                    "max": 25.268083001719788,
                     "exemplars": []
                   },
                   {
@@ -2284,12 +2301,14 @@
                       "vowl.domain": "real-estate",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "consistency",
+                      "severity": "error",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545090000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929195000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 15.207583000119484,
+                    "sum": 14.898916997481138,
                     "bucket_counts": [
                       0,
                       0,
@@ -2325,8 +2344,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 15.207583000119484,
-                    "max": 15.207583000119484,
+                    "min": 14.898916997481138,
+                    "max": 14.898916997481138,
                     "exemplars": []
                   },
                   {
@@ -2341,12 +2360,13 @@
                       "vowl.domain": "real-estate",
                       "check_name": "Year",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545095000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929201000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 19.256250000125874,
+                    "sum": 20.09037500829436,
                     "bucket_counts": [
                       0,
                       0,
@@ -2382,8 +2402,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 19.256250000125874,
-                    "max": 19.256250000125874,
+                    "min": 20.09037500829436,
+                    "max": 20.09037500829436,
                     "exemplars": []
                   },
                   {
@@ -2398,20 +2418,22 @@
                       "vowl.domain": "real-estate",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "dimension": "conformity",
+                      "severity": "error",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1790759550545100000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929206000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 18.378708999989612,
+                    "sum": 77.09554198663682,
                     "bucket_counts": [
                       0,
                       0,
                       0,
+                      0,
+                      0,
+                      0,
                       1,
-                      0,
-                      0,
-                      0,
                       0,
                       0,
                       0,
@@ -2439,8 +2461,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 18.378708999989612,
-                    "max": 18.378708999989612,
+                    "min": 77.09554198663682,
+                    "max": 77.09554198663682,
                     "exemplars": []
                   }
                 ],
@@ -2466,10 +2488,11 @@
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2486,10 +2509,11 @@
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2506,10 +2530,11 @@
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2526,10 +2551,11 @@
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2546,10 +2572,11 @@
                       "check_name": "town_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2566,10 +2593,11 @@
                       "check_name": "town_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2586,10 +2614,11 @@
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2606,10 +2635,11 @@
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2626,10 +2656,11 @@
                       "check_name": "block_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2646,10 +2677,11 @@
                       "check_name": "block_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2666,10 +2698,11 @@
                       "check_name": "street_name_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2686,10 +2719,11 @@
                       "check_name": "street_name_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2706,10 +2740,11 @@
                       "check_name": "storey_range_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2726,10 +2761,11 @@
                       "check_name": "storey_range_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2746,10 +2782,11 @@
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2766,10 +2803,11 @@
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2786,10 +2824,11 @@
                       "check_name": "flat_model_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2806,10 +2845,11 @@
                       "check_name": "flat_model_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2826,10 +2866,11 @@
                       "check_name": "lease_commence_date_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2846,10 +2887,11 @@
                       "check_name": "lease_commence_date_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2866,10 +2908,11 @@
                       "check_name": "remaining_lease_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2886,10 +2929,11 @@
                       "check_name": "remaining_lease_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2906,10 +2950,11 @@
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -2926,10 +2971,11 @@
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -2946,10 +2992,11 @@
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201877,
                     "exemplars": []
                   },
@@ -2966,10 +3013,11 @@
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 2,
                     "exemplars": []
                   },
@@ -2986,10 +3034,11 @@
                       "check_name": "town_nullValues",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "completeness",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -3006,10 +3055,11 @@
                       "check_name": "town_nullValues",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "completeness",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -3026,10 +3076,11 @@
                       "check_name": "flat_type_invalidValues",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -3046,10 +3097,11 @@
                       "check_name": "flat_type_invalidValues",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -3066,10 +3118,11 @@
                       "check_name": "AddressBlockHouseNumber",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201878,
                     "exemplars": []
                   },
@@ -3086,10 +3139,11 @@
                       "check_name": "AddressBlockHouseNumber",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -3106,10 +3160,12 @@
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "consistency",
+                      "severity": "error",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201867,
                     "exemplars": []
                   },
@@ -3126,10 +3182,12 @@
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "consistency",
+                      "severity": "error",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 12,
                     "exemplars": []
                   },
@@ -3146,10 +3204,11 @@
                       "check_name": "Year",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201876,
                     "exemplars": []
                   },
@@ -3166,10 +3225,11 @@
                       "check_name": "Year",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 3,
                     "exemplars": []
                   },
@@ -3186,10 +3246,12 @@
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "severity": "error",
+                      "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -3206,10 +3268,12 @@
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
                       "dimension": "conformity",
+                      "severity": "error",
+                      "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -3234,10 +3298,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3253,10 +3318,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3272,10 +3338,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "town_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3291,10 +3358,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3310,10 +3378,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "block_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3329,10 +3398,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "street_name_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3348,10 +3418,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "storey_range_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3367,10 +3438,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3386,10 +3458,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "flat_model_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3405,10 +3478,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "lease_commence_date_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3424,10 +3498,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "remaining_lease_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3443,10 +3518,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3462,10 +3538,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.9999900930755552,
                     "exemplars": []
                   },
@@ -3481,10 +3558,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "town_nullValues",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "completeness"
+                      "dimension": "completeness",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3500,10 +3578,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "flat_type_invalidValues",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3519,10 +3598,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "AddressBlockHouseNumber",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.9999950465377776,
                     "exemplars": []
                   },
@@ -3538,10 +3618,12 @@
                       "vowl.domain": "real-estate",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "consistency"
+                      "dimension": "consistency",
+                      "severity": "error",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.999940558453331,
                     "exemplars": []
                   },
@@ -3557,10 +3639,11 @@
                       "vowl.domain": "real-estate",
                       "check_name": "Year",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.9999851396133327,
                     "exemplars": []
                   },
@@ -3576,10 +3659,12 @@
                       "vowl.domain": "real-estate",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
-                      "dimension": "conformity"
+                      "dimension": "conformity",
+                      "severity": "error",
+                      "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   }
@@ -3606,8 +3691,8 @@
                       "dimension": "conformity",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550545345000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929472000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 14,
                     "exemplars": []
                   },
@@ -3625,8 +3710,8 @@
                       "dimension": "conformity",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550545349000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929476000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 3,
                     "exemplars": []
                   },
@@ -3644,8 +3729,8 @@
                       "dimension": "conformity",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550545352000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929479000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -3663,8 +3748,8 @@
                       "dimension": "completeness",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550545356000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929483000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 2,
                     "exemplars": []
                   },
@@ -3682,8 +3767,8 @@
                       "dimension": "completeness",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550545359000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929486000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -3701,8 +3786,8 @@
                       "dimension": "completeness",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550545362000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929489000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -3720,8 +3805,8 @@
                       "dimension": "consistency",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550545365000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929492000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -3739,8 +3824,8 @@
                       "dimension": "consistency",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550545368000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929496000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -3758,8 +3843,8 @@
                       "dimension": "consistency",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550545371000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929499000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -3788,7 +3873,7 @@
                       "dimension": "conformity"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.8235294117647058,
                     "exemplars": []
                   },
@@ -3806,7 +3891,7 @@
                       "dimension": "completeness"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -3824,7 +3909,7 @@
                       "dimension": "consistency"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.0,
                     "exemplars": []
                   }
@@ -3853,7 +3938,7 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201879,
                     "exemplars": []
                   },
@@ -3873,7 +3958,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -3893,7 +3978,7 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201873,
                     "exemplars": []
                   },
@@ -3913,7 +3998,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 6,
                     "exemplars": []
                   },
@@ -3933,7 +4018,7 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201867,
                     "exemplars": []
                   },
@@ -3953,7 +4038,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 12,
                     "exemplars": []
                   }
@@ -3981,7 +4066,7 @@
                       "vowl.row_quality.exact": true
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1.0,
                     "exemplars": []
                   },
@@ -4000,7 +4085,7 @@
                       "vowl.row_quality.exact": true
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.9999702792266655,
                     "exemplars": []
                   },
@@ -4019,7 +4104,7 @@
                       "vowl.row_quality.exact": true
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.999940558453331,
                     "exemplars": []
                   }
@@ -4045,8 +4130,8 @@
                       "schema_name": "hdb_resale_prices",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550545441000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929577000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 16,
                     "exemplars": []
                   },
@@ -4063,8 +4148,8 @@
                       "schema_name": "hdb_resale_prices",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550545445000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929581000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 4,
                     "exemplars": []
                   },
@@ -4081,8 +4166,8 @@
                       "schema_name": "hdb_resale_prices",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550545448000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929584000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -4110,7 +4195,7 @@
                       "schema_name": "hdb_resale_prices"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.8,
                     "exemplars": []
                   }
@@ -4138,7 +4223,7 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201861,
                     "exemplars": []
                   },
@@ -4157,7 +4242,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 18,
                     "exemplars": []
                   }
@@ -4184,7 +4269,7 @@
                       "vowl.row_quality.exact": true
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.9999108376799964,
                     "exemplars": []
                   }
@@ -4209,8 +4294,8 @@
                       "vowl.domain": "real-estate",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550545487000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929624000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   },
@@ -4226,8 +4311,8 @@
                       "vowl.domain": "real-estate",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550545490000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929627000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 1,
                     "exemplars": []
                   },
@@ -4243,8 +4328,8 @@
                       "vowl.domain": "real-estate",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550545494000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929630000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -4271,8 +4356,8 @@
                       "vowl.domain": "real-estate",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1790759550545560000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929638000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 16,
                     "exemplars": []
                   },
@@ -4288,8 +4373,8 @@
                       "vowl.domain": "real-estate",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1790759550545563000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929641000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 4,
                     "exemplars": []
                   },
@@ -4305,8 +4390,8 @@
                       "vowl.domain": "real-estate",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1790759550545566000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929644000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -4333,7 +4418,7 @@
                       "vowl.domain": "real-estate"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.8,
                     "exemplars": []
                   }
@@ -4360,7 +4445,7 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 201861,
                     "exemplars": []
                   },
@@ -4378,7 +4463,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 18,
                     "exemplars": []
                   }
@@ -4404,7 +4489,7 @@
                       "vowl.row_quality.exact": true
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1790759550546598000,
+                    "time_unix_nano": 1790927170930897000,
                     "value": 0.9999108376799964,
                     "exemplars": []
                   }
@@ -4428,10 +4513,10 @@
                       "vowl.contract.status": "draft",
                       "vowl.domain": "real-estate"
                     },
-                    "start_time_unix_nano": 1790759550545661000,
-                    "time_unix_nano": 1790759550546598000,
+                    "start_time_unix_nano": 1790927170929691000,
+                    "time_unix_nano": 1790927170930897000,
                     "count": 1,
-                    "sum": 814.532,
+                    "sum": 880.432,
                     "bucket_counts": [
                       0,
                       0,
@@ -4467,8 +4552,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 814.532,
-                    "max": 814.532,
+                    "min": 880.432,
+                    "max": 880.432,
                     "exemplars": []
                   }
                 ],

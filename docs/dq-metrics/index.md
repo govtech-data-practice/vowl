@@ -4,6 +4,10 @@ description: The DQ metrics vowl reports for every run, at check, dimension, sch
 
 # DQ Metrics
 
+!!! tip "Interactive Demo"
+
+    The [DQ Metrics notebook](https://github.com/govtech-data-practice/vowl/blob/main/examples/6_dq_metrics/dq_metrics.ipynb) reads one run's metrics at every level, loads `dq_metrics.json` with pandas and exports the same run to OpenTelemetry.
+
 After every run, vowl works out a set of numbers that describe the quality of
 your data, such as "how many checks failed" or "what share of rows passed".
 These are the **DQ metrics**. You can get them in two ways:

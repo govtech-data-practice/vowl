@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run": {
     "vowl.version": "0.0.7.dev3",
-    "vowl.run.id": "c56d3bf2-bfcd-4e7d-b328-5587befeeb86",
+    "vowl.run.id": "dff034fd-383c-4783-aa9d-9c3315c25032",
     "vowl.contract.id": "b6376e57-aa90-41eb-90d0-c72dca7567e6",
     "vowl.contract.name": "Employee Payroll Records",
     "vowl.contract.version": "1.0.0",
@@ -10,8 +10,8 @@
     "vowl.contract.status": "draft",
     "vowl.domain": "hr"
   },
-  "run_started_at": "2026-09-30T09:18:31.515045+00:00",
-  "run_finished_at": "2026-09-30T09:18:36.014590+00:00",
+  "run_started_at": "2026-10-02T07:45:36.223200+00:00",
+  "run_finished_at": "2026-10-02T07:45:40.391145+00:00",
   "points": [
     {
       "name": "vowl.check.check.count",
@@ -292,45 +292,6 @@
       "unit": "{check}",
       "value": 1,
       "attributes": {
-        "check_name": "employee_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "engine": "sql",
-        "status": "PASSED"
-      }
-    },
-    {
-      "name": "vowl.check.check.count",
-      "type": "counter",
-      "unit": "{check}",
-      "value": 0,
-      "attributes": {
-        "check_name": "employee_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "engine": "sql",
-        "status": "FAILED"
-      }
-    },
-    {
-      "name": "vowl.check.check.count",
-      "type": "counter",
-      "unit": "{check}",
-      "value": 0,
-      "attributes": {
-        "check_name": "employee_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "engine": "sql",
-        "status": "ERROR"
-      }
-    },
-    {
-      "name": "vowl.check.check.count",
-      "type": "counter",
-      "unit": "{check}",
-      "value": 1,
-      "attributes": {
         "check_name": "payroll_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
@@ -592,45 +553,6 @@
       "value": 0,
       "attributes": {
         "check_name": "payroll_id_unique_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "engine": "sql",
-        "status": "ERROR"
-      }
-    },
-    {
-      "name": "vowl.check.check.count",
-      "type": "counter",
-      "unit": "{check}",
-      "value": 1,
-      "attributes": {
-        "check_name": "payroll_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "engine": "sql",
-        "status": "PASSED"
-      }
-    },
-    {
-      "name": "vowl.check.check.count",
-      "type": "counter",
-      "unit": "{check}",
-      "value": 0,
-      "attributes": {
-        "check_name": "payroll_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "engine": "sql",
-        "status": "FAILED"
-      }
-    },
-    {
-      "name": "vowl.check.check.count",
-      "type": "counter",
-      "unit": "{check}",
-      "value": 0,
-      "attributes": {
-        "check_name": "payroll_id_primary_key_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
         "engine": "sql",
@@ -1647,6 +1569,45 @@
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
         "engine": "sql",
         "status": "ERROR"
       }
@@ -2987,10 +2948,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 6.047584000043571,
+      "value": 6.280874978983775,
       "attributes": {
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -2998,10 +2960,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 11.043458000131068,
+      "value": 11.080291995313019,
       "attributes": {
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3009,10 +2972,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 36.28445799995461,
+      "value": 37.63920901110396,
       "attributes": {
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3020,10 +2984,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 38.91958300027909,
+      "value": 36.10916598699987,
       "attributes": {
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3031,10 +2996,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 39.656916999774694,
+      "value": 35.18124998663552,
       "attributes": {
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3042,10 +3008,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.9732089998760785,
+      "value": 5.3153329936321825,
       "attributes": {
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3053,10 +3020,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.581999999933032,
+      "value": 9.737624990520999,
       "attributes": {
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3064,21 +3032,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.643292000058864,
-      "attributes": {
-        "check_name": "employee_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "engine": "sql"
-      }
-    },
-    {
-      "name": "vowl.check.duration",
-      "type": "histogram",
-      "unit": "ms",
-      "value": 4.930667000280664,
+      "value": 4.726374987512827,
       "attributes": {
         "check_name": "payroll_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3086,10 +3044,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.378582999990613,
+      "value": 10.228625003946945,
       "attributes": {
         "check_name": "payroll_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3097,10 +3056,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 31.246665999788092,
+      "value": 102.10541699780151,
       "attributes": {
         "check_name": "payroll_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3108,10 +3068,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 30.724917000043206,
+      "value": 33.78595900721848,
       "attributes": {
         "check_name": "payroll_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3119,10 +3080,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 36.45950000009179,
+      "value": 34.98754199245013,
       "attributes": {
         "check_name": "payroll_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3130,10 +3092,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.636958999730268,
+      "value": 10.058750020107254,
       "attributes": {
         "check_name": "payroll_id_required_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3141,10 +3104,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.240374999786582,
+      "value": 7.9221249907277524,
       "attributes": {
         "check_name": "payroll_id_unique_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3152,21 +3116,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.849749999924825,
-      "attributes": {
-        "check_name": "payroll_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "engine": "sql"
-      }
-    },
-    {
-      "name": "vowl.check.duration",
-      "type": "histogram",
-      "unit": "ms",
-      "value": 4.752458999973896,
+      "value": 5.55058300960809,
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3174,10 +3128,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.259875000021566,
+      "value": 8.844083989970386,
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3185,10 +3140,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 34.04816700003721,
+      "value": 37.427457980811596,
       "attributes": {
         "check_name": "month_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3196,10 +3152,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.515958000112732,
+      "value": 7.241499988595024,
       "attributes": {
         "check_name": "month_required_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3207,10 +3164,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.669874999966851,
+      "value": 4.955374985001981,
       "attributes": {
         "check_name": "payroll_start_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3218,10 +3176,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 9.694957999727194,
+      "value": 10.392666008556262,
       "attributes": {
         "check_name": "payroll_start_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3229,10 +3188,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.877166999904148,
+      "value": 5.256125004962087,
       "attributes": {
         "check_name": "payroll_end_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3240,10 +3200,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 9.57066599994505,
+      "value": 10.213041998213157,
       "attributes": {
         "check_name": "payroll_end_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3251,10 +3212,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.84658400000626,
+      "value": 4.821750015253201,
       "attributes": {
         "check_name": "total_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3262,10 +3224,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 10.198999999829539,
+      "value": 10.105374996783212,
       "attributes": {
         "check_name": "total_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3273,10 +3236,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.6124579998831905,
+      "value": 4.615083977114409,
       "attributes": {
         "check_name": "employer_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3284,10 +3248,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 92.83304199971099,
+      "value": 8.66670798859559,
       "attributes": {
         "check_name": "employer_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3295,10 +3260,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.528249999770196,
+      "value": 4.7363750054501,
       "attributes": {
         "check_name": "total_amt_employee_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3306,10 +3272,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 9.546916000090278,
+      "value": 8.960042003309354,
       "attributes": {
         "check_name": "total_amt_employee_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3317,10 +3284,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 6.953708999844821,
+      "value": 7.315709022805095,
       "attributes": {
         "check_name": "total_amt_employee_required_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3328,10 +3296,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.71791700031099,
+      "value": 5.521834013052285,
       "attributes": {
         "check_name": "employee_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3339,10 +3308,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 10.972958000365907,
+      "value": 11.946375016123056,
       "attributes": {
         "check_name": "employee_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3350,10 +3320,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 6.022249999659834,
+      "value": 4.863707988988608,
       "attributes": {
         "check_name": "employee_cpf_amt_required_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3361,10 +3332,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.456375000401749,
+      "value": 7.141249981941655,
       "attributes": {
         "check_name": "employee_gross_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3372,10 +3344,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.888542000022426,
+      "value": 12.42716598790139,
       "attributes": {
         "check_name": "employee_gross_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3383,10 +3356,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.705250000071828,
+      "value": 6.591042008949444,
       "attributes": {
         "check_name": "employee_gross_amt_required_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3394,10 +3368,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.237041999862413,
+      "value": 4.529042023932561,
       "attributes": {
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3405,10 +3380,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 10.680624999622523,
+      "value": 10.945625021122396,
       "attributes": {
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3416,10 +3392,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 35.48000000000684,
+      "value": 34.24283300410025,
       "attributes": {
         "check_name": "phone_number_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3427,10 +3404,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 39.24083399988376,
+      "value": 36.028958013048396,
       "attributes": {
         "check_name": "phone_number_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3438,10 +3416,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 41.36937500015847,
+      "value": 35.31629199278541,
       "attributes": {
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3449,10 +3428,24 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 16.773083999851224,
+      "value": 7.732208992820233,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 13.806374976411462,
       "attributes": {
         "check_name": "total_amt_employee_equals_gross_plus_cpf",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
         "engine": "sql"
       }
     },
@@ -3460,10 +3453,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.491666000281839,
+      "value": 10.815624991664663,
       "attributes": {
         "check_name": "demo_employee_payroll_rowCount",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3471,10 +3465,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 113.44250000001921,
+      "value": 13.593500014394522,
       "attributes": {
         "check_name": "employee_id_nullValues",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3482,10 +3477,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 18.28845900035958,
+      "value": 16.793625021819025,
       "attributes": {
         "check_name": "Month",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3493,10 +3489,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 25.567625000348926,
+      "value": 19.362582999747247,
       "attributes": {
         "check_name": "month_invalidValues",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3504,10 +3501,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 22.65091700019184,
+      "value": 17.756542016286403,
       "attributes": {
         "check_name": "Date With Timezone",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3515,10 +3513,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 39.13895899995623,
+      "value": 18.529499997384846,
       "attributes": {
         "check_name": "Date With Timezone",
         "schema_name": "demo_employee_payroll",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3526,10 +3525,12 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 18.201625000074273,
+      "value": 14.80870897648856,
       "attributes": {
         "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "severity": "error",
         "engine": "sql"
       }
     },
@@ -3537,10 +3538,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 25.09716600025058,
+      "value": 19.56983399577439,
       "attributes": {
         "check_name": "total_amt_missingValues",
         "schema_name": "demo_employee_payroll",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3548,10 +3550,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 9.277917000417801,
+      "value": 5.712582991691306,
       "attributes": {
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3559,10 +3562,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 11.30425000019386,
+      "value": 11.48400001693517,
       "attributes": {
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3570,10 +3574,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 42.61241699987295,
+      "value": 37.579291994916275,
       "attributes": {
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3581,10 +3586,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 56.086083000082,
+      "value": 36.07920798822306,
       "attributes": {
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3592,10 +3598,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 54.793625000002066,
+      "value": 35.48058299929835,
       "attributes": {
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3603,10 +3610,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 11.71195799997804,
+      "value": 4.947125009493902,
       "attributes": {
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_list",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3614,10 +3622,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 16.662124999584194,
+      "value": 10.08112498675473,
       "attributes": {
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_list",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3625,10 +3634,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 16.673625000294123,
+      "value": 8.903332985937595,
       "attributes": {
         "check_name": "employee_id_primary_key_check",
         "schema_name": "demo_employee_list",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3636,10 +3646,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.0271670001602615,
+      "value": 10.561667004367337,
       "attributes": {
         "check_name": "employee_last_name_column_exists_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3647,10 +3658,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 10.240041999622918,
+      "value": 12.828165985411033,
       "attributes": {
         "check_name": "employee_last_name_logical_type_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3658,10 +3670,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.291000000099302,
+      "value": 11.256666999543086,
       "attributes": {
         "check_name": "employee_last_name_required_check",
         "schema_name": "demo_employee_list",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3669,10 +3682,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 6.534208000175568,
+      "value": 10.464792023412883,
       "attributes": {
         "check_name": "employee_first_name_column_exists_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3680,10 +3694,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 10.047540999948978,
+      "value": 369.3941670062486,
       "attributes": {
         "check_name": "employee_first_name_logical_type_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3691,10 +3706,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 11.511666999922454,
+      "value": 5.034875008277595,
       "attributes": {
         "check_name": "employee_first_name_required_check",
         "schema_name": "demo_employee_list",
+        "dimension": "completeness",
         "engine": "sql"
       }
     },
@@ -3702,10 +3718,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.9070830002383445,
+      "value": 4.485666984692216,
       "attributes": {
         "check_name": "current_title_column_exists_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3713,10 +3730,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.985750000192638,
+      "value": 8.80037501337938,
       "attributes": {
         "check_name": "current_title_logical_type_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3724,10 +3742,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.846917000028043,
+      "value": 4.675249976571649,
       "attributes": {
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3735,10 +3754,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 9.710625000025175,
+      "value": 8.594625018304214,
       "attributes": {
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3746,10 +3766,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 57.484917000238056,
+      "value": 32.82345799379982,
       "attributes": {
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3757,10 +3778,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.65612500001589,
+      "value": 6.405291002010927,
       "attributes": {
         "check_name": "phone_number_unique_check",
         "schema_name": "demo_employee_list",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3768,10 +3790,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 32.31516699997883,
+      "value": 18.92737500020303,
       "attributes": {
         "check_name": "PersonName",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3779,10 +3802,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 27.854624999690714,
+      "value": 19.21945798676461,
       "attributes": {
         "check_name": "PersonName",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3790,10 +3814,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 20.41570800020054,
+      "value": 19.276500010164455,
       "attributes": {
         "check_name": "TelephoneNumber",
         "schema_name": "demo_employee_list",
+        "dimension": "conformity",
         "engine": "sql"
       }
     },
@@ -3801,10 +3826,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 83.74454100021467,
+      "value": 66.68799999170005,
       "attributes": {
         "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3812,10 +3838,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 25.790958000015962,
+      "value": 20.172082993667573,
       "attributes": {
         "check_name": "employee_id_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3823,10 +3850,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 31.210208000175044,
+      "value": 21.76050000707619,
       "attributes": {
         "check_name": "orphan_payroll_rows_merge_onto_payroll",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3834,10 +3862,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 23.312833000090905,
+      "value": 22.201124986167997,
       "attributes": {
         "check_name": "phone_number_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
         "engine": "sql"
       }
     },
@@ -3850,6 +3879,7 @@
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -3862,6 +3892,7 @@
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -3874,6 +3905,7 @@
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -3886,6 +3918,7 @@
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -3898,6 +3931,7 @@
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -3910,6 +3944,7 @@
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -3922,6 +3957,7 @@
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -3934,6 +3970,7 @@
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -3946,6 +3983,7 @@
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -3958,6 +3996,7 @@
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -3970,6 +4009,7 @@
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -3982,6 +4022,7 @@
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -3994,6 +4035,7 @@
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4006,30 +4048,7 @@
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
-        "status": "FAILED"
-      }
-    },
-    {
-      "name": "vowl.check.row.count",
-      "type": "gauge",
-      "unit": "{row}",
-      "value": 3,
-      "attributes": {
-        "check_name": "employee_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "status": "PASSED"
-      }
-    },
-    {
-      "name": "vowl.check.row.count",
-      "type": "gauge",
-      "unit": "{row}",
-      "value": 0,
-      "attributes": {
-        "check_name": "employee_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4042,6 +4061,7 @@
         "check_name": "payroll_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4054,6 +4074,7 @@
         "check_name": "payroll_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4066,6 +4087,7 @@
         "check_name": "payroll_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4078,6 +4100,7 @@
         "check_name": "payroll_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4090,6 +4113,7 @@
         "check_name": "payroll_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4102,6 +4126,7 @@
         "check_name": "payroll_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4114,6 +4139,7 @@
         "check_name": "payroll_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4126,6 +4152,7 @@
         "check_name": "payroll_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4138,6 +4165,7 @@
         "check_name": "payroll_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4150,6 +4178,7 @@
         "check_name": "payroll_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4162,6 +4191,7 @@
         "check_name": "payroll_id_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4174,6 +4204,7 @@
         "check_name": "payroll_id_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4186,6 +4217,7 @@
         "check_name": "payroll_id_unique_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4198,30 +4230,7 @@
         "check_name": "payroll_id_unique_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
-        "status": "FAILED"
-      }
-    },
-    {
-      "name": "vowl.check.row.count",
-      "type": "gauge",
-      "unit": "{row}",
-      "value": 3,
-      "attributes": {
-        "check_name": "payroll_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
-        "status": "PASSED"
-      }
-    },
-    {
-      "name": "vowl.check.row.count",
-      "type": "gauge",
-      "unit": "{row}",
-      "value": 0,
-      "attributes": {
-        "check_name": "payroll_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4234,6 +4243,7 @@
         "check_name": "month_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4246,6 +4256,7 @@
         "check_name": "month_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4258,6 +4269,7 @@
         "check_name": "month_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4270,6 +4282,7 @@
         "check_name": "month_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4282,6 +4295,7 @@
         "check_name": "month_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4294,6 +4308,7 @@
         "check_name": "month_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4306,6 +4321,7 @@
         "check_name": "month_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4318,6 +4334,7 @@
         "check_name": "month_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4330,6 +4347,7 @@
         "check_name": "payroll_start_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4342,6 +4360,7 @@
         "check_name": "payroll_start_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4354,6 +4373,7 @@
         "check_name": "payroll_start_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4366,6 +4386,7 @@
         "check_name": "payroll_start_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4378,6 +4399,7 @@
         "check_name": "payroll_end_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4390,6 +4412,7 @@
         "check_name": "payroll_end_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4402,6 +4425,7 @@
         "check_name": "payroll_end_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4414,6 +4438,7 @@
         "check_name": "payroll_end_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4426,6 +4451,7 @@
         "check_name": "total_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4438,6 +4464,7 @@
         "check_name": "total_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4450,6 +4477,7 @@
         "check_name": "total_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4462,6 +4490,7 @@
         "check_name": "total_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4474,6 +4503,7 @@
         "check_name": "employer_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4486,6 +4516,7 @@
         "check_name": "employer_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4498,6 +4529,7 @@
         "check_name": "employer_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4510,6 +4542,7 @@
         "check_name": "employer_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4522,6 +4555,7 @@
         "check_name": "total_amt_employee_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4534,6 +4568,7 @@
         "check_name": "total_amt_employee_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4546,6 +4581,7 @@
         "check_name": "total_amt_employee_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4558,6 +4594,7 @@
         "check_name": "total_amt_employee_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4570,6 +4607,7 @@
         "check_name": "total_amt_employee_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4582,6 +4620,7 @@
         "check_name": "total_amt_employee_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4594,6 +4633,7 @@
         "check_name": "employee_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4606,6 +4646,7 @@
         "check_name": "employee_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4618,6 +4659,7 @@
         "check_name": "employee_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4630,6 +4672,7 @@
         "check_name": "employee_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4642,6 +4685,7 @@
         "check_name": "employee_cpf_amt_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4654,6 +4698,7 @@
         "check_name": "employee_cpf_amt_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4666,6 +4711,7 @@
         "check_name": "employee_gross_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4678,6 +4724,7 @@
         "check_name": "employee_gross_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4690,6 +4737,7 @@
         "check_name": "employee_gross_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4702,6 +4750,7 @@
         "check_name": "employee_gross_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4714,6 +4763,7 @@
         "check_name": "employee_gross_amt_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4726,6 +4776,7 @@
         "check_name": "employee_gross_amt_required_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4738,6 +4789,7 @@
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4750,6 +4802,7 @@
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4762,6 +4815,7 @@
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4774,6 +4828,7 @@
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4786,6 +4841,7 @@
         "check_name": "phone_number_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4798,6 +4854,7 @@
         "check_name": "phone_number_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4810,6 +4867,7 @@
         "check_name": "phone_number_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4822,6 +4880,7 @@
         "check_name": "phone_number_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4834,6 +4893,7 @@
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4846,6 +4906,33 @@
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 3,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4858,6 +4945,8 @@
         "check_name": "total_amt_employee_equals_gross_plus_cpf",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4870,6 +4959,8 @@
         "check_name": "total_amt_employee_equals_gross_plus_cpf",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4882,6 +4973,7 @@
         "check_name": "employee_id_nullValues",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4894,6 +4986,7 @@
         "check_name": "employee_id_nullValues",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4906,6 +4999,7 @@
         "check_name": "Month",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4918,6 +5012,7 @@
         "check_name": "Month",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4930,6 +5025,7 @@
         "check_name": "month_invalidValues",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4942,6 +5038,7 @@
         "check_name": "month_invalidValues",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4954,6 +5051,7 @@
         "check_name": "Date With Timezone",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4966,6 +5064,7 @@
         "check_name": "Date With Timezone",
         "schema_name": "demo_employee_payroll",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -4978,6 +5077,8 @@
         "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -4990,6 +5091,8 @@
         "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5002,6 +5105,7 @@
         "check_name": "total_amt_missingValues",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5014,6 +5118,7 @@
         "check_name": "total_amt_missingValues",
         "schema_name": "demo_employee_payroll",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5026,6 +5131,7 @@
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5038,6 +5144,7 @@
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5050,6 +5157,7 @@
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5062,6 +5170,7 @@
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5074,6 +5183,7 @@
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5086,6 +5196,7 @@
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5098,6 +5209,7 @@
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5110,6 +5222,7 @@
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5122,6 +5235,7 @@
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5134,6 +5248,7 @@
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5146,6 +5261,7 @@
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_list",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5158,6 +5274,7 @@
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_list",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5170,6 +5287,7 @@
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_list",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5182,6 +5300,7 @@
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_list",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5194,6 +5313,7 @@
         "check_name": "employee_id_primary_key_check",
         "schema_name": "demo_employee_list",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5206,6 +5326,7 @@
         "check_name": "employee_id_primary_key_check",
         "schema_name": "demo_employee_list",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5218,6 +5339,7 @@
         "check_name": "employee_last_name_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5230,6 +5352,7 @@
         "check_name": "employee_last_name_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5242,6 +5365,7 @@
         "check_name": "employee_last_name_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5254,6 +5378,7 @@
         "check_name": "employee_last_name_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5266,6 +5391,7 @@
         "check_name": "employee_last_name_required_check",
         "schema_name": "demo_employee_list",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5278,6 +5404,7 @@
         "check_name": "employee_last_name_required_check",
         "schema_name": "demo_employee_list",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5290,6 +5417,7 @@
         "check_name": "employee_first_name_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5302,6 +5430,7 @@
         "check_name": "employee_first_name_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5314,6 +5443,7 @@
         "check_name": "employee_first_name_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5326,6 +5456,7 @@
         "check_name": "employee_first_name_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5338,6 +5469,7 @@
         "check_name": "employee_first_name_required_check",
         "schema_name": "demo_employee_list",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5350,6 +5482,7 @@
         "check_name": "employee_first_name_required_check",
         "schema_name": "demo_employee_list",
         "dimension": "completeness",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5362,6 +5495,7 @@
         "check_name": "current_title_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5374,6 +5508,7 @@
         "check_name": "current_title_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5386,6 +5521,7 @@
         "check_name": "current_title_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5398,6 +5534,7 @@
         "check_name": "current_title_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5410,6 +5547,7 @@
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5422,6 +5560,7 @@
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5434,6 +5573,7 @@
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5446,6 +5586,7 @@
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5458,6 +5599,7 @@
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5470,6 +5612,7 @@
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5482,6 +5625,7 @@
         "check_name": "phone_number_unique_check",
         "schema_name": "demo_employee_list",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5494,6 +5638,7 @@
         "check_name": "phone_number_unique_check",
         "schema_name": "demo_employee_list",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5506,6 +5651,7 @@
         "check_name": "PersonName",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5518,6 +5664,7 @@
         "check_name": "PersonName",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5530,6 +5677,7 @@
         "check_name": "TelephoneNumber",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5542,6 +5690,7 @@
         "check_name": "TelephoneNumber",
         "schema_name": "demo_employee_list",
         "dimension": "conformity",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5554,6 +5703,7 @@
         "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5566,6 +5716,7 @@
         "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5578,6 +5729,7 @@
         "check_name": "employee_id_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5590,6 +5742,7 @@
         "check_name": "employee_id_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5602,6 +5755,7 @@
         "check_name": "orphan_payroll_rows_merge_onto_payroll",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5614,6 +5768,7 @@
         "check_name": "orphan_payroll_rows_merge_onto_payroll",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5626,6 +5781,7 @@
         "check_name": "phone_number_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "PASSED"
       }
     },
@@ -5638,6 +5794,7 @@
         "check_name": "phone_number_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
+        "engine": "sql",
         "status": "FAILED"
       }
     },
@@ -5649,7 +5806,8 @@
       "attributes": {
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5660,7 +5818,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5671,7 +5830,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5682,7 +5842,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5693,7 +5854,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5704,7 +5866,8 @@
       "attributes": {
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -5715,18 +5878,8 @@
       "attributes": {
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
-      }
-    },
-    {
-      "name": "vowl.check.row.pass_rate",
-      "type": "gauge",
-      "unit": "1",
-      "value": 1.0,
-      "attributes": {
-        "check_name": "employee_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -5737,7 +5890,8 @@
       "attributes": {
         "check_name": "payroll_id_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5748,7 +5902,8 @@
       "attributes": {
         "check_name": "payroll_id_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5759,7 +5914,8 @@
       "attributes": {
         "check_name": "payroll_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5770,7 +5926,8 @@
       "attributes": {
         "check_name": "payroll_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5781,7 +5938,8 @@
       "attributes": {
         "check_name": "payroll_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5792,7 +5950,8 @@
       "attributes": {
         "check_name": "payroll_id_required_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -5803,18 +5962,8 @@
       "attributes": {
         "check_name": "payroll_id_unique_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
-      }
-    },
-    {
-      "name": "vowl.check.row.pass_rate",
-      "type": "gauge",
-      "unit": "1",
-      "value": 1.0,
-      "attributes": {
-        "check_name": "payroll_id_primary_key_check",
-        "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -5825,7 +5974,8 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5836,7 +5986,8 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5847,7 +5998,8 @@
       "attributes": {
         "check_name": "month_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5858,7 +6010,8 @@
       "attributes": {
         "check_name": "month_required_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -5869,7 +6022,8 @@
       "attributes": {
         "check_name": "payroll_start_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5880,7 +6034,8 @@
       "attributes": {
         "check_name": "payroll_start_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5891,7 +6046,8 @@
       "attributes": {
         "check_name": "payroll_end_dt_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5902,7 +6058,8 @@
       "attributes": {
         "check_name": "payroll_end_dt_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5913,7 +6070,8 @@
       "attributes": {
         "check_name": "total_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5924,7 +6082,8 @@
       "attributes": {
         "check_name": "total_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5935,7 +6094,8 @@
       "attributes": {
         "check_name": "employer_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5946,7 +6106,8 @@
       "attributes": {
         "check_name": "employer_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5957,7 +6118,8 @@
       "attributes": {
         "check_name": "total_amt_employee_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5968,7 +6130,8 @@
       "attributes": {
         "check_name": "total_amt_employee_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -5979,7 +6142,8 @@
       "attributes": {
         "check_name": "total_amt_employee_required_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -5990,7 +6154,8 @@
       "attributes": {
         "check_name": "employee_cpf_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6001,7 +6166,8 @@
       "attributes": {
         "check_name": "employee_cpf_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6012,7 +6178,8 @@
       "attributes": {
         "check_name": "employee_cpf_amt_required_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -6023,7 +6190,8 @@
       "attributes": {
         "check_name": "employee_gross_amt_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6034,7 +6202,8 @@
       "attributes": {
         "check_name": "employee_gross_amt_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6045,7 +6214,8 @@
       "attributes": {
         "check_name": "employee_gross_amt_required_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -6056,7 +6226,8 @@
       "attributes": {
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6067,7 +6238,8 @@
       "attributes": {
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6078,7 +6250,8 @@
       "attributes": {
         "check_name": "phone_number_logical_type_options_minLength_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6089,7 +6262,8 @@
       "attributes": {
         "check_name": "phone_number_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6100,7 +6274,20 @@
       "attributes": {
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "schema_name": "demo_employee_payroll",
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6111,7 +6298,9 @@
       "attributes": {
         "check_name": "total_amt_employee_equals_gross_plus_cpf",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql"
       }
     },
     {
@@ -6122,7 +6311,8 @@
       "attributes": {
         "check_name": "employee_id_nullValues",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -6133,7 +6323,8 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6144,7 +6335,8 @@
       "attributes": {
         "check_name": "month_invalidValues",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6155,7 +6347,8 @@
       "attributes": {
         "check_name": "Date With Timezone",
         "schema_name": "demo_employee_payroll",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6166,7 +6359,9 @@
       "attributes": {
         "check_name": "total_amt_equals_employer_cpf_plus_total_amt_employee",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "severity": "error",
+        "engine": "sql"
       }
     },
     {
@@ -6177,7 +6372,8 @@
       "attributes": {
         "check_name": "total_amt_missingValues",
         "schema_name": "demo_employee_payroll",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -6188,7 +6384,8 @@
       "attributes": {
         "check_name": "employee_id_column_exists_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6199,7 +6396,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6210,7 +6408,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6221,7 +6420,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_options_minLength_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6232,7 +6432,8 @@
       "attributes": {
         "check_name": "employee_id_logical_type_options_maxLength_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6243,7 +6444,8 @@
       "attributes": {
         "check_name": "employee_id_required_check",
         "schema_name": "demo_employee_list",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -6254,7 +6456,8 @@
       "attributes": {
         "check_name": "employee_id_unique_check",
         "schema_name": "demo_employee_list",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6265,7 +6468,8 @@
       "attributes": {
         "check_name": "employee_id_primary_key_check",
         "schema_name": "demo_employee_list",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6276,7 +6480,8 @@
       "attributes": {
         "check_name": "employee_last_name_column_exists_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6287,7 +6492,8 @@
       "attributes": {
         "check_name": "employee_last_name_logical_type_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6298,7 +6504,8 @@
       "attributes": {
         "check_name": "employee_last_name_required_check",
         "schema_name": "demo_employee_list",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -6309,7 +6516,8 @@
       "attributes": {
         "check_name": "employee_first_name_column_exists_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6320,7 +6528,8 @@
       "attributes": {
         "check_name": "employee_first_name_logical_type_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6331,7 +6540,8 @@
       "attributes": {
         "check_name": "employee_first_name_required_check",
         "schema_name": "demo_employee_list",
-        "dimension": "completeness"
+        "dimension": "completeness",
+        "engine": "sql"
       }
     },
     {
@@ -6342,7 +6552,8 @@
       "attributes": {
         "check_name": "current_title_column_exists_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6353,7 +6564,8 @@
       "attributes": {
         "check_name": "current_title_logical_type_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6364,7 +6576,8 @@
       "attributes": {
         "check_name": "phone_number_column_exists_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6375,7 +6588,8 @@
       "attributes": {
         "check_name": "phone_number_logical_type_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6386,7 +6600,8 @@
       "attributes": {
         "check_name": "phone_number_logical_type_options_pattern_check",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6397,7 +6612,8 @@
       "attributes": {
         "check_name": "phone_number_unique_check",
         "schema_name": "demo_employee_list",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6408,7 +6624,8 @@
       "attributes": {
         "check_name": "PersonName",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6419,7 +6636,8 @@
       "attributes": {
         "check_name": "TelephoneNumber",
         "schema_name": "demo_employee_list",
-        "dimension": "conformity"
+        "dimension": "conformity",
+        "engine": "sql"
       }
     },
     {
@@ -6430,7 +6648,8 @@
       "attributes": {
         "check_name": "demo_employee_payroll_employee_id_foreign_key_check",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6441,7 +6660,8 @@
       "attributes": {
         "check_name": "employee_id_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6452,7 +6672,8 @@
       "attributes": {
         "check_name": "orphan_payroll_rows_merge_onto_payroll",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6463,7 +6684,8 @@
       "attributes": {
         "check_name": "phone_number_exists_in_master_list",
         "schema_name": "demo_employee_payroll",
-        "dimension": "consistency"
+        "dimension": "consistency",
+        "engine": "sql"
       }
     },
     {
@@ -6536,7 +6758,7 @@
       "name": "vowl.dimension.check.count",
       "type": "counter",
       "unit": "{check}",
-      "value": 6,
+      "value": 5,
       "attributes": {
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
@@ -6688,7 +6910,7 @@
       "name": "vowl.dimension.check.pass_rate",
       "type": "gauge",
       "unit": "1",
-      "value": 0.6,
+      "value": 0.5555555555555556,
       "attributes": {
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency"
@@ -6780,7 +7002,7 @@
       "attributes": {
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
-        "vowl.row_quality.exact": false,
+        "vowl.row_quality.exact": true,
         "status": "PASSED"
       }
     },
@@ -6792,7 +7014,7 @@
       "attributes": {
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
-        "vowl.row_quality.exact": false,
+        "vowl.row_quality.exact": true,
         "status": "FAILED"
       }
     },
@@ -6898,7 +7120,7 @@
       "attributes": {
         "schema_name": "demo_employee_payroll",
         "dimension": "consistency",
-        "vowl.row_quality.exact": false
+        "vowl.row_quality.exact": true
       }
     },
     {
@@ -6938,7 +7160,7 @@
       "name": "vowl.schema.check.count",
       "type": "counter",
       "unit": "{check}",
-      "value": 48,
+      "value": 47,
       "attributes": {
         "schema_name": "demo_employee_payroll",
         "status": "PASSED"
@@ -6998,7 +7220,7 @@
       "name": "vowl.schema.check.pass_rate",
       "type": "gauge",
       "unit": "1",
-      "value": 0.8727272727272727,
+      "value": 0.8703703703703703,
       "attributes": {
         "schema_name": "demo_employee_payroll"
       }
@@ -7019,7 +7241,7 @@
       "value": 0,
       "attributes": {
         "schema_name": "demo_employee_payroll",
-        "vowl.row_quality.exact": false,
+        "vowl.row_quality.exact": true,
         "status": "PASSED"
       }
     },
@@ -7030,7 +7252,7 @@
       "value": 3,
       "attributes": {
         "schema_name": "demo_employee_payroll",
-        "vowl.row_quality.exact": false,
+        "vowl.row_quality.exact": true,
         "status": "FAILED"
       }
     },
@@ -7063,7 +7285,7 @@
       "value": 0.0,
       "attributes": {
         "schema_name": "demo_employee_payroll",
-        "vowl.row_quality.exact": false
+        "vowl.row_quality.exact": true
       }
     },
     {
@@ -7107,7 +7329,7 @@
       "name": "vowl.run.check.count",
       "type": "counter",
       "unit": "{check}",
-      "value": 70,
+      "value": 69,
       "attributes": {
         "status": "PASSED"
       }
@@ -7134,7 +7356,7 @@
       "name": "vowl.run.check.pass_rate",
       "type": "gauge",
       "unit": "1",
-      "value": 0.8974358974358975,
+      "value": 0.8961038961038961,
       "attributes": {}
     },
     {
@@ -7143,7 +7365,7 @@
       "unit": "{row}",
       "value": 0,
       "attributes": {
-        "vowl.row_quality.exact": false,
+        "vowl.row_quality.exact": true,
         "status": "PASSED"
       }
     },
@@ -7153,7 +7375,7 @@
       "unit": "{row}",
       "value": 5,
       "attributes": {
-        "vowl.row_quality.exact": false,
+        "vowl.row_quality.exact": true,
         "status": "FAILED"
       }
     },
@@ -7163,14 +7385,14 @@
       "unit": "1",
       "value": 0.0,
       "attributes": {
-        "vowl.row_quality.exact": false
+        "vowl.row_quality.exact": true
       }
     },
     {
       "name": "vowl.run.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4499.545,
+      "value": 4167.945,
       "attributes": {}
     }
   ]

@@ -1,7 +1,7 @@
-"""Generator for outputs_tour.ipynb.
+"""Generator for results_tour.ipynb.
 
 Kept in-repo so the notebook can be regenerated deterministically rather than
-hand-edited as raw JSON. Run: python examples/5_outputs/_build_notebook.py
+hand-edited as raw JSON. Run: python examples/5_results/_build_notebook.py
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def code(text: str) -> None:
 
 md(
     """
-# vowl · Outputs Tour
+# vowl · Results Tour
 
 A finished validation is only useful once you can *read* it. This notebook is a
 tour of every shape a `ValidationResult` can take once the checks have run,
@@ -46,12 +46,12 @@ What this notebook covers:
 2. **Annotated output**: your full table with a `check_info` column, flagged rows first
 3. **Residual rows**: failed rows for checks that cannot attach to a single table
 4. **Saving to disk**: the annotated tables and residues as CSV plus a JSON summary
-5. **OpenTelemetry**: the same run as metrics, traces, and logs
 
-Sections 2 to 4 need only a base `vowl` install. Section 5 is optional and lives
-behind the `[otel]` extra. The files this notebook writes land in the `outputs/`
-folder beside it, kept in the repo as reference so you can see the shapes without
-running anything.
+Everything here needs only a base `vowl` install. The run's DQ metrics, as
+`dq_metrics.json` and as OpenTelemetry, have their own notebook in
+[`6_dq_metrics/`](../6_dq_metrics/dq_metrics.ipynb). The files this notebook
+writes land in the `outputs/` folder beside it, kept in the repo as reference so
+you can see the shapes without running anything.
 """
 )
 
@@ -68,8 +68,8 @@ there is something flagged.
 
 code(
     """
-# Install vowl with the OpenTelemetry extra used in section 5 (skipped during execution)
-# %pip install 'vowl[otel]'
+# Install vowl (skipped during execution)
+# %pip install vowl
 """
 )
 
@@ -82,7 +82,7 @@ REPO_ROOT = Path.cwd()
 while not (REPO_ROOT / "tests" / "hdb_resale").exists() and REPO_ROOT != REPO_ROOT.parent:
     REPO_ROOT = REPO_ROOT.parent
 
-# Single-source: HDB Resale dataset (used for sections 2, 4, and 5)
+# Single-source: HDB Resale dataset (used for sections 2 and 4)
 HDB_DIR = REPO_ROOT / "tests" / "hdb_resale"
 HDB_CSV = HDB_DIR / "HDBResaleWithErrors.csv"
 HDB_CONTRACT = HDB_DIR / "hdb_resale_simple.yaml"  # Switch to "hdb_resale.yaml" for a more complex contract
@@ -317,7 +317,7 @@ md(
 <a id="4-saving"></a>
 ## 4. Saving Outputs to Disk
 
-`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout (every mode also writes `<prefix>_check_results.csv`, `<prefix>_summary.json`, and `<prefix>_dq_metrics.json`, the run's [DQ metrics](../../docs/dq-metrics/index.md)):
+`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout (every mode also writes `<prefix>_check_results.csv`, `<prefix>_summary.json`, and `<prefix>_dq_metrics.json`, the run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb)):
 
 | Mode | Files written |
 |------|----------------|
@@ -388,239 +388,6 @@ print(json.dumps(month_check["check_definition"], indent=2))
 """
 )
 
-# --- Section 5: OpenTelemetry (condensed from the former OTEL notebook) ---
-
-md(
-    """
-<a id="5-otel"></a>
-## 5. OpenTelemetry: Metrics, Traces, and Logs
-
-This last output sends the finished run to your monitoring tools, so data quality
-results show up on the same dashboards and alerts as everything else.
-`export_otel()` reuses the `result` from section 1, so nothing runs again. It is
-optional: install it with the `[otel]` extra. `import vowl` never loads
-OpenTelemetry on its own.
-
-In a real pipeline you point vowl at your OpenTelemetry Collector:
-
-```python
-run_id = result.export_otel(
-    endpoint="http://localhost:4317",  # or leave it out and set OTEL_EXPORTER_OTLP_ENDPOINT
-    service_name="hdb-resale-dq",
-    custom_attributes={"deployment.environment": "prod"},
-)
-```
-
-vowl sends all three signals (metrics, traces, and logs) by default. It waits until
-the data is sent before returning, and warns you if the collector could not be
-reached.
-
-That needs a running collector, so we skip it here. Instead we give `export_otel`
-some **in-memory providers**, so everything runs offline. The call still returns a
-run ID, and at the end of this section we write what it sent to files you can open.
-
-> **Demo only.** In-memory providers keep the data in memory and lose it when the
-> kernel stops. In a real pipeline you send to your own collector (the `endpoint`
-> call above), and it handles storage, dashboards, and alerts.
-"""
-)
-
-md(
-    """
-`export_otel` also accepts your own `metric_provider`, `tracer_provider`, and
-`logger_provider`. When you pass your own, vowl writes into them but leaves them
-open, so we can read the data back afterwards. Here we use the in-memory ones that
-come with the OpenTelemetry SDK.
-"""
-)
-
-code(
-    """
-from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter, SimpleLogRecordProcessor
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-
-
-def in_memory_providers(resource=None):
-    \"\"\"A meter, tracer, and logger that keep everything in memory for us to read.
-
-    Pass ``resource`` to stamp every signal with a specific OTel resource. Leave
-    it unset to get the SDK default, which is fine when we only look at the signals.
-    \"\"\"
-    metric_reader = InMemoryMetricReader()
-    meter = MeterProvider(metric_readers=[metric_reader], resource=resource)
-
-    span_exporter = InMemorySpanExporter()
-    tracer = TracerProvider(resource=resource)
-    tracer.add_span_processor(SimpleSpanProcessor(span_exporter))
-
-    log_exporter = InMemoryLogRecordExporter()
-    logger = LoggerProvider(resource=resource)
-    logger.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
-
-    return meter, metric_reader, tracer, span_exporter, logger, log_exporter
-
-
-meter, metric_reader, tracer, span_exporter, logger, log_exporter = in_memory_providers()
-
-run_id = result.export_otel(
-    service_name="hdb-resale-dq",
-    custom_attributes={"deployment.environment": "demo", "team": "housing-data"},
-    metric_provider=meter,
-    tracer_provider=tracer,
-    logger_provider=logger,
-)
-print(f"exported run ID: {run_id}")
-"""
-)
-
-md(
-    """
-### How the signals flow through your stack
-
-The three signals do different jobs. `export_otel` sends them to an OpenTelemetry
-Collector (or straight to your monitoring tool), which sends each one where it
-belongs:
-
-- **Metrics** are numbers over time, such as "how many rows failed". They feed
-  dashboards and alerts.
-- **Traces** are a timeline of one run, with one bar per check. They show what ran,
-  how long it took, and what failed.
-- **Logs** are one message per failed or broken check. They carry the SQL and the
-  links you need, so an alert can reach the right person with the details attached.
-
-```mermaid
-flowchart LR
-    vowl["vowl validation run"] -->|"export_otel(...)"| collector["OpenTelemetry Collector<br/>or your monitoring tool"]
-    collector --> metrics["Metrics:<br/>dashboards and alerts"]
-    collector --> traces["Traces:<br/>a timeline of each run"]
-    collector --> logs["Logs:<br/>one message per failed check"]
-```
-
-Metrics tell you how quality is trending. Logs and traces tell you what broke and
-where. The table below shows what each one carries.
-"""
-)
-
-md(
-    """
-### What each signal carries
-
-Same run, three signals, each with its own job. Metrics stay small so dashboards
-stay fast. Traces and logs carry the detail (the SQL, the full check definition, and
-optionally a few failed rows) for working out what broke.
-
-| Signal | What you get | Carries | Use it to |
-| ------ | ------------ | ------- | --------- |
-| **Metrics** | the [DQ metrics](../../docs/dq-metrics/index.md): check and row counts and pass rates at check, dimension, schema, and run level, plus durations (Histograms) | a few short labels only: `status`, `schema_name`, `dimension`, `severity`, `engine`, `check_name` | watch quality trends and alert on rates |
-| **Traces** | one span for the run, and one child span per check | those same labels, plus the SQL that ran and the full check definition (`check.definition.*`) | see exactly what one check did |
-| **Logs** | one record per failed or broken check | a level (`WARN` when the data failed a check, `ERROR` when the check itself could not run), the SQL, the `trace_id` and `span_id`, and a short message | send alerts and jump straight to the trace |
-
-You can see all three in the `metrics.json`, `traces.json`, and `logs.json` files
-written at the end of this section.
-"""
-)
-
-md(
-    """
-### Run details on every signal
-
-An **attribute** is a `key=value` label on a piece of OTel data. vowl adds the same
-set of attributes to every metric, span, and log record, so each one says which run
-and contract it came from. You never build them by hand. They are:
-
-- `service.name` and `vowl.version`
-- `vowl.contract.*`, read from your contract (id, version, status, and a few more)
-- anything you passed in `custom_attributes`, copied as-is
-- `vowl.run.id`, the same ID `export_otel(...)` returned above. It is
-  `result.run_id`, made when the run ran, and `dq_metrics.json` carries it too.
-  This one goes on spans and logs only. A new value every run would make every metric series new,
-  which many metric backends charge for.
-
-vowl adds these attributes however the providers were set up (your own, the global
-ones, or ones vowl builds). When vowl builds the providers itself, it also puts them
-on the OTel resource, for tools that show resource details separately.
-"""
-)
-
-md(
-    """
-### Linking an alert back to the rows
-
-By default vowl sends **how many** rows failed, not the rows themselves. There are
-three ways to get from an alert to the actual data:
-
-- **`row.count.failed`** is on every check that reports failing rows. No cell
-  values leave your process.
-- **A small sample** with `max_failed_rows_sample`. This is off by default. Set a
-  positive number and each failed check adds up to that many rows to its log and
-  span. These are real cell values, so think about personal data before you turn
-  it on.
-- **A link** to wherever you saved the rows yourself.
-
-The link goes in `custom_attributes`, which vowl copies onto every signal as-is. The
-suggested key is `vowl.artifact.uri`. Every run already has an ID in
-`result.run_id`, which the saved files and the telemetry share, so save the rows
-under it:
-
-```python
-output_dir = f"s3://my-bucket/dq-results/{result.run_id}/"
-
-result.save(output_dir)  # your failed rows, annotated tables, and dq_metrics.json go here
-result.export_otel(
-    custom_attributes={"vowl.artifact.uri": output_dir},  # alerts link straight to the files
-)
-```
-
-Use `vowl.link.<name>` (for example `vowl.link.runbook` or `vowl.link.ticket`) for
-any other link you want on the run. These are naming ideas, not special keys. They
-help a team spell the same link the same way. See the
-[Exporting to OpenTelemetry guide](../../docs/dq-metrics/otel-export.md) for the full list.
-
-### The signals as files you can eyeball
-
-This last cell writes one file per signal into the `outputs/` folder next to this
-notebook: `metrics.json`, `traces.json`, and `logs.json`, in the JSON form the
-OpenTelemetry SDK produces. Open them to see what a collector receives.
-
-Here we set `max_failed_rows_sample` to `2` (it is `0` by default), so each failed
-check's log and span carries a couple of the failed rows. Timestamps and the run,
-trace, and span IDs change on every run.
-"""
-)
-
-code(
-    """
-ometer, oreader, otracer, ospans, ologger, ologs = in_memory_providers()
-result.export_otel(
-    max_failed_rows_sample=2,
-    metric_provider=ometer,
-    tracer_provider=otracer,
-    logger_provider=ologger,
-)
-
-OUTPUTS = REPO_ROOT / "examples" / "5_outputs" / "outputs"
-OUTPUTS.mkdir(exist_ok=True)
-
-(OUTPUTS / "metrics.json").write_text(
-    json.dumps(json.loads(oreader.get_metrics_data().to_json()), indent=2) + "\\n"
-)
-(OUTPUTS / "traces.json").write_text(
-    json.dumps([json.loads(s.to_json()) for s in ospans.get_finished_spans()], indent=2) + "\\n"
-)
-(OUTPUTS / "logs.json").write_text(
-    json.dumps([json.loads(e.to_json()) for e in ologs.get_finished_logs()], indent=2) + "\\n"
-)
-
-for path in sorted(OUTPUTS.glob("*.json")):
-    print(f"{path.name:14} {path.stat().st_size:>7,} bytes")
-"""
-)
-
 md(
     """
 ---
@@ -634,13 +401,11 @@ md(
 - `result.save(output_mode="annotated")` writes those same shapes to disk as CSV,
   plus a `*_summary.json` that always carries every full check definition and a
   `*_dq_metrics.json` with the run's DQ metrics.
-- `result.export_otel(...)` sends the run to OpenTelemetry: small metrics for
-  dashboards, plus traces and logs that carry the SQL and full check definition
-  for working out what broke.
 - The `outputs/` folder holds a saved example of each output for reference.
 
-Every parameter, metric, and attribute is listed in the
-[Exporting to OpenTelemetry guide](../../docs/dq-metrics/otel-export.md).
+Next, [`6_dq_metrics/dq_metrics.ipynb`](../6_dq_metrics/dq_metrics.ipynb) reads the
+same run as DQ metrics: the `*_dq_metrics.json` file written above, and the
+OpenTelemetry export for your monitoring tools.
 """
 )
 
@@ -661,6 +426,6 @@ notebook = {
     "nbformat_minor": 5,
 }
 
-out = Path(__file__).with_name("outputs_tour.ipynb")
+out = Path(__file__).with_name("results_tour.ipynb")
 out.write_text(json.dumps(notebook, indent=1) + "\n")
 print(f"wrote {out} ({len(cells)} cells)")

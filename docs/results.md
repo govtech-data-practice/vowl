@@ -8,6 +8,10 @@ description: How to use the ValidationResult that validate_data returns. Check w
 result**. It holds the status of every check, the failed rows each check
 caught, and the row counts for each schema.
 
+!!! tip "Interactive Demo"
+
+    The [Results Tour notebook](https://github.com/govtech-data-practice/vowl/blob/main/examples/5_results/results_tour.ipynb) walks through annotated output, residues and saved files on a real dataset.
+
 ```python
 from vowl import validate_data
 

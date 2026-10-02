@@ -66,13 +66,13 @@ ships a local OpenTelemetry Collector with Prometheus, Tempo, Loki and a
 Grafana DQ dashboard. With Docker running, from the repo root:
 
 ```bash
-cd examples/6_otel_stack
+cd examples/6_dq_metrics/otel_stack
 make otel-up
 make otel-add-vowl-runs
 ```
 
 Then open <http://localhost:3000/d/vowl-dq>. See
-[`examples/6_otel_stack/`](https://github.com/govtech-data-practice/vowl/tree/main/examples/6_otel_stack)
+[`examples/6_dq_metrics/otel_stack/`](https://github.com/govtech-data-practice/vowl/tree/main/examples/6_dq_metrics/otel_stack)
 for details.
 
 ## Where the data goes

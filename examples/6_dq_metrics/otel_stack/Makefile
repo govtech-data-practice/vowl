@@ -1,5 +1,5 @@
 # Local OpenTelemetry stack for checking vowl's export_otel end to end.
-# Run from this folder (`make otel-up`) or from the repo root (`make -C examples/6_otel_stack otel-up`).
+# Run from this folder (`make otel-up`) or from the repo root (`make -C examples/6_dq_metrics/otel_stack otel-up`).
 # Requires Docker. See README.md.
 
 .PHONY: help otel-up otel-add-vowl-runs otel-logs otel-down otel-clean otel-clean-all otel-dashboard otel-query-archive

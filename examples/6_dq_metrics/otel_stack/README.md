@@ -10,6 +10,8 @@ results in Grafana. Use it to answer two questions:
   run carries its contract and domain?**
 
 Nothing here is needed to use vowl. It is a test bench for the OTel exporter.
+To see what `export_otel` sends without running a backend, start with the
+[DQ Metrics notebook](../dq_metrics.ipynb) one folder up.
 
 ![vowl DQ metrics dashboard](images/dashboard-overview.png)
 
@@ -91,7 +93,7 @@ The second sends 5 rounds about 2 seconds apart, each validating all four
 contracts. Then open the dashboard at
 <http://localhost:3000/d/vowl-dq>. There is no login.
 
-From the repo root, use `make -C examples/6_otel_stack otel-up` and so on. Run
+From the repo root, use `make -C examples/6_dq_metrics/otel_stack otel-up` and so on. Run
 `make help` to list every target.
 
 | Target                    | What it does                                                    |

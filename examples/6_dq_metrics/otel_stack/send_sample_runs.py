@@ -4,9 +4,9 @@ Each round validates every contract in CATALOG against a random sample of its
 data, so pass rates move between rounds and the dashboard has something to
 draw. Run from the repo root (or use `make otel-add-vowl-runs` in this folder):
 
-    uv run python examples/6_otel_stack/send_sample_runs.py --runs 5
-    uv run python examples/6_otel_stack/send_sample_runs.py --contracts payroll,retail
-    uv run python examples/6_otel_stack/send_sample_runs.py --protocol http/protobuf
+    uv run python examples/6_dq_metrics/otel_stack/send_sample_runs.py --runs 5
+    uv run python examples/6_dq_metrics/otel_stack/send_sample_runs.py --contracts payroll,retail
+    uv run python examples/6_dq_metrics/otel_stack/send_sample_runs.py --protocol http/protobuf
 """
 
 import argparse
@@ -21,7 +21,7 @@ import pandas as pd
 from vowl import validate_data
 from vowl.adapters import IbisAdapter
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 TESTS = REPO_ROOT / "tests"
 REL = TESTS / "relationships"
 
