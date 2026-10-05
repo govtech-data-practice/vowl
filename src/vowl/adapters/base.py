@@ -224,8 +224,8 @@ class BaseAdapter(ABC):  # noqa: B024
         """Run a read-only query and return its rows as a PyArrow table.
 
         The row-quality component uses this to count failed rows inside the
-        data source. Adapters that do not implement it get row counts from
-        each check's fetched failed rows instead.
+        data source. Adapters that do not implement it get row counts by
+        matching each check's failed rows onto the exported table instead.
 
         Raises:
             NotImplementedError: If the adapter does not support it.

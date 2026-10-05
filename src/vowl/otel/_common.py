@@ -17,7 +17,7 @@ from opentelemetry._logs import SeverityNumber
 from ..validation.dq_metrics import (
     check_attributes,
     check_dimension,
-    check_row_numbers,
+    check_row_counts,
     check_severity,
     clean_attrs,
     coerce_attr,
@@ -121,18 +121,20 @@ def check_query(check_result: Any) -> str | None:
 
 
 def check_row_attributes(result: ValidationResult) -> dict[int, dict[str, int | float]]:
-    """Each check's row numbers as span/log attributes, keyed by ``id(check)``.
+    """Each check's row counts as span/log attributes, keyed by ``id(check)``.
 
     The same numbers as ``vowl.check.row.count`` and ``vowl.check.row.pass_rate``,
     named without the level: ``row.count.passed``, ``row.count.failed`` and
-    ``row.pass_rate``. A check the metrics give no row numbers (an aggregate
-    check, or one that errored) gets none here either, rather than a ``0`` that
-    would read as every row passing.
+    ``row.pass_rate``. Like the metrics they are the check's scalar count
+    and are not clamped, so they can be negative. A check the metrics give no
+    row counts (one the row-quality statistics do not count, such as an
+    aggregate, a lower bound on a count, or one that errored) gets none here
+    either, rather than a ``0`` that would read as every row passing.
     """
     attrs: dict[int, dict[str, int | float]] = {}
-    for key, (total, failed) in check_row_numbers(result).items():
+    for key, (total, failed) in check_row_counts(result).items():
         attrs[key] = {
-            "row.count.passed": max(total - failed, 0),
+            "row.count.passed": total - failed,
             "row.count.failed": failed,
             "row.pass_rate": (total - failed) / total,
         }

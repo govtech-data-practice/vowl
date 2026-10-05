@@ -121,10 +121,10 @@ vowl can't rely on ATTACH because it has no connection details, most backends do
 
 <a id="1-cross-table-checks-mergeable-when-the-failed-rows-match-the-home-schema"></a>
 
-`get_annotated_output()` annotates your table with a check's failed rows only when those rows hold the table's columns, or its primary key. Checks that return one number (an average, a `rowCount`), checks whose failed rows are good rows, and checks that ended in `ERROR` annotate nothing and appear only in the summary. Checks whose failed rows have other columns become residues. See:
+`get_annotated_output()` annotates your table with a check's failed rows only when those rows hold the table's columns, or its primary key. Checks that return one number (an average, a sum, a minimum or a maximum), checks whose failed rows are good rows, and checks that ended in `ERROR` annotate nothing and appear only in the summary. Checks whose failed rows have other columns become residues. See:
 
-- [Where each failed check ends up](design-considerations/failed-rows/levels.md#where-each-failed-check-ends-up)
-- [Which Checks Contribute Failed Rows](design-considerations/failed-rows/which-checks.md)
+- [Where each failed check ends up](design-considerations/failed-rows/annotating-the-source-table.md#where-each-failed-check-ends-up)
+- [Failed Row Results](design-considerations/failed-rows/failed-row-results.md)
 - [Annotating the failed rows of a cross-table check](design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check)
 
 ---

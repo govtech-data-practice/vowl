@@ -86,9 +86,7 @@ schema:
     quality:
       - type: library
         metric: rowCount
-        mustBeBetween:
-          - 0
-          - 30000000
+        mustBeGreaterThan: 0
         dimension: completeness
 ```
 

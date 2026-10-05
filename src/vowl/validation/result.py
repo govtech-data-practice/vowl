@@ -250,6 +250,7 @@ class ValidationResult:
             total_rows=row_quality.total_rows if row_quality is not None else None,
             passed_row_percentage=pass_rate * 100 if pass_rate is not None else None,
             exact=row_quality.exact if row_quality is not None else False,
+            checks_not_attributed=row_quality.checks_not_attributed if row_quality is not None else 0,
         )
         multi_status = self._summarize_check_statuses(multi_table_checks)
         return SchemaValidationBreakdown(
@@ -536,8 +537,10 @@ class ValidationResult:
 
         ``None`` is returned (and cached) when there is no adapter for the
         schema or the adapter cannot export it.  Annotated output then skips
-        the schema and keeps its residues. The row-quality numbers count its
-        checks without the table.
+        the schema and keeps its residues. In the row-quality numbers its
+        ``client_lookup`` checks are then not attributed, with the reason
+        ``the table could not be exported``. Its plain row filters are still
+        counted in the data source.
 
         The row-quality numbers and annotated output share this cache, so a
         table is exported at most once per result.
@@ -621,22 +624,14 @@ class ValidationResult:
         declared primary key instead (see :meth:`RowQuality.merge_key`), and
         rows that carry every key column merge. The rule is
         :func:`~vowl.validation.row_quality.mergeable.rows_mergeable`, the same
-        one the row numbers use.
+        one the row counts use.
         """
         return rows_mergeable(rows.columns, full_table_columns, key_columns)
 
-    def _failed_rows_truncated(self, row_count: int | None, rows: nw.DataFrame) -> bool:
-        """True when a check's fetched failed rows were capped by ``max_failed_rows``.
-
-        *row_count* is the true count from the aggregate SQL and is not subject
-        to the ``LIMIT``. Only the fetched frame is. So a true count exceeding
-        the fetched length means the sample was truncated.
-        """
-        cap = self._config.max_failed_rows
-        return cap >= 0 and row_count is not None and row_count > len(rows)
-
     @staticmethod
-    def _check_info_item_json(cr: CheckResult, preset: CheckInfoPreset, *, tolerated: bool = False) -> str:
+    def _check_info_item_json(
+        cr: CheckResult, preset: CheckInfoPreset, *, tolerated: bool = False, truncated: bool = False
+    ) -> str:
         """JSON-encode one failing check's per-row item for the given preset.
 
         Every preset returns a JSON **object** (a single array element), so the
@@ -649,12 +644,14 @@ class ValidationResult:
         - ``"full"``    -> full ``check_definition`` + ``check_name`` + ``target``
 
         Under ``row_issue_scope="all_violations"``, the item of a check that
-        passed within its tolerance also carries ``"tolerated": true``.
+        passed within its tolerance also carries ``"tolerated": true``. The
+        item of a check whose failed rows ``max_failed_rows`` cut short carries
+        ``"truncated": true``.
         """
+        flags = {"tolerated": tolerated, "truncated": truncated}
         if preset == "names":
             obj: dict[str, Any] = {"check_name": cr.check_name}
-            if tolerated:
-                obj["tolerated"] = True
+            obj.update((name, True) for name, on in flags.items() if on)
             return json.dumps(obj)
         check_definition = cr.metadata.get("check_definition") or {}
         target = get_field_label(cr)
@@ -669,8 +666,7 @@ class ValidationResult:
             obj = dict(check_definition)
             obj["check_name"] = cr.check_name
             obj["target"] = target
-        if tolerated:
-            obj["tolerated"] = True
+        obj.update((name, True) for name, on in flags.items() if on)
         return json.dumps(obj, default=str)
 
     @staticmethod
@@ -686,6 +682,7 @@ class ValidationResult:
         tables_str: str,
         *,
         tolerated: bool = False,
+        truncated: bool = False,
     ) -> nw.DataFrame:
         """Build a per-check residue: deduped failed rows + ``check_info`` + ``tables_in_query``.
 
@@ -703,7 +700,9 @@ class ValidationResult:
             # types and treats NaN and -0.0 differently from the annotated merge.
             first = first_occurrence_indices(row_keys(arrow_table, arrow_table.column_names))
             arrow_table = arrow_table.take(pa.array(list(first.values()), type=pa.int64()))
-        check_info = self._join_check_info_items([self._check_info_item_json(cr, preset, tolerated=tolerated)])
+        check_info = self._join_check_info_items(
+            [self._check_info_item_json(cr, preset, tolerated=tolerated, truncated=truncated)]
+        )
         n = arrow_table.num_rows
         arrow_table = arrow_table.append_column(
             "check_info", pa.array([check_info] * n, type=pa.string())
@@ -889,7 +888,7 @@ class ValidationResult:
           :meth:`_is_mergeable_for_full_table`).  Keyed by
           ``"<schema>::<check_name>"``.
           Empty dict when there are none.  A check with *no* rows to flag -- a
-          scalar aggregation (``AVG``/``SUM``/``MIN``/``MAX``, ``rowCount``),
+          scalar aggregation (``AVG``/``SUM``/``MIN``/``MAX``),
           an errored check, or an inverted check whose matched rows are the
           good ones (``mustBeGreaterThan`` and so on) -- produces **no
           residue**. Its failure is recorded only in the summary, not in any
@@ -918,11 +917,10 @@ class ValidationResult:
                 (``"names"`` / ``"summary"`` / ``"full"``).  When ``None`` the
                 config's ``annotated_check_info`` is used.
 
-        Raises:
-            ValueError: When a mergeable check's failed rows were truncated by
-                ``max_failed_rows`` -- the un-fetched failures would be
-                annotated as passing.  Set ``max_failed_rows=-1`` or use
-                ``output_mode="failed_rows"``.
+          When ``max_failed_rows`` cut a check's failed rows short, the rows
+          beyond the cap may not be flagged, so they look like passing rows. A
+          ``UserWarning`` says so, and the check's ``check_info`` items carry
+          ``"truncated": true``. Set ``max_failed_rows=-1`` to flag every row.
         """
         preset = check_info if check_info is not None else self._config.annotated_check_info
         checks_set = set(checks) if checks else None
@@ -955,7 +953,7 @@ class ValidationResult:
             if full_table is None:
                 continue  # no adapter/export -- leave residues intact
             full_table_cols = set(full_table.columns)
-            # The primary key the row numbers matched on, so both merge the same checks.
+            # The primary key the row counts attributed on, so both merge the same checks.
             key_columns = row_quality.merge_key(schema_name)
             if key_columns and not set(key_columns) <= full_table_cols:
                 key_columns = None
@@ -967,20 +965,19 @@ class ValidationResult:
                 and self._is_mergeable_for_full_table(row_quality.rows_for(selection), full_table_cols, key_columns)
             ]
 
-            # Guard: a mergeable failure whose rows were capped would annotate
-            # the un-fetched failures as passing. Raise rather than emit a
-            # quietly-wrong table. No-op when max_failed_rows == -1 (default).
-            # Runs before the empty-rows filter below so that max_failed_rows=0,
-            # which fetches no rows at all, is caught too.
+            # A capped check leaves its un-fetched failures looking like
+            # passing rows. Warn, and mark its check_info items, so the table
+            # is not taken as complete.
+            truncated_ids = {id(selection.result) for selection in mergeable if row_quality.rows_truncated(selection)}
             for selection in mergeable:
-                rows = row_quality.rows_for(selection)
-                if self._failed_rows_truncated(selection.row_count, rows):
-                    raise ValueError(
-                        f"Cannot produce annotated output for schema {schema_name!r}: check "
-                        f"{selection.result.check_name!r} returned {selection.row_count} failed rows but only "
-                        f"{len(rows)} were fetched (max_failed_rows={self._config.max_failed_rows}). "
-                        f"Annotated rows beyond the cap would be silently shown as passing. "
-                        f"Set max_failed_rows=-1 or use output_mode='failed_rows'."
+                if id(selection.result) in truncated_ids:
+                    warnings.warn(
+                        f"Annotated output for schema {schema_name!r} is incomplete: max_failed_rows="
+                        f"{self._config.max_failed_rows} cut short the failed rows of check "
+                        f"{selection.result.check_name!r}, so its rows beyond the cap may not be flagged. "
+                        f'Its check_info items carry "truncated": true. Set max_failed_rows=-1 to flag every row.',
+                        UserWarning,
+                        stacklevel=2,
                     )
 
             eligible = [selection for selection in mergeable if len(row_quality.rows_for(selection)) > 0]
@@ -997,7 +994,12 @@ class ValidationResult:
                 rows = self._strip_metadata_cols(row_quality.rows_for(selection))
                 if key_columns:
                     rows = rows.select(key_columns)
-                item = self._check_info_item_json(selection.result, preset, tolerated=selection.tolerated)
+                item = self._check_info_item_json(
+                    selection.result,
+                    preset,
+                    tolerated=selection.tolerated,
+                    truncated=id(selection.result) in truncated_ids,
+                )
                 # Cast to the table's types first, so checks that return a
                 # column with different types can be concatenated.
                 tagged = align_to_schema(rows.to_arrow(), full_schema, rows.columns)
@@ -1029,9 +1031,17 @@ class ValidationResult:
         # Each entry is row-deduped within its own check and carries the same
         # check_info column as the annotated tables (a single-element JSON
         # array) plus tables_in_query.
-        candidates = [(selection.result, selection.tolerated, row_quality.rows_for(selection)) for selection in flagged]
+        candidates = [
+            (
+                selection.result,
+                selection.tolerated,
+                row_quality.rows_truncated(selection),
+                row_quality.rows_for(selection),
+            )
+            for selection in flagged
+        ]
         candidates += [
-            (cr, False, cr.failed_rows)
+            (cr, False, cr.failed_rows_truncated, cr.failed_rows)
             for cr in self.check_results
             if cr.status == "FAILED"
             and id(cr) not in flagged_ids
@@ -1039,7 +1049,7 @@ class ValidationResult:
             and (not checks_set or cr.check_name in checks_set)
         ]
         residues: dict[str, nw.DataFrame] = {}
-        for cr, tolerated, rows in candidates:
+        for cr, tolerated, truncated, rows in candidates:
             if self._output_key(cr) in merged_check_keys:
                 continue  # already annotated onto a full table -> not a residue
             if len(rows) == 0:
@@ -1048,7 +1058,7 @@ class ValidationResult:
             tables = get_tables_in_query(cr)
             tables_str = ", ".join(sorted(tables)) if tables else ""
             residues[self._output_key(cr)] = self._build_residue_with_check_info(
-                cr, rows, preset, tables_str, tolerated=tolerated
+                cr, rows, preset, tables_str, tolerated=tolerated, truncated=truncated
             )
 
         return {"annotated": annotated, "residues": residues}
@@ -1106,24 +1116,32 @@ class ValidationResult:
 
         Every surface reads the same cached numbers: ``print_summary``, the
         OTEL gauges and annotated output agree with this frame. See
-        docs/design-considerations/failed-rows/levels.md.
+        docs/design-considerations/failed-rows/how-rows-are-counted.md.
 
         Args:
             by: ``"schema"`` for one row per schema, ``"dimension"`` for one
                 row per (schema, dimension), or ``"check"`` for one row per
                 check, with the route its rows took and why it was or was not
-                counted.
+                counted or attributed.
 
         Columns for ``"schema"`` and ``"dimension"``: ``schema_name``,
         ``dimension`` (``"dimension"`` only), ``total_rows``, ``failed_rows``,
         ``tolerated_rows``, ``passed_rows``, ``pass_rate`` (0 to 1),
-        ``exact``, ``checks_counted`` and ``checks_not_counted``. A missing
-        value (null) means the number is unavailable, for example a dimension
-        with no counted checks.
+        ``exact``, ``checks_counted``, ``checks_not_counted`` and
+        ``checks_not_attributed``. ``failed_rows`` is the rows of the table
+        that failed, from the attributed rows of the counted checks. A counted
+        check that is not attributed adds nothing and is counted in
+        ``checks_not_attributed``. A missing value (null) means the number is
+        unavailable, for example a dimension with no attributed checks.
 
         Columns for ``"check"``: ``schema_name``, ``check_name``,
         ``dimension``, ``status``, ``counted``, ``tolerated``, ``route``,
-        ``reason``, ``failed_rows`` and ``exact``.
+        ``reason``, ``scalar_count``, ``attributed_rows``, ``attributed`` and
+        ``exact``. ``scalar_count`` is the count the check's own query
+        returned. ``attributed_rows`` is the rows of the table the check
+        caught, which differs when the query does not return each such row
+        once, for example under ``DISTINCT``. It is null when the check is not
+        attributed.
 
         Raises:
             ValueError: If *by* is not one of the values above.
@@ -1142,6 +1160,9 @@ class ValidationResult:
         rows = [asdict(item) for item in items]
         arrow_types = {
             "total_rows": pa.int64(),
+            "scalar_count": pa.int64(),
+            "attributed_rows": pa.int64(),
+            "attributed": pa.bool_(),
             "failed_rows": pa.int64(),
             "tolerated_rows": pa.int64(),
             "passed_rows": pa.int64(),
@@ -1151,6 +1172,7 @@ class ValidationResult:
             "tolerated": pa.bool_(),
             "checks_counted": pa.int64(),
             "checks_not_counted": pa.int64(),
+            "checks_not_attributed": pa.int64(),
         }
         table = pa.table(
             {name: pa.array([row[name] for row in rows], type=arrow_types.get(name, pa.string())) for name in names}
@@ -1249,9 +1271,9 @@ class ValidationResult:
         *run_id* is passed. See docs/dq-metrics/otel-export.md.
 
         The schema and dimension row gauges use the same row counts as
-        :meth:`get_row_quality_df`. If they were not counted yet, they are
-        counted now, per ``ValidationConfig.row_count_accuracy``. Under the
-        default ``"accurate"`` that can export a table. The
+        :meth:`get_row_quality_df`. If they were not computed yet, they are
+        computed now. That can export a table, unless
+        ``ValidationConfig.disable_table_attributed_counts`` is set, which runs no query. The
         ``vowl.row_quality.exact`` attribute says whether each number is exact.
 
         Args:

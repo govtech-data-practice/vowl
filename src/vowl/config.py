@@ -40,20 +40,6 @@ RowIssueScope = Literal["failed_checks", "all_violations"]
 
 _ROW_ISSUE_SCOPES = ("failed_checks", "all_violations")
 
-#: How the row-quality numbers count checks that are not plain row filters:
-#:
-#: - ``"accurate"`` -- match their failed rows onto the exported table, so
-#:                     every copy of a failing row counts once (default).
-#:                     Exports a table when one of its checks needs it.
-#: - ``"balanced"`` -- match them in the data source where vowl can, and
-#:                     onto the exported table only where it cannot.
-#: - ``"fast"``     -- never export a table. Checks that cannot be matched in
-#:                     the data source are counted from their own failed rows
-#:                     and marked approximate.
-RowCountAccuracy = Literal["accurate", "balanced", "fast"]
-
-_ROW_COUNT_ACCURACIES = ("accurate", "balanced", "fast")
-
 
 @dataclass
 class ValidationConfig:
@@ -95,11 +81,14 @@ class ValidationConfig:
             numbers (``print_summary``, ``get_row_quality_df``, OTEL and the
             annotated output).  One of ``"failed_checks"`` (default) or
             ``"all_violations"``.  See :data:`RowIssueScope`.
-        row_count_accuracy: How exactly the row-quality numbers count checks
-            that are not plain row filters.  One of ``"accurate"`` (default),
-            ``"balanced"`` or ``"fast"``.  ``"accurate"`` and ``"balanced"``
-            can export a whole table to match failed rows onto it.  See
-            :data:`RowCountAccuracy`.
+        disable_table_attributed_counts: When ``False`` (default), the
+            row-quality numbers attribute each failed row to its table row, so
+            a row caught by several checks counts once.  This can export a
+            whole table for checks that are not plain row filters.  Set to
+            ``True`` to skip that work and count every check from its
+            scalar count on the ``server_scalar`` route.  Every counted check
+            is then not attributed.  The sums are then approximate once two checks of a
+            table have failing rows.
     """
 
     max_rows_for_statistics: int = -1
@@ -109,16 +98,12 @@ class ValidationConfig:
     output_mode: OutputMode = "annotated"
     annotated_check_info: CheckInfoPreset = "names"
     row_issue_scope: RowIssueScope = "failed_checks"
-    row_count_accuracy: RowCountAccuracy = "accurate"
+    disable_table_attributed_counts: bool = False
 
     def __post_init__(self) -> None:
         if self.row_issue_scope not in _ROW_ISSUE_SCOPES:
             raise ValueError(
                 f"row_issue_scope must be one of {', '.join(_ROW_ISSUE_SCOPES)}, got {self.row_issue_scope!r}"
-            )
-        if self.row_count_accuracy not in _ROW_COUNT_ACCURACIES:
-            raise ValueError(
-                f"row_count_accuracy must be one of {', '.join(_ROW_COUNT_ACCURACIES)}, got {self.row_count_accuracy!r}"
             )
 
     def to_dict(self) -> dict:

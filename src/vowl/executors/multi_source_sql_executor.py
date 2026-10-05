@@ -16,7 +16,7 @@ import sqlglot
 from sqlglot import exp
 
 from vowl.contracts.sql_transforms import matching_filter_conditions
-from vowl.executors.base import CheckResult, RowSource, SQLExecutor
+from vowl.executors.base import CappedFetch, CheckResult, RowSource, SQLExecutor
 from vowl.executors.security import SQLSecurityError, sanitize_identifier
 
 if TYPE_CHECKING:
@@ -135,6 +135,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
         Args:
             table_name: Table referenced in the check's query.
             owner_schema: Schema the check sits under.
+            max_rows: The row limit. Defaults to the adapter's ``max_failed_rows``.
 
         Returns:
             The adapter, or None if neither lookup finds one.
@@ -267,11 +268,15 @@ class MultiSourceSQLExecutor(SQLExecutor):
             self._local_duckdb_con = ibis.duckdb.connect()
         return self._local_duckdb_con
 
+    def _max_failed_rows(self) -> int:
+        return getattr(self._multi_adapter, "max_failed_rows", 1000)
+
     def _fetch_failed_rows(
         self,
         select_query: str | None,
         table_names: set[str],
         owner_schema: str | None = None,
+        max_rows: int | None = None,
     ) -> nw.DataFrame | None:
         """
         Fetch the actual rows that failed a check.
@@ -282,6 +287,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 transformation was not possible.
             table_names: Tables referenced in the query
             owner_schema: Schema the check sits under.
+            max_rows: The row limit. Defaults to the adapter's ``max_failed_rows``.
 
         Returns:
             DataFrame of failed rows, or None if query is None or execution fails.
@@ -289,7 +295,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
         if not select_query:
             return None
 
-        max_rows = getattr(self._multi_adapter, "max_failed_rows", 1000)
+        if max_rows is None:
+            max_rows = self._max_failed_rows()
         select_query = self._with_row_cap(select_query, max_rows, "duckdb")
 
         try:
@@ -405,6 +412,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             query: The SQL query to execute.
             table_names: Tables referenced in the query.
             owner_schema: Schema the check sits under.
+            max_rows: The row limit. Defaults to the adapter's ``max_failed_rows``.
 
         Returns:
             Query result (first row).
@@ -493,8 +501,10 @@ class MultiSourceSQLExecutor(SQLExecutor):
                 use_try_cast=use_try_cast,
             )
 
-            def fetcher(q=failed_query, t=table_names, o=owner_schema):
-                return self._fetch_failed_rows(q, t, o)
+            fetcher = CappedFetch(
+                lambda limit, q=failed_query, t=table_names, o=owner_schema: self._fetch_failed_rows(q, t, o, limit),
+                self._max_failed_rows,
+            )
 
             result = check_ref.build_result(
                 actual_value=actual_value,
@@ -506,7 +516,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
             )
             if result.status != "ERROR":
                 # The tables live in a local copy, so the row-quality
-                # component can only use this check's fetched rows.
+                # component matches this check's rows onto the exported table.
                 result.row_source = RowSource(
                     check_ref=check_ref,
                     dialect=output_dialect,
@@ -699,9 +709,8 @@ class MultiSourceSQLExecutor(SQLExecutor):
                         None,
                         use_try_cast=use_try_cast,
                     )
-                    max_rows = getattr(self._multi_adapter, "max_failed_rows", 1000)
 
-                    def fetcher(q=failed_query, con=local_con, max_r=max_rows):
+                    def run(max_r, q=failed_query, con=local_con):
                         if not q:
                             return None
                         q = self._with_row_cap(q, max_r, "duckdb")
@@ -717,6 +726,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                         except Exception:
                             return None
 
+                    fetcher = CappedFetch(run, self._max_failed_rows)
                     built = ref.build_result(
                         actual_value=actual_value,
                         execution_time_ms=(time.perf_counter() - start_time) * 1000,

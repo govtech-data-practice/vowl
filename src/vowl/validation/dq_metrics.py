@@ -32,6 +32,7 @@ from .row_quality.selection import resolve_check_dimension
 if TYPE_CHECKING:
     from ..executors.base import CheckResult
     from .result import ValidationResult
+    from .row_quality.rollup import DimensionRowQuality, SchemaRowQuality
 
 #: Version of the ``dq_metrics.json`` layout. Bump it on any breaking change.
 SCHEMA_VERSION = 1
@@ -217,11 +218,19 @@ def check_level_attributes(check_result: Any) -> dict[str, AttrValue]:
     return {key: value for key, value in check_attributes(check_result).items() if key != "status"}
 
 
-def check_row_numbers(result: ValidationResult) -> dict[int, tuple[int, int]]:
-    """``(total_rows, failed_rows)`` of each check that gets row numbers, keyed by ``id(check)``.
+def check_row_counts(result: ValidationResult) -> dict[int, tuple[int, int]]:
+    """``(total_rows, failed_rows)`` of each check that gets row counts, keyed by ``id(check)``.
 
-    Only checks that report failing rows get them. An aggregate check (or one
-    that errored) would always show every row as passing, so it is left out.
+    ``failed_rows`` is the check's scalar count, not the attributed rows the
+    higher levels use. A check that passed within its tolerance reports the rows
+    it caught. The count can exceed the table's rows (a join that fans out), so
+    ``total_rows - failed_rows`` can be negative.
+
+    Only the checks the row-quality statistics count get them: a row-level
+    check that did not end in ERROR and whose operator identifies bad rows (see
+    :func:`~vowl.validation.row_quality.selection.select_check`). Any other
+    check, such as an aggregate or a lower bound on a count, gets check counts
+    only.
     """
     # The row-quality totals are uncapped. Fall back to the run's recorded
     # totals when row statistics are off.
@@ -230,21 +239,20 @@ def check_row_numbers(result: ValidationResult) -> dict[int, tuple[int, int]]:
         if item.total_rows is not None:
             total_by_schema[item.schema_name] = item.total_rows
 
-    numbers: dict[int, tuple[int, int]] = {}
-    for cr in result.check_results:
-        schema = cr.metadata.get("schema_name")
-        total = total_by_schema.get(schema) if schema else None
-        if total and cr.status != "ERROR" and cr.supports_row_level_output:
-            numbers[id(cr)] = (total, cr.failed_rows_count or 0)
-    return numbers
+    counts: dict[int, tuple[int, int]] = {}
+    for selection in result._row_quality().selections:
+        total = total_by_schema.get(selection.schema_name)
+        if total and selection.counted:
+            counts[id(selection.result)] = (total, selection.row_count or 0)
+    return counts
 
 
-def run_row_numbers(result: ValidationResult) -> tuple[int, int, bool] | None:
-    """``(total_rows, failed_rows, exact)`` for the whole run, ``None`` without row numbers.
+def run_row_counts(result: ValidationResult) -> tuple[int, int, bool, int] | None:
+    """``(total_rows, failed_rows, exact, checks_not_attributed)`` for the whole run, ``None`` without row counts.
 
     Tables hold different rows, so the schema row counts add up. Only schemas
-    with row numbers take part, and the sum is exact only when every one of
-    them is.
+    with row counts take part, and the sum is exact only when every one of
+    them is. ``checks_not_attributed`` is summed over every schema.
     """
     rows = [
         item
@@ -255,7 +263,8 @@ def run_row_numbers(result: ValidationResult) -> tuple[int, int, bool] | None:
         return None
     total = sum(item.total_rows or 0 for item in rows)
     failed = sum(item.failed_rows or 0 for item in rows)
-    return total, failed, all(item.exact for item in rows)
+    not_attributed = sum(item.checks_not_attributed for item in result._row_quality_report().schemas)
+    return total, failed, all(item.exact for item in rows), not_attributed
 
 
 def schema_status_counts(result: ValidationResult) -> dict[str, int]:
@@ -291,6 +300,11 @@ class _Points:
         """Attribute saying whether a row number is exact (``vowl.row_quality.exact``)."""
         return f"{self.prefix}.row_quality.exact"
 
+    @property
+    def not_attributed_key(self) -> str:
+        """Attribute counting the counted checks left out of a row number (``vowl.row_quality.checks_not_attributed``)."""
+        return f"{self.prefix}.row_quality.checks_not_attributed"
+
     def add(self, suffix: str, kind: str, unit: str, value: int | float, attrs: dict[str, Any]) -> None:
         point = MetricPoint(f"{self.prefix}.{suffix}", kind, unit, value, clean_attrs(attrs))
         if kind == HISTOGRAM:
@@ -311,13 +325,16 @@ class _Points:
         for status in CHECK_STATUSES:
             self.add(suffix, COUNTER, "{check}", counts[status], {**attrs, "status": status})
 
-    def row_counts(self, suffix: str, total: int, failed: int, attrs: dict[str, Any]) -> None:
+    def row_counts(self, suffix: str, total: int, failed: int, attrs: dict[str, Any], *, clamp: bool = True) -> None:
         """One ``PASSED`` and one ``FAILED`` gauge point, zeros included.
 
         Both points are always sent so a dashboard showing the latest value
-        never keeps a failure count from an earlier run.
+        never keeps a failure count from an earlier run. With ``clamp=False``
+        ``PASSED`` is ``total - failed`` as is, negative when ``failed`` exceeds
+        ``total``.
         """
-        self.add(suffix, GAUGE, "{row}", max(total - failed, 0), {**attrs, "status": "PASSED"})
+        passed = max(total - failed, 0) if clamp else total - failed
+        self.add(suffix, GAUGE, "{row}", passed, {**attrs, "status": "PASSED"})
         self.add(suffix, GAUGE, "{row}", failed, {**attrs, "status": "FAILED"})
 
     def pass_rate(self, suffix: str, rate: float | None, attrs: dict[str, Any]) -> None:
@@ -354,12 +371,17 @@ def _check_level(points: _Points, result: ValidationResult) -> None:
     for cr in result.check_results:
         points.add("check.duration", HISTOGRAM, "ms", float(cr.execution_time_ms or 0.0), check_level_attributes(cr))
 
-    numbers = check_row_numbers(result)
-    rated = [(cr, *numbers[id(cr)]) for cr in result.check_results if id(cr) in numbers]
+    row_counts = check_row_counts(result)
+    rated = [(cr, *row_counts[id(cr)]) for cr in result.check_results if id(cr) in row_counts]
     for cr, total, failed in rated:
-        points.row_counts("check.row.count", total, failed, check_level_attributes(cr))
+        points.row_counts("check.row.count", total, failed, check_level_attributes(cr), clamp=False)
     for cr, total, failed in rated:
         points.pass_rate("check.row.pass_rate", (total - failed) / total, check_level_attributes(cr))
+
+
+def _row_attrs(points: _Points, item: SchemaRowQuality | DimensionRowQuality, attrs: dict[str, Any]) -> dict[str, Any]:
+    """*attrs* plus the trust attributes of a row number."""
+    return {**attrs, points.exact_key: item.exact, points.not_attributed_key: item.checks_not_attributed}
 
 
 def _dimension_level(points: _Points, result: ValidationResult) -> None:
@@ -377,7 +399,7 @@ def _dimension_level(points: _Points, result: ValidationResult) -> None:
             "dimension.check.pass_rate", check_pass_rate(bucket), {"schema_name": schema, "dimension": dimension}
         )
 
-    # Row numbers come from the row-quality component, the same numbers as
+    # Row counts come from the row-quality component, the same numbers as
     # print_summary and get_row_quality_df. A bucket without them (no counted
     # checks, or statistics off) is left out rather than reported as 100%.
     rows = [
@@ -386,10 +408,10 @@ def _dimension_level(points: _Points, result: ValidationResult) -> None:
         if item.total_rows is not None and item.failed_rows is not None
     ]
     for item in rows:
-        attrs = {"schema_name": item.schema_name, "dimension": item.dimension, points.exact_key: item.exact}
+        attrs = _row_attrs(points, item, {"schema_name": item.schema_name, "dimension": item.dimension})
         points.row_counts("dimension.row.count", item.total_rows, item.failed_rows, attrs)
     for item in rows:
-        attrs = {"schema_name": item.schema_name, "dimension": item.dimension, points.exact_key: item.exact}
+        attrs = _row_attrs(points, item, {"schema_name": item.schema_name, "dimension": item.dimension})
         points.pass_rate("dimension.row.pass_rate", item.pass_rate, attrs)
 
 
@@ -407,12 +429,11 @@ def _schema_level(points: _Points, result: ValidationResult, counts: dict[str, d
         if item.total_rows is not None and item.failed_rows is not None
     ]
     for item in rows:
-        attrs = {"schema_name": item.schema_name, points.exact_key: item.exact}
+        attrs = _row_attrs(points, item, {"schema_name": item.schema_name})
         points.row_counts("schema.row.count", item.total_rows, item.failed_rows, attrs)
     for item in rows:
-        points.pass_rate(
-            "schema.row.pass_rate", item.pass_rate, {"schema_name": item.schema_name, points.exact_key: item.exact}
-        )
+        attrs = _row_attrs(points, item, {"schema_name": item.schema_name})
+        points.pass_rate("schema.row.pass_rate", item.pass_rate, attrs)
 
 
 def _run_level(points: _Points, result: ValidationResult, counts: dict[str, dict[str, int]]) -> None:
@@ -426,10 +447,10 @@ def _run_level(points: _Points, result: ValidationResult, counts: dict[str, dict
     points.check_counts("run.check.count", run_counts, {})
     points.pass_rate("run.check.pass_rate", check_pass_rate(run_counts), {})
 
-    run_rows = run_row_numbers(result)
+    run_rows = run_row_counts(result)
     if run_rows is not None:
-        total, failed, exact = run_rows
-        attrs = {points.exact_key: exact}
+        total, failed, exact, not_attributed = run_rows
+        attrs = {points.exact_key: exact, points.not_attributed_key: not_attributed}
         points.row_counts("run.row.count", total, failed, attrs)
         points.pass_rate("run.row.pass_rate", max(total - failed, 0) / total if total else None, attrs)
 

@@ -19,6 +19,33 @@ if TYPE_CHECKING:
     from vowl.contracts.check_reference import CheckReference
 
 
+class CappedFetch:
+    """Fetch a check's failed rows, at most ``max_failed_rows`` of them.
+
+    It asks the data source for one row more than the cap, so it knows for
+    certain whether rows were cut off. It then keeps only the first ``cap``
+    rows and sets :attr:`truncated`.
+
+    Args:
+        run: Runs the failed rows query with a row limit (``-1`` for none) and
+            returns the rows, or None.
+        max_rows: Returns the cap when called. It is read at fetch time,
+            because the runner sets it on the adapter after the checks are
+            built.
+    """
+
+    def __init__(self, run: Callable[[int], nw.DataFrame | None], max_rows: Callable[[], int]) -> None:
+        self._run = run
+        self._max_rows = max_rows
+        self.truncated = False
+
+    def __call__(self) -> nw.DataFrame | None:
+        cap = self._max_rows()
+        frame = self._run(cap + 1 if cap >= 0 else cap)
+        self.truncated = cap >= 0 and frame is not None and len(frame) > cap
+        return frame.head(cap) if self.truncated else frame
+
+
 @dataclass
 class RowSource:
     """How a SQL check's rows were produced, kept for the row-quality component.
@@ -109,6 +136,7 @@ class CheckResult:
         self.expected_value = expected_value
         self._failed_rows: nw.DataFrame | None = failed_rows
         self._failed_rows_fetcher = failed_rows_fetcher
+        self._failed_rows_truncated = False
         self._failed_rows_count = failed_rows_count
         self._supports_row_level_output = supports_row_level_output
         self.metadata = metadata or {}
@@ -124,8 +152,15 @@ class CheckResult:
             # still carries the column names that decide mergeability.
             fetched = self._failed_rows_fetcher()
             self._failed_rows = fetched if fetched is not None else _empty
+            self._failed_rows_truncated = bool(getattr(self._failed_rows_fetcher, "truncated", False))
             self._failed_rows_fetcher = None  # release closure references
         return self._failed_rows if self._failed_rows is not None else _empty
+
+    @property
+    def failed_rows_truncated(self) -> bool:
+        """Whether ``max_failed_rows`` cut :attr:`failed_rows` short (fetches them first)."""
+        _ = self.failed_rows
+        return self._failed_rows_truncated
 
     @property
     def failed_rows_count(self) -> int:

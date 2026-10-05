@@ -1,6 +1,6 @@
 """Certification: is a check's failed-rows query a pure row filter of its table?
 
-A certified check returns every physical copy of each failing row and nothing
+A certified check returns every copy of each failing row and nothing
 else, so its rows can be counted in the data source by the pushdown route. See
 "Certification" in ``design/row-quality-statistics.md``.
 """

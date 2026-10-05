@@ -177,6 +177,47 @@ class TestSQLCheckReferenceProperties:
         )
         assert ref.supports_row_level_output is False
 
+    @pytest.mark.parametrize(
+        ("query", "counted"),
+        [
+            ("SELECT COUNT(DISTINCT item) FROM t WHERE price <= 0", True),
+            ("SELECT COUNT(DISTINCT a, b) FROM t", True),
+            ("SELECT COUNT(DISTINCT upper(item)) FROM t", True),
+            ("SELECT COUNT(DISTINCT (a, b)) FROM t", False),
+            ("SELECT COUNT(DISTINCT ROW(a, b)) FROM t", False),
+        ],
+        ids=["column", "two_columns", "expression", "tuple", "row"],
+    )
+    def test_supports_row_level_output_for_count_distinct(self, query: str, counted: bool):
+        # A row value is not NULL when only some of its fields are, so the
+        # failed rows would not match the counted values.
+        ref = DummySQLCheckReference({"type": "sql", "query": query}, query)
+        assert ref.aggregation_type == "count_distinct"
+        assert ref.supports_row_level_output is counted
+
+    @pytest.mark.parametrize(
+        ("query", "expected"),
+        [
+            (
+                "SELECT COUNT(DISTINCT item) FROM t WHERE price <= 0",
+                "SELECT * FROM t WHERE price <= 0 AND NOT item IS NULL",
+            ),
+            (
+                "SELECT COUNT(DISTINCT a, b) FROM t",
+                "SELECT * FROM t WHERE NOT a IS NULL AND NOT b IS NULL",
+            ),
+        ],
+        ids=["column", "two_columns"],
+    )
+    def test_failed_rows_query_for_count_distinct_skips_nulls(self, query: str, expected: str):
+        ref = DummySQLCheckReference({"type": "sql", "query": query}, query)
+        assert ref.get_failed_rows_query("postgres", None) == expected
+
+    def test_failed_rows_count_for_count_distinct_is_the_value_count(self):
+        query = "SELECT COUNT(DISTINCT item) FROM t"
+        ref = DummySQLCheckReference({"type": "sql", "query": query}, query)
+        assert ref.compute_failed_rows_count(2) == 2
+
     def test_get_result_metadata_includes_aggregation_metadata(self):
         ref = DummySQLCheckReference(
             {"type": "sql", "unit": "rows", "query": "SELECT COUNT(*) FROM t"},

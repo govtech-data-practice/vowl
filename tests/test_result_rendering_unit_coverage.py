@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from vowl.validation.result import _safe_filename_component
@@ -71,3 +73,14 @@ def test_format_passed_rows_marks_approximate_numbers():
 def test_format_passed_rows_without_counted_checks_is_na():
     summary = _summary(total_rows=1000, passed_row_percentage=None, passed_rows=None)
     assert format_passed_rows(summary) == "N/A"
+
+
+@pytest.mark.parametrize(
+    ("count", "suffix"),
+    [(0, " (approx.)"), (1, " (approx., 1 check not attributed)"), (2, " (approx., 2 checks not attributed)")],
+)
+def test_format_passed_rows_names_the_checks_not_attributed(count, suffix):
+    summary = replace(
+        _summary(total_rows=10, passed_row_percentage=80.0, passed_rows=8, exact=False), checks_not_attributed=count
+    )
+    assert format_passed_rows(summary) == f"8 / 10 (80.0%){suffix}"

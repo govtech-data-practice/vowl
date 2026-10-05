@@ -1,7 +1,7 @@
 """Annotated output marks as many rows as the row numbers count, wherever both are exact.
 
 Counting and marking merge failed rows separately (see
-docs/design-considerations/failed-rows/levels.md). They pick the same checks and the same match
+docs/design-considerations/failed-rows/how-rows-are-counted.md). They pick the same checks and the same match
 key, so on an exact schema the rows with a ``check_info`` in the annotated
 table must equal the schema's ``failed_rows``.
 """
@@ -124,21 +124,25 @@ def test_unknown_column_types_with_a_partial_contract_count_on_the_exported_tabl
     result = _partial_contract(monkeypatch)
 
     check = rq._check_rows(result)["negative"]
-    assert (check["counted"], check["route"], check["failed_rows"], check["exact"]) == (True, "client_lookup", 2, True)
+    assert (check["counted"], check["route"], check["attributed_rows"], check["exact"]) == (
+        True,
+        "client_lookup",
+        2,
+        True,
+    )
     assert rq._schema_row(result)["failed_rows"] == 2
     assert _assert_marks_match_counts(result) == 1
 
 
-def test_unknown_column_types_with_a_partial_contract_are_not_exact_when_fast(monkeypatch: pytest.MonkeyPatch):
-    # Without the export, counting only knows the contract's columns. A
-    # SELECT * check returns all three, so counting cannot merge it, while
-    # annotated output marks it against the exported table.
-    result = _partial_contract(monkeypatch, ValidationConfig(row_count_accuracy="fast"))
+def test_unknown_column_types_with_a_partial_contract_count_from_the_scalar_with_attribution_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # With attribution disabled vowl reads the plain filter's own count, so the missing column
+    # types do not matter, and the count matches the marks.
+    result = _partial_contract(monkeypatch, ValidationConfig(disable_table_attributed_counts=True))
 
     check = rq._check_rows(result)["negative"]
-    assert check["counted"] is False
-    assert check["exact"] is False
-    assert rq._schema_row(result)["exact"] is False
-    marked = result.get_annotated_output()["annotated"]["t"].to_arrow().column("check_info").to_pylist()
-    assert sum(cell is not None for cell in marked) == 2
-    _assert_marks_match_counts(result)
+    assert (check["counted"], check["route"], check["scalar_count"], check["exact"]) == (True, "server_scalar", 2, True)
+    assert (check["attributed"], check["attributed_rows"]) == (False, None)
+    assert rq._schema_row(result)["failed_rows"] == 2
+    assert _assert_marks_match_counts(result) == 1

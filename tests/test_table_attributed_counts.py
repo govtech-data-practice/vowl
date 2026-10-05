@@ -1,8 +1,9 @@
-"""Tests for ``ValidationConfig.row_count_accuracy`` and the full-table match.
+"""Tests for ``ValidationConfig.disable_table_attributed_counts`` and the table match.
 
-Under ``"accurate"`` every counted check that is not a certified row filter is
-matched onto the exported table, so a row's copies come from the table. See
-"Row count accuracy" in design/row-quality-statistics.md.
+By default a counted check that is not a certified row filter is matched onto
+its table, in the data source on a tested source and onto the exported table
+elsewhere, so a row's copies come from the table. See "Table attributed
+counts" in design/row-quality-statistics.md.
 """
 
 from __future__ import annotations
@@ -20,8 +21,9 @@ from vowl.config import ValidationConfig
 from vowl.validation.result import ValidationResult
 from vowl.validation.result_row_quality import match_onto_table, row_keys, table_key_index
 from vowl.validation.row_quality import pushdown
-from vowl.validation.row_quality.merge import FetchedRows, merge_onto_table
+from vowl.validation.row_quality.merge import merge_onto_table
 from vowl.validation.row_quality.selection import (
+    REASON_CROSS_SOURCE,
     REASON_NO_EXPORT,
     REASON_TRUNCATED,
     REASON_UNKEYABLE,
@@ -34,8 +36,7 @@ unkeyed = rq.unkeyed
 _ALL_FAILED = ["c < 0", "c > 5", "c = 2", "c IS NULL"]
 
 
-def _level(level: str, **kwargs) -> ValidationConfig:
-    return ValidationConfig(row_count_accuracy=level, **kwargs)
+_SCALARS = ValidationConfig(disable_table_attributed_counts=True)
 
 
 def _flagged(result, schema: str = "t") -> int:
@@ -59,53 +60,117 @@ def _spy_exports(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 # Config
 
 
-def test_config_rejects_an_unknown_level():
-    with pytest.raises(ValueError, match="row_count_accuracy"):
-        ValidationConfig(row_count_accuracy="exact")
-
-
-def test_config_defaults_to_accurate_and_serialises():
+def test_config_defaults_to_attributed_counts_and_serialises():
     config = ValidationConfig()
-    assert config.row_count_accuracy == "accurate"
-    assert config.to_dict()["row_count_accuracy"] == "accurate"
+    assert config.disable_table_attributed_counts is False
+    assert config.to_dict()["disable_table_attributed_counts"] is False
 
 
 # ---------------------------------------------------------------------------
-# The three levels on the mixed checks
+# Both modes on the mixed checks
 
 
-@pytest.mark.parametrize(
-    ("level", "route"),
-    [("accurate", "client_lookup"), ("balanced", "server_lookup"), ("fast", "server_lookup")],
-)
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
-def test_each_level_counts_the_mixed_checks(backend: str, level: str, route: str):
-    con, result = rq._mixed(backend, _level(level))
+def test_attributed_counts_count_the_mixed_checks(backend: str):
+    con, result = rq._mixed(backend, ValidationConfig())
 
     schema = rq._schema_row(result)
     assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (11, rq._truth(con, _ALL_FAILED), True)
     checks = rq._check_rows(result)
     assert checks["negative"]["route"] == "server_predicate"
-    assert checks["twos_distinct"]["route"] == route
-    assert checks["twos_distinct"]["failed_rows"] == 3
+    assert checks["twos_distinct"]["route"] == "server_lookup"
+    assert checks["twos_distinct"]["attributed_rows"] == 3
 
 
-def test_fast_never_exports(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
+def test_disabled_attribution_counts_every_check_from_its_scalar(backend: str):
+    con, result = rq._mixed(backend, _SCALARS)
+
+    checks = rq._check_rows(result)
+    assert {row["route"] for row in checks.values() if row["scalar_count"]} == {"server_scalar"}
+    # Every counted check is not attributed. Its scalar count is summed.
+    assert not any(row["attributed"] for row in checks.values())
+    assert all(row["attributed_rows"] is None for row in checks.values())
+    # A plain filter's own count is its row count. DISTINCT's is not.
+    assert (checks["negative"]["scalar_count"], checks["negative"]["exact"]) == (rq._truth(con, ["c < 0"]), True)
+    assert (checks["twos_distinct"]["scalar_count"], checks["twos_distinct"]["exact"]) == (1, False)
+    schema = rq._schema_row(result)
+    assert schema["total_rows"] == 11
+    assert schema["exact"] is False
+    assert schema["failed_rows"] <= schema["total_rows"]
+    assert schema["checks_not_attributed"] == schema["checks_counted"]
+
+
+def test_disabled_attribution_runs_no_query_fetch_or_export(monkeypatch: pytest.MonkeyPatch):
+    _, result = rq._mixed("duckdb", _SCALARS)
     calls = _spy_exports(monkeypatch)
-    _, result = rq._mixed("duckdb", _level("fast"))
+    queries: list[str] = []
+    original = IbisAdapter.run_arrow_query
+
+    def run(self, sql: str):
+        queries.append(sql)
+        return original(self, sql)
+
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", run)
     result.get_row_quality_df()
 
-    assert calls == []
+    fetched = [check.check_name for check in result.check_results if check._failed_rows is not None]
+    assert (calls, queries, fetched) == ([], [], [])
 
 
-def test_balanced_matches_only_what_fast_counts_from_fetched_rows(unkeyed):
-    con, balanced = rq._mixed("duckdb", _level("balanced"))
-    _, fast = rq._mixed("duckdb", _level("fast"))
+def test_disabled_attribution_keeps_one_failing_exact_check_exact():
+    con = _table("(1, -1), (1, -1), (2, 5), (3, 6)")
+    checks = [rq._check("negative", "c < 0"), rq._check("big", "c > 100")]
 
-    assert rq._check_rows(fast)["twos_distinct"]["route"] == "client_returned_rows"
-    twos = rq._check_rows(balanced)["twos_distinct"]
-    assert (twos["route"], twos["failed_rows"], twos["exact"]) == ("client_lookup", 3, True)
-    assert rq._schema_row(balanced)["failed_rows"] == rq._truth(con, _ALL_FAILED)
+    result = rq._validate(con, [rq._schema("t", checks)], _SCALARS)
+
+    schema = rq._schema_row(result)
+    assert (schema["failed_rows"], schema["exact"]) == (2, True)
+
+
+def test_disabled_attribution_sums_two_failing_checks_as_approximate():
+    con = _table("(1, -1), (1, -1), (2, 5), (3, 6)")
+    checks = [rq._check("negative", "c < 0"), rq._check("low", "c < 1")]
+
+    result = rq._validate(con, [rq._schema("t", checks)], _SCALARS)
+
+    schema = rq._schema_row(result)
+    # Both catch the same two rows, which scalars cannot see.
+    assert (schema["failed_rows"], schema["exact"]) == (4, False)
+
+
+def test_disabled_attribution_caps_the_sum_at_the_row_count():
+    con = _table("(1, -1), (2, -2), (3, 5)")
+    checks = [rq._check("a", "c < 0"), rq._check("b", "c < 1"), rq._check("c", "c < 10")]
+
+    result = rq._validate(con, [rq._schema("t", checks)], _SCALARS)
+
+    schema = rq._schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"], schema["passed_rows"], schema["exact"]) == (3, 3, 0, False)
+
+
+def test_disabled_attribution_with_distinct_alone_is_approximate():
+    con = _table("(1, 2), (1, 2), (2, 5)")
+    check = {"name": "d", "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c = 2) AS s", "mustBe": 0}
+
+    result = rq._validate(con, [rq._schema("t", [check])], _SCALARS)
+
+    row = rq._check_rows(result)["d"]
+    assert (row["route"], row["scalar_count"], row["attributed_rows"], row["exact"]) == (
+        "server_scalar",
+        1,
+        None,
+        False,
+    )
+    assert rq._schema_row(result)["exact"] is False
+
+
+def test_checks_without_a_key_entry_are_matched_onto_the_exported_table(unkeyed):
+    con, result = rq._mixed("duckdb", ValidationConfig())
+
+    twos = rq._check_rows(result)["twos_distinct"]
+    assert (twos["route"], twos["attributed_rows"], twos["exact"]) == ("client_lookup", 3, True)
+    assert rq._schema_row(result)["failed_rows"] == rq._truth(con, _ALL_FAILED)
 
 
 def test_certified_checks_alone_do_not_export(monkeypatch: pytest.MonkeyPatch):
@@ -143,7 +208,7 @@ def test_distinct_counts_every_copy():
     result = rq._validate(con, [rq._schema("t", [check])])
 
     row = rq._check_rows(result)["d"]
-    assert (row["route"], row["failed_rows"], row["exact"]) == ("client_lookup", 3, True)
+    assert (row["route"], row["attributed_rows"], row["exact"]) == ("server_lookup", 3, True)
     assert rq._schema_row(result)["failed_rows"] == _flagged(result) == 3
 
 
@@ -157,7 +222,7 @@ def test_join_fan_out_does_not_inflate_a_pushdown_neighbour():
     result = rq._validate(con, [rq._schema("t", checks)])
 
     rows = rq._check_rows(result)
-    assert rows["fan"]["failed_rows"] == rows["negative"]["failed_rows"] == 3
+    assert rows["fan"]["attributed_rows"] == rows["negative"]["attributed_rows"] == 3
     schema = rq._schema_row(result)
     assert (schema["failed_rows"], schema["exact"]) == (rq._truth(con, ["c < 0"]), True)
     assert _flagged(result) == 3
@@ -175,8 +240,8 @@ def test_a_cross_source_join_counts_the_true_rows():
     result = rq._validate(t_con, schemas, adapters={"t": IbisAdapter(t_con), "u": IbisAdapter(u_con)})
 
     rows = rq._check_rows(result)
-    assert (rows["in_u"]["route"], rows["in_u"]["failed_rows"], rows["in_u"]["exact"]) == ("client_lookup", 3, True)
-    assert rows["negative"]["failed_rows"] == 2
+    assert (rows["in_u"]["route"], rows["in_u"]["attributed_rows"], rows["in_u"]["exact"]) == ("client_lookup", 3, True)
+    assert rows["negative"]["attributed_rows"] == 2
     assert rq._schema_row(result)["failed_rows"] == 3
 
 
@@ -191,7 +256,7 @@ def test_transformed_values_are_reported_as_unmatched(select: str):
     result = rq._validate(con, [rq._schema("t", [check])])
 
     row = rq._check_rows(result)["moved"]
-    assert (row["route"], row["reason"], row["exact"]) == ("client_lookup", REASON_UNMATCHED, False)
+    assert (row["route"], row["reason"], row["exact"]) == ("server_lookup", REASON_UNMATCHED, False)
     assert rq._schema_row(result)["exact"] is False
 
 
@@ -203,8 +268,9 @@ def test_lowered_strings_partly_match():
 
     row = rq._check_rows(result)["low"]
     # The lowered 'A' is 'a', a table row, so every key matches. The count
-    # is the rows that hold the returned values, not the rows the check read.
-    assert (row["route"], row["failed_rows"], row["exact"]) == ("client_lookup", 2, True)
+    # is the rows that hold the returned values, not the rows the check read,
+    # so a select list that changes values is approximate.
+    assert (row["route"], row["attributed_rows"], row["exact"]) == ("server_lookup", 2, False)
 
 
 def test_upper_strings_match_no_table_row():
@@ -214,7 +280,7 @@ def test_upper_strings_match_no_table_row():
     result = rq._validate(con, [rq._schema("t", [check], [{"name": "s"}])])
 
     row = rq._check_rows(result)["up"]
-    assert (row["failed_rows"], row["reason"], row["exact"]) == (0, REASON_UNMATCHED, False)
+    assert (row["attributed_rows"], row["reason"], row["exact"]) == (0, REASON_UNMATCHED, False)
 
 
 # ---------------------------------------------------------------------------
@@ -229,24 +295,30 @@ def test_a_truncated_local_check_is_counted_in_sql():
     result = rq._validate(con, [rq._schema("t", [distinct, joined])], ValidationConfig(max_failed_rows=1))
 
     rows = rq._check_rows(result)
-    # Its fetched rows are cut short, so table_match counts it without them.
-    assert (rows["d"]["route"], rows["d"]["failed_rows"], rows["d"]["exact"]) == ("server_lookup", 4, True)
-    assert (rows["j"]["route"], rows["j"]["failed_rows"]) == ("client_lookup", 1)
+    # server_lookup counts in SQL, so the cap on fetched rows does not apply.
+    assert (rows["d"]["route"], rows["d"]["attributed_rows"], rows["d"]["exact"]) == ("server_lookup", 4, True)
+    assert (rows["j"]["route"], rows["j"]["attributed_rows"]) == ("server_lookup", 1)
     assert rq._schema_row(result)["failed_rows"] == rq._truth(con, ["c = 2", "c < 0"])
 
 
-def test_a_truncated_cross_source_check_keeps_fetched_rows_and_its_neighbour_is_matched():
-    _, result = rq._two_sources(ValidationConfig(max_failed_rows=1))
+def test_a_truncated_cross_source_check_is_not_attributed():
+    con, result = rq._two_sources(ValidationConfig(max_failed_rows=1))
 
     rows = rq._check_rows(result)
     truncated = rows["id_in_u"]
-    assert (truncated["route"], truncated["reason"], truncated["exact"]) == (
-        "client_returned_rows",
-        REASON_TRUNCATED,
+    assert (truncated["route"], truncated["reason"], truncated["attributed"]) == ("", REASON_TRUNCATED, False)
+    assert (truncated["counted"], truncated["attributed_rows"], truncated["exact"]) == (True, None, False)
+    assert truncated["scalar_count"] == rq._truth(con, ["id NOT IN (1, 2, 3)"])
+    # On t's own connection, so it is counted in SQL and not cut.
+    assert rows["twos_distinct"]["route"] == "server_lookup"
+    assert rows["twos_distinct"]["reason"] != REASON_TRUNCATED
+    # The truncated check adds nothing, so the schema holds only the other checks' rows.
+    schema = rq._schema_row(result)
+    assert (schema["failed_rows"], schema["checks_not_attributed"], schema["exact"]) == (
+        rq._truth(con, ["c < 0", "c = 2"]),
+        1,
         False,
     )
-    assert rows["twos_distinct"]["route"] == "server_lookup"  # also cut to one row
-    assert rq._schema_row(result)["exact"] is False
 
 
 def test_a_failed_export_falls_back(monkeypatch: pytest.MonkeyPatch):
@@ -255,13 +327,18 @@ def test_a_failed_export_falls_back(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(ValidationResult, "_fetch_full_table", lambda self, schema_name: None)
     _, result = rq._two_sources()
 
-    row = rq._check_rows(result)["id_in_u"]
-    assert (row["route"], row["reason"]) == ("client_returned_rows", REASON_NO_EXPORT)
-    # twos_distinct keeps table_match, which counts it in SQL.
-    assert rq._check_rows(result)["twos_distinct"]["route"] == "server_lookup"
+    rows = rq._check_rows(result)
+    assert (rows["id_in_u"]["route"], rows["id_in_u"]["reason"]) == ("", REASON_NO_EXPORT)
+    assert (rows["id_in_u"]["counted"], rows["id_in_u"]["attributed"]) == (True, False)
+    # twos_distinct is on t's own tested connection, so it needs no export.
+    assert (rows["twos_distinct"]["route"], rows["twos_distinct"]["reason"]) == (
+        "server_lookup",
+        "not certified for pushdown: uses a FROM that is not the table itself",
+    )
+    assert rows["twos_distinct"]["exact"] is True
 
 
-def test_unkeyable_rows_fall_back(monkeypatch: pytest.MonkeyPatch):
+def test_unkeyable_rows_are_not_attributed(monkeypatch: pytest.MonkeyPatch):
     import vowl.validation.result as result_module
 
     def refuse(table, columns):
@@ -270,8 +347,19 @@ def test_unkeyable_rows_fall_back(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(result_module, "table_key_index", refuse)
     _, result = rq._two_sources()
 
+    rows = rq._check_rows(result)
+    assert (rows["id_in_u"]["route"], rows["id_in_u"]["reason"]) == ("", REASON_UNKEYABLE)
+    assert (rows["id_in_u"]["counted"], rows["id_in_u"]["attributed"]) == (True, False)
+    assert rows["twos_distinct"]["route"] == "server_lookup"
+    assert rq._schema_row(result)["checks_not_attributed"] == 1
+
+
+def test_a_cross_source_check_takes_client_lookup():
+    con, result = rq._two_sources(ValidationConfig())
+
     row = rq._check_rows(result)["id_in_u"]
-    assert (row["route"], row["reason"]) == ("client_returned_rows", REASON_UNKEYABLE)
+    assert (row["route"], row["reason"], row["exact"]) == ("client_lookup", REASON_CROSS_SOURCE, True)
+    assert rq._schema_row(result)["exact"] is True
 
 
 def test_the_total_comes_from_the_export():
@@ -295,7 +383,7 @@ def test_the_total_comes_from_the_export():
 # Values
 
 
-def test_nan_negative_zero_null_and_case_count_as_their_own_rows():
+def test_nan_negative_zero_null_and_case_rows_are_each_counted():
     con = _table(
         "('nan'::DOUBLE, 'a'), ('nan'::DOUBLE, 'a'), (-0.0, 'A'), (0.0, 'A'), (NULL, NULL), (1.0, 'b')",
         "x DOUBLE, s VARCHAR",
@@ -306,7 +394,7 @@ def test_nan_negative_zero_null_and_case_count_as_their_own_rows():
     result = rq._validate(con, [rq._schema("t", [check], [{"name": "x"}, {"name": "s"}])])
 
     row = rq._check_rows(result)["odd"]
-    assert (row["route"], row["failed_rows"], row["exact"]) == ("client_lookup", 5, True)
+    assert (row["route"], row["attributed_rows"], row["exact"]) == ("server_lookup", 5, True)
     assert _flagged(result) == 5
 
 
@@ -340,7 +428,7 @@ def test_every_column_type_counts_and_annotates():
     result = rq._validate(con, [rq._schema("t", [distinct], _TYPED_PROPERTIES)])
 
     row = rq._check_rows(result)["flagged_distinct"]
-    assert (row["route"], row["failed_rows"], row["exact"]) == ("client_lookup", 3, True)
+    assert (row["route"], row["attributed_rows"], row["exact"]) == ("server_lookup", 3, True)
     assert rq._schema_row(result)["failed_rows"] == _flagged(result) == 3
 
 
@@ -386,8 +474,8 @@ def test_merge_onto_table_ors_checks_onto_table_rows():
     table = pa.table({"a": [1, 1, 2, 3], "b": [decimal.Decimal("1.0")] * 4})
     index = table_key_index(table, ["a", "b"])
     fetched = [
-        FetchedRows(check_id=0, table=table.slice(0, 1), key_columns=["a", "b"]),
-        FetchedRows(check_id=1, table=table.slice(1, 2), key_columns=["a", "b"]),
+        (0, table.slice(0, 1)),
+        (1, table.slice(1, 2)),
     ]
 
     entries, exact, matched = merge_onto_table(None, fetched, ["a", "b"], table, index)
@@ -452,20 +540,19 @@ _EQUAL_BUT_APART = [
 ]
 
 
-@pytest.mark.parametrize("level", ["balanced", "fast"])
 @pytest.mark.parametrize(("column_type", "rows", "predicate"), _EQUAL_BUT_APART)
-def test_table_match_keeps_values_equal_under_their_type_apart(level, column_type, rows, predicate):
+def test_table_match_keeps_values_equal_under_their_type_apart(column_type, rows, predicate):
     con = rq._connect("duckdb")
     con.raw_sql(f"CREATE TABLE t (id INTEGER, c {column_type})")
     con.raw_sql(f"INSERT INTO t VALUES {rows}, (2, NULL)")
     query = f"SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE {predicate}) AS q"
     check = {"name": "distinct", "query": query, "mustBe": 0}
 
-    result = rq._validate(con, [rq._schema("t", [check])], ValidationConfig(row_count_accuracy=level))
+    result = rq._validate(con, [rq._schema("t", [check])], ValidationConfig())
 
     truth = rq._truth(con, [predicate])
     row = rq._check_rows(result)["distinct"]
-    assert (row["route"], row["failed_rows"], row["exact"]) == ("server_lookup", truth, True)
+    assert (row["route"], row["attributed_rows"], row["exact"]) == ("server_lookup", truth, True)
     assert rq._schema_row(result)["failed_rows"] == truth
 
 
@@ -491,34 +578,32 @@ def _table_on(backend: str, rows: str, columns: str = "id INTEGER, c INTEGER"):
 # Table match: failed keys that match no table row
 
 
-@pytest.mark.parametrize("level", ["balanced", "fast"])
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
 @pytest.mark.parametrize("select", ["id, c * 1.0 AS c", "id, c * 1.5 AS c", "id, c + 100 AS c"])
-def test_table_match_reports_transformed_values_as_unmatched(backend: str, level: str, select: str):
+def test_table_match_reports_transformed_values_as_unmatched(backend: str, select: str):
     con = _table_on(backend, "(1, 2), (1, 2), (2, 2), (3, 5)")
     inner = f"SELECT {select} FROM t WHERE c = 2"
     check = {"name": "moved", "query": f"SELECT COUNT(*) FROM ({inner}) AS s", "mustBe": 0}
 
-    result = rq._validate(con, [rq._schema("t", [check])], _level(level))
+    result = rq._validate(con, [rq._schema("t", [check])], ValidationConfig())
 
     row = rq._check_rows(result)["moved"]
     assert (row["route"], row["reason"], row["exact"]) == ("server_lookup", REASON_UNMATCHED, False)
-    assert row["failed_rows"] == 0  # the truth is 3
+    assert row["attributed_rows"] == 0  # the truth is 3
     assert rq._schema_row(result)["exact"] is False
 
 
-@pytest.mark.parametrize("level", ["balanced", "fast"])
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
-def test_table_match_reports_a_partial_match(backend: str, level: str):
+def test_table_match_reports_a_partial_match(backend: str):
     con = _table_on(backend, "(1, 2), (1, 2), (2, -1), (3, 5)")
     inner = "SELECT id, CASE WHEN c = 2 THEN c ELSE c + 100 END AS c FROM t WHERE c = 2 OR c < 0"
     check = {"name": "some", "query": f"SELECT COUNT(*) FROM ({inner}) AS s", "mustBe": 0}
 
-    result = rq._validate(con, [rq._schema("t", [check])], _level(level))
+    result = rq._validate(con, [rq._schema("t", [check])], ValidationConfig())
 
     row = rq._check_rows(result)["some"]
     # The unchanged key finds both copies. The changed one finds no row.
-    assert (row["failed_rows"], row["reason"], row["exact"]) == (2, REASON_UNMATCHED, False)
+    assert (row["attributed_rows"], row["reason"], row["exact"]) == (2, REASON_UNMATCHED, False)
 
 
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
@@ -526,10 +611,10 @@ def test_table_match_upper_strings_match_no_table_row(backend: str):
     con = _table_on(backend, "('a'), ('a'), ('b')", "s VARCHAR")
     check = {"name": "up", "query": "SELECT COUNT(*) FROM (SELECT upper(s) AS s FROM t) AS q", "mustBe": 0}
 
-    result = rq._validate(con, [rq._schema("t", [check], [{"name": "s"}])], _level("balanced"))
+    result = rq._validate(con, [rq._schema("t", [check], [{"name": "s"}])], ValidationConfig())
 
     row = rq._check_rows(result)["up"]
-    assert (row["route"], row["failed_rows"], row["reason"], row["exact"]) == (
+    assert (row["route"], row["attributed_rows"], row["reason"], row["exact"]) == (
         "server_lookup",
         0,
         REASON_UNMATCHED,
@@ -542,11 +627,11 @@ def test_table_match_lowered_strings_partly_match(backend: str):
     con = _table_on(backend, "('a'), ('A'), ('B')", "s VARCHAR")
     check = {"name": "low", "query": "SELECT COUNT(*) FROM (SELECT lower(s) AS s FROM t) AS q", "mustBe": 0}
 
-    result = rq._validate(con, [rq._schema("t", [check], [{"name": "s"}])], _level("fast"))
+    result = rq._validate(con, [rq._schema("t", [check], [{"name": "s"}])], ValidationConfig())
 
     row = rq._check_rows(result)["low"]
     # 'a' is a table row, 'b' is not.
-    assert (row["failed_rows"], row["reason"], row["exact"]) == (1, REASON_UNMATCHED, False)
+    assert (row["attributed_rows"], row["reason"], row["exact"]) == (1, REASON_UNMATCHED, False)
 
 
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
@@ -558,30 +643,31 @@ def test_table_match_cannot_see_a_value_that_lands_on_another_row(backend: str):
         "mustBe": 0,
     }
 
-    result = rq._validate(con, [rq._schema("t", [check])], _level("balanced"))
+    result = rq._validate(con, [rq._schema("t", [check])], ValidationConfig())
 
     row = rq._check_rows(result)["shifted"]
-    # (1, -1) is a real row, so the key matches it and the check stays exact,
-    # though the row the check read is (1, -2). Key matching cannot tell.
-    assert (row["failed_rows"], row["exact"]) == (2, True)
+    # (1, -1) is a real row, so the key matches it, though the row the check
+    # read is (1, -2). Key matching cannot tell, so the changed select list
+    # marks the check approximate.
+    assert (row["attributed_rows"], row["exact"]) == (2, False)
+    assert row["reason"] != REASON_UNMATCHED
     assert rq._truth(con, ["c = -2"]) == 1
 
 
-@pytest.mark.parametrize("level", ["balanced", "fast"])
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
-def test_table_match_stays_exact_when_every_key_matches(backend: str, level: str):
+def test_table_match_stays_exact_when_every_key_matches(backend: str):
     con = _table_on(backend, "(1, 2), (1, 2), (2, 2), (3, NULL), (3, NULL), (4, 5)")
     checks = [
         {"name": "d", "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c = 2) AS s", "mustBe": 0},
         {"name": "n", "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c IS NULL) AS s", "mustBe": 0},
     ]
 
-    result = rq._validate(con, [rq._schema("t", checks)], _level(level))
+    result = rq._validate(con, [rq._schema("t", checks)], ValidationConfig())
 
     rows = rq._check_rows(result)
-    assert (rows["d"]["route"], rows["d"]["failed_rows"], rows["d"]["exact"]) == ("server_lookup", 3, True)
+    assert (rows["d"]["route"], rows["d"]["attributed_rows"], rows["d"]["exact"]) == ("server_lookup", 3, True)
     # NULL keys match NULL table rows.
-    assert (rows["n"]["failed_rows"], rows["n"]["exact"]) == (2, True)
+    assert (rows["n"]["attributed_rows"], rows["n"]["exact"]) == (2, True)
     schema = rq._schema_row(result)
     assert (schema["failed_rows"], schema["exact"]) == (rq._truth(con, ["c = 2", "c IS NULL"]), True)
 
@@ -591,8 +677,8 @@ def test_table_match_is_not_exact_when_the_unmatched_count_fails(monkeypatch: py
     con = _table_on("duckdb", "(1, 2), (1, 2), (2, 2)")
     check = {"name": "d", "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c = 2) AS s", "mustBe": 0}
 
-    result = rq._validate(con, [rq._schema("t", [check])], _level("fast"))
+    result = rq._validate(con, [rq._schema("t", [check])], ValidationConfig())
 
     row = rq._check_rows(result)["d"]
-    assert (row["route"], row["failed_rows"], row["exact"]) == ("server_lookup", 3, False)
+    assert (row["route"], row["attributed_rows"], row["exact"]) == ("server_lookup", 3, False)
     assert row["reason"] != REASON_UNMATCHED

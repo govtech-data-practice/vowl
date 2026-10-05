@@ -171,12 +171,12 @@ Two more things to know:
 
 ## Annotating the failed rows of a cross-table check
 
-A cross-table check annotates rows on the [annotated table](../failed-rows/levels.md#annotating-your-table)
+A cross-table check annotates rows on the [annotated table](../failed-rows/annotating-the-source-table.md)
 like any other check, as long as its failed rows hold only the columns of the
 schema the check belongs to. vowl goes by the columns, not by what the query
 means.
 
-The [failed rows query](../failed-rows/queries.md#two-queries-from-one)
+The [failed rows query](../failed-rows/how-failed-rows-are-derived.md#two-queries-from-one)
 swaps the outer `SELECT COUNT(*)` for `SELECT *`, so the outer `FROM` decides
 which columns the failed rows have. For "every payroll row has an employee in
 the master list":
@@ -234,7 +234,9 @@ quality:
 ```
 
 Its failed rows are kept under
-`"demo_employee_payroll::employee_id_exists_in_master_list"`.
+`"demo_employee_payroll::employee_id_exists_in_master_list"`. The check is
+still counted, but it is not attributed, so it adds nothing to the row counts
+of `demo_employee_payroll` and is counted in `checks_not_attributed`.
 
 The foreign-key checks vowl generates from `relationships` are already
 written the first way, so they annotate rows on the referencing table. A check is

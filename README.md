@@ -126,31 +126,31 @@ result.display_full_report()
 
 
  CHECK RESULTS
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-| check_id                                | Target                                | tables_in_query   | status | operator      | expected      | actual | execution time |
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-| Month                                   | hdb_resale_prices.month               | hdb_resale_prices | FAILED | mustBe        | 0             | 2      | 17.84 ms       |
-| Year                                    | hdb_resale_prices.lease_commence_date | hdb_resale_prices | FAILED | mustBe        | 0             | 2      | 26.09 ms       |
-| floor_area_must_be_less_than_200        | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | FAILED | mustBe        | 0             | 12     | 13.58 ms       |
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-| AddressBlockHouseNumber                 | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 17.26 ms       |
-| block_column_exists_check               | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.56 ms        |
-| flat_model_column_exists_check          | hdb_resale_prices.flat_model          | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 31.60 ms       |
-| flat_type_column_exists_check           | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.45 ms        |
-| flat_type_invalidValues                 | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 17.79 ms       |
-| floor_area_sqm_column_exists_check      | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.90 ms        |
-| hdb_resale_prices_rowCount              | hdb_resale_prices                     | hdb_resale_prices | PASSED | mustBeBetween | [0, 30000000] | 201879 | 6.32 ms        |
-| lease_commence_date_column_exists_check | hdb_resale_prices.lease_commence_date | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.24 ms        |
-| month_column_exists_check               | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.43 ms        |
-| month_logical_type_check                | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 8.16 ms        |
-| remaining_lease_column_exists_check     | hdb_resale_prices.remaining_lease     | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 3.81 ms        |
-| resale_price_column_exists_check        | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.33 ms        |
-| resale_price_must_not_exceed_2m         | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 18.07 ms       |
-| storey_range_column_exists_check        | hdb_resale_prices.storey_range        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 3.94 ms        |
-| street_name_column_exists_check         | hdb_resale_prices.street_name         | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.83 ms        |
-| town_column_exists_check                | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.53 ms        |
-| town_nullValues                         | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 10.13 ms       |
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
++-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
+| check_id                                | Target                                | tables_in_query   | status | operator          | expected | actual | execution time |
++-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
+| Month                                   | hdb_resale_prices.month               | hdb_resale_prices | FAILED | mustBe            | 0        | 2      | 17.84 ms       |
+| Year                                    | hdb_resale_prices.lease_commence_date | hdb_resale_prices | FAILED | mustBe            | 0        | 2      | 26.09 ms       |
+| floor_area_must_be_less_than_200        | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | FAILED | mustBe            | 0        | 12     | 13.58 ms       |
++-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
+| AddressBlockHouseNumber                 | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 17.26 ms       |
+| block_column_exists_check               | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.56 ms        |
+| flat_model_column_exists_check          | hdb_resale_prices.flat_model          | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 31.60 ms       |
+| flat_type_column_exists_check           | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.45 ms        |
+| flat_type_invalidValues                 | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 17.79 ms       |
+| floor_area_sqm_column_exists_check      | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.90 ms        |
+| hdb_resale_prices_rowCount              | hdb_resale_prices                     | hdb_resale_prices | PASSED | mustBeGreaterThan | 0        | 201879 | 6.32 ms        |
+| lease_commence_date_column_exists_check | hdb_resale_prices.lease_commence_date | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.24 ms        |
+| month_column_exists_check               | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.43 ms        |
+| month_logical_type_check                | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 8.16 ms        |
+| remaining_lease_column_exists_check     | hdb_resale_prices.remaining_lease     | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.81 ms        |
+| resale_price_column_exists_check        | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.33 ms        |
+| resale_price_must_not_exceed_2m         | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 18.07 ms       |
+| storey_range_column_exists_check        | hdb_resale_prices.storey_range        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.94 ms        |
+| street_name_column_exists_check         | hdb_resale_prices.street_name         | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.83 ms        |
+| town_column_exists_check                | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 4.53 ms        |
+| town_nullValues                         | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 10.13 ms       |
++-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
 Total Execution:       210.88 ms
 
 === Failed Checks and Rows (up to 5 row(s) per failed check) ===
@@ -297,9 +297,7 @@ schema:
     quality:
       - type: library
         metric: rowCount
-        mustBeBetween:
-          - 0
-          - 30000000
+        mustBeGreaterThan: 0
 ```
 
 ## Auto-Generated Checks
@@ -533,21 +531,21 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 #### Core Methods
 
-| Method/Property                                                                      | What It Does                                                                                                                                                                                                           | Returns                         |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                                             | `self` (chainable)              |
-| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                                             | `self` (chainable)              |
-| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                                | `self` (chainable)              |
+| Method/Property                                                                      | What It Does                                                                                                                                                                                                                     | Returns                         |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                                                       | `self` (chainable)              |
+| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                                                       | `self` (chainable)              |
+| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                                          | `self` (chainable)              |
 | **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV, summary JSON and DQ metrics JSON to disk. `output_mode` can be `"annotated"` (default), `"failed_rows"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
-| **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                                               | Dict[str, DataFrame]            |
-| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                                 | Dict[str, Dict[str, DataFrame]] |
-| **`get_row_quality_df(by="schema")`**                                                | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                                   | DataFrame                       |
-| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                                                                   | dict                            |
-| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                                | `True`/`False`                  |
+| **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                                                         | Dict[str, DataFrame]            |
+| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                                           | Dict[str, Dict[str, DataFrame]] |
+| **`get_row_quality_df(by="schema")`**                                                | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                                             | DataFrame                       |
+| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                                               | dict                            |
+| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                                          | `True`/`False`                  |
 
 #### Row Quality
 
-`get_row_quality_df()` returns the row numbers behind **Passed Rows** in the summary: for each table, how many rows failed at least one check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `exact` flag for the cases where it could be off. See [Failed Rows at Each Level](docs/design-considerations/failed-rows/levels.md#when-counting-and-annotating-differ) for how the row numbers relate to annotated output.
+`get_row_quality_df()` returns the row counts behind **Passed Rows** in the summary: for each table, how many rows failed at least one counted check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `exact` flag for the cases where it could be off. A check whose failed rows vowl can't attribute to the table is left out and counted in `checks_not_attributed`. See [When counting and annotating differ](docs/design-considerations/failed-rows/annotating-the-source-table.md#when-counting-and-annotating-differ) for how the row counts relate to annotated output.
 
 ```python
 result.get_row_quality_df()                  # one row per table
@@ -555,28 +553,28 @@ result.get_row_quality_df(by="dimension")    # one row per table and dimension
 result.get_row_quality_df(by="check")        # which checks were counted, and how
 ```
 
-Rows caught by a check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) are reported as `tolerated_rows`. Set `ValidationConfig(row_issue_scope="all_violations")` to count them as failed rows too. See [Tolerated rows](docs/design-considerations/failed-rows/which-checks.md#tolerated-rows).
+Rows caught by a check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) are reported as `tolerated_rows`. Set [`ValidationConfig(row_issue_scope="all_violations")`](docs/run-settings.md#row_issue_scope) to count them as rows that failed too. See [Tolerated rows](docs/design-considerations/failed-rows/failed-row-results.md#tolerated-rows).
 
-Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, `ValidationConfig(row_count_accuracy=...)` picks how they are counted:
+Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, vowl attributes each failed row to the source table, so a row caught by several checks counts once. On DuckDB, SQLite, Spark, Databricks and PostgreSQL the data source does this. Elsewhere vowl downloads the table and holds it in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download.
+
+To skip this work on large tables, turn attribution off. The row counts then add up each check's scalar count, so they can be approximate:
 
 ```python
-ValidationConfig(row_count_accuracy="accurate")  # default: download the table and match failed rows onto it
-ValidationConfig(row_count_accuracy="balanced")  # download only where the data source cannot match the rows
-ValidationConfig(row_count_accuracy="fast")      # never download a table, some numbers are approximate
+ValidationConfig(disable_table_attributed_counts=True)
 ```
 
-`"accurate"` holds the whole table in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download. Use `"balanced"` or `"fast"` on large tables. See [Row count accuracy](docs/run-settings.md#row-count-accuracy).
+See [Counting Mechanisms](docs/design-considerations/failed-rows/counting-mechanisms.md).
 
 #### Annotated Output
 
 `get_annotated_output()` returns the **full in-scope table** with a `check_info` column that annotates which rows failed which checks. Passing rows have `null` in the `check_info` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
 
-> New to this? [How Failed Rows Are Derived](docs/design-considerations/failed-rows/queries.md) explains failed rows, annotated output and residues in plain language, with a small worked example.
+> New to this? [Failed Row Results](docs/design-considerations/failed-rows/failed-row-results.md) explains failed rows, annotated output and residues in plain language, with a small worked example.
 
 It returns a nested dict with two reserved keys:
 
-- **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (aggregation and column-subset checks, plus cross-table checks whose failed rows carry columns from more than the anchor table). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its failed-rows query to project only that schema's columns — see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
+- **`"annotated"`**: a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
+- **`"residues"`**: failed rows for checks that _cannot_ be merged onto a single table (column-subset checks and cross-table checks whose failed rows carry columns from more than the anchor table). Checks that return one number, such as an average, a sum, a minimum or a maximum, produce none. Most single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query`, so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its failed-rows query to project only that schema's columns: see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -639,7 +637,7 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-Aggregation checks, column-subset checks, and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. (A cross-table check whose failed-rows query projects only its home schema's columns _is_ merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
+Column-subset checks and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. Checks that return one number, such as an average, a sum, a minimum or a maximum, have no failed rows and appear only in the summary. (A cross-table check whose failed-rows query projects only its home schema's columns _is_ merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
@@ -675,7 +673,7 @@ Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed 
 
 </details>
 
-> For the full eligibility rules and worked examples of each non-mergeable category, see [Where each failed check ends up](docs/design-considerations/failed-rows/levels.md#where-each-failed-check-ends-up). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Where each failed check ends up](docs/design-considerations/failed-rows/annotating-the-source-table.md#where-each-failed-check-ends-up). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
 
 `save()` writes annotated output by default. The `output_mode` argument picks the layout:
 
@@ -693,11 +691,10 @@ result.save(output_mode="both")
 
 > **Deprecation:** `output_mode="failed_rows"` / `"both"` (the legacy failed-rows CSVs) are deprecated in favour of `"annotated"`, the default. They still work but emit a `DeprecationWarning`. Pass `output_mode="failed_rows"` to keep the old files until you migrate.
 
-You can also set the output mode globally via `ValidationConfig`:
+You can also set the output mode globally via `ValidationConfig` (see [Run Settings](docs/run-settings.md#saving-results)):
 
 ```python
-from vowl import validate_data
-from vowl.config import ValidationConfig
+from vowl import ValidationConfig, validate_data
 
 config = ValidationConfig(output_mode="annotated", annotated_check_info="summary")
 result = validate_data("contract.yaml", df=df, config=config)
@@ -1166,7 +1163,7 @@ result.display_full_report()
 | ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
 | ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
-| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/understanding-metrics.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                                            |
+| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/understanding-metrics.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                            |
 
 ### Planned
 

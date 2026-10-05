@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import narwhals as nw
 import pyarrow as pa
 import pytest
 from sqlglot import exp
@@ -462,8 +463,8 @@ def test_multisource_run_single_check_failed_result_defaults_row_count_to_zero(m
     monkeypatch.setattr(
         executor,
         "_fetch_failed_rows",
-        lambda query, table_names, owner_schema=None: SimpleNamespace(
-            to_pandas=lambda: pa.table({"id": [1]}).to_pandas()
+        lambda query, table_names, owner_schema=None, max_rows=None: nw.from_native(
+            pa.table({"id": [1]}), eager_only=True
         ),
     )
 
@@ -614,7 +615,7 @@ def test_ibis_run_single_check_failed_result_defaults_row_count_to_zero(monkeypa
     monkeypatch.setattr(
         executor,
         "_fetch_failed_rows",
-        lambda query: SimpleNamespace(to_pandas=lambda: pa.table({"id": [1]}).to_pandas()),
+        lambda query, max_rows=None: nw.from_native(pa.table({"id": [1]}), eager_only=True),
     )
 
     result = executor.run_single_check(check_ref)

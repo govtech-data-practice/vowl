@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run": {
     "vowl.version": "0.0.7.dev3",
-    "vowl.run.id": "ab60ff3e-cf3b-439e-aa76-46eede1cb80a",
+    "vowl.run.id": "f73171a1-133a-4d32-a555-af9cb0d1cc1a",
     "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
     "vowl.contract.name": "HDB Resale Flat Prices",
     "vowl.contract.version": "1.0.0",
@@ -10,8 +10,8 @@
     "vowl.contract.status": "draft",
     "vowl.domain": "real-estate"
   },
-  "run_started_at": "2026-10-02T07:46:09.026739+00:00",
-  "run_finished_at": "2026-10-02T07:46:09.907171+00:00",
+  "run_started_at": "2026-10-05T05:10:02.174484+00:00",
+  "run_finished_at": "2026-10-05T05:10:02.959831+00:00",
   "points": [
     {
       "name": "vowl.check.check.count",
@@ -803,7 +803,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.622707984410226,
+      "value": 4.956709046382457,
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -815,7 +815,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 8.623041008831933,
+      "value": 10.088209004607052,
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
@@ -827,7 +827,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 58.77783300820738,
+      "value": 4.808541969396174,
       "attributes": {
         "check_name": "town_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -839,7 +839,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.600207990733907,
+      "value": 4.5805840054526925,
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -851,7 +851,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 6.517999980133027,
+      "value": 4.736750037409365,
       "attributes": {
         "check_name": "block_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -863,7 +863,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.747166996821761,
+      "value": 4.545625008177012,
       "attributes": {
         "check_name": "street_name_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -875,7 +875,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 6.479834002675489,
+      "value": 51.23629199806601,
       "attributes": {
         "check_name": "storey_range_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -887,7 +887,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.573291982524097,
+      "value": 4.27987496368587,
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -899,7 +899,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.696750023867935,
+      "value": 6.421250000130385,
       "attributes": {
         "check_name": "flat_model_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -911,7 +911,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.612292017554864,
+      "value": 4.618624981958419,
       "attributes": {
         "check_name": "lease_commence_date_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -923,7 +923,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.594792000716552,
+      "value": 6.253541971091181,
       "attributes": {
         "check_name": "remaining_lease_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -935,7 +935,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 6.356249999953434,
+      "value": 4.557417007163167,
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
@@ -947,7 +947,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.098999980371445,
+      "value": 6.451792025472969,
       "attributes": {
         "check_name": "hdb_resale_prices_rowCount",
         "schema_name": "hdb_resale_prices",
@@ -959,7 +959,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 19.83595799538307,
+      "value": 18.115959013812244,
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
@@ -971,7 +971,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 11.902708007255569,
+      "value": 12.03199999872595,
       "attributes": {
         "check_name": "town_nullValues",
         "schema_name": "hdb_resale_prices",
@@ -983,7 +983,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 20.371165999677032,
+      "value": 18.19699996849522,
       "attributes": {
         "check_name": "flat_type_invalidValues",
         "schema_name": "hdb_resale_prices",
@@ -995,7 +995,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 25.268083001719788,
+      "value": 19.071124959737062,
       "attributes": {
         "check_name": "AddressBlockHouseNumber",
         "schema_name": "hdb_resale_prices",
@@ -1007,7 +1007,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 14.898916997481138,
+      "value": 14.306749973911792,
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
@@ -1020,7 +1020,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 20.09037500829436,
+      "value": 17.736458976287395,
       "attributes": {
         "check_name": "Year",
         "schema_name": "hdb_resale_prices",
@@ -1032,7 +1032,7 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 77.09554198663682,
+      "value": 15.222291985992342,
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
@@ -1907,6 +1907,7 @@
         "schema_name": "hdb_resale_prices",
         "dimension": "completeness",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "PASSED"
       }
     },
@@ -1919,6 +1920,7 @@
         "schema_name": "hdb_resale_prices",
         "dimension": "completeness",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "FAILED"
       }
     },
@@ -1931,6 +1933,7 @@
         "schema_name": "hdb_resale_prices",
         "dimension": "conformity",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "PASSED"
       }
     },
@@ -1943,6 +1946,7 @@
         "schema_name": "hdb_resale_prices",
         "dimension": "conformity",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "FAILED"
       }
     },
@@ -1955,6 +1959,7 @@
         "schema_name": "hdb_resale_prices",
         "dimension": "consistency",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "PASSED"
       }
     },
@@ -1967,6 +1972,7 @@
         "schema_name": "hdb_resale_prices",
         "dimension": "consistency",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "FAILED"
       }
     },
@@ -1978,7 +1984,8 @@
       "attributes": {
         "schema_name": "hdb_resale_prices",
         "dimension": "completeness",
-        "vowl.row_quality.exact": true
+        "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0
       }
     },
     {
@@ -1989,7 +1996,8 @@
       "attributes": {
         "schema_name": "hdb_resale_prices",
         "dimension": "conformity",
-        "vowl.row_quality.exact": true
+        "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0
       }
     },
     {
@@ -2000,7 +2008,8 @@
       "attributes": {
         "schema_name": "hdb_resale_prices",
         "dimension": "consistency",
-        "vowl.row_quality.exact": true
+        "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0
       }
     },
     {
@@ -2050,6 +2059,7 @@
       "attributes": {
         "schema_name": "hdb_resale_prices",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "PASSED"
       }
     },
@@ -2061,6 +2071,7 @@
       "attributes": {
         "schema_name": "hdb_resale_prices",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "FAILED"
       }
     },
@@ -2071,7 +2082,8 @@
       "value": 0.9999108376799964,
       "attributes": {
         "schema_name": "hdb_resale_prices",
-        "vowl.row_quality.exact": true
+        "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0
       }
     },
     {
@@ -2142,6 +2154,7 @@
       "value": 201861,
       "attributes": {
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "PASSED"
       }
     },
@@ -2152,6 +2165,7 @@
       "value": 18,
       "attributes": {
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "FAILED"
       }
     },
@@ -2161,14 +2175,15 @@
       "unit": "1",
       "value": 0.9999108376799964,
       "attributes": {
-        "vowl.row_quality.exact": true
+        "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0
       }
     },
     {
       "name": "vowl.run.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 880.432,
+      "value": 785.347,
       "attributes": {}
     }
   ]

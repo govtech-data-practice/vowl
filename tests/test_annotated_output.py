@@ -15,7 +15,7 @@ import pyarrow as pa
 import pytest
 
 from vowl.config import ValidationConfig
-from vowl.executors.base import CheckResult
+from vowl.executors.base import CappedFetch, CheckResult
 from vowl.validation.result import ValidationResult
 
 # ---------------------------------------------------------------------------
@@ -70,8 +70,16 @@ def _make_check(
     tables_in_query: str | None = None,
     target: str | None = None,
     check_definition: dict | None = None,
+    max_failed_rows: int | None = None,
 ) -> CheckResult:
+    """Build a check result. With *max_failed_rows*, *failed_rows* are fetched
+    lazily through :class:`CappedFetch`, as the executors do."""
     fr = nw.from_native(failed_rows, eager_only=True) if failed_rows is not None else None
+    fetcher = None
+    if max_failed_rows is not None and fr is not None:
+        frame = fr
+        fetcher = CappedFetch(lambda limit: frame if limit < 0 else frame.head(limit), lambda: max_failed_rows)
+        fr = None
     count = failed_rows_count
     if count is None:
         count = failed_rows.num_rows if failed_rows is not None else 0
@@ -87,6 +95,7 @@ def _make_check(
         status=status,
         details="",
         failed_rows=fr,
+        failed_rows_fetcher=fetcher,
         failed_rows_count=count,
         supports_row_level_output=supports_row_level_output,
         metadata=meta,
@@ -501,24 +510,27 @@ class TestCrossTableMerge:
         # it has offending rows (cnt col); but the merge path is not taken.
         assert "cross_avg" in self._residue_check_names(out)
 
-    def test_truncation_guard_fires_for_merged_cross_table_check(self):
-        # A now-mergeable cross-table check whose rows were capped must raise,
-        # not silently annotate un-fetched failures as passing.
+    def test_truncation_warning_fires_for_merged_cross_table_check(self):
+        # A now-mergeable cross-table check whose rows were capped warns,
+        # because its un-fetched failures look like passing rows.
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
             "orphan_check",
             "orders",
-            failed_rows=pa.table({"id": [2], "name": ["b"]}),
-            failed_rows_count=2,
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
             tables_in_query="orders, customers",
+            max_failed_rows=1,
         )
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
-        with pytest.raises(ValueError, match="annotated output"):
-            result.get_annotated_output()
+        with pytest.warns(UserWarning, match="incomplete"):
+            out = result.get_annotated_output()
+        info = out["annotated"]["orders"]["check_info"].to_list()
+        assert info[0] is None and info[2] is None
+        assert json.loads(info[1]) == [{"check_name": "orphan_check", "truncated": True}]
 
 
 # ---------------------------------------------------------------------------
@@ -672,42 +684,85 @@ class TestFetchFailurePaths:
 
 
 class TestTruncationGuard:
-    def test_mergeable_truncated_raises(self):
+    def test_mergeable_truncated_warns_and_marks_check_info(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
-        # Fetched 1 row but true count is 2 -> truncated.
+        # 2 rows fail but the cap keeps 1, so the check is truncated.
         check = _make_check(
             "c",
             "orders",
-            failed_rows=pa.table({"id": [2], "name": ["b"]}),
-            failed_rows_count=2,
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
+            max_failed_rows=1,
         )
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
-        with pytest.raises(ValueError, match="annotated output"):
-            result.get_annotated_output()
+        with pytest.warns(UserWarning, match="max_failed_rows=1 cut short the failed rows of check 'c'"):
+            out = result.get_annotated_output()
+        info = out["annotated"]["orders"]["check_info"].to_list()
+        assert info == [None, '[{"check_name": "c", "truncated": true}]', None]
 
-    def test_zero_cap_raises_instead_of_annotating_all_as_passing(self):
+    def test_zero_cap_warns_instead_of_annotating_all_as_passing(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
-        # max_failed_rows=0 fetches no rows, but the columns still match, so
-        # the check is mergeable and its 2 real failures must not vanish.
+        # max_failed_rows=0 keeps no rows, but the columns still match, so
+        # the check is mergeable and its 2 real failures must not go unnoticed.
         check = _make_check(
             "c",
             "orders",
-            failed_rows=pa.table({"id": pa.array([], pa.int64()), "name": pa.array([], pa.string())}),
-            failed_rows_count=2,
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
+            max_failed_rows=0,
         )
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=0),
         )
-        with pytest.raises(ValueError, match="annotated output"):
+        with pytest.warns(UserWarning, match="incomplete"):
+            out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list() == [None, None, None]
+
+    def test_rows_exactly_at_the_cap_are_not_truncated(self):
+        # The fetch asks for one row more than the cap, so a check with exactly
+        # cap failing rows is known to be complete.
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        check = _make_check(
+            "c",
+            "orders",
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
+            max_failed_rows=2,
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(max_failed_rows=2),
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list()[1] == '[{"check_name": "c"}]'
+
+    def test_a_count_above_the_rows_alone_is_not_truncation(self):
+        # The check's own count can exceed its rows without any cap, for
+        # example COUNT(DISTINCT), so it is no evidence of truncation.
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        check = _make_check(
+            "c",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            failed_rows_count=2,
+            max_failed_rows=5,
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(max_failed_rows=5),
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             result.get_annotated_output()
 
-    def test_uncapped_same_scenario_does_not_raise(self):
+    def test_uncapped_same_scenario_does_not_warn(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
             "c",
@@ -720,28 +775,31 @@ class TestTruncationGuard:
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=-1),
         )
-        out = result.get_annotated_output()  # no raise
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = result.get_annotated_output()
         assert "orders" in out["annotated"]
 
-    def test_nonmergeable_truncated_does_not_raise(self):
+    def test_nonmergeable_truncated_is_kept_as_a_marked_residue(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         check = _make_check(
             "subset",
             "orders",
-            failed_rows=pa.table({"id": [2]}),
-            failed_rows_count=5,
+            failed_rows=pa.table({"id": [2, 1]}),
             supports_row_level_output=True,
+            max_failed_rows=1,
         )
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
-        out = result.get_annotated_output()  # no raise: non-mergeable -> residue
-        residue_checks = set()
-        for df in out["residues"].values():
-            residue_checks |= ValidationResult._check_names_in_entry(df)
-        assert "subset" in residue_checks
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # non-mergeable -> residue, no warning
+            out = result.get_annotated_output()
+        (residue,) = out["residues"].values()
+        assert residue["id"].to_list() == [2]
+        assert json.loads(residue["check_info"][0]) == [{"check_name": "subset", "truncated": True}]
 
 
 # ---------------------------------------------------------------------------

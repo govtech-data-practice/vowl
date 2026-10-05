@@ -79,6 +79,7 @@ are three of them, one of each type:
       "attributes": {
         "schema_name": "orders",
         "vowl.row_quality.exact": true,
+        "vowl.row_quality.checks_not_attributed": 0,
         "status": "FAILED"
       }
     },
@@ -125,12 +126,13 @@ A few things to notice:
 
 - Row counts carry a `status` of `PASSED` or `FAILED` only. Check and schema
   counts also have `ERROR`.
-- `orders` has 7 failed rows at schema level, not 5 + 3 = 8, because one row
-  failed both checks. See [How failed rows are counted](understanding-metrics.md#how-failed-rows-are-counted).
-- The run level adds up the schemas: 7 + 2 = 9 failed rows.
-- The `row.count` points at dimension, schema and run level carry
-  `vowl.row_quality.exact`. It is `true` for every point here, because every
-  counted check ran.
+- 7 rows of `orders` failed at schema level, not 5 + 3 = 8, because one row
+  failed both checks. See [How rows are counted](understanding-metrics.md#how-failed-rows-are-counted).
+- The run level adds up the schemas: 7 + 2 = 9 rows failed.
+- The `row.count` and `row.pass_rate` points at dimension, schema and run
+  level carry `vowl.row_quality.exact` and
+  `vowl.row_quality.checks_not_attributed`. They are `true` and `0` for every
+  point here, because every counted check ran and was attributed.
 
 ### Reading it with pandas
 
@@ -148,7 +150,7 @@ with open("dq-results/orders_dq_metrics.json") as f:
 points = pd.json_normalize(document["points"])
 ```
 
-Pick out one metric to get a small table. The failed rows of each schema:
+Pick out one metric to get a small table. The row counts of each schema:
 
 ```python
 points[points["name"] == "vowl.schema.row.count"][
@@ -221,12 +223,12 @@ vowl.run.check.pass_rate               NaN   0.571429
 
 Each entry in `points` has:
 
-| Key          | What it holds                                                                                                                                                                  |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Key          | What it holds                                                                                                                                                                                  |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`       | The metric name, for example `vowl.schema.row.pass_rate`. [All metrics](understanding-metrics.md#all-metrics) lists them.                                                                      |
 | `type`       | `counter`, `gauge` or `histogram`. It says whether the value adds up. See [Which numbers add up](understanding-metrics.md#which-numbers-add-up).                                               |
-| `unit`       | `{check}`, `{row}` or `{schema}` for counts, `1` for pass rates, `ms` for durations.                                                                                           |
-| `value`      | The reading for this run. For a counter, it is this run's count. For a histogram, it is one timing.                                                                            |
+| `unit`       | `{check}`, `{row}` or `{schema}` for counts, `1` for pass rates, `ms` for durations.                                                                                                           |
+| `value`      | The reading for this run. For a counter, it is this run's count. For a histogram, it is one timing.                                                                                            |
 | `attributes` | What the reading is for, such as `schema_name` and `status`. The run identity is in `run` instead, not repeated. [Attributes](understanding-metrics.md#attributes) lists them for each metric. |
 
 The metric names always start with `vowl`. The `prefix` of `save` only names
@@ -266,8 +268,8 @@ from it, in the vocabulary on [Understanding DQ Metrics](understanding-metrics.m
 Some fields in `summary.json` look like DQ metrics but follow older rules.
 Prefer `dq_metrics.json` for these:
 
-| In `summary.json`                            | Use instead                | Why                                                                                               |
-| -------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------- |
-| `success_rate`                               | `vowl.run.check.pass_rate` | `success_rate` is a percentage from 0 to 100. Pass rates are from 0 to 1.                         |
-| `failed_rows`                                | `vowl.run.row.count`       | `failed_rows` adds up the failed rows of each check, so a row that fails two checks counts twice. |
-| `total_checks`, `passed`, `failed`, `errors` | `vowl.run.check.count`     | The same numbers, as one metric with a `status` attribute.                                        |
+| In `summary.json`                            | Use instead                | Why                                                                                                 |
+| -------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `success_rate`                               | `vowl.run.check.pass_rate` | `success_rate` is a percentage from 0 to 100. Pass rates are from 0 to 1.                           |
+| `failed_rows`                                | `vowl.run.row.count`       | `failed_rows` adds up the scalar counts of each check, so a row that fails two checks counts twice. |
+| `total_checks`, `passed`, `failed`, `errors` | `vowl.run.check.count`     | The same numbers, as one metric with a `status` attribute.                                          |

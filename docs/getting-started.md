@@ -59,31 +59,31 @@ result.display_full_report()
 
 
      CHECK RESULTS
-    +-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-    | check_id                                | Target                                | tables_in_query   | status | operator      | expected      | actual | execution time |
-    +-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-    | Month                                   | hdb_resale_prices.month               | hdb_resale_prices | FAILED | mustBe        | 0             | 2      | 13.01 ms       |
-    | Year                                    | hdb_resale_prices.lease_commence_date | hdb_resale_prices | FAILED | mustBe        | 0             | 3      | 9.86 ms        |
-    +-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-    | AddressBlockHouseNumber                 | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 11.21 ms       |
-    | block_column_exists_check               | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.34 ms        |
-    | flat_model_column_exists_check          | hdb_resale_prices.flat_model          | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.31 ms        |
-    | flat_type_column_exists_check           | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.23 ms        |
-    | flat_type_invalidValues                 | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 11.33 ms       |
-    | floor_area_must_be_less_than_200        | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 9.74 ms        |
-    | floor_area_sqm_column_exists_check      | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.14 ms        |
-    | hdb_resale_prices_rowCount              | hdb_resale_prices                     | hdb_resale_prices | PASSED | mustBeBetween | [0, 30000000] | 200    | 4.78 ms        |
-    | lease_commence_date_column_exists_check | hdb_resale_prices.lease_commence_date | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.45 ms        |
-    | month_column_exists_check               | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 3.79 ms        |
-    | month_logical_type_check                | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.77 ms        |
-    | remaining_lease_column_exists_check     | hdb_resale_prices.remaining_lease     | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.28 ms        |
-    | resale_price_column_exists_check        | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.28 ms        |
-    | resale_price_must_not_exceed_2m         | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 9.91 ms        |
-    | storey_range_column_exists_check        | hdb_resale_prices.storey_range        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 2.24 ms        |
-    | street_name_column_exists_check         | hdb_resale_prices.street_name         | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 3.72 ms        |
-    | town_column_exists_check                | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 3.53 ms        |
-    | town_nullValues                         | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 9.04 ms        |
-    +-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
+    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
+    | check_id                                | Target                                | tables_in_query   | status | operator          | expected | actual | execution time |
+    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
+    | Month                                   | hdb_resale_prices.month               | hdb_resale_prices | FAILED | mustBe            | 0        | 2      | 13.01 ms       |
+    | Year                                    | hdb_resale_prices.lease_commence_date | hdb_resale_prices | FAILED | mustBe            | 0        | 3      | 9.86 ms        |
+    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
+    | AddressBlockHouseNumber                 | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 11.21 ms       |
+    | block_column_exists_check               | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.34 ms        |
+    | flat_model_column_exists_check          | hdb_resale_prices.flat_model          | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.31 ms        |
+    | flat_type_column_exists_check           | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.23 ms        |
+    | flat_type_invalidValues                 | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 11.33 ms       |
+    | floor_area_must_be_less_than_200        | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 9.74 ms        |
+    | floor_area_sqm_column_exists_check      | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.14 ms        |
+    | hdb_resale_prices_rowCount              | hdb_resale_prices                     | hdb_resale_prices | PASSED | mustBeGreaterThan | 0        | 200    | 4.78 ms        |
+    | lease_commence_date_column_exists_check | hdb_resale_prices.lease_commence_date | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.45 ms        |
+    | month_column_exists_check               | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.79 ms        |
+    | month_logical_type_check                | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.77 ms        |
+    | remaining_lease_column_exists_check     | hdb_resale_prices.remaining_lease     | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.28 ms        |
+    | resale_price_column_exists_check        | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.28 ms        |
+    | resale_price_must_not_exceed_2m         | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 9.91 ms        |
+    | storey_range_column_exists_check        | hdb_resale_prices.storey_range        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.24 ms        |
+    | street_name_column_exists_check         | hdb_resale_prices.street_name         | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.72 ms        |
+    | town_column_exists_check                | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.53 ms        |
+    | town_nullValues                         | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 9.04 ms        |
+    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
     Total Execution:       110.94 ms
 
     === Failed Checks and Rows (up to 5 row(s) per failed check) ===
@@ -130,12 +130,15 @@ The summary groups the numbers for each schema (one table in the contract):
 - **Checks Pass Rate** is passed checks over all checks.
 - **ERRORED Checks** are checks that could not run, for example because the
   query names a missing column.
-- **Passed Rows** is the share of rows in the table that failed no check. See
-  [Failed Rows at Each Level](design-considerations/failed-rows/levels.md).
+- **Passed Rows** is the share of rows in the table that failed no counted
+  check. `(approx.)` after it means the number could be off, and
+  `(approx., 2 checks not attributed)` also says how many counted checks vowl
+  could not attribute to the table. See
+  [How Rows Are Counted](design-considerations/failed-rows/how-rows-are-counted.md).
 - **Single Table** covers checks that read only this schema's table.
   **Multi Table** covers cross-table checks, which read more than one table.
-- **Non-unique Failed Rows** adds up the failed rows of the cross-table
-  checks. A row that fails two of them is counted twice.
+- **Non-unique Failed Rows** adds up the scalar counts of the failed
+  cross-table checks. A row that fails two of them is counted twice.
 
 In the **CHECK RESULTS** table, `check_id` is the check's name, and
 `tables_in_query` lists the tables its query reads.
@@ -149,4 +152,4 @@ In the **CHECK RESULTS** table, `check_id` is the check's name, and
   multi-source runs.
 - [The Results Object](results.md) shows how to use the `ValidationResult`
   that `validate_data` returns, including saving it.
-- [Run Settings](run-settings.md) lists the `ValidationConfig` settings.
+- [Run Settings](run-settings.md) lists every `ValidationConfig` setting.

@@ -20,11 +20,11 @@ vowl (vee-owl 🦉): a validation engine for [Open Data Contract Standard (ODCS)
 - **Extensible Check Engine:** Ships with a SQL check engine out of the box, with the architecture designed to support custom check types beyond SQL.
 - **Generated Checks:** Checks are built for you from contract metadata (`logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`), and from library checks you declare with `type: library` (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`).
 - **Any DataFrame, Any Backend:** Load any [Narwhals-compatible](https://github.com/narwhals-dev/narwhals) DataFrame type (pandas, Polars, PySpark, etc.) or connect to **20+ backends** via [Ibis](https://github.com/ibis-project/ibis). SQL dialect translation is handled by [SQLGlot](https://github.com/tobymao/sqlglot).
-- **Runs in Your Database:** SQL checks run inside your database through Ibis. Only counts and failed rows come back. A table is downloaded only to count checks that are not plain row filters, and [`row_count_accuracy="fast"`](run-settings.md#row-count-accuracy) turns that off.
+- **Runs in Your Database:** SQL checks run inside your database through Ibis. Only counts and failed rows come back. A table is downloaded only to count checks that are not plain row filters, and [`disable_table_attributed_counts`](run-settings.md#disable_table_attributed_counts) turns that off.
 - **Multi-Source Validation:** One contract can cover tables in different databases, with checks that compare them.
 - **Declarative ODCS Contracts:** Define validation rules in YAML following the [Open Data Contract Standard](https://github.com/bitol-io/open-data-contract-standard).
 - **Flexible Filtering:** Filter conditions with wildcard pattern matching, ideal for incremental validation of new data.
-- **Clear Results:** Summaries, your tables with failed rows annotated, row pass rates, files you can save, and [DQ metrics](dq-metrics/understanding-metrics.md) for dashboards.
+- **Clear Results:** Summaries, your tables with the rows that failed annotated, row pass rates, files you can save, and [DQ metrics](dq-metrics/understanding-metrics.md) for dashboards.
 - **No Silent Gaps:** Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
 
 ## Next Steps

@@ -279,7 +279,7 @@ def histogram_statement(spec: KeySpec, chunk: Chunk) -> str:
 def mask_histogram_statement(spec: KeySpec, chunk: Chunk) -> str:
     """The histogram of a scan chunk, grouped on the masks alone.
 
-    Each row of the scan is one physical row, so no key is needed to tell rows
+    Each row of the scan is one table row, so no key is needed to tell rows
     apart, and a collation or a mixed type cannot merge two of them. This
     keeps the counts exact in a dialect without a key entry.
     """

@@ -19,7 +19,7 @@ from ...executors.base import CheckResult
 REASON_OPERATOR = "operator does not identify bad rows"
 REASON_NOT_ROW_LEVEL = "table-level or not a row filter"
 REASON_ERROR = "check ended in ERROR"
-REASON_PROBE_FAILURE = "dropped at run time (probe failure)"
+REASON_PROBE_FAILURE = "the counting query failed in the data source"
 REASON_NOT_MERGEABLE = "failed rows do not have the table's columns or primary key"
 REASON_PK_NOT_UNIQUE = "primary key has duplicate values"
 REASON_PK_UNCHECKED = "primary key uniqueness could not be checked"
@@ -28,8 +28,10 @@ REASON_CROSS_SOURCE = "checks tables from more than one data source"
 REASON_NO_PUSHDOWN = "data source does not support pushdown"
 REASON_TOLERATED_NOT_FETCHED = "tolerated rows not fetched under failed_checks"
 REASON_NO_EXPORT = "the table could not be exported"
+REASON_NO_FETCH = "the failed rows could not be fetched"
 REASON_UNKEYABLE = "the failed rows could not be keyed"
 REASON_UNMATCHED = "some failed rows match no table row"
+REASON_COUNTS_VALUES = "the check counts distinct values, not rows"
 
 
 def uncertified_reason(rule: str) -> str:
@@ -92,7 +94,7 @@ def _would_be_row_level(check_result: CheckResult) -> bool:
     """Guess from its metadata whether an ERROR check would have been row-level."""
     metadata = check_result.metadata
     aggregation_type = metadata.get("aggregation_type")
-    if aggregation_type is not None and aggregation_type not in ("count", "none"):
+    if aggregation_type is not None and aggregation_type not in ("count", "count_distinct", "none"):
         return False
     unit = (metadata.get("check_definition") or {}).get("unit")
     return unit is None or unit == "rows"
@@ -124,8 +126,9 @@ class CheckSelection:
         result: The check result.
         schema_name: The schema the check is anchored to.
         dimension: The check's resolved dimension.
-        counted: Whether the check can contribute rows. A later step can still
-            drop it, for example when its rows are not mergeable.
+        counted: Whether the check can contribute rows. It stays counted, and
+            may be not attributed, either on this run or because it is never
+            attributable, in which case its failed rows become residues.
         tolerated: The check PASSED but matched rows (a tolerance). Such a
             check feeds ``tolerated_rows``, and under ``all_violations`` it also
             feeds ``failed_rows``.

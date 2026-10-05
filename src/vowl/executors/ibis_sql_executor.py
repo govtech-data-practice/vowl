@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import narwhals as nw
 import pyarrow as pa
 
-from vowl.executors.base import CheckResult, RowSource, SQLExecutor
+from vowl.executors.base import CappedFetch, CheckResult, RowSource, SQLExecutor
 from vowl.executors.security import SQLSecurityError
 
 if TYPE_CHECKING:
@@ -79,9 +79,13 @@ class IbisSQLExecutor(SQLExecutor):
         """SQL dialect matching the Ibis backend (e.g. duckdb, sqlite, postgres)."""
         return self._target_dialect
 
+    def _max_failed_rows(self) -> int:
+        return getattr(self._adapter, "max_failed_rows", 1000)
+
     def _fetch_failed_rows(
         self,
         select_query: str | None,
+        max_rows: int | None = None,
     ) -> nw.DataFrame | None:
         """
         Fetch the actual rows that failed a check.
@@ -90,6 +94,7 @@ class IbisSQLExecutor(SQLExecutor):
             select_query: A SELECT query for the failing rows (from
                 CheckReference.get_failed_rows_query). None if the
                 transformation was not possible.
+            max_rows: The row limit. Defaults to the adapter's ``max_failed_rows``.
 
         Returns:
             DataFrame of failed rows, or None if query is None or execution fails.
@@ -98,7 +103,8 @@ class IbisSQLExecutor(SQLExecutor):
             return None
 
         # Add LIMIT to avoid fetching too many rows (controlled by config.max_failed_rows)
-        max_rows = getattr(self._adapter, "max_failed_rows", 1000)
+        if max_rows is None:
+            max_rows = self._max_failed_rows()
         select_query = self._with_row_cap(select_query, max_rows, self._target_dialect)
 
         try:
@@ -198,8 +204,9 @@ class IbisSQLExecutor(SQLExecutor):
                 use_try_cast=use_try_cast,
             )
 
-            def fetcher(q=failed_query):
-                return self._fetch_failed_rows(q)
+            fetcher = CappedFetch(
+                lambda limit, q=failed_query: self._fetch_failed_rows(q, limit), self._max_failed_rows
+            )
 
             result = check_ref.build_result(
                 actual_value=actual_value,

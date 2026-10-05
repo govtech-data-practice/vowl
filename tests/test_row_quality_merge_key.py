@@ -2,7 +2,7 @@
 
 A unique declared primary key groups the rows as the full columns do, so it is
 the match key whenever the data source can run the pushdown and no key value
-appears twice. See docs/design-considerations/failed-rows/levels.md.
+appears twice. See docs/design-considerations/failed-rows/how-rows-are-counted.md.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def test_a_primary_key_that_is_every_column_is_not_a_merge_key():
     assert rq._schema_row(result)["failed_rows"] == 1
 
 
-def test_a_duplicated_primary_key_falls_back_with_its_own_reason():
+def test_a_duplicated_primary_key_is_not_attributed_with_its_own_reason():
     con = _table("(1, -1), (1, 3), (2, 5)")
 
     result = rq._validate(con, [rq._schema("t", [_SUBSET, rq._check("five", "c = 5")], _PK)])
@@ -78,11 +78,14 @@ def test_a_duplicated_primary_key_falls_back_with_its_own_reason():
     assert result._row_quality().merge_key("t") is None
     checks = rq._check_rows(result)
     assert checks["ids_negative"]["reason"] == REASON_PK_NOT_UNIQUE
-    assert checks["ids_negative"]["counted"] is False
+    # Still about bad rows, so counted, but its rows become residues.
+    assert (checks["ids_negative"]["counted"], checks["ids_negative"]["attributed"]) == (True, False)
+    assert checks["ids_negative"]["attributed_rows"] is None
     # A full-column check still merges on the full columns.
     assert checks["five"]["counted"] is True
     # The two id = 1 rows fail the generated primary key check, and (2, 5) fails five.
-    assert rq._schema_row(result)["failed_rows"] == 3
+    schema = rq._schema_row(result)
+    assert (schema["failed_rows"], schema["checks_not_attributed"], schema["exact"]) == (3, 1, False)
     assert "t::ids_negative" in result.get_annotated_output()["residues"]
 
 
@@ -141,8 +144,9 @@ def test_a_table_match_check_with_transformed_values_matches_on_the_primary_key(
     keyed = rq._validate(con, [rq._schema("t", [shifted], _PK)])
     unkeyed = rq._validate(con, [rq._schema("t", [shifted])])
 
-    assert rq._check_rows(keyed)["shifted"]["route"] == "client_lookup"
-    assert rq._check_rows(keyed)["shifted"]["exact"] is True
+    assert rq._check_rows(keyed)["shifted"]["route"] == "server_lookup"
+    # c * 10 is not a plain column, so the check is marked approximate.
+    assert rq._check_rows(keyed)["shifted"]["exact"] is False
     assert rq._schema_row(keyed)["failed_rows"] == 2
     assert _marked(keyed) == {1: {"shifted"}, 2: {"shifted"}}
     assert rq._schema_row(unkeyed)["failed_rows"] == 0

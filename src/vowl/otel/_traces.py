@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 from ..validation.dq_metrics import (
     check_pass_rate,
     check_status_counts,
-    run_row_numbers,
+    run_row_counts,
     schema_status_counts,
 )
 from ._common import check_attributes, check_query, check_row_attributes, coerce_attr, flatten_check_definition
@@ -63,14 +63,15 @@ class TraceEmitter:
         root_attrs.update(
             {f"schema.count.{status.lower()}": count for status, count in schema_status_counts(result).items()}
         )
-        run_rows = run_row_numbers(result)
+        run_rows = run_row_counts(result)
         if run_rows is not None:
-            total, failed, exact = run_rows
+            total, failed, exact, not_attributed = run_rows
             root_attrs["row.count.passed"] = max(total - failed, 0)
             root_attrs["row.count.failed"] = failed
             if total:
                 root_attrs["row.pass_rate"] = max(total - failed, 0) / total
             root_attrs[f"{self._ns}.row_quality.exact"] = exact
+            root_attrs[f"{self._ns}.row_quality.checks_not_attributed"] = not_attributed
         root = self._tracer.start_span(
             f"{self._ns}.validate",
             start_time=start_ns,

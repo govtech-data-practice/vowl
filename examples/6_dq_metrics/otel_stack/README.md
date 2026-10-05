@@ -229,8 +229,8 @@ contracts are left:
   check pass rate below 100%. Anything above 0 is red.
 - **Catalog check pass rate** is passed checks divided by all checks, over the
   latest run of every contract. Big contracts weigh more than small ones.
-- **Failed rows (latest runs)** adds up the failed rows of every contract's
-  latest run.
+- **Failed rows (latest runs)** adds up the rows that failed in every
+  contract's latest run. Checks that are not attributed are not in it.
 - **Contract scorecard** has one row per contract, worst check pass rate
   first. Start here to decide which contract to look at. Pass rates show as a
   bar, and failed checks counts both FAILED and ERROR.
@@ -302,7 +302,7 @@ Click a `vowl.check` span to see its attributes:
 - `status` is the check result (PASSED, FAILED or ERROR). The span status stays
   `ok` for a FAILED check because the query itself ran fine.
 - `row.count.failed`, `row.count.passed` and `row.pass_rate` are the check's
-  row numbers, the same as `vowl.check.row.count` and
+  row counts from its scalar count, the same as `vowl.check.row.count` and
   `vowl.check.row.pass_rate`. A check that returns one number instead of rows
   has none.
 - `expected_value`, `actual_value` and `operator` explain why it failed.

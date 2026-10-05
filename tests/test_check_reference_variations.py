@@ -706,18 +706,16 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.supports_row_level_output is False
 
-    def test_row_count_is_not_row_level(self, monkeypatch: pytest.MonkeyPatch):
-        """rowCount is a whole-table aggregate: no failure predicate, so it is
-        not mergeable into the annotated table and contributes no failing rows."""
+    def test_row_count_is_row_level_like_its_sql(self, monkeypatch: pytest.MonkeyPatch):
+        """rowCount runs SELECT COUNT(*) FROM t, so it is row-level like that SQL check."""
         ref = self._ref(
             monkeypatch,
             RowCountCheckReference,
             properties=[{"name": "col_a", "logicalType": "string"}],
             table_quality=[{"type": "library", "metric": "rowCount", "mustBeGreaterThan": 0}],
         )
-        assert ref.supports_row_level_output is False
-        # A failing rowCount reports zero failing rows (count is table size, not violations).
-        assert ref.compute_failed_rows_count(1000) == 0
+        assert ref.supports_row_level_output is True
+        assert ref.compute_failed_rows_count(1000) == 1000
 
 
 # ===================================================================

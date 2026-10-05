@@ -192,7 +192,7 @@ md(
     """
 ### Schema and dimension level: rows, counted once
 
-Row counts at schema level count **physical rows**: a row that fails two checks is
+Row counts at schema level count **attributed rows**, every copy counted. A row that fails two checks is
 one failed row, not two, so the schema's failed rows can be fewer than the
 check-level failures added up. In this run no row fails more than one check, so the
 two numbers below match. The
@@ -645,8 +645,8 @@ md(
 ### Recap
 
 - Every run is summed up as DQ metrics named `vowl.<level>.<unit>.<measure>`, at
-  check, dimension, schema, and run level. Row counts above check level count each
-  physical row once.
+  check, dimension, schema, and run level. Row counts above check level count
+  attributed rows, every copy counted.
 - `result.get_dq_metrics()` returns them as a `dict`, and `result.save(...)` writes
   the same document to `<prefix>_dq_metrics.json`. `pd.json_normalize` turns it into
   a table, and tagging each file with its run ID loads many runs together.

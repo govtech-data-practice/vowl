@@ -20,7 +20,8 @@ class OverallSummary(CheckStatusSummary):
 
     ``passed_rows`` and ``passed_row_percentage`` are None when no check was
     counted or the numbers are unavailable. ``exact`` is False when the
-    numbers are approximate.
+    numbers are approximate. ``checks_not_attributed`` counts the counted
+    checks whose rows are not in the numbers.
     """
 
     failed_rows: int | None
@@ -28,6 +29,7 @@ class OverallSummary(CheckStatusSummary):
     total_rows: int | None
     passed_row_percentage: float | None
     exact: bool
+    checks_not_attributed: int = 0
 
 
 @dataclass(frozen=True)

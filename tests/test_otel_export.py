@@ -273,7 +273,7 @@ def test_metric_emitter_check_level_metrics(result):
     assert failing.attributes["dimension"] == "consistency"
     assert failing.attributes["schema_name"] == "orders"
 
-    # Per-check row pass rate: every row-level check with a schema gets one.
+    # Per-check row pass rate: every counted check gets one.
     check_row_rates = {p.attributes["check_name"]: p.value for p in points["vowl.check.row.pass_rate"]}
     assert check_row_rates["amount_non_negative"] == 0.5  # 2 of 4 rows failed
     assert all(v == 1.0 for k, v in check_row_rates.items() if k != "amount_non_negative")

@@ -17,9 +17,10 @@ class SchemaRowQuality:
     """Row-quality numbers for one schema.
 
     ``failed_rows``, ``tolerated_rows``, ``passed_rows`` and ``pass_rate`` are
-    None when no check was counted. ``pass_rate`` is also None when the table
-    is empty or its row count is unknown. ``tolerated_rows`` is None when
-    tolerated rows were not collected.
+    None when no counted check was attributed. ``pass_rate`` is also None when
+    the table is empty or its row count is unknown. ``tolerated_rows`` is None
+    when tolerated rows were not collected. ``checks_not_attributed`` counts the
+    counted checks whose rows are not in these numbers.
     """
 
     schema_name: str
@@ -31,6 +32,7 @@ class SchemaRowQuality:
     exact: bool
     checks_counted: int
     checks_not_counted: int
+    checks_not_attributed: int
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,7 @@ class DimensionRowQuality:
     exact: bool
     checks_counted: int
     checks_not_counted: int
+    checks_not_attributed: int
 
 
 @dataclass(frozen=True)
@@ -55,10 +58,18 @@ class CheckRowQuality:
 
     Attributes:
         route: ``"server_predicate"``, ``"server_lookup"``, ``"client_lookup"`` or
-            ``"client_returned_rows"``, or empty when the check's rows were not
-            collected.
-        reason: Why the check was not counted, or why it left pushdown.
-        failed_rows: The check's own physical failing rows, before the merge.
+            ``"server_scalar"``, or empty when the check is not counted or not
+            attributed. ``"server_scalar"`` is used only under
+            ``disable_table_attributed_counts``.
+        reason: Why the check was not counted or not attributed, or why it
+            left pushdown.
+        scalar_count: The number the check's own query returned, as a count.
+            It decides pass or fail, and is what the summary shows as ``actual``.
+        attributed_rows: The rows of the table the check caught, before the
+            merge. It differs from ``scalar_count`` when the check's query does
+            not return each failing row of the table once, for example under
+            ``DISTINCT``. None when the check is not attributed.
+        attributed: The check's attributed rows are in the row counts.
         exact: False when this check's rows are incomplete or approximate.
     """
 
@@ -70,7 +81,9 @@ class CheckRowQuality:
     tolerated: bool
     route: str
     reason: str
-    failed_rows: int | None
+    scalar_count: int | None
+    attributed_rows: int | None
+    attributed: bool
     exact: bool
 
 
@@ -106,12 +119,15 @@ class CheckState:
     Attributes:
         check_id: Schema-local id, the bit the check owns in the masks.
         dimension: The check's dimension.
-        counted: The check is counted (after run-time drops).
+        counted: The check is about bad rows.
         failed: The check FAILED. False for tolerated and zero-count checks.
         collected: The check's rows are in the merged entries.
-        skipped: A tolerated check whose rows were not collected.
+        attributed: The check's attributed rows are in the row counts.
+        scalar: The check is counted from its scalar count, outside the
+            merged entries. Only under ``disable_table_attributed_counts``.
         inexact: The check makes its buckets inexact.
-        own_rows: The check's own failing rows, when known.
+        attributed_rows: The check's attributed rows, when known.
+        scalar_count: The count the check's own query returned.
     """
 
     check_id: int
@@ -119,12 +135,14 @@ class CheckState:
     counted: bool
     failed: bool
     collected: bool
-    skipped: bool = False
+    attributed: bool = True
+    scalar: bool = False
     inexact: bool = False
-    own_rows: int | None = None
+    attributed_rows: int | None = None
+    scalar_count: int | None = None
 
 
-def own_rows_from_entries(entries: Iterable[tuple[int, int]], check_ids: Sequence[int]) -> dict[int, int]:
+def attributed_rows_from_entries(entries: Iterable[tuple[int, int]], check_ids: Sequence[int]) -> dict[int, int]:
     """Sum the copies of the entries each check caught."""
     totals = dict.fromkeys(check_ids, 0)
     for mask, copies in entries:
@@ -132,6 +150,17 @@ def own_rows_from_entries(entries: Iterable[tuple[int, int]], check_ids: Sequenc
             if mask >> check_id & 1:
                 totals[check_id] += copies
     return totals
+
+
+def bucket_rows(state: CheckState) -> int | None:
+    """The rows *state* adds to its buckets: its attributed rows, or its scalar count when counted from it."""
+    if state.scalar:
+        return state.scalar_count
+    return state.attributed_rows if state.attributed else None
+
+
+def _may_have_rows(state: CheckState) -> bool:
+    return state.scalar_count is None or state.scalar_count > 0
 
 
 def _mask(states: Iterable[CheckState]) -> int:
@@ -148,17 +177,29 @@ def roll_up_bucket(
     *,
     scope: RowIssueScope,
     exact: bool,
-) -> tuple[int | None, int | None, int | None, float | None, bool, int]:
+) -> tuple[int | None, int | None, int | None, float | None, bool, int, int]:
     """Roll up one bucket of checks.
+
+    A counted check that is not attributed adds nothing, unless it is counted
+    from its scalar count. When it caught rows in scope the bucket is not exact.
 
     Returns:
         ``(failed_rows, tolerated_rows, passed_rows, pass_rate, exact,
-        checks_counted)``.
+        checks_counted, checks_not_attributed)``.
     """
     counted = [state for state in states if state.counted]
     exact = exact and not any(state.inexact for state in states)
     if not counted:
-        return None, None, None, None, exact, 0
+        return None, None, None, None, exact, 0, 0
+    not_attributed = [state for state in counted if not state.attributed]
+    if any(
+        not state.scalar and (state.failed or scope == "all_violations") and _may_have_rows(state)
+        for state in not_attributed
+    ):
+        # Rows in scope are missing from the numbers.
+        exact = False
+    if not any(state.attributed or state.scalar for state in counted):
+        return None, None, None, None, exact, len(counted), len(not_attributed)
 
     collected = [state for state in counted if state.collected]
     strict_mask = _mask(state for state in collected if state.failed)
@@ -166,11 +207,26 @@ def roll_up_bucket(
     strict = sum(copies for mask, copies in entries if mask & strict_mask)
     everything = sum(copies for mask, copies in entries if mask & all_mask)
 
+    scalars = [state for state in counted if state.scalar]
+    if scalars:
+        # Scalars cannot tell which rows overlap, so their sum is exact only
+        # when no other check of the bucket has failing rows.
+        with_rows = [state for state in counted if (bucket_rows(state) or 0) > 0]
+        if len(with_rows) > 1 and any(state.scalar for state in with_rows):
+            exact = False
+        strict += sum(state.scalar_count or 0 for state in scalars if state.failed)
+        everything += sum(state.scalar_count or 0 for state in scalars)
+        if total_rows is not None:
+            strict, everything = min(strict, total_rows), min(everything, total_rows)
+
     failed_rows = strict if scope == "failed_checks" else everything
-    tolerated_rows = None if any(state.skipped for state in counted) else everything - strict
+    tolerated_rows: int | None = max(everything - strict, 0)
+    if any(not state.scalar and not state.failed and _may_have_rows(state) for state in not_attributed):
+        # A tolerated check's rows are missing, so the tolerated rows are unknown.
+        tolerated_rows = None
     passed_rows = max(total_rows - failed_rows, 0) if total_rows is not None else None
     pass_rate = passed_rows / total_rows if total_rows and passed_rows is not None else None
-    return failed_rows, tolerated_rows, passed_rows, pass_rate, exact, len(counted)
+    return failed_rows, tolerated_rows, passed_rows, pass_rate, exact, len(counted), len(not_attributed)
 
 
 def run_level_rates(schemas: Sequence[SchemaRowQuality]) -> tuple[float | None, float | None]:
