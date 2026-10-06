@@ -317,15 +317,17 @@ md(
 <a id="4-saving"></a>
 ## 4. Saving Outputs to Disk
 
-`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout (every mode also writes `<prefix>_check_results.csv` and `<prefix>_summary.json`. The run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb) are saved separately with `result.save_dq_metrics(...)`):
+`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout. Every mode also writes `<prefix>_check_results.csv` and `<prefix>_summary.json`, and the annotated modes also write the run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb) as `<prefix>_dq_metrics.json`:
 
 | Mode | Files written |
 |------|----------------|
-| `"failed_rows"` *(deprecated)* | One grouped failed-rows CSV per table key, e.g. `<prefix>_<table>.csv` |
-| `"annotated"` *(default)* | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>_<check>_residue.csv` per non-mergeable check |
-| `"both"` *(deprecated)* | The failed-rows CSVs **and** the annotated CSVs (residues are already covered by the grouped failed-rows CSVs, so no separate `_residue` files are written) |
+| `"failed_rows"` *(cheap)* | One grouped failed-rows CSV per table key, e.g. `<prefix>_<table>.csv`. No `dq_metrics.json`. |
+| `"annotated"` *(default)* | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>_<check>_residue.csv` per non-mergeable check, **plus** `<prefix>_dq_metrics.json` |
+| `"both"` | The failed-rows CSVs, the annotated CSVs and `<prefix>_dq_metrics.json` (residues are already covered by the grouped failed-rows CSVs, so no separate `_residue` files are written) |
 
-The `check_info` argument (`"names"` / `"summary"` / `"full"`, described above) sets how much detail the saved `check_info` column carries. To set the `check_info` detail for every `save()`, pass `ValidationConfig(annotated_check_info="summary")` to `validate_data(config=...)`. The deprecated `"failed_rows"` and `"both"` modes still work but emit a `DeprecationWarning`.
+The `check_info` argument (`"names"` / `"summary"` / `"full"`, described above) sets how much detail the saved `check_info` column carries. To set the `check_info` detail for every `save()`, pass `ValidationConfig(annotated_check_info="summary")` to `validate_data(config=...)`.
+
+The annotated modes attribute failed rows to each table and may download it, which can be slow on a large table. The annotated tables and `dq_metrics.json` share that work, so writing both costs no more than writing one. `"failed_rows"` runs no extra queries and never downloads a table, so pick it when you only need the failed rows.
 
 Single-table contracts (like the HDB example) have no non-mergeable checks, so they never produce `_residue` files. The multi-source run below does, so let's save both to see the difference. The files land in the `outputs/` folder beside this notebook.
 """
