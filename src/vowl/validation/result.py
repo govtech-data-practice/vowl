@@ -1277,7 +1277,7 @@ class ValidationResult:
                 point, span, and log record. vowl never inspects or reroutes
                 a key.
             run_id: Id for this export. When omitted, :attr:`run_id` is used,
-                the same id :meth:`save` writes into ``dq_metrics.json``.
+                the same id :meth:`save_dq_metrics` writes into ``dq_metrics.json``.
             max_failed_rows_sample: Max failing rows to attach per check to
                 logs and span events. ``0`` (default) exports no cell values.
                 A positive value is also capped by the run's ``max_failed_rows``.
@@ -1332,9 +1332,10 @@ class ValidationResult:
         check_info: CheckInfoPreset | None = None,
         filesystem: Any | None = None,
     ) -> ValidationResult:
-        """Write the check-results CSV, per-mode row outputs, the summary JSON
-        and the DQ metrics JSON (``<prefix>_dq_metrics.json``, see
-        :meth:`get_dq_metrics`).
+        """Write the check-results CSV, per-mode row outputs and the summary JSON.
+
+        These are the scalar outputs. They never attribute rows. To write the
+        DQ metrics as well, call :meth:`save_dq_metrics`.
 
         ``output_dir`` is a local folder or a URI such as
         ``s3://bucket/dq-results/run-1/``. URIs (``s3://``, ``gs://``,
@@ -1427,13 +1428,29 @@ class ValidationResult:
                     saved_files.append(target.write_csv(f"{prefix}_{safe_key}_residue.csv", df.to_arrow()))
 
         saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str)))
-        saved_files.append(
-            target.write_text(f"{prefix}_dq_metrics.json", json.dumps(self.get_dq_metrics(), indent=2, default=str))
-        )
 
         print("\nResults saved:")
         for fp in saved_files:
             print(f"   - {fp}")
+        return self
+
+    def save_dq_metrics(
+        self,
+        output_dir: str = ".",
+        prefix: str = "vowl_results",
+        *,
+        filesystem: Any | None = None,
+    ) -> ValidationResult:
+        """Write the DQ metrics (see :meth:`get_dq_metrics`) to ``<prefix>_dq_metrics.json``.
+
+        This attributes rows, once per result. Later calls to
+        :meth:`get_dq_metrics`, :meth:`export_otel` or this method reuse the
+        same numbers. ``output_dir`` and ``filesystem`` work as in :meth:`save`.
+        """
+        target = OutputDir(output_dir, filesystem)
+        prefix = _safe_filename_component(prefix, fallback="vowl_results")
+        path = target.write_text(f"{prefix}_dq_metrics.json", json.dumps(self.get_dq_metrics(), indent=2, default=str))
+        print(f"\nDQ metrics saved:\n   - {path}")
         return self
 
     @staticmethod

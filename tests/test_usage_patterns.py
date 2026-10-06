@@ -1389,7 +1389,6 @@ class TestSaveResultsToCloudStorage:
             "run-1/dq_check_results.csv",
             "run-1/dq_hdb_resale_prices_annotated.csv",
             "run-1/dq_summary.json",
-            "run-1/dq_dq_metrics.json",
         }
         summary = json.loads(self._read(s3_client, "run-1/dq_summary.json"))
         assert summary == json.loads(json.dumps(results.summary, default=str))
@@ -1424,7 +1423,6 @@ class TestSaveResultsToCloudStorage:
             "dq_check_results.csv",
             "dq_hdb_resale_prices_annotated.csv",
             "dq_summary.json",
-            "dq_dq_metrics.json",
         }
 
     @pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")

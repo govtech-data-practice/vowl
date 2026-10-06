@@ -4,8 +4,10 @@ description: How vowl writes a run's DQ metrics to dq_metrics.json, and how to l
 
 # Exporting to dq_metrics.json
 
-`result.save(...)` writes the run's [DQ metrics](understanding-metrics.md) to
-`<prefix>_dq_metrics.json`, next to the check results and `summary.json`. The
+`result.save_dq_metrics(...)` writes the run's [DQ metrics](understanding-metrics.md) to
+`<prefix>_dq_metrics.json`. It takes the same `output_dir`, `prefix` and
+`filesystem` as `save()`, so the file can sit next to the check results and
+`summary.json`. `save()` itself does not write it. The
 file holds the same readings that
 [Exporting to OpenTelemetry](otel-export.md) sends, with the same names,
 attributes and values. Use it when you want the metrics in a data warehouse,
@@ -16,8 +18,8 @@ install.
 from vowl import validate_data
 
 result = validate_data("contract.yaml", df=df)
-result.save("dq-results/", prefix="orders", output_mode="annotated")
-# writes dq-results/orders_dq_metrics.json, among the other files
+result.save_dq_metrics("dq-results/", prefix="orders")
+# writes dq-results/orders_dq_metrics.json
 ```
 
 To get the same content without writing a file, call
@@ -229,8 +231,8 @@ Each entry in `points` has:
 | `value`      | The reading for this run. For a counter, it is this run's count. For a histogram, it is one timing.                                                                                            |
 | `attributes` | What the reading is for, such as `schema_name` and `status`. The run identity is in `run` instead, not repeated. [Attributes](understanding-metrics.md#attributes) lists them for each metric. |
 
-The metric names always start with `vowl`. The `prefix` of `save` only names
-the files.
+The metric names always start with `vowl`. The `prefix` of `save_dq_metrics` only names
+the file.
 
 Two readings with the same name and attributes, such as two checks with the
 same name in one schema, are merged the way OpenTelemetry merges them. Counters

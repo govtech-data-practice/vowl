@@ -198,6 +198,7 @@ run level, ready for a dashboard.
 | Method or property | What it does                                                                                                                                  |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `get_dq_metrics()` | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
+| `save_dq_metrics(...)` | Writes the DQ metrics to `<prefix>_dq_metrics.json`. It takes the same `output_dir`, `prefix` and `filesystem` as `save()`.               |
 | `export_otel(...)` | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
 | `run_id`           | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
 
@@ -216,9 +217,12 @@ result.save("dq-results/", prefix="orders")
 | `orders_<schema>_annotated.csv`       | One annotated table per schema              |
 | `orders_<schema>_<check>_residue.csv` | One file per residue                        |
 | `orders_summary.json`                 | The numbers behind the summary              |
-| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md) |
 
 Without `prefix`, the files start with `vowl_results`.
+
+`save()` writes no DQ metrics, so it never attributes rows. To save them too,
+call `result.save_dq_metrics("dq-results/", prefix="orders")`, which writes
+`orders_dq_metrics.json`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).
 
 `save()` takes the same `check_info`, `include_check_definition` and
 `include_contract_definition` options as the methods above.

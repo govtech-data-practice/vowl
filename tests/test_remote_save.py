@@ -87,7 +87,6 @@ def test_save_to_s3_uri_writes_into_the_remote_filesystem(result, mock_s3, tmp_p
         "bucket/run1/dq_check_results.csv",
         "bucket/run1/dq_orders_annotated.csv",
         "bucket/run1/dq_summary.json",
-        "bucket/run1/dq_dq_metrics.json",
     }
     summary = json.loads(_read_text(mock_s3.fs, "bucket/run1/dq_summary.json"))
     assert summary == json.loads(json.dumps(result.summary, default=str))
@@ -100,6 +99,28 @@ def test_save_to_s3_uri_writes_into_the_remote_filesystem(result, mock_s3, tmp_p
     out = capsys.readouterr().out
     assert "s3://bucket/run1/dq_check_results.csv" in out
     assert "s3://bucket/run1/dq_summary.json" in out
+
+
+def test_save_dq_metrics_to_s3_uri(result, mock_s3, tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    result.save_dq_metrics("s3://bucket/run1/", prefix="dq")
+
+    assert mock_s3.seen == ["s3://bucket/run1/"]
+    assert _files(mock_s3.fs, "bucket") == {"bucket/run1/dq_dq_metrics.json"}
+    document = json.loads(_read_text(mock_s3.fs, "bucket/run1/dq_dq_metrics.json"))
+    assert document == json.loads(json.dumps(result.get_dq_metrics(), default=str))
+    assert list(tmp_path.iterdir()) == []
+    assert "s3://bucket/run1/dq_dq_metrics.json" in capsys.readouterr().out
+
+
+def test_save_dq_metrics_with_explicit_filesystem(result):
+    fs = _MockFileSystem()
+
+    result.save_dq_metrics("bucket/run2", prefix="../dq", filesystem=fs)
+
+    (path,) = _files(fs, "bucket")
+    assert path.startswith("bucket/run2/") and path.endswith("_dq_metrics.json")
 
 
 def test_save_with_explicit_filesystem_and_plain_path(result):

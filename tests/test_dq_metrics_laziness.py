@@ -112,7 +112,6 @@ def test_summary_does_not_attribute(result, calls):
     _assert_basic(calls)
 
 
-@pytest.mark.xfail(strict=True, reason="step 3: save() still writes dq_metrics.json")
 def test_save_failed_rows_does_not_attribute(result, calls, tmp_path):
     with pytest.warns(DeprecationWarning):
         result.save(str(tmp_path), output_mode="failed_rows")
@@ -145,7 +144,6 @@ def test_dq_metrics_methods_share_one_attribution(result, calls):
     assert calls.compute == 1
 
 
-@pytest.mark.xfail(strict=True, reason="step 3: save_dq_metrics() does not exist yet")
 def test_save_dq_metrics_reuses_the_attribution(result, calls, tmp_path):
     result.get_dq_metrics()
     result.save_dq_metrics(str(tmp_path))

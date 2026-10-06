@@ -205,6 +205,7 @@ output_dir = f"s3://my-bucket/dq-results/{result.run_id}/"
 tags = result.contract_data.get("tags") or []
 
 result.save(output_dir)
+result.save_dq_metrics(output_dir)
 result.export_otel(
     custom_attributes={
         "vowl.artifact.uri": output_dir,

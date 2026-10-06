@@ -317,7 +317,7 @@ md(
 <a id="4-saving"></a>
 ## 4. Saving Outputs to Disk
 
-`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout (every mode also writes `<prefix>_check_results.csv`, `<prefix>_summary.json`, and `<prefix>_dq_metrics.json`, the run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb)):
+`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout (every mode also writes `<prefix>_check_results.csv` and `<prefix>_summary.json`. The run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb) are saved separately with `result.save_dq_metrics(...)`):
 
 | Mode | Files written |
 |------|----------------|

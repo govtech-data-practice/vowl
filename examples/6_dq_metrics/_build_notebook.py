@@ -264,29 +264,18 @@ md(
 <a id="3-json"></a>
 ## 3. `dq_metrics.json`: the Metrics as a File
 
-`result.save(...)` writes `<prefix>_dq_metrics.json` in every output mode, next to
-the check results and `summary.json`. Use it when you want the metrics in a data
-warehouse, a notebook, or anywhere without an OpenTelemetry backend. It needs no
-extra install.
-
-`save()` also writes the annotated tables, which for this dataset is a large CSV.
-The [Results Tour](../5_results/results_tour.ipynb) covers those, so here we save
-to a temporary folder and keep only `dq_metrics.json` in `outputs/` as a reference.
+`result.save_dq_metrics(...)` writes `<prefix>_dq_metrics.json`. It takes the same
+`output_dir`, `prefix` and `filesystem` as `save()`, which does not write the
+metrics. Use it when you want the metrics in a data warehouse, a notebook, or
+anywhere without an OpenTelemetry backend. It needs no extra install.
 """
 )
 
 code(
     """
 import json
-import shutil
-import tempfile
 
-with tempfile.TemporaryDirectory() as tmp:
-    result.save(output_dir=tmp, prefix="vowl_demo")
-    print("save() wrote:")
-    for path in sorted(Path(tmp).iterdir()):
-        print(f"   {path.name}")
-    shutil.copy(Path(tmp) / "vowl_demo_dq_metrics.json", OUTPUTS / "vowl_demo_dq_metrics.json")
+result.save_dq_metrics(output_dir=str(OUTPUTS), prefix="vowl_demo")
 
 with open(OUTPUTS / "vowl_demo_dq_metrics.json") as f:
     document = json.load(f)
@@ -567,7 +556,8 @@ under it:
 ```python
 output_dir = f"s3://my-bucket/dq-results/{result.run_id}/"
 
-result.save(output_dir)  # your failed rows, annotated tables, and dq_metrics.json go here
+result.save(output_dir)  # your check results, annotated tables, and summary.json
+result.save_dq_metrics(output_dir)  # and dq_metrics.json
 result.export_otel(
     custom_attributes={"vowl.artifact.uri": output_dir},  # alerts link straight to the files
 )
@@ -648,7 +638,7 @@ md(
 - Every run is summed up as DQ metrics named `vowl.<level>.<unit>.<measure>`, at
   check, dimension, schema, and run level. Row counts above check level count
   attributed rows, every copy counted.
-- `result.get_dq_metrics()` returns them as a `dict`, and `result.save(...)` writes
+- `result.get_dq_metrics()` returns them as a `dict`, and `result.save_dq_metrics(...)` writes
   the same document to `<prefix>_dq_metrics.json`. `pd.json_normalize` turns it into
   a table, and tagging each file with its run ID loads many runs together.
 - `result.export_otel(...)` sends the same metrics to OpenTelemetry, plus traces and
