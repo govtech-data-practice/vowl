@@ -104,6 +104,8 @@ from each. Counts have one point per status, zeros included, so
 | `vowl.check.check.count`         | counter   | `{check}`  |     21 | `1` for `email_required_check`, `status="FAILED"` |
 | `vowl.check.row.count`           | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
 | `vowl.check.row.pass_rate`       | gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
+| `vowl.check.row.scalar_count`    | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
+| `vowl.check.row.scalar_pass_rate`| gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
 | `vowl.check.duration`            | histogram | `ms`       |      7 | `11.6` for `email_required_check`                 |
 | `vowl.dimension.check.count`     | counter   | `{check}`  |     15 | `1` for `orders` completeness, `status="FAILED"`  |
 | `vowl.dimension.check.pass_rate` | gauge     | `1`        |      5 | `0.5` for `orders` completeness                   |

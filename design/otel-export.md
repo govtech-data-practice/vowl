@@ -262,7 +262,11 @@ their rationale.
    that fails two checks is counted under each, and a run that re-validates a
    whole table counts the same rows every run. So each level has one gauge,
    `vowl.{check,dimension,schema,run}.row.count`, with a `PASSED` and a `FAILED`
-   point per run. The two points sum to the table's row count, which serves as
+   point per run. Every level counts attributed rows, clamped to the table.
+   The check level also has `vowl.check.row.scalar_count` and
+   `vowl.check.row.scalar_pass_rate`, which use the scalar count and are not
+   clamped. This is a breaking change: `vowl.check.row.count` used to hold the
+   scalar count. The two points sum to the table's row count, which serves as
    the denominator, so no separate total metric is needed. Both points are
    always sent, zeros included, so a latest-value panel never keeps a failure
    count from an earlier run. Summing is still possible where it is sound:

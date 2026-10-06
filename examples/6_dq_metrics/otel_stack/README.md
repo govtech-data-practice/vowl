@@ -302,9 +302,12 @@ Click a `vowl.check` span to see its attributes:
 - `status` is the check result (PASSED, FAILED or ERROR). The span status stays
   `ok` for a FAILED check because the query itself ran fine.
 - `row.count.failed`, `row.count.passed` and `row.pass_rate` are the check's
-  row counts from its scalar count, the same as `vowl.check.row.count` and
-  `vowl.check.row.pass_rate`. A check that returns one number instead of rows
-  has none.
+  attributed rows, the same as `vowl.check.row.count` and
+  `vowl.check.row.pass_rate`. A check that is not attributable has none.
+- `row.scalar_count.failed`, `row.scalar_count.passed` and
+  `row.scalar_pass_rate` use the check's scalar count, the same as
+  `vowl.check.row.scalar_count` and `vowl.check.row.scalar_pass_rate`. A check
+  that returns one number instead of rows has none.
 - `expected_value`, `actual_value` and `operator` explain why it failed.
 - `query` is the SQL that ran.
 - **Events** hold a sample of failed rows (`vowl.failed_row`), one event per

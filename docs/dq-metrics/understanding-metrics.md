@@ -8,9 +8,10 @@ description: The DQ metrics vowl reports for every run, at check, dimension, sch
 
     The [DQ Metrics notebook](https://github.com/govtech-data-practice/vowl/blob/main/examples/6_dq_metrics/dq_metrics.ipynb) reads one run's metrics at every level, loads `dq_metrics.json` with pandas and exports the same run to OpenTelemetry.
 
-After every run, vowl works out a set of numbers that describe the quality of
-your data, such as "how many checks failed" or "what share of rows passed".
-These are the **DQ metrics**. You can get them in two ways:
+From the results of a run, vowl can work out a set of numbers that describe
+the quality of your data, such as "how many checks failed" or "what share of
+rows passed". These are the **DQ metrics**. vowl calculates them when you ask
+for them, not during the run. You can get them in two ways:
 
 - [Exporting to OpenTelemetry](otel-export.md) sends them to your monitoring
   tool, such as Grafana or Datadog, for dashboards and alerts.
@@ -43,7 +44,9 @@ Every metric is named `vowl.<level>.<unit>.<measure>`:
 
 - **level** is `check`, `dimension`, `schema` or `run`.
 - **unit** is what is counted: `check`, `row` or `schema`.
-- **measure** is `count` or `pass_rate`. Timings are `duration`.
+- **measure** is `count` or `pass_rate`. Timings are `duration`. The check
+  level also has `scalar_count` and `scalar_pass_rate`, which use the
+  check's scalar count (see [How rows are counted](#how-failed-rows-are-counted)).
 
 So `vowl.schema.row.pass_rate` is "at schema level, the share of rows that
 passed", and `vowl.check.check.count` is "at check level, the number of
@@ -53,35 +56,88 @@ The `prefix` option of `export_otel` replaces `vowl` at the start of every name.
 
 ## All metrics
 
-| Level     | Check count                  | Check pass rate                  | Row count                  | Row pass rate                  | Other                                        |
-| --------- | ---------------------------- | -------------------------------- | -------------------------- | ------------------------------ | -------------------------------------------- |
-| check     | `vowl.check.check.count`     |                                  | `vowl.check.row.count`     | `vowl.check.row.pass_rate`     | `vowl.check.duration`                        |
-| dimension | `vowl.dimension.check.count` | `vowl.dimension.check.pass_rate` | `vowl.dimension.row.count` | `vowl.dimension.row.pass_rate` |                                              |
-| schema    | `vowl.schema.check.count`    | `vowl.schema.check.pass_rate`    | `vowl.schema.row.count`    | `vowl.schema.row.pass_rate`    |                                              |
-| run       | `vowl.run.check.count`       | `vowl.run.check.pass_rate`       | `vowl.run.row.count`       | `vowl.run.row.pass_rate`       | `vowl.run.schema.count`, `vowl.run.duration` |
+| Level     | Check count                  | Check pass rate                  | Row count                  | Row pass rate                  | Other                                                                     |
+| --------- | ---------------------------- | -------------------------------- | -------------------------- | ------------------------------ | ------------------------------------------------------------------------- |
+| check     | `vowl.check.check.count`     |                                  | `vowl.check.row.count`     | `vowl.check.row.pass_rate`     | `vowl.check.row.scalar_count`, `vowl.check.row.scalar_pass_rate`, `vowl.check.duration` |
+| dimension | `vowl.dimension.check.count` | `vowl.dimension.check.pass_rate` | `vowl.dimension.row.count` | `vowl.dimension.row.pass_rate` |                                                                           |
+| schema    | `vowl.schema.check.count`    | `vowl.schema.check.pass_rate`    | `vowl.schema.row.count`    | `vowl.schema.row.pass_rate`    |                                                                           |
+| run       | `vowl.run.check.count`       | `vowl.run.check.pass_rate`       | `vowl.run.row.count`       | `vowl.run.row.pass_rate`       | `vowl.run.schema.count`, `vowl.run.duration`                              |
 
 There is no check pass rate at check level. For one check it would always be
 0 or 1, which `vowl.check.check.count` already says.
 
 ## Statuses
 
-Counts carry a `status` attribute that says which part of the total a reading
-is:
+A count is split into parts by its `status` attribute. Add the parts to get
+the total. Which statuses a count has depends on the **unit** in its name,
+`vowl.<level>.<unit>.<measure>`: `check`, `row` or `schema`.
 
-- **Checks** are `PASSED`, `FAILED` or `ERROR`. `FAILED` means the check ran
-  and found bad data. `ERROR` means the check could not run, for example
-  because its query names a column that does not exist.
-- **Rows** are `PASSED` or `FAILED`. A row is `FAILED` at a level when it
-  failed at least one row-level check at that level.
-- **Schemas** (`vowl.run.schema.count`) are `FAILED` when any of their checks
-  failed, else `ERROR` when any check could not run, else `PASSED`. A known
-  data problem outranks a check that could not say.
+!!! example
 
-Every status is always sent, zeros included. A clean run sends `FAILED` as 0
-instead of sending nothing, so a dashboard never keeps showing the failures of
-an earlier run. Add up the statuses of one reading to get the total.
+    The examples below use the `orders` table from the
+    [worked example](#worked-example): 100 rows and 5 checks.
 
-## Pass rates
+### Rows: `PASSED` or `FAILED`
+
+A row is `FAILED` if it has a problem, and `PASSED` if it has none. A row with
+several problems is still one failed row. Which checks count towards the row
+numbers is explained in [How rows are counted](#how-failed-rows-are-counted).
+
+!!! example
+
+    In `orders`, 5 rows have no email, so `email_required_check` reports 5
+    failed rows:
+
+    ```
+    vowl.check.row.count:  95  {status="PASSED", check_name="email_required_check"}
+    vowl.check.row.count:  5   {status="FAILED", check_name="email_required_check"}
+    ```
+
+    Another 3 rows have a duplicate `order_id`. One of them also has no email,
+    so it has two problems. At schema level each row is counted once, so 7 rows
+    of `orders` failed, not 8:
+
+    ```
+    vowl.schema.row.count:  93  {status="PASSED", schema_name="orders"}
+    vowl.schema.row.count:  7   {status="FAILED", schema_name="orders"}
+    ```
+
+### Checks: `PASSED`, `FAILED` or `ERROR`
+
+`FAILED` means the check ran and found bad data. `ERROR` means the check could
+not run, for example because its query names a column that does not exist.
+
+!!! example
+
+    3 of the 5 checks on `orders` pass and 2 find bad data:
+
+    ```
+    vowl.schema.check.count:  3  {status="PASSED", schema_name="orders"}
+    vowl.schema.check.count:  2  {status="FAILED", schema_name="orders"}
+    vowl.schema.check.count:  0  {status="ERROR",  schema_name="orders"}
+    ```
+
+### Schemas: `PASSED`, `FAILED` or `ERROR`
+
+A schema is `FAILED` when any of its checks failed. Otherwise it is `ERROR`
+when any of its checks could not run. Otherwise it is `PASSED`. A table with
+both a failed check and a check that could not run is `FAILED`, because a
+known data problem outranks a check that could not say.
+
+!!! example
+
+    A run covers three tables. `customers` passes everything, `orders` has a
+    failed check and `refunds` has a check that could not run:
+
+    ```
+    vowl.run.schema.count:  1  {status="PASSED"}
+    vowl.run.schema.count:  1  {status="FAILED"}
+    vowl.run.schema.count:  1  {status="ERROR"}
+    ```
+
+## Working with the numbers
+
+### Pass rates
 
 A pass rate is a share from 0 to 1.
 
@@ -89,11 +145,17 @@ A pass rate is a share from 0 to 1.
   not run (`ERROR`) count against it, because they did not pass.
 - A **row pass rate** is passed rows over all rows in the table.
 
-A pass rate is left out when there is nothing to divide by, for example a
-schema with no checks or an empty table. A missing rate means "no rate", not
-100%.
+### Zeros and missing values
 
-## Which numbers add up
+A count always sends every status, even when it is 0. A clean run sends
+`FAILED` as 0 instead of sending nothing, so a dashboard never keeps showing
+the failures of an earlier run.
+
+A pass rate is different. It is left out when there is nothing to divide by,
+for example a schema with no checks or an empty table. A missing rate means
+"no rate", not 100%.
+
+### Which numbers add up
 
 Each check belongs to exactly one dimension and one schema, so check counts
 always add up from one level to the next. Rows are different. One row can
@@ -108,7 +170,9 @@ fail several checks, so it can show up once per check or dimension it fails.
 The run level is there for convenience. You could add up the schema levels
 yourself, but you do not have to.
 
-The same idea decides the metric **type**:
+### Metric types
+
+Whether a number adds up decides its metric type:
 
 - **Counters** hold numbers that add up: every `check.count` and
   `vowl.run.schema.count`. Adding a counter over a week gives the number of
@@ -131,35 +195,84 @@ counts for less than a large one.
 
 ## How rows are counted {#how-failed-rows-are-counted}
 
-The row counts follow the
-[grains of row counts](../design-considerations/checks/how-attributed-rows-work.md#grains-of-failed-row-counts).
-`vowl.check.row.count` and `vowl.check.row.pass_rate` use the check's
-[scalar count](../glossary.md#results), the number that decides pass or
-fail. They can differ from `attributed_rows` in `get_row_quality_df(by="check")`,
-which counts the check's [attributed rows](../glossary.md#results):
+vowl has two numbers for the rows a check failed:
 
-- Under `DISTINCT` the scalar count is lower, because copies are dropped.
-- Under a join that fans out it is higher, and can exceed the rows in the
-  table. `PASSED` and `pass_rate` are not clamped, so they go negative and
-  the overcount stays visible.
-- Under `COUNT(DISTINCT x)` it counts values, not rows.
-- A check that passed within its tolerance, such as `mustBeLessThan: 10`,
-  reports its scalar count.
+- **[Scalar count](../glossary.md#results)**: the number the check reports,
+  such as the result of `SELECT COUNT(*) FROM orders WHERE email IS NULL`. It
+  decides whether the check passes. Every row-level check has one, but it is
+  not always the number of rows that failed. A `DISTINCT` lowers it, a join
+  can raise it, and `COUNT(DISTINCT x)` counts values instead of rows.
+- **[Attributed rows](../glossary.md#results)**: the rows of the table that
+  failed the check. vowl finds them by matching the check's failed rows back
+  to the table. Only [attributable](../design-considerations/checks/check-results.md#counted-checks)
+  checks have them.
 
-See
+Every level counts attributed rows:
+
+| Metric                                                               | Counts                                 | Clamped |
+| -------------------------------------------------------------------- | -------------------------------------- | ------- |
+| `row.count` and `row.pass_rate`, at every level                      | Attributed rows, each row counted once | Yes     |
+| `vowl.check.row.scalar_count` and `vowl.check.row.scalar_pass_rate`  | The scalar count of one check          | No      |
+
+!!! warning "Breaking change"
+
+    `vowl.check.row.count` and `vowl.check.row.pass_rate` used to count the
+    scalar count. They now count attributed rows, like the other levels. The
+    scalar count moved to `vowl.check.row.scalar_count` and
+    `vowl.check.row.scalar_pass_rate`. Update any dashboard or alert that reads
+    the old meaning.
+
+### What the scalar count is for
+
+The scalar count decides whether the check passes, so it always agrees with
+the check's status. Use `vowl.check.row.scalar_count` to see the number the
+check itself reported, for example to compare it with the check's limit. Use
+`vowl.check.row.count` to see how many rows of the table failed.
+
+The two differ when the check changes the rows it returns. A `DISTINCT`
+lowers the scalar count. A join that returns one row twice raises it.
+
+A check's attributed rows are also in the `attributed_rows` column of
+`get_row_quality_df(by="check")` and the `vowl.row_quality.attributed_rows`
+attribute of its [`vowl.check` span](otel-export.md#traces).
+
+For the details, see
+[Attributed rows](../design-considerations/checks/check-results.md#from-query-output-to-row-counts)
+and
 [Checks can change the rows they return](../design-considerations/checks/how-attributed-rows-work.md#checks-can-change-the-rows-they-return).
-The dimension, schema and run row counts use attributed rows and count each
-row once. They are the same numbers as `get_row_quality_df()` and
-**Passed Rows** in `print_summary()`, and stay between 0 and the table's rows.
+
+### What the row counts add up to
 
 At every level, `PASSED` plus `FAILED` is the number of rows in the table, or
-in all tables at run level. Only
-[row-level checks](../design-considerations/checks/check-results.md#counted-checks)
-are in the row counts. At check level, every row-level check gets row counts,
-attributable or not. A check that is not row-level, such as an average or a lower
-limit on a count, gets check counts only. At dimension, schema and run level
-only the attributed rows of row-level checks are in the row counts. A dimension or schema with no row-level check has none,
-and neither has one whose row-level checks are all not attributable.
+in all tables at run level.
+
+Row counts stay between 0 and the table's rows. Above check level they match
+`get_row_quality_df()` and **Passed Rows** in `print_summary()`.
+
+The scalar count can go outside that range. When it is higher than the
+table's rows, `PASSED` and `scalar_pass_rate` go negative. vowl does not
+clamp them, so the overcount stays visible.
+
+### Which checks have row counts
+
+Only [row-level checks](../design-considerations/checks/check-results.md#counted-checks)
+have row counts. A check that is not row-level, such as an average, has check
+counts only.
+
+| Check                                  | `scalar_count` | `row.count` at check level                                      |
+| -------------------------------------- | -------------- | --------------------------------------------------------------- |
+| Failed, attributable                   | Yes            | Its attributed rows                                             |
+| Passed                                 | Yes            | `FAILED` is 0, or its attributed rows with `attribute_tolerated_rows=True` |
+| Failed, not attributable               | Yes            | None                                                            |
+
+A passed check follows the same rule as [tolerated rows](../design-considerations/checks/check-results.md#tolerated-rows).
+By default it adds no rows, so its `FAILED` is 0. With
+`attribute_tolerated_rows=True`, its attributed rows count at every level.
+
+At dimension, schema and run level, only attributed rows are counted. A
+dimension or schema with no attributable row-level check has no row counts.
+
+### Approximate row counts
 
 The row counts do not say whether they are
 [approximate](../design-considerations/checks/counting-mechanisms.md#exact-numbers).
@@ -178,6 +291,8 @@ such as `vowl.contract.id`.
 | `vowl.check.check.count`         | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
 | `vowl.check.row.count`           | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
 | `vowl.check.row.pass_rate`       | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
+| `vowl.check.row.scalar_count`    | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.scalar_pass_rate`| `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
 | `vowl.check.duration`            | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
 | `vowl.dimension.check.count`     | `status`, `schema_name`, `dimension`                                     |
 | `vowl.dimension.check.pass_rate` | `schema_name`, `dimension`                                               |
@@ -262,6 +377,27 @@ vowl.check.row.pass_rate:  0.95  {check_name="email_required_check"}
 vowl.check.row.pass_rate:  0.97  {check_name="order_id_unique_check"}
 vowl.check.row.pass_rate:  1.0   {check_name="amount_column_exists_check"}
 vowl.check.row.pass_rate:  0.9   {check_name="refund_positive"}
+vowl.check.row.scalar_count:      100   {status="PASSED", check_name="order_id_column_exists_check"}
+vowl.check.row.scalar_count:      0     {status="FAILED", check_name="order_id_column_exists_check"}
+vowl.check.row.scalar_count:      100   {status="PASSED", check_name="email_column_exists_check"}
+vowl.check.row.scalar_count:      0     {status="FAILED", check_name="email_column_exists_check"}
+vowl.check.row.scalar_count:      100   {status="PASSED", check_name="order_id_required_check"}
+vowl.check.row.scalar_count:      0     {status="FAILED", check_name="order_id_required_check"}
+vowl.check.row.scalar_count:      95    {status="PASSED", check_name="email_required_check"}
+vowl.check.row.scalar_count:      5     {status="FAILED", check_name="email_required_check"}
+vowl.check.row.scalar_count:      97    {status="PASSED", check_name="order_id_unique_check"}
+vowl.check.row.scalar_count:      3     {status="FAILED", check_name="order_id_unique_check"}
+vowl.check.row.scalar_count:      20    {status="PASSED", check_name="amount_column_exists_check"}
+vowl.check.row.scalar_count:      0     {status="FAILED", check_name="amount_column_exists_check"}
+vowl.check.row.scalar_count:      18    {status="PASSED", check_name="refund_positive"}
+vowl.check.row.scalar_count:      2     {status="FAILED", check_name="refund_positive"}
+vowl.check.row.scalar_pass_rate:  1.0   {check_name="order_id_column_exists_check"}
+vowl.check.row.scalar_pass_rate:  1.0   {check_name="email_column_exists_check"}
+vowl.check.row.scalar_pass_rate:  1.0   {check_name="order_id_required_check"}
+vowl.check.row.scalar_pass_rate:  0.95  {check_name="email_required_check"}
+vowl.check.row.scalar_pass_rate:  0.97  {check_name="order_id_unique_check"}
+vowl.check.row.scalar_pass_rate:  1.0   {check_name="amount_column_exists_check"}
+vowl.check.row.scalar_pass_rate:  0.9   {check_name="refund_positive"}
 
 # Dimension level: each row once per dimension
 vowl.dimension.check.count:      2     {status="PASSED", schema_name="orders",  dimension="conformity"}

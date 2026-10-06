@@ -229,8 +229,10 @@ md(
 ### Check level: which checks to look at
 
 The check level has one reading per check. Pivot `vowl.check.row.count` to see each
-check's passed and failed rows side by side, worst first. Checks that do not count
-rows, such as aggregate checks, have a `vowl.check.check.count` but no row count.
+check's passed and failed attributed rows side by side, worst first. Checks that do
+not count rows, such as aggregate checks, have a `vowl.check.check.count` but no row
+count. `vowl.check.row.scalar_count` holds the number each check itself reported,
+its scalar count.
 """
 )
 

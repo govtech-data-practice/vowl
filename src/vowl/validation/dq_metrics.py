@@ -10,7 +10,9 @@ Every metric is named ``<prefix>.<level>.<unit>.<measure>``:
 - ``level`` is the slice the reading is for: ``check``, ``dimension``,
   ``schema`` or ``run``.
 - ``unit`` is what is counted: ``check``, ``row`` or ``schema``.
-- ``measure`` is ``count`` or ``pass_rate``. Timings are ``duration``.
+- ``measure`` is ``count`` or ``pass_rate``. Timings are ``duration``. The
+  check level also has ``scalar_count`` and ``scalar_pass_rate``, from the
+  check's scalar count rather than its attributed rows.
 
 Check and schema counts add up across levels and across runs, so they are
 counters. Row counts do not (a row can fail several checks, and a re-run checks
@@ -217,19 +219,38 @@ def check_level_attributes(check_result: Any) -> dict[str, AttrValue]:
     return {key: value for key, value in check_attributes(check_result).items() if key != "status"}
 
 
-def check_row_counts(result: ValidationResult) -> dict[int, tuple[int, int]]:
-    """``(total_rows, failed_rows)`` of each check that gets row counts, keyed by ``id(check)``.
+@dataclass(frozen=True)
+class CheckRows:
+    """The row numbers of one check.
 
-    ``failed_rows`` is the check's scalar count, not the attributed rows the
-    higher levels use. A check that passed within its tolerance reports the rows
-    it caught. The count can exceed the table's rows (a join that fans out), so
-    ``total_rows - failed_rows`` can be negative.
+    Attributes:
+        total_rows: The rows of the check's table.
+        scalar_count: The check's scalar count. A check that passed within its
+            tolerance reports the rows it caught. It can exceed ``total_rows``
+            (a join that fans out).
+        attributed_rows: The rows of the table the check caught, the number
+            the higher levels use. ``0`` for a passed check that is not
+            attributed, since it adds nothing to the row counts. ``None`` when
+            the check is not attributable.
+    """
+
+    total_rows: int
+    scalar_count: int
+    attributed_rows: int | None
+
+
+def check_row_counts(result: ValidationResult) -> dict[int, CheckRows]:
+    """The :class:`CheckRows` of each check that gets row counts, keyed by ``id(check)``.
 
     Only the checks the row-quality statistics count get them: a row-level
     check that did not end in ERROR and whose operator identifies bad rows (see
     :func:`~vowl.validation.row_quality.selection.select_check`). Any other
     check, such as an aggregate or a lower bound on a count, gets check counts
     only.
+
+    A passed check is attributed only under ``attribute_tolerated_rows``.
+    Otherwise it adds nothing to the row counts, so its ``attributed_rows`` is
+    ``0``, as at the dimension and schema levels.
     """
     # The row-quality totals are uncapped. Fall back to the run's recorded
     # totals when row statistics are off.
@@ -238,12 +259,30 @@ def check_row_counts(result: ValidationResult) -> dict[int, tuple[int, int]]:
         if item.total_rows is not None:
             total_by_schema[item.schema_name] = item.total_rows
 
-    counts: dict[int, tuple[int, int]] = {}
+    check_rows = result._row_quality().check_rows()
+    counts: dict[int, CheckRows] = {}
     for selection in result._row_quality().selections:
         total = total_by_schema.get(selection.schema_name)
-        if total and selection.row_level:
-            counts[id(selection.result)] = (total, selection.scalar_count or 0)
+        if not (total and selection.row_level):
+            continue
+        entry = check_rows.get(id(selection.result))
+        attributed = entry.attributed_rows if entry is not None else None
+        if attributed is None and not selection.in_scope:
+            attributed = 0
+        counts[id(selection.result)] = CheckRows(total, selection.scalar_count or 0, attributed)
     return counts
+
+
+def attributed_pass_rate(rows: CheckRows) -> float | None:
+    """Passed rows over the table's rows from the attributed rows, clamped at 0."""
+    if rows.attributed_rows is None:
+        return None
+    return max(rows.total_rows - rows.attributed_rows, 0) / rows.total_rows
+
+
+def scalar_pass_rate(rows: CheckRows) -> float:
+    """Passed rows over the table's rows from the scalar count. Not clamped, so it can be negative."""
+    return (rows.total_rows - rows.scalar_count) / rows.total_rows
 
 
 def run_row_counts(result: ValidationResult) -> tuple[int, int, bool, int] | None:
@@ -360,12 +399,22 @@ def _check_level(points: _Points, result: ValidationResult) -> None:
     for cr in result.check_results:
         points.add("check.duration", HISTOGRAM, "ms", float(cr.execution_time_ms or 0.0), check_level_attributes(cr))
 
+    # row.count holds the attributed rows, like the higher levels, and is
+    # clamped. row.scalar_count holds the scalar count and is not, so an
+    # overcount stays visible.
     row_counts = check_row_counts(result)
-    rated = [(cr, *row_counts[id(cr)]) for cr in result.check_results if id(cr) in row_counts]
-    for cr, total, failed in rated:
-        points.row_counts("check.row.count", total, failed, check_level_attributes(cr), clamp=False)
-    for cr, total, failed in rated:
-        points.pass_rate("check.row.pass_rate", (total - failed) / total, check_level_attributes(cr))
+    rated = [(cr, row_counts[id(cr)]) for cr in result.check_results if id(cr) in row_counts]
+    attributed = [(cr, rows) for cr, rows in rated if rows.attributed_rows is not None]
+    for cr, rows in attributed:
+        points.row_counts("check.row.count", rows.total_rows, rows.attributed_rows, check_level_attributes(cr))
+    for cr, rows in attributed:
+        points.pass_rate("check.row.pass_rate", attributed_pass_rate(rows), check_level_attributes(cr))
+    for cr, rows in rated:
+        points.row_counts(
+            "check.row.scalar_count", rows.total_rows, rows.scalar_count, check_level_attributes(cr), clamp=False
+        )
+    for cr, rows in rated:
+        points.pass_rate("check.row.scalar_pass_rate", scalar_pass_rate(rows), check_level_attributes(cr))
 
 
 def _dimension_level(points: _Points, result: ValidationResult) -> None:

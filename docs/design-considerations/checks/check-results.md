@@ -176,7 +176,8 @@ A check can be not attributable in two ways:
 
 See [Attributed rows](#from-query-output-to-row-counts) for every reason.
 
-The check still has a scalar count and its own check-level DQ metrics. It adds
+The check still has a scalar count, reported in
+`vowl.check.row.scalar_count`. It has no `vowl.check.row.count`, and it adds
 nothing to the row counts of its dimension, its schema or the run, and
 `checks_not_attributable` counts it.
 
@@ -239,8 +240,10 @@ A **tolerated row** is a failed row of a row-level check that passed.
     fails a check that failed, such as `price_must_be_positive`, the totals
     for `orders` don't change either way.
 
-A passed check still reports its own scalar count and check-level DQ metrics.
-By default vowl does not attribute its rows. It runs no extra query for it,
+A passed check still reports its scalar count in
+`vowl.check.row.scalar_count`. Its `vowl.check.row.count` follows the same
+rule as its tolerated rows: `FAILED` is 0 by default, and its attributed rows
+with `attribute_tolerated_rows=True`. By default vowl does not attribute its rows. It runs no extra query for it,
 adds nothing to the row counts and does not flag it in the annotated output.
 Its `reason` is `passed, not attributed`, and it is not counted in
 `checks_not_attributable`.
@@ -287,9 +290,9 @@ flowchart LR
     check["A check"] --> sc["Scalar count"]
     check --> fr["Failed rows"]
     fr -->|attribute| ar["Attributed rows"]
-    sc --> u1["Pass or fail,<br/>check-level DQ metrics"]
+    sc --> u1["Pass or fail,<br/>scalar_count DQ metrics"]
     fr --> u2["show_failed_rows(),<br/>get_output_dfs(), residues"]
-    ar --> u3["Row counts, annotated output,<br/>dimension, schema and run DQ metrics"]
+    ar --> u3["Row counts, annotated output,<br/>row count DQ metrics at every level"]
 ```
 
 | Result              | Where you see it                                                                                      |
@@ -452,8 +455,17 @@ uses one number:
 
 | Grain                     | Uses                                                                |
 | ------------------------- | ------------------------------------------------------------------- |
-| Check                     | The scalar count, for every row-level check                         |
+| Check                     | Attributed rows. The scalar count is in `scalar_count`              |
 | Dimension, schema and run | Attributed rows only. Checks that are not attributable are left out |
+
+A check that is not attributable has no check-level `row.count`. Its scalar
+count is still in `vowl.check.row.scalar_count`.
+
+!!! warning "Breaking change"
+
+    Check-level `row.count` and `row.pass_rate` used to use the scalar count.
+    They now use attributed rows, like the other grains. See
+    [How rows are counted](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted).
 
 `checks_not_attributable` counts the checks left out. It is a column of
 `get_row_quality_df()`, the `vowl.row_quality.checks_not_attributable`

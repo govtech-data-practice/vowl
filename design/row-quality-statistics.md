@@ -987,11 +987,12 @@ are a possible extension. They are not part of this design.
 
 A single row-quality component computes the statistics lazily and caches them on
 the `ValidationResult`. `print_summary`, the OTEL gauges
-(`vowl.schema.row.count`, `vowl.dimension.row.count` and the pass-rate gauges),
+(`vowl.check.row.count`, `vowl.schema.row.count`, `vowl.dimension.row.count`
+and the pass-rate gauges),
 annotated output and `get_row_quality_df` all read from it. Nothing else counts
 merged rows. Two figures still use each check's scalar count, by design: the
 Multi Table "Non-unique Failed Rows" line in `print_summary`, and the per-check
-OTEL gauges (`vowl.check.row.count` and `vowl.check.row.pass_rate`).
+OTEL gauges `vowl.check.row.scalar_count` and `vowl.check.row.scalar_pass_rate`.
 
 ## Public API
 

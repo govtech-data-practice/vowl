@@ -1220,6 +1220,8 @@ def test_check_span_row_attributes_match_the_metrics(result):
     points = compute_points(result)
     rows = _row_counts([p for p in points if p.name == "vowl.check.row.count"], "check_name")
     rates = {p.attributes["check_name"]: p.value for p in points if p.name == "vowl.check.row.pass_rate"}
+    scalars = _row_counts([p for p in points if p.name == "vowl.check.row.scalar_count"], "check_name")
+    scalar_rates = {p.attributes["check_name"]: p.value for p in points if p.name == "vowl.check.row.scalar_pass_rate"}
 
     provider, exporter = _tracer_provider()
     TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(result)
@@ -1231,6 +1233,9 @@ def test_check_span_row_attributes_match_the_metrics(result):
         assert span.attributes["row.count.passed"] == rows[name]["PASSED"]
         assert span.attributes["row.count.failed"] == rows[name]["FAILED"]
         assert span.attributes["row.pass_rate"] == rates[name]
+        assert span.attributes["row.scalar_count.passed"] == scalars[name]["PASSED"]
+        assert span.attributes["row.scalar_count.failed"] == scalars[name]["FAILED"]
+        assert span.attributes["row.scalar_pass_rate"] == scalar_rates[name]
 
 
 def test_run_span_attributes_match_the_run_metrics(two_schema_result):

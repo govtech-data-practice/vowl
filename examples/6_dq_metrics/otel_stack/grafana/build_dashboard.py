@@ -144,6 +144,7 @@ panels = [
         f"min by (dimension) (vowl_dimension_row_pass_rate_ratio{{{F}}})", "{{dimension}}")],
         {"x": 12, "y": 19, "w": 12, "h": 9}),
 
+    # Check row counts are attributed rows. vowl_check_row_scalar_count holds the scalar count.
     latest_table("Check row pass rate (latest run)",
                  f"max by (vowl_contract_name, schema_name, check_name, dimension) "
                  f"(vowl_check_row_pass_rate_ratio{{{F}}})",

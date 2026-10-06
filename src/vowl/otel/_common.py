@@ -15,6 +15,7 @@ from opentelemetry._logs import SeverityNumber
 # The attribute helpers live with the DQ metrics computation, so the OTel
 # signals and dq_metrics.json label a run and a check the same way.
 from ..validation.dq_metrics import (
+    attributed_pass_rate,
     check_attributes,
     check_dimension,
     check_row_counts,
@@ -24,6 +25,7 @@ from ..validation.dq_metrics import (
     contract_attributes,
     new_run_id,
     run_identity_attributes,
+    scalar_pass_rate,
 )
 
 if TYPE_CHECKING:
@@ -123,13 +125,20 @@ def check_query(check_result: Any) -> str | None:
 def check_row_attributes(result: ValidationResult, namespace: str = "vowl") -> dict[int, dict[str, Any]]:
     """Each check's row counts as span/log attributes, keyed by ``id(check)``.
 
-    The same numbers as ``vowl.check.row.count`` and ``vowl.check.row.pass_rate``,
-    named without the level: ``row.count.passed``, ``row.count.failed`` and
-    ``row.pass_rate``. Like the metrics they are the check's scalar count
-    and are not clamped, so they can be negative. A check the metrics give no
-    row counts (one the row-quality statistics do not count, such as an
-    aggregate, a lower bound on a count, or one that errored) gets none here
-    either, rather than a ``0`` that would read as every row passing.
+    The same numbers as the check-level row metrics, named without the level:
+
+    - ``row.count.passed``, ``row.count.failed`` and ``row.pass_rate`` mirror
+      ``vowl.check.row.count`` and ``vowl.check.row.pass_rate``: the attributed
+      rows, clamped. A check that is not attributable gets none.
+    - ``row.scalar_count.passed``, ``row.scalar_count.failed`` and
+      ``row.scalar_pass_rate`` mirror ``vowl.check.row.scalar_count`` and
+      ``vowl.check.row.scalar_pass_rate``: the scalar count, not clamped, so
+      they can be negative.
+
+    A check the metrics give no row counts (one the row-quality statistics do
+    not count, such as an aggregate, a lower bound on a count, or one that
+    errored) gets none here either, rather than a ``0`` that would read as
+    every row passing.
 
     The same checks also get how they took part in the row counts:
     ``vowl.row_quality.approximate``, plus ``.route``, ``.reason`` and
@@ -139,12 +148,20 @@ def check_row_attributes(result: ValidationResult, namespace: str = "vowl") -> d
     check_rows = result._row_quality().check_rows()
     prefix = f"{namespace}.row_quality"
     attrs: dict[int, dict[str, Any]] = {}
-    for key, (total, failed) in check_row_counts(result).items():
+    for key, rows in check_row_counts(result).items():
         attrs[key] = {
-            "row.count.passed": total - failed,
-            "row.count.failed": failed,
-            "row.pass_rate": (total - failed) / total,
+            "row.scalar_count.passed": rows.total_rows - rows.scalar_count,
+            "row.scalar_count.failed": rows.scalar_count,
+            "row.scalar_pass_rate": scalar_pass_rate(rows),
         }
+        if rows.attributed_rows is not None:
+            attrs[key].update(
+                {
+                    "row.count.passed": max(rows.total_rows - rows.attributed_rows, 0),
+                    "row.count.failed": rows.attributed_rows,
+                    "row.pass_rate": attributed_pass_rate(rows),
+                }
+            )
         entry = check_rows.get(key)
         if entry is None:
             continue

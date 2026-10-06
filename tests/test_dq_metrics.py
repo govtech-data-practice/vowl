@@ -93,7 +93,7 @@ def test_point_types_follow_additivity(result):
         name = point["name"]
         if name.endswith((".check.count", ".schema.count")):
             assert point["type"] == "counter", name
-        elif name.endswith((".row.count", ".pass_rate")):
+        elif name.endswith((".row.count", ".row.scalar_count", ".pass_rate", ".scalar_pass_rate")):
             assert point["type"] == "gauge", name
         else:
             assert name.endswith(".duration") and point["type"] == "histogram", name
@@ -169,22 +169,23 @@ def test_dq_metrics_needs_no_opentelemetry(monkeypatch, result):
 
 
 # ---------------------------------------------------------------------------
-# The check level reports the check's own scalar count, the higher levels the
-# attributed rows. See "How failed rows are counted" in the docs.
+# Every level's row.count holds the attributed rows. The check level also
+# reports the check's scalar count as row.scalar_count. See "How failed rows
+# are counted" in the docs.
 
 
-def _row_points(document: dict, level: str, **attributes) -> dict:
-    points = _points(document, f"vowl.{level}.row.count")
-    values = {
-        p["attributes"]["status"]: p["value"]
-        for p in points
-        if all(p["attributes"].get(key) == value for key, value in attributes.items())
-    }
-    (rate,) = [
-        p["value"]
-        for p in _points(document, f"vowl.{level}.row.pass_rate")
-        if all(p["attributes"].get(key) == value for key, value in attributes.items())
-    ]
+def _row_points(document: dict, level: str, measure: str = "count", **attributes) -> dict:
+    """``{status: value, "pass_rate": rate}`` of ``vowl.<level>.row.<measure>``, ``{}`` when absent."""
+    rate_name = "pass_rate" if measure == "count" else measure.replace("count", "pass_rate")
+
+    def matches(p):
+        return all(p["attributes"].get(key) == value for key, value in attributes.items())
+
+    values = {p["attributes"]["status"]: p["value"] for p in _points(document, f"vowl.{level}.row.{measure}") if matches(p)}
+    rates = [p["value"] for p in _points(document, f"vowl.{level}.row.{rate_name}") if matches(p)]
+    if not values and not rates:
+        return {}
+    (rate,) = rates
     return {**values, "pass_rate": rate}
 
 
@@ -203,15 +204,27 @@ def _duckdb_table(rq, rows: str):
     return con
 
 
-def test_a_tolerated_check_reports_the_rows_it_caught(rq):
+def test_a_tolerated_check_follows_attribute_tolerated_rows(rq):
     con = _duckdb_table(rq, "(1, -1), (2, -2), (3, 3), (4, 4)")
-    result = rq._validate(con, [rq._schema("t", [rq._check("tolerated", "c < 0", mustBeLessThan=10)])])
+    checks = [rq._schema("t", [rq._check("tolerated", "c < 0", mustBeLessThan=10)])]
+    result = rq._validate(con, checks)
 
     document = result.get_dq_metrics()
     assert result.check_results[0].status == "PASSED"
-    assert _row_points(document, "check", check_name="tolerated") == {"PASSED": 2, "FAILED": 2, "pass_rate": 0.5}
-    # Under the default scope a check that passed adds no failed rows to the schema.
+    # Under the default scope a check that passed adds no failed rows, at the
+    # check level as at the schema level. Its scalar count still shows them.
+    assert _row_points(document, "check", check_name="tolerated") == {"PASSED": 4, "FAILED": 0, "pass_rate": 1.0}
+    assert _row_points(document, "check", "scalar_count", check_name="tolerated") == {
+        "PASSED": 2,
+        "FAILED": 2,
+        "pass_rate": 0.5,
+    }
     assert _row_points(document, "schema", schema_name="t") == {"PASSED": 4, "FAILED": 0, "pass_rate": 1.0}
+
+    tolerated = rq._validate(con, checks, config=rq.ValidationConfig(attribute_tolerated_rows=True))
+    document = tolerated.get_dq_metrics()
+    assert _row_points(document, "check", check_name="tolerated") == {"PASSED": 2, "FAILED": 2, "pass_rate": 0.5}
+    assert _row_points(document, "schema", schema_name="t") == {"PASSED": 2, "FAILED": 2, "pass_rate": 0.5}
 
 
 def test_a_join_that_fans_out_goes_negative_at_check_level_only(rq):
@@ -223,9 +236,14 @@ def test_a_join_that_fans_out_goes_negative_at_check_level_only(rq):
     result = rq._validate(con, [rq._schema("t", [fan])])
 
     document = result.get_dq_metrics()
-    # The join returns 7 rows from a table of 4. Neither number is clamped.
-    assert _row_points(document, "check", check_name="fan") == {"PASSED": -3, "FAILED": 7, "pass_rate": -0.75}
+    # The join returns 7 rows from a table of 4. The scalar count is not clamped.
+    assert _row_points(document, "check", "scalar_count", check_name="fan") == {
+        "PASSED": -3,
+        "FAILED": 7,
+        "pass_rate": -0.75,
+    }
     assert rq._check_rows(result)["fan"]["attributed_rows"] == 3
+    assert _row_points(document, "check", check_name="fan") == {"PASSED": 1, "FAILED": 3, "pass_rate": 0.25}
     assert _row_points(document, "schema", schema_name="t") == {"PASSED": 1, "FAILED": 3, "pass_rate": 0.25}
 
     pytest.importorskip("opentelemetry")
@@ -234,22 +252,29 @@ def test_a_join_that_fans_out_goes_negative_at_check_level_only(rq):
     (check,) = [cr for cr in result.check_results if cr.check_name == "fan"]
     attrs = check_row_attributes(result)[id(check)]
     assert {key: attrs[key] for key in ("row.count.passed", "row.count.failed", "row.pass_rate")} == {
-        "row.count.passed": -3,
-        "row.count.failed": 7,
-        "row.pass_rate": -0.75,
+        "row.count.passed": 1,
+        "row.count.failed": 3,
+        "row.pass_rate": 0.25,
+    }
+    scalar = ("row.scalar_count.passed", "row.scalar_count.failed", "row.scalar_pass_rate")
+    assert {key: attrs[key] for key in scalar} == {
+        "row.scalar_count.passed": -3,
+        "row.scalar_count.failed": 7,
+        "row.scalar_pass_rate": -0.75,
     }
     assert attrs["vowl.row_quality.attributed_rows"] == 3
 
 
-def test_distinct_reports_the_scalar_at_check_level(rq):
+def test_distinct_lowers_only_the_scalar_count(rq):
     con = _duckdb_table(rq, "(1, 2), (1, 2), (1, 2), (2, 3)")
     check = {"name": "d", "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c = 2) AS s", "mustBe": 0}
 
     result = rq._validate(con, [rq._schema("t", [check])])
 
     document = result.get_dq_metrics()
-    assert _row_points(document, "check", check_name="d")["FAILED"] == 1
+    assert _row_points(document, "check", "scalar_count", check_name="d")["FAILED"] == 1
     assert rq._check_rows(result)["d"]["attributed_rows"] == 3
+    assert _row_points(document, "check", check_name="d")["FAILED"] == 3
     assert _row_points(document, "schema", schema_name="t")["FAILED"] == 3
 
 
@@ -259,7 +284,10 @@ def test_count_distinct_reports_the_values_it_counted(rq):
 
     result = rq._validate(con, [rq._schema("t", [check])])
 
-    assert _row_points(result.get_dq_metrics(), "check", check_name="values")["FAILED"] == 2
+    document = result.get_dq_metrics()
+    assert _row_points(document, "check", "scalar_count", check_name="values")["FAILED"] == 2
+    # The attributed rows are the rows that hold those values.
+    assert _row_points(document, "check", check_name="values")["FAILED"] == 3
 
 
 def test_spans_name_the_checks_not_attributable(rq):
@@ -269,7 +297,9 @@ def test_spans_name_the_checks_not_attributable(rq):
     # The metrics carry no trust attributes at any level.
     for point in document["points"]:
         assert not any(key.startswith("vowl.row_quality.") for key in point["attributes"])
-    assert _row_points(document, "check", check_name="id_in_u")["FAILED"] == 2
+    assert _row_points(document, "check", "scalar_count", check_name="id_in_u")["FAILED"] == 2
+    # A check that is not attributable gets no row.count, not a 0.
+    assert _row_points(document, "check", check_name="id_in_u") == {}
 
     pytest.importorskip("opentelemetry")
     from test_otel_export import _tracer_provider
