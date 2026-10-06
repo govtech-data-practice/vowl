@@ -433,7 +433,7 @@ def _dimension_level(points: _Points, result: ValidationResult) -> None:
         )
 
     # Row counts come from the row-quality component, the same numbers as
-    # print_summary and get_row_quality_df. A bucket without them (no row-level
+    # print_summary and get_dq_metrics_df. A bucket without them (no row-level
     # checks, or statistics off) is left out rather than reported as 100%.
     rows = [
         item

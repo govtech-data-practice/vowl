@@ -332,6 +332,6 @@ def test_spans_name_the_checks_not_attributable(rq):
 def test_the_schema_rows_name_the_checks_not_attributable(rq):
     result = rq._not_attributable_pair()
 
-    schemas = result.get_row_quality_df(by="schema").to_pandas()
+    schemas = result.get_dq_metrics_df(by="schema").to_pandas()
     assert schemas["checks_not_attributable"].max() == 2
     assert schemas["approximate"].any()

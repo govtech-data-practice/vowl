@@ -95,17 +95,17 @@ def _validate(con, schemas: list[dict], config: ValidationConfig | None = None, 
 
 
 def _schema_row(result, schema: str = "t") -> dict:
-    rows = result.get_row_quality_df(by="schema").to_arrow().to_pylist()
+    rows = result.get_dq_metrics_df(by="schema").to_arrow().to_pylist()
     return next(row for row in rows if row["schema_name"] == schema)
 
 
 def _dimension_rows(result, schema: str = "t") -> dict[str, dict]:
-    rows = result.get_row_quality_df(by="dimension").to_arrow().to_pylist()
+    rows = result.get_dq_metrics_df(by="dimension").to_arrow().to_pylist()
     return {row["dimension"]: row for row in rows if row["schema_name"] == schema}
 
 
 def _check_rows(result) -> dict[str, dict]:
-    return {row["check_name"]: row for row in result.get_row_quality_df(by="check").to_arrow().to_pylist()}
+    return {row["check_name"]: row for row in result.get_dq_metrics_df(by="check").to_arrow().to_pylist()}
 
 
 @pytest.fixture(autouse=True)
@@ -187,7 +187,7 @@ def test_passed_checks_run_no_query_by_default(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(IbisAdapter, "run_arrow_query", lambda self, sql: calls.append(sql) or original(self, sql))
     _, result = _mixed("duckdb")
 
-    result.get_row_quality_df()
+    result.get_dq_metrics_df()
 
     assert calls and not any("c = 3" in sql for sql in calls)
 
@@ -245,11 +245,11 @@ def test_get_check_results_df_has_the_resolved_dimension():
     assert rows["id_column_exists_check"]["dimension"] == "conformity"
 
 
-def test_get_row_quality_df_rejects_an_unknown_grouping():
+def test_get_dq_metrics_df_rejects_an_unknown_grouping():
     _, result = _mixed("duckdb")
 
     with pytest.raises(ValueError, match="by must be one of"):
-        result.get_row_quality_df(by="table")
+        result.get_dq_metrics_df(by="table")
 
 
 # ---------------------------------------------------------------------------
@@ -1111,9 +1111,9 @@ def test_the_report_is_computed_once(monkeypatch: pytest.MonkeyPatch):
     original = IbisAdapter.run_arrow_query
     monkeypatch.setattr(IbisAdapter, "run_arrow_query", lambda self, sql: calls.append(sql) or original(self, sql))
 
-    result.get_row_quality_df()
+    result.get_dq_metrics_df()
     first = len(calls)
-    result.get_row_quality_df(by="dimension")
+    result.get_dq_metrics_df(by="dimension")
     result.print_summary()
 
     assert first > 0

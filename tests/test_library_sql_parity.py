@@ -386,7 +386,7 @@ def _view(result, name: str) -> dict[str, Any]:
         ]
 
     (row_quality,) = [
-        row for row in result.get_row_quality_df(by="check").to_arrow().to_pylist() if row["check_name"] == name
+        row for row in result.get_dq_metrics_df(by="check").to_arrow().to_pylist() if row["check_name"] == name
     ]
     metric_points = sorted(
         (point["name"], point["attributes"].get("status"), point["value"])

@@ -2,7 +2,7 @@
 
 The basic tier (``print_summary``, ``get_check_results_df``, ``summary``,
 ``save``) runs only the check SQL and never attributes rows. The DQ-metrics
-tier (``get_dq_metrics``, ``get_row_quality_df``, ``save_dq_metrics``,
+tier (``get_dq_metrics``, ``get_dq_metrics_df``, ``save_dq_metrics``,
 ``export_otel``) attributes rows once and reuses the cached report.
 
 Attribution always goes through ``RowQuality._compute``, so counting its calls
@@ -138,8 +138,8 @@ def _meter_provider():
 
 def test_dq_metrics_methods_share_one_attribution(result, calls):
     result.get_dq_metrics()
-    result.get_row_quality_df(by="schema")
-    result.get_row_quality_df(by="check")
+    result.get_dq_metrics_df(by="schema")
+    result.get_dq_metrics_df(by="check")
     result.get_dq_metrics()
     assert calls.compute == 1
 

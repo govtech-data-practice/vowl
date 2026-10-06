@@ -131,15 +131,15 @@ Both methods take `checks=["check_a", "check_b"]` to return only those checks.
 
 ### Row counts
 
-`get_row_quality_df()` returns, for each schema, how many rows failed at least
+`get_dq_metrics_df()` returns, for each schema, how many rows failed at least
 one row-level check and how many passed them all. A row that fails two checks counts
 once. These are the same numbers as **Passed Rows** in the summary and the row
 counts in the [DQ metrics](dq-metrics/understanding-metrics.md).
 
 ```python
-result.get_row_quality_df()                     # one row per schema
-result.get_row_quality_df(by="dimension")       # one row per schema and dimension
-result.get_row_quality_df(by="check")           # how each check was counted, and why
+result.get_dq_metrics_df()                     # one row per schema
+result.get_dq_metrics_df(by="dimension")       # one row per schema and dimension
+result.get_dq_metrics_df(by="check")           # how each check was counted, and why
 ```
 
 The columns for `by="schema"` and `by="dimension"` are:

@@ -82,7 +82,7 @@ class ValidationConfig:
             override this per call; when their argument is ``None`` this config
             value is used.
         row_counts: How the row-quality numbers (``print_summary``,
-            ``get_row_quality_df``, the DQ metrics and OTEL) count rows.  One
+            ``get_dq_metrics_df``, the DQ metrics and OTEL) count rows.  One
             of ``"attributed"`` (default), ``"scalar"`` or ``"off"``.  See
             :data:`RowCounts`.
         attribute_tolerated_rows: When ``False`` (default), only the rows of

@@ -233,7 +233,7 @@ The two differ when the check changes the rows it returns. A `DISTINCT`
 lowers the scalar count. A join that returns one row twice raises it.
 
 A check's attributed rows are also in the `attributed_rows` column of
-`get_row_quality_df(by="check")` and the `vowl.row_quality.attributed_rows`
+`get_dq_metrics_df(by="check")` and the `vowl.row_quality.attributed_rows`
 attribute of its [`vowl.check` span](otel-export.md#traces).
 
 For the details, see
@@ -247,7 +247,7 @@ At every level, `PASSED` plus `FAILED` is the number of rows in the table, or
 in all tables at run level.
 
 Row counts stay between 0 and the table's rows. Above check level they match
-`get_row_quality_df()` and **Passed Rows** in `print_summary()`.
+`get_dq_metrics_df()` and **Passed Rows** in `print_summary()`.
 
 The scalar count can go outside that range. When it is higher than the
 table's rows, `PASSED` and `scalar_pass_rate` go negative. vowl does not

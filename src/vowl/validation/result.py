@@ -86,7 +86,7 @@ def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
     return cleaned
 
 
-#: Accepted values of ``get_row_quality_df(by=...)``.
+#: Accepted values of ``get_dq_metrics_df(by=...)``.
 _ROW_QUALITY_GROUPINGS = ("schema", "dimension", "check")
 
 
@@ -1096,7 +1096,7 @@ class ValidationResult:
             return None
         return str(value)
 
-    def get_row_quality_df(self, by: str = "schema") -> nw.DataFrame:
+    def get_dq_metrics_df(self, by: str = "schema") -> nw.DataFrame:
         """Return the row-quality numbers: how many rows of each table have issues.
 
         Every surface reads the same cached numbers: ``print_summary``, the
@@ -1253,7 +1253,7 @@ class ValidationResult:
         *run_id* is passed. See docs/dq-metrics/otel-export.md.
 
         The schema and dimension row gauges use the same row counts as
-        :meth:`get_row_quality_df`. If they were not computed yet, they are
+        :meth:`get_dq_metrics_df`. If they were not computed yet, they are
         computed now. That can export a table, unless
         ``ValidationConfig(row_counts="scalar")`` is set, which runs no query. The
         ``vowl.validate`` and ``vowl.check`` spans carry ``vowl.row_quality.approximate``,

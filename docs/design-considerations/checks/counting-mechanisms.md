@@ -171,7 +171,7 @@ It attributes the rows there, and only the numbers come back.
 | [`client_lookup`](#route-client-lookup)       | Not a plain filter. vowl attributes the rows in the downloaded table            | The whole table and the failed rows | Yes, unless the check returns changed values |
 | [`server_scalar`](#route-server-scalar)       | Only with `row_counts="scalar"`. vowl uses the count the check already returned | Nothing                             | Only for a plain filter, and see the warning |
 
-The `route` column of `get_row_quality_df(by="check")` shows each check's
+The `route` column of `get_dq_metrics_df(by="check")` shows each check's
 route. It is empty for a check that is not row-level, or not attributable on a
 default run. The `reason` column says why the check is not on
 `server_predicate`.
@@ -374,7 +374,7 @@ Every number has an `approximate` flag. It is `True` when the number could be of
 The summary then shows **(approx.)** after it, with the number of checks not
 attributable when there are any, and the OTEL `vowl.validate` span sets
 `vowl.row_quality.approximate`. To find the check that caused it, look at the
-`approximate` and `reason` columns of `get_row_quality_df(by="check")`, or the
+`approximate` and `reason` columns of `get_dq_metrics_df(by="check")`, or the
 same attributes on its `vowl.check` span. The DQ metrics do not carry the flag.
 
 A number is approximate when:

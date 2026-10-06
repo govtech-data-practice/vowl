@@ -57,7 +57,7 @@ flowchart LR
 | [Attributable row-level check](#attributable-row-level-check)         | The check returns rows with issues, and vowl attributes each to the table.      |
 
 Only attributable row-level checks that failed add rows to the row counts.
-`get_row_quality_df(by="check")` shows the type of each check in its
+`get_dq_metrics_df(by="check")` shows the type of each check in its
 `row_level`, `route` and `reason` columns. A check passes or fails as usual
 whatever its type, and a passed check can be row-level too. By default vowl
 does not attribute a passed check (see [Tolerated rows](#tolerated-rows)).
@@ -297,9 +297,9 @@ flowchart LR
 
 | Result              | Where you see it                                                                                      |
 | ------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | `actual` in the summary, `failed_rows_count`, `scalar_count` in `get_row_quality_df(by="check")`      |
+| **Scalar count**    | `actual` in the summary, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")`       |
 | **Failed rows**     | `show_failed_rows()`, `get_output_dfs()`, residues                                                    |
-| **Attributed rows** | `attributed_rows` in `get_row_quality_df(by="check")`, and `failed_rows` per schema and per dimension |
+| **Attributed rows** | `attributed_rows` in `get_dq_metrics_df(by="check")`, and `failed_rows` per schema and per dimension  |
 
 ### Scalar and row queries {#two-queries-from-one}
 
@@ -373,7 +373,7 @@ A check that passes costs one query.
 The row query runs when a check fails and something needs its rows:
 
 - The [row counts](how-attributed-rows-work.md), such as **Passed Rows**
-  in the summary and `get_row_quality_df()`. Where it can, vowl runs the
+  in the summary and `get_dq_metrics_df()`. Where it can, vowl runs the
   row queries inside the data source as part of one attribution query,
   so only numbers come back. With
   [`row_counts="scalar"`](../../run-settings.md#row_counts)
@@ -468,7 +468,7 @@ count is still in `vowl.check.row.scalar_count`.
     [How rows are counted](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted).
 
 `checks_not_attributable` counts the checks left out. It is a column of
-`get_row_quality_df()`, the `vowl.row_quality.checks_not_attributable`
+`get_dq_metrics_df()`, the `vowl.row_quality.checks_not_attributable`
 attribute of the OTEL root span, and a note in the
 summary: `Passed Rows: 4 / 5 (80.0%) (approx., 2 checks not attributable)`.
 

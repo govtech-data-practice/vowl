@@ -48,9 +48,9 @@ not row-level, so it has no row counts at any grain.
 
 | Grain         | What it counts                                        | In the example                                                                | Where to see it                                                                                                                                                                                |
 | ------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Check**     | The failed rows of one row-level check                | `price_must_be_positive`: 3, `quantity_is_filled`: 1, `order_id_is_unique`: 2 | `attributed_rows` in `get_row_quality_df(by="check")` and the check-level [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted). `scalar_count` sits next to it.   |
-| **Dimension** | The rows that fail any check of the dimension         | conformity: 3, completeness: 1, uniqueness: 2                                 | `get_row_quality_df(by="dimension")`                                                                                                                                                           |
-| **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | **Passed Rows** in the summary, `get_row_quality_df()`                                                                                                                                         |
+| **Check**     | The failed rows of one row-level check                | `price_must_be_positive`: 3, `quantity_is_filled`: 1, `order_id_is_unique`: 2 | `attributed_rows` in `get_dq_metrics_df(by="check")` and the check-level [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted). `scalar_count` sits next to it.    |
+| **Dimension** | The rows that fail any check of the dimension         | conformity: 3, completeness: 1, uniqueness: 2                                 | `get_dq_metrics_df(by="dimension")`                                                                                                                                                            |
+| **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | **Passed Rows** in the summary, `get_dq_metrics_df()`                                                                                                                                          |
 | **Run**       | The schema numbers added up                           | 3 of 5                                                                        | the run-level [DQ metrics](../../dq-metrics/understanding-metrics.md)                                                                                                                          |
 
 The check numbers add up to 3 + 1 + 2 = 6, but only 3 rows failed. Each of
@@ -63,7 +63,7 @@ them failed two checks:
 | 5 (bread) | `price_must_be_positive`, `order_id_is_unique` |
 
 So above the check grain, each row counts once. The summary,
-`get_row_quality_df()` and the
+`get_dq_metrics_df()` and the
 [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted)
 all show these same numbers.
 
@@ -97,9 +97,9 @@ third is worked out from it:
 
 | Number              | What it is                                                       | Shows | Where you see it                                                                                                           |
 | ------------------- | ---------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count`, `scalar_count` in `get_row_quality_df(by="check")` and `vowl.check.row.scalar_count`        |
+| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")` and `vowl.check.row.scalar_count`         |
 | **Failed rows**     | The rows the row query returned                                  | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                                      |
-| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_row_quality_df(by="check")`, the annotated output and every row count of the DQ metrics[^scalar] |
+| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_dq_metrics_df(by="check")`, the annotated output and every row count of the DQ metrics[^scalar]  |
 
 [^scalar]:
     Except with
@@ -208,7 +208,7 @@ It stays row-level but is not attributable. It adds nothing to the row counts.
 When it has failed rows, the row counts are marked not exact. Its failed rows
 become a [residue](annotating-the-source-table.md#residues). See
 [Attributed rows](check-results.md#from-query-output-to-row-counts).
-The `reason` column of `get_row_quality_df(by="check")` says why:
+The `reason` column of `get_dq_metrics_df(by="check")` says why:
 
 | `reason`                                                     | Meaning                                                                                                                                                              |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -357,7 +357,7 @@ From the merged list:
 A dimension with no row-level checks, a dimension whose row-level checks are all
 not attributable, or an empty table, shows N/A, not 100%.
 
-`get_row_quality_df()` has these columns, per schema or per dimension:
+`get_dq_metrics_df()` has these columns, per schema or per dimension:
 
 | Column                                     | Meaning                                          |
 | ------------------------------------------ | ------------------------------------------------ |

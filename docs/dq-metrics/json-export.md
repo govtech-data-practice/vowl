@@ -132,7 +132,7 @@ A few things to notice:
   failed both checks. See [How rows are counted](understanding-metrics.md#how-failed-rows-are-counted).
 - The run level adds up the schemas: 7 + 2 = 9 rows failed.
 - The points do not say whether a row count is approximate. Use
-  `get_row_quality_df()` or the [traces](otel-export.md#traces) for that.
+  `get_dq_metrics_df()` or the [traces](otel-export.md#traces) for that.
 
 ### Reading it with pandas
 

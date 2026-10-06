@@ -125,7 +125,7 @@ def test_the_primary_key_is_probed_once_per_schema(monkeypatch: pytest.MonkeyPat
     checks = [_SUBSET, rq._check("negative", "c < 0"), rq._check("three", "c = 3")]
 
     result = rq._validate(con, [rq._schema("t", checks, _PK)])
-    result.get_row_quality_df()
+    result.get_dq_metrics_df()
     result.get_annotated_output()
 
     assert len(calls) == 1

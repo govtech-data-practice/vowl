@@ -2,7 +2,7 @@
 
 One component computes the numbers lazily and caches them on the
 ``ValidationResult``. ``print_summary``, the OTEL gauges,
-``get_row_quality_df`` and annotated output all read from it, so every surface
+``get_dq_metrics_df`` and annotated output all read from it, so every surface
 reports the same counts of attributed rows, every copy counted. The process is described in
 ``design/row-quality-statistics.md``:
 

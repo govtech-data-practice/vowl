@@ -149,7 +149,7 @@ output["residues"]    # {"<schema>::<check_name>": failed rows + check_info + ta
 
 ## When counting and annotating differ
 
-Usually `failed_rows` in `get_row_quality_df()` equals the number of
+Usually `failed_rows` in `get_dq_metrics_df()` equals the number of
 annotated rows. Here is when it doesn't:
 
 | Situation                                                                      | Row counts                                                                                                                                                                                                                  | Annotated table                                                                                           |

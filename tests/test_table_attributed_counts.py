@@ -143,7 +143,7 @@ def test_disabled_attribution_runs_no_query_fetch_or_export(monkeypatch: pytest.
         return original(self, sql)
 
     monkeypatch.setattr(IbisAdapter, "run_arrow_query", run)
-    result.get_row_quality_df()
+    result.get_dq_metrics_df()
 
     fetched = [check.check_name for check in result.check_results if check._failed_rows is not None]
     assert (calls, queries, fetched) == ([], [], [])
@@ -220,7 +220,7 @@ def test_certified_checks_alone_do_not_export(monkeypatch: pytest.MonkeyPatch):
 def test_counting_and_annotated_output_export_once(monkeypatch: pytest.MonkeyPatch):
     calls = _spy_exports(monkeypatch)
     _, result = rq._mixed("duckdb")
-    result.get_row_quality_df()
+    result.get_dq_metrics_df()
     result.get_annotated_output()
 
     assert calls == ["t"]
