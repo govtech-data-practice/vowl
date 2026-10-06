@@ -1,6 +1,6 @@
 # Plan: two tiers for counting failed rows
 
-Status: steps 1-6 committed (13c0200..3ba222f). Step 7 (docs, examples, changelog) in progress. Branch `feat/otel-exporter`.
+Status: done. Steps 1-7 committed (13c0200..8ded82f). Decision 11 (annotated output) is owned elsewhere. Branch `feat/otel-exporter`.
 Starts after the handoff work in `design/handoff-check-attributed-row-metric.md` is committed.
 
 ## Goal
