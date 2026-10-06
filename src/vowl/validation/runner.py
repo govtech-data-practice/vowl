@@ -90,7 +90,6 @@ class ValidationRunner:
     def _build_summary(
         self,
         check_results: list[CheckResult],
-        total_rows_by_schema: dict[str, int],
         connection_results: dict[str, dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         passed = sum(1 for cr in check_results if cr.status == "PASSED")
@@ -121,7 +120,6 @@ class ValidationRunner:
                 "passed": passed,
                 "failed": failed,
                 "errors": errors,
-                "total_rows_by_schema": total_rows_by_schema,
                 "config": self._config.to_dict(),
                 "failed_rows_approximate": failed_rows_approximate,
                 "total_execution_time_ms": total_time,
@@ -146,11 +144,7 @@ class ValidationRunner:
         check_results = self._multi_adapter.run_checks(check_refs_by_schema)
         run_finished_ns = time.time_ns()
 
-        total_rows_by_schema = self._multi_adapter.get_total_rows_by_schema(
-            self._config.max_rows_for_statistics,
-        )
-
-        summary = self._build_summary(check_results, total_rows_by_schema, connection_results)
+        summary = self._build_summary(check_results, connection_results)
         schema_names = list(self._multi_adapter.adapters.keys())
 
         result = self.result_cls(

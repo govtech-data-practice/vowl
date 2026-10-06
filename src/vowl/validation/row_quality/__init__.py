@@ -744,7 +744,7 @@ class _SchemaComputation:
     def _total_rows(self, outcome: PushdownOutcome | None) -> int | None:
         if outcome is not None and outcome.total_rows is not None:
             return outcome.total_rows
-        total = self._recorded_or_fetched_total()
+        total = self._fetched_total()
         if total == 0:
             # get_total_rows returns 0 when its query fails, so a 0 is
             # counted again where the data source can run the count itself.
@@ -754,20 +754,13 @@ class _SchemaComputation:
                 return recount
         return total
 
-    def _recorded_or_fetched_total(self) -> int | None:
-        stats = self._result._vs.get("total_rows_by_schema", {}) or {}
-        recorded = stats.get(self._schema)
-        if isinstance(recorded, int) and self._result._config.max_rows_for_statistics < 0:
-            return recorded
+    def _fetched_total(self) -> int | None:
         getter = getattr(self._adapter, "get_total_rows", None)
-        if getter is not None:
-            total = _safe(getter, self._schema, -1)
-            if isinstance(total, int) and not isinstance(total, bool):
-                return total
-        if isinstance(recorded, int):
-            # Capped by max_rows_for_statistics, so possibly too low.
-            self._total_approximate = True
-            return recorded
+        if getter is None:
+            return None
+        total = _safe(getter, self._schema, -1)
+        if isinstance(total, int) and not isinstance(total, bool):
+            return total
         return None
 
     def _count_anchor(self) -> int | None:

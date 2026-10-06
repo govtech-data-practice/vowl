@@ -65,7 +65,6 @@ class FakeMultiAdapter:
         self.use_try_cast = None
         self.test_connections_called_with = None
         self.run_checks_called_with = None
-        self.total_rows_called_with = None
 
     def test_connections(self, check_refs_by_schema):
         self.test_connections_called_with = check_refs_by_schema
@@ -75,9 +74,20 @@ class FakeMultiAdapter:
         self.run_checks_called_with = check_refs_by_schema
         return [CheckResult("check_1", "PASSED", "ok", failed_rows_count=0)]
 
-    def get_total_rows_by_schema(self, max_rows_for_statistics):
-        self.total_rows_called_with = max_rows_for_statistics
-        return {"users": 10}
+
+class FakeAdapters(SimpleNamespace):
+    """A multi-adapter stand-in that resolves adapters by schema name."""
+
+    def __init__(self, adapters: dict):
+        super().__init__(adapters=adapters)
+
+    def get_adapter(self, schema_name: str):
+        return self.adapters.get(schema_name)
+
+
+def _totals_only(total_rows: int) -> SimpleNamespace:
+    """An adapter that can count its table but not export it."""
+    return SimpleNamespace(get_total_rows=lambda schema_name, max_rows=-1: total_rows)
 
 
 class FakeExportAdapter:
@@ -89,6 +99,12 @@ class FakeExportAdapter:
 
 
 class FakeFailingExportAdapter:
+    def __init__(self, total_rows: int | None = None):
+        self._total_rows = total_rows
+
+    def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int | None:
+        return self._total_rows
+
     def export_table_as_arrow(self, schema_name: str) -> pa.Table:
         raise RuntimeError(f"failed to export {schema_name}")
 
@@ -166,7 +182,6 @@ def _sample_validation_result() -> ValidationResult:
             "passed": 1,
             "failed": 2,
             "errors": 1,
-            "total_rows_by_schema": {"users": 10},
             "config": {"max_rows_for_statistics": 5},
             "failed_rows": 2,
             "total_execution_time_ms": 7.5,
@@ -182,7 +197,7 @@ def _sample_validation_result() -> ValidationResult:
         get_metadata=lambda: {"id": "contract-id"},
         contract_data={"kind": "DataContract"},
     )
-    multi_adapter = SimpleNamespace(adapters={"users": SimpleNamespace()})
+    multi_adapter = FakeAdapters({"users": _totals_only(10)})
     return ValidationResult(summary, [failed_a, failed_b, passed, error], contract, multi_adapter, ["users"])
 
 
@@ -200,7 +215,6 @@ def test_validation_result_contract_id_falls_back_to_unknown():
             "passed": 0,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -223,7 +237,6 @@ def test_validation_result_contract_data_property_returns_underlying_contract_da
             "passed": 0,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -290,7 +303,6 @@ def test_validation_result_show_methods_when_nothing_failed(capsys: pytest.Captu
             "passed": 1,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.1,
@@ -324,7 +336,6 @@ def test_validation_result_show_failed_rows_supports_full_mode(capsys: pytest.Ca
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 3},
             "config": {},
             "failed_rows": 3,
             "total_execution_time_ms": 0.1,
@@ -421,7 +432,6 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
             "passed": 0,
             "failed": 2,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10, "orders": 5},
             "config": {},
             "failed_rows": 4,
             "total_execution_time_ms": 1.0,
@@ -458,7 +468,7 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
             ),
         ],
         contract,
-        SimpleNamespace(adapters={"users": FakeExportAdapter(["id"]), "orders": FakeExportAdapter(["order_id"])}),
+        FakeAdapters({"users": _totals_only(10), "orders": _totals_only(5)}),
         ["users", "orders"],
     )
 
@@ -481,7 +491,6 @@ def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"employees": 2, "payroll": 2},
             "config": {},
             "failed_rows": 2,
             "total_execution_time_ms": 1.0,
@@ -517,10 +526,10 @@ def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails
             )
         ],
         contract,
-        SimpleNamespace(
-            adapters={
+        FakeAdapters(
+            {
                 "employees": SimpleNamespace(),
-                "payroll": FakeFailingExportAdapter(),
+                "payroll": FakeFailingExportAdapter(total_rows=2),
             }
         ),
         ["employees", "payroll"],
@@ -543,7 +552,6 @@ def test_validation_result_summary_does_not_use_adapter_export_for_schema_column
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 2},
             "config": {},
             "failed_rows": 1,
             "total_execution_time_ms": 1.0,
@@ -651,7 +659,6 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
             "passed": 1,
             "failed": 3,
             "errors": 1,
-            "total_rows_by_schema": {"payroll": 2, "employee_list": 2},
             "config": {},
             "failed_rows": 6,
             "total_execution_time_ms": 2.0,
@@ -715,7 +722,6 @@ def test_validation_result_print_summary_leaves_out_a_cross_table_failure_it_can
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10, "orders": 5},
             "config": {},
             "failed_rows": 2,
             "total_execution_time_ms": 1.0,
@@ -775,7 +781,6 @@ def test_validation_result_consolidation_handles_no_failed_rows_and_no_data_colu
             "passed": 1,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -813,7 +818,6 @@ def test_validation_result_consolidation_adds_suffix_for_same_table_different_co
             "passed": 0,
             "failed": 2,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10},
             "config": {},
             "failed_rows": 2,
             "total_execution_time_ms": 0.0,
@@ -887,7 +891,6 @@ def test_validation_result_get_check_results_df_contract_definition_json():
             "passed": 1,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -946,7 +949,6 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10},
             "config": {},
             "failed_rows": 1,
             "total_execution_time_ms": 0.0,
@@ -1140,8 +1142,7 @@ def test_validation_runner_run_propagates_config_and_builds_result(monkeypatch: 
     assert fake_multi.adapters["users"].use_try_cast is False
     assert fake_multi.test_connections_called_with == {"users": ["check-ref"]}
     assert fake_multi.run_checks_called_with == {"users": ["check-ref"]}
-    assert fake_multi.total_rows_called_with == 12
-    assert result.summary["validation_summary"]["total_rows_by_schema"] == {"users": 10}
+    assert "total_rows_by_schema" not in result.summary["validation_summary"]
 
 
 def test_validation_runner_build_summary_aggregates_counts(monkeypatch: pytest.MonkeyPatch):
@@ -1155,7 +1156,7 @@ def test_validation_runner_build_summary_aggregates_counts(monkeypatch: pytest.M
         CheckResult("err", "ERROR", "boom", failed_rows_count=0, execution_time_ms=4.0),
     ]
 
-    summary = runner._build_summary(check_results, {"users": 10}, {"users": {"status": "ok"}})
+    summary = runner._build_summary(check_results, {"users": {"status": "ok"}})
 
     assert summary["validation_summary"]["passed"] == 1
     assert summary["validation_summary"]["failed"] == 1

@@ -252,12 +252,11 @@ def check_row_counts(result: ValidationResult) -> dict[int, CheckRows]:
     Otherwise it adds nothing to the row counts, so its ``attributed_rows`` is
     ``0``, as at the dimension and schema levels.
     """
-    # The row-quality totals are uncapped. Fall back to the run's recorded
-    # totals when the report has none.
-    total_by_schema = dict(result._vs.get("total_rows_by_schema", {}) or {})
-    for item in result._row_quality_report().schemas:
-        if item.total_rows is not None:
-            total_by_schema[item.schema_name] = item.total_rows
+    total_by_schema = {
+        item.schema_name: item.total_rows
+        for item in result._row_quality_report().schemas
+        if item.total_rows is not None
+    }
 
     check_rows = result._row_quality().check_rows()
     counts: dict[int, CheckRows] = {}
