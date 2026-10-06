@@ -92,7 +92,7 @@ class IbisSQLExecutor(SQLExecutor):
 
         Args:
             select_query: A SELECT query for the failing rows (from
-                CheckReference.get_failed_rows_query). None if the
+                CheckReference.get_row_query). None if the
                 transformation was not possible.
             max_rows: The row limit. Defaults to the adapter's ``max_failed_rows``.
 
@@ -198,7 +198,7 @@ class IbisSQLExecutor(SQLExecutor):
                     security_violation=sec_error.violation_type,
                 )
 
-            failed_query = check_ref.get_failed_rows_query(
+            failed_query = check_ref.get_row_query(
                 dialect,
                 filters,
                 use_try_cast=use_try_cast,
@@ -225,7 +225,7 @@ class IbisSQLExecutor(SQLExecutor):
                     filter_conditions=filters,
                     use_try_cast=use_try_cast,
                     adapter=self._adapter,
-                    failed_rows_query=failed_query,
+                    row_query=failed_query,
                     fetch=fetcher,
                 )
             return result

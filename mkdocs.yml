@@ -56,13 +56,14 @@ nav:
           - Exporting to dq_metrics.json: dq-metrics/json-export.md
   - Design Considerations:
       - How vowl Works: architecture.md
-      - Failed Rows:
-          - Failed Row Results: design-considerations/failed-rows/failed-row-results.md
-          - How Failed Rows Are Derived: design-considerations/failed-rows/how-failed-rows-are-derived.md
-          - How Rows Are Counted: design-considerations/failed-rows/how-rows-are-counted.md
-          - Counting Mechanisms: design-considerations/failed-rows/counting-mechanisms.md
-          - Annotating the Source Table: design-considerations/failed-rows/annotating-the-source-table.md
-          - Capping Failed Rows: design-considerations/failed-rows/capping-failed-rows.md
+      - Checks:
+          - Check Results: design-considerations/checks/check-results.md
+          - How Failed Rows Are Derived: design-considerations/checks/how-failed-rows-are-derived.md
+          - Attributed Rows:
+              - How Attributed Rows Work: design-considerations/checks/how-attributed-rows-work.md
+              - Counting Mechanisms: design-considerations/checks/counting-mechanisms.md
+          - Annotating the Source Table: design-considerations/checks/annotating-the-source-table.md
+          - Capping Failed Rows: design-considerations/checks/capping-failed-rows.md
       - Cross-Server and Cross-Table Checks:
           - How Cross-Server and Cross-Table Checks Work: design-considerations/cross-table/how-it-works.md
           - Using Relationship References: design-considerations/cross-table/relationship-references.md

@@ -147,7 +147,7 @@ class ValidationRunner:
         run_finished_ns = time.time_ns()
 
         total_rows_by_schema: dict[str, int] = {}
-        if self._config.enable_additional_schema_statistics:
+        if self._config.row_counts != "off":
             total_rows_by_schema = self._multi_adapter.get_total_rows_by_schema(
                 self._config.max_rows_for_statistics,
             )

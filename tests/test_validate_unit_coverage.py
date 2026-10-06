@@ -255,9 +255,9 @@ def test_validation_result_print_summary_show_methods_and_chaining(capsys: pytes
     assert "Single Table:" in output
     assert "Multi Table:" in output
     assert "ERRORED Checks:         1" in output
-    # The table cannot be exported, so rule_a and rule_b are not attributed
-    # and their row is left out of the numbers.
-    assert "Passed Rows:            10 / 10 (100.0%) (approx., 2 checks not attributed)" in output
+    # The table cannot be exported, so rule_a and rule_b are not attributable.
+    # rule_c passed, so it is not attributed, and no number is left.
+    assert "Passed Rows:            N/A" in output
     assert "Non-unique Failed Rows: 0" in output
     assert "VALIDATION CHECKS" not in output
     assert "CHECK RESULTS" in output
@@ -408,12 +408,11 @@ def test_validation_result_row_quality_merges_rows_caught_by_several_checks():
     users = result._row_quality_report().schema("users")
 
     # rule_a and rule_b caught the same row, but the table cannot be exported,
-    # so neither is attributed and the numbers are approximate.
-    # rule_d ended in ERROR, so it is not counted.
-    assert (users.total_rows, users.failed_rows, users.passed_rows) == (10, 0, 10)
-    assert users.pass_rate == pytest.approx(1.0)
-    assert (users.checks_counted, users.checks_not_counted, users.checks_not_attributed) == (3, 1, 2)
-    assert users.exact is False
+    # so neither is attributable. rule_c passed, so it is not attributed, and
+    # the numbers are N/A. rule_d ended in ERROR, so it is not row-level.
+    assert (users.total_rows, users.failed_rows, users.passed_rows, users.pass_rate) == (10, None, None, None)
+    assert (users.checks_row_level, users.checks_not_row_level, users.checks_not_attributable) == (3, 1, 2)
+    assert users.approximate is True
 
 
 def test_validation_result_row_quality_excludes_cross_table_failures():
@@ -467,11 +466,11 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
     report = result._row_quality_report()
 
     # cross_rule is not row-level (supports_row_level_output defaults to False).
-    # users_rule is counted, but the fake adapter cannot export users, so it is not attributed.
+    # users_rule is row-level, but the fake adapter cannot export users, so it is not attributable.
     users = report.schema("users")
     assert (users.total_rows, users.failed_rows, users.passed_rows) == (10, None, None)
-    assert (users.checks_counted, users.checks_not_attributed) == (1, 1)
-    # orders has no counted checks, so it has no row numbers.
+    assert (users.checks_row_level, users.checks_not_attributable) == (1, 1)
+    # orders has no row-level checks, so it has no row numbers.
     orders = report.schema("orders")
     assert (orders.total_rows, orders.failed_rows, orders.pass_rate) == (5, None, None)
 
@@ -530,11 +529,11 @@ def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails
 
     payroll = result._row_quality_report().schema("payroll")
 
-    # The export fails, so the check is not attributed. It is the only counted
+    # The export fails, so the check is not attributable. It is the only row-level
     # check, so the schema has no row numbers.
     assert (payroll.total_rows, payroll.failed_rows, payroll.passed_rows) == (2, None, None)
     assert payroll.pass_rate is None
-    assert (payroll.checks_not_attributed, payroll.exact) == (1, False)
+    assert (payroll.checks_not_attributable, payroll.approximate) == (1, True)
 
 
 def test_validation_result_summary_does_not_use_adapter_export_for_schema_columns(capsys: pytest.CaptureFixture[str]):
@@ -694,10 +693,9 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
     assert output.count("ERRORED Checks:         0") >= 4
     assert "ERRORED Checks:         1" in output
     # The fake adapters cannot export the tables, so no check with rows is
-    # attributed. payroll has no attributed check, so it is N/A. employee_list
-    # keeps cross_pass_rule, which PASSED with no rows.
-    assert "Passed Rows:            2 / 2 (100.0%) (approx., 1 check not attributed)" in output
-    assert output.count("Passed Rows:            N/A") == 1
+    # attributable, and cross_pass_rule PASSED, so it is not attributed. Both
+    # tables are N/A.
+    assert output.count("Passed Rows:            N/A") == 2
     assert "Non-unique Failed Rows: 2" in output
     assert "Non-unique Failed Rows: 0" in output
     assert "CHECK RESULTS" in output
@@ -760,7 +758,7 @@ def test_validation_result_print_summary_leaves_out_a_cross_table_failure_it_can
     assert "Checks Pass Rate:       0 / 0 (N/A)" in output
     assert "ERRORED Checks:         0" in output
     # The only check reads two tables and its rows cannot be matched onto
-    # users, so it is not attributed, and orders has no counted check.
+    # users, so it is not attributable, and orders has no row-level check.
     assert output.count("Passed Rows:            N/A") == 2
     assert "Multi Table:" in output
     assert output.count("Non-unique Failed Rows: 2") == 1
@@ -1127,9 +1125,8 @@ def test_validation_runner_resolve_adapters_keeps_existing_ibis_adapter(monkeypa
 def test_validation_runner_run_propagates_config_and_builds_result(monkeypatch: pytest.MonkeyPatch):
     contract = _make_contract(monkeypatch, ["users"])
     fake_multi = FakeMultiAdapter({"users": SimpleNamespace(max_failed_rows=None, use_try_cast=None)})
-    config = ValidationConfig(
-        max_failed_rows=7, use_try_cast=False, enable_additional_schema_statistics=True, max_rows_for_statistics=12
-    )
+    with pytest.warns(DeprecationWarning, match="max_rows_for_statistics"):
+        config = ValidationConfig(max_failed_rows=7, use_try_cast=False, max_rows_for_statistics=12)
     runner = ValidationRunner(contract=contract, adapters={"users": object()}, config=config)
 
     monkeypatch.setattr(runner, "_resolve_adapters", lambda: fake_multi)

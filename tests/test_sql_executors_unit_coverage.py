@@ -25,7 +25,7 @@ class StubCheckReference:
         *,
         check: dict | None = None,
         rendered_query: str | None = "SELECT COUNT(*) FROM users",
-        failed_rows_query: str | None = "SELECT * FROM users",
+        row_query: str | None = "SELECT * FROM users",
         column_name: str | None = None,
         logical_type: str | None = None,
         schema_name: str = "users",
@@ -38,7 +38,7 @@ class StubCheckReference:
             "mustBe": 0,
         }
         self._rendered_query = rendered_query
-        self._failed_rows_query = failed_rows_query
+        self._row_query = row_query
         self._column_name = column_name
         self._logical_type = logical_type
         self._schema_name = schema_name
@@ -107,8 +107,8 @@ class StubCheckReference:
             return f"SELECT COUNT(*) FROM ({query}) AS _sub"
         return query
 
-    def get_failed_rows_query(self, output_dialect, query_filters, use_try_cast=True):
-        return self._failed_rows_query
+    def get_row_query(self, output_dialect, query_filters, use_try_cast=True):
+        return self._row_query
 
     def compute_failed_rows_count(self, actual_value):
         unit_is_rows = self.unit is None or self.unit == "rows"

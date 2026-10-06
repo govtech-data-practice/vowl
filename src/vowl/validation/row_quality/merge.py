@@ -78,20 +78,20 @@ def merge_onto_table(
         index: ``table_key_index(table, key_columns)``.
 
     Returns:
-        ``(entries, exact, matched)``. ``entries`` holds one ``(mask, rows)``
-        per set of checks. ``exact`` is false when a pushdown row matched no
+        ``(entries, approximate, matched)``. ``entries`` holds one ``(mask, rows)``
+        per set of checks. ``approximate`` is true when a pushdown row matched no
         table row. ``matched`` maps each fetched check to ``(table rows
         matched, distinct keys not found)``, or to None when its rows could
         not be keyed.
     """
-    exact = True
+    approximate = False
     masks = [0] * table.num_rows
     extra: list[tuple[int, int]] = []
 
     if outcome is not None and outcome.histogram is not None:
         # Not run with values, so its rows cannot be placed.
         extra.extend(outcome.histogram)
-        exact = False
+        approximate = True
     elif outcome is not None and outcome.rows:
         values, entries = _pushdown_value_table(outcome, key_columns)
         values = align_to_schema(values, table.schema, key_columns)
@@ -101,13 +101,13 @@ def merge_onto_table(
             keys = None
         if keys is None:
             extra.extend((entry[0], entry[1]) for entry in entries)
-            exact = False
+            approximate = True
         else:
             for key, entry in zip(keys, entries, strict=True):
                 positions = index.get(key)
                 if positions is None:
                     extra.append((entry[0], entry[1]))
-                    exact = False
+                    approximate = True
                     continue
                 for position in positions:
                     masks[position] |= entry[0]
@@ -126,4 +126,4 @@ def merge_onto_table(
         matched[check_id] = (len(positions), missing)
 
     entries_out = list(Counter(mask for mask in masks if mask).items())
-    return entries_out + extra, exact, matched
+    return entries_out + extra, approximate, matched

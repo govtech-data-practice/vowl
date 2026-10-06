@@ -1,45 +1,51 @@
 ---
 title: How Failed Rows Are Derived
 description: >-
-  Every SQL check gives vowl two queries. The count query decides pass or
-  fail. The failed rows query returns the rows behind that count.
+  Every SQL check gives vowl two queries. The scalar query decides pass or
+  fail. The row query returns the rows behind that number.
 ---
 
 # How Failed Rows Are Derived
 
-[Failed Row Results](failed-row-results.md) set out which checks have
-failed rows. This page covers the
-[query output](failed-row-results.md#failed-row-results): the scalar count
-and the failed rows, and where they come from. You write one query
-per SQL check, and vowl gets two queries out of it: one that counts the failed
-rows and one that returns them.
+This page explains where a check's
+[query output](check-results.md#failed-row-results) comes from.
+
+You write one query per SQL check, and vowl gets two queries out of it. One
+returns the number that decides pass or fail, and the other lists the rows
+behind it.
 
 ## Two queries from one
 
-| Query                 | What it returns                      | When it runs                                      |
-| --------------------- | ------------------------------------ | ------------------------------------------------- |
-| **Count query**       | The number that decides pass or fail | Always                                            |
-| **Failed rows query** | The rows behind that number          | Only when the check fails and the rows are needed |
+| Query            | What it returns                      | When it runs                                      |
+| ---------------- | ------------------------------------ | ------------------------------------------------- |
+| **Scalar query** | The number that decides pass or fail | Always                                            |
+| **Row query**    | The rows behind that number          | Only when the check fails and the rows are needed |
+
+The row query returns the rows of its own result. They are rows of the source
+table only when the query is a plain filter of that table. A `DISTINCT`, a
+`GROUP BY` or a join changes what its rows are, and that decides whether vowl
+can [attribute](check-results.md#attributable-row-level-check) them. A check
+that returns an average, a sum, a minimum or a maximum has no row query.
 
 You can write either one, and vowl builds the other:
 
 === "You write `COUNT(*)`"
 
     ```sql
-    -- Your query (count query): decides pass or fail
+    -- Your query (scalar query): decides pass or fail
     SELECT COUNT(*) FROM orders WHERE price <= 0
 
-    -- vowl builds the failed rows query by replacing COUNT(*) with *
+    -- vowl builds the row query by replacing COUNT(*) with *
     SELECT * FROM orders WHERE price <= 0
     ```
 
 === "You write `SELECT *`"
 
     ```sql
-    -- Your query (failed rows query): lists the rows
+    -- Your query (row query): lists the rows
     SELECT * FROM orders WHERE price <= 0
 
-    -- vowl builds the count query by wrapping it in COUNT(*)
+    -- vowl builds the scalar query by wrapping it in COUNT(*)
     SELECT COUNT(*) FROM (SELECT * FROM orders WHERE price <= 0)
     ```
 
@@ -55,8 +61,8 @@ LEFT JOIN demo_employee_list ref
 WHERE ref.employee_id IS NULL
 ```
 
-The count query tells you that _some_ payroll rows have no matching employee.
-The failed rows query tells you _which_ ones. The columns those rows hold
+The scalar query tells you that _some_ payroll rows have no matching employee.
+The row query tells you _which_ ones. The columns those rows hold
 depend on how the query is written, and decide whether vowl can attribute
 them to the source table. See
 [Annotating the failed rows of a cross-table check](../cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).
@@ -71,17 +77,17 @@ them to the source table. See
 
 ## When each query runs
 
-The count query always runs, because vowl needs it to pass or fail the check.
+The scalar query always runs, because vowl needs it to pass or fail the check.
 A check that passes costs one query.
 
-The failed rows query runs when a check fails and something needs its rows:
+The row query runs when a check fails and something needs its rows:
 
-- The [row counts](how-rows-are-counted.md), such as **Passed Rows**
+- The [row counts](how-attributed-rows-work.md), such as **Passed Rows**
   in the summary and `get_row_quality_df()`. Where it can, vowl runs the
-  failed rows queries inside the data source as part of one counting query,
+  row queries inside the data source as part of one attribution query,
   so only numbers come back. With
-  [`disable_table_attributed_counts`](../../run-settings.md#disable_table_attributed_counts)
-  set, the row counts use the count query only.
+  [`row_counts="scalar"`](../../run-settings.md#row_counts)
+  set, the row counts use the scalar query only.
 - The [annotated output](annotating-the-source-table.md), from
   `get_annotated_output()` or `save()`.
 - `show_failed_rows()` and `get_output_dfs()`.
@@ -92,6 +98,6 @@ The failed rows query runs when a check fails and something needs its rows:
     does not slow the query down. Databases flatten these standard shapes
     when they plan the query. A `LEFT JOIN ... WHERE ref.key IS NULL`, which
     finds rows with no match in the other table, usually runs as one pass
-    over the join key. By default the failed rows query returns every failed
+    over the join key. By default the row query returns every failed
     row. On a very large table with many failed rows, see
     [Capping Failed Rows](capping-failed-rows.md).

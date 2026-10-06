@@ -6,9 +6,11 @@ description: >-
 
 # Capping Failed Rows
 
-This page is about the failed rows, part of the
-[query output](failed-row-results.md#failed-row-results). By default the
-[failed rows query](how-failed-rows-are-derived.md#two-queries-from-one)
+This page explains how to cap the failed rows of each check, and what the cap
+changes.
+
+By default the
+[row query](how-failed-rows-are-derived.md#two-queries-from-one)
 of each check returns every failed row. On a
 very large table with many failed rows, you can cap how many vowl downloads
 for each check with
@@ -30,11 +32,11 @@ result = validate_data("orders.yaml", df=df, config=config)
 
 ## What the cap changes in the attributed rows
 
-- **The row counts mostly stay the same.** Checks attributed in the data
-  source (`server_predicate` and `server_lookup`) don't use the downloaded
+- **The row counts mostly stay the same.** Checks whose rows the data
+  source attributes (`server_predicate` and `server_lookup`) don't use the downloaded
   failed rows, and neither do scalar counts under
-  `disable_table_attributed_counts`. A `client_lookup` check that is cut
-  short is [not attributed](counting-mechanisms.md#fallbacks), with the
+  `row_counts="scalar"`. A `client_lookup` check that is cut
+  short is [not attributable](counting-mechanisms.md#fallbacks), with the
   `reason` `truncated by max_failed_rows`. It is left out of the row counts,
   which become [approximate](counting-mechanisms.md#exact-numbers). Its
   failed rows are still annotated, up to the cap.
@@ -54,5 +56,5 @@ reported as cut short, and one with more always is. The scalar count is
 not used for this, because it does not always equal the number of failed
 rows, for example under `DISTINCT` or a join.
 
-`max_rows_for_statistics` no longer caps the row counts. vowl always counts
+`max_rows_for_statistics` is deprecated and no longer caps the row counts. vowl always counts
 the whole table.

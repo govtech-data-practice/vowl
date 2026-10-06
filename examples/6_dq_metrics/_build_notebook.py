@@ -201,8 +201,8 @@ docs shows a run where they differ. The dimension level does the same within eac
 quality dimension (completeness, conformity, and so on), so it tells you *what
 kind* of problem the failing rows have.
 
-The `vowl.row_quality.exact` attribute says whether a row count is exact. It is
-`true` whenever every counted check ran and its rows could be matched to the table.
+The metrics do not say whether a row count is approximate. The `vowl.validate` and
+`vowl.check` spans do, through `vowl.row_quality.approximate`.
 """
 )
 
@@ -216,8 +216,7 @@ schema_failed = schema_rows[schema_rows["attributes.status"] == "FAILED"]["value
 
 print(f"Failed rows, added up over checks: {check_failed:,.0f}")
 print(f"Failed rows, counted once (schema): {schema_failed:,.0f}\\n")
-display(schema_rows[["attributes.schema_name", "attributes.status",
-                     "attributes.vowl.row_quality.exact", "value"]])
+display(schema_rows[["attributes.schema_name", "attributes.status", "value"]])
 
 points[points["name"] == "vowl.dimension.row.pass_rate"][
     ["attributes.schema_name", "attributes.dimension", "value"]

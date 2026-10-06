@@ -4,7 +4,7 @@ description: >-
   Internal design record for computing exact failed-row counts, total-row counts
   and row pass rates per schema and per data-quality dimension, exporting the
   full table only where a check needs it, unless
-  `disable_table_attributed_counts` is set.
+  `row_counts="scalar"` is set.
 status: Implemented
 ---
 
@@ -22,18 +22,18 @@ the implementation differs from the text below.
 ## Terminology
 
 This record uses the terms of the user docs
-([Failed Row Results](../docs/design-considerations/failed-rows/failed-row-results.md#failed-row-results)):
+([Check Results](../docs/design-considerations/checks/check-results.md#failed-row-results)):
 
-| Term                   | Meaning                                                                                                                                                                                                                                                                                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Failed row results** | Everything vowl reports about the rows a check caught. Two groups: query output and attributed rows.                                                                                                                                                                                                                                                          |
-| **Query output**       | What the check's own queries return: the scalar count and the failed rows.                                                                                                                                                                                                                                                                                    |
-| **Scalar count**       | The number the count (scalar) query returns. It decides pass or fail. `row_count` on the check result.                                                                                                                                                                                                                                                        |
-| **Failed rows**        | The rows the failed-rows query returns, as fetched for `show_failed_rows()`, `get_output_dfs()` and residues.                                                                                                                                                                                                                                                 |
-| **Attributed rows**    | The source table rows the failed rows stand for, every copy counted. Every row count in this record.                                                                                                                                                                                                                                                          |
-| **Attribute**          | To find those rows by the match key. The `server_predicate`, `server_lookup` and `client_lookup` routes attribute. `server_scalar` does not.                                                                                                                                                                                                                  |
-| **Counted check**      | A check about bad rows: not ERROR, row-level, with an operator that sets an upper bound. Step 2 picks them.                                                                                                                                                                                                                                                   |
-| **Not attributed**     | A counted check whose attributed rows are not in the row counts. It is never attributable when its failed rows have no match key, and those rows become residues. It is not attributed this run when, for example, its rows were truncated or the table could not be exported. Under `disable_table_attributed_counts` every counted check is not attributed. |
+| Term                 | Meaning                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Failed check**     | A check with the status `FAILED`. Its rows are the rows that failed when it is a row-level check. The rows of passed checks are attributed only under `attribute_tolerated_rows=True`.                                                                                                                                                                           |
+| **Query output**     | What the check's own queries return: the scalar count and the failed rows.                                                                                                                                                                                                                                                                                       |
+| **Scalar count**     | The number the count (scalar) query returns. It decides pass or fail. `scalar_count` on the check selection.                                                                                                                                                                                                                                                     |
+| **Failed rows**      | The rows the row query returns, as fetched for `show_failed_rows()`, `get_output_dfs()` and residues.                                                                                                                                                                                                                                                            |
+| **Attributed rows**  | The source table rows the failed rows stand for, every copy counted. Every row count in this record.                                                                                                                                                                                                                                                             |
+| **Attribute**        | To find those rows by the match key. The `server_predicate`, `server_lookup` and `client_lookup` routes attribute. `server_scalar` does not.                                                                                                                                                                                                                     |
+| **Row-level check**  | A check about bad rows: not ERROR, row-level, with an operator that sets an upper bound. Step 2 picks them.                                                                                                                                                                                                                                                      |
+| **Not attributable** | A row-level check whose attributed rows are not in the row counts. It is never attributable when its failed rows have no match key, and those rows become residues. It is not attributable this run when, for example, its rows were truncated or the table could not be exported. Under `row_counts="scalar"` every failed row-level check is not attributable. |
 
 The `failed_rows` column of `get_row_quality_df()` at schema and dimension
 level, and the "failed rows" of a schema or dimension below, are attributed
@@ -44,12 +44,12 @@ rows that failed. At check level the column is `attributed_rows`.
 For every schema in a run, produce:
 
 - **Total rows.** The in-scope row count, after adapter filter conditions.
-- **Failed rows.** Attributed rows that fail at least one counted check.
+- **Failed rows.** Attributed rows that fail at least one row-level check.
 - **Failed rows per dimension.** Attributed rows that fail at least one
-  counted check in that dimension.
+  row-level check in that dimension.
 - **Pass rates.** `(total rows - failed rows) / total rows`, in total and per
   dimension.
-- **Trust metadata.** Whether each number is exact, which checks were counted
+- **Trust metadata.** Whether each number is exact, which checks were row-level
   and which were not (with the reason).
 
 These numbers must be:
@@ -57,7 +57,7 @@ These numbers must be:
 - **Exact.** Correct regardless of `max_failed_rows` or duplicate rows.
 - **Cheap.** Never export the full table to count a certified row filter.
   Export it for other checks only where the data source cannot attribute
-  their rows, and never under `ValidationConfig.disable_table_attributed_counts` (see [decision 2](#2-the-exported-table-is-shared-by-counting-and-annotated-output)),
+  their rows, and never under `ValidationConfig(row_counts="scalar")` (see [decision 2](#2-the-exported-table-is-shared-by-counting-and-annotated-output)),
   and at most once per run.
 - **Consistent.** The same numbers that `print_summary`, the OTEL gauges and a
   public API report. Equal to what annotated output flags where both are exact.
@@ -113,7 +113,7 @@ throws away with `.unique()`. If step 1 keeps copy counts instead, the full tabl
 adds nothing to the numbers of certified row filters. Checks that are not row
 filters return copies that do not match the table. For those, the full table
 is the reference, used where the data source cannot match the rows, and
-`disable_table_attributed_counts` skips it (see [Full-table match](#full-table-match)).
+`row_counts="scalar"` skips it (see [Full-table match](#full-table-match)).
 
 ## The process
 
@@ -125,32 +125,34 @@ Run once per schema.
 conditions applied (the adapter's `get_total_rows`). It must not be capped
 independently of the numerator, so `max_rows_for_statistics` no longer applies
 to row-quality totals. The capped total is used only as a last resort, when no
-uncapped count is available, and is then marked `exact = false` (see
+uncapped count is available, and is then marked `approximate = true` (see
 [Implementation](#implementation)). When the pushdown fits in one chunk and the
 schema has no fetched-route check, the total runs in the same statement so both
 counts see the same snapshot of a live table. With several chunks each chunk has
 its own snapshot (see [Chunking](#chunking)).
 
-### Step 2: Select the counted checks
+### Step 2: Select the row-level checks
 
 A check contributes rows only if all of these hold:
 
-| Rule                                                                                           | Reason                                                                                                                                                                                                       |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| It is anchored to this schema                                                                  | Rows from other tables are other rows.                                                                                                                                                                       |
-| Its status is PASSED or FAILED                                                                 | ERROR never qualifies (see step 6). The scope ([decision 4](#4-tolerated-violations-are-a-setting)) only decides whether tolerated rows reach the headline `failed_rows`. They always feed `tolerated_rows`. |
-| Its result is a row count (`supports_row_level_output`)                                        | Averages and sums have no rows to point at.                                                                                                                                                                  |
-| Its operator marks the matched rows as bad (see [decision 3](#3-inverted-checks-are-excluded)) | Inverted checks return the good rows.                                                                                                                                                                        |
+| Rule                                                                                           | Reason                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| It is anchored to this schema                                                                  | Rows from other tables are other rows.                                                                                                                       |
+| Its status is PASSED or FAILED                                                                 | ERROR never qualifies (see step 6). A PASSED check is attributed only under `attribute_tolerated_rows=True` ([decision 4](#4-tolerated-rows-are-a-setting)). |
+| Its result is a row count (`supports_row_level_output`)                                        | Averages and sums have no rows to point at.                                                                                                                  |
+| Its operator marks the matched rows as bad (see [decision 3](#3-inverted-checks-are-excluded)) | Inverted checks return the good rows.                                                                                                                        |
 
-Every PASSED or FAILED check that passes these rules is counted. A PASSED
+Every PASSED or FAILED check that passes these rules is a row-level check. A PASSED
 check with matches is a tolerated check. Checks that fail a rule are reported as
-not counted, with the rule they failed.
+not row-level, with the rule they failed. By default a PASSED row-level check is
+not attributed. It runs no query, takes no route, has the reason
+`passed, not attributed`, and is not counted in `checks_not_attributable`.
 
-A counted check is also **attributed** only when its failed rows have the
+A row-level check is also **attributable** only when its failed rows have the
 table's full columns, or its declared primary key. That is needed to recognise
 the same row across checks, and is the mergeability rule annotated output
-already uses. A counted check without such a key is never attributable. It
-stays counted, is reported as not attributed with its reason, and its failed
+already uses. A row-level check without such a key is never attributable. It
+stays row-level, is reported as not attributable with its reason, and its failed
 rows become a residue. vowl checks this after it picks the match key in step 4.
 
 ### Step 3: Collect each check's attributed rows, copies included
@@ -162,26 +164,33 @@ rows become a residue. vowl checks this after it picks the match key in step 4.
 | SQL, on an adapter without pushdown                   | Full-table match                                                                             |
 | Python engine (not implemented)                       | Full-table match on the handler's returned failed rows                                       |
 | Cross-source (materialised into the temporary DuckDB) | Full-table match                                                                             |
-| Any check, under `disable_table_attributed_counts`    | The check's scalar count (`server_scalar`)                                                   |
+| A failed check, under `row_counts="scalar"`           | The check's scalar count (`server_scalar`)                                                   |
 
-`ValidationConfig.disable_table_attributed_counts` picks between two modes:
+`ValidationConfig.row_counts` picks between three modes:
 
-| `disable_table_attributed_counts` | Certified filter | Other checks                                                      | Exports the table                    |
-| --------------------------------- | ---------------- | ----------------------------------------------------------------- | ------------------------------------ |
-| `False` (default)                 | pushdown         | table match on a key_is_exact dialect, full-table match elsewhere | Only for the full-table match checks |
-| `True`                            | scalar           | scalar                                                            | Never, and no query or fetch runs    |
+| `row_counts`             | Certified filter | Other checks                                                      | Exports the table                    |
+| ------------------------ | ---------------- | ----------------------------------------------------------------- | ------------------------------------ |
+| `"attributed"` (default) | pushdown         | table match on a key_is_exact dialect, full-table match elsewhere | Only for the full-table match checks |
+| `"scalar"`               | scalar           | scalar                                                            | Never, and no query or fetch runs    |
+| `"off"`                  | none             | none                                                              | Never, and no row counts             |
+
+`row_counts="scalar"` adds up the scalar counts of the failed checks only. An
+earlier version also added the scalars of passed checks, which counted
+tolerated rows the default leaves out. The deprecated
+`enable_additional_schema_statistics=False` sets `row_counts="off"`, and
+combining it with `row_counts="scalar"` raises a `ValueError`.
 
 Table match and full-table match count the same rows on a key_is_exact
 dialect, so the default only exports where table match cannot run.
 
 **History.** An earlier `row_count_accuracy` setting had three levels:
 `"accurate"` (full-table match for every uncertified check), `"balanced"` (the
-current default) and `"fast_estimate"` (the current `True`). `"accurate"` gave
+current default) and `"fast_estimate"` (the current `row_counts="scalar"`). `"accurate"` gave
 the same numbers as `"balanced"` on key_is_exact dialects and exported more,
 so it was dropped before release.
 
 Every route except the scalar must return the attributed rows, every copy counted.
-A check that no route can attribute on a default run is not attributed. It
+A check that no route can attribute on a default run is not attributable. It
 takes no route and adds nothing to the row counts.
 The scalar is the count the check already ran to decide pass or fail. It is
 exact for a certified filter, but it carries no rows, so a sum of scalars
@@ -216,16 +225,15 @@ rows.
 - **Failed rows** = sum of copies over all merged rows.
 - **Failed rows for dimension d** = sum of copies over merged rows caught by at
   least one check in d.
-- **Not-attributed checks** add nothing (`roll_up_bucket` in
+- **Not-attributable checks** add nothing (`roll_up_bucket` in
   `row_quality/rollup.py`). A bucket is not exact when one of them may have
   rows in scope: a failed check with a scalar count above 0, or under
-  `all_violations` any such check. A tolerated one that may have rows makes
-  `tolerated_rows` unknown. A bucket whose counted checks are all not
-  attributed has no failed rows or pass rate (N/A), like a bucket with no
-  counted checks. Under `disable_table_attributed_counts` the scalar counts are
-  added instead (see [The scalar route](#the-scalar-route)).
-- **Checks not attributed** = the bucket's counted checks that are not
-  attributed. At run level it is the sum over the schemas.
+  `attribute_tolerated_rows=True` any such check. A bucket whose row-level checks are all not
+  attributable has no failed rows or pass rate (N/A), like a bucket with no
+  row-level checks. Under `row_counts="scalar"` the scalar counts of the failed
+  checks are added instead (see [The scalar route](#the-scalar-route)).
+- **Checks not attributable** = the bucket's row-level checks in scope that are
+  not attributable. A passed check out of scope is not counted. At run level it is the sum over the schemas.
 - **Pass rate** = `(total rows - failed rows) / total rows`. The total and every
   dimension share the same denominator.
 
@@ -240,23 +248,23 @@ the same merged rows and needs no further queries.
 
 Every number carries:
 
-- **`exact`**: false when any check in the bucket is inexact, when the total is
+- **`approximate`**: true when any check in the bucket is approximate, when the total is
   capped or lower than the rows one of the table's checks found, or when a value
-  could not be turned into a merge key. The causes that make a check inexact are
-  listed under `exact` in [Public API](#public-api). One of them is a check that
-  would have been counted but ended in ERROR, since a broken check could be
+  could not be turned into a merge key. The causes that make a check approximate are
+  listed under `approximate` in [Public API](#public-api). One of them is a check that
+  would have been row-level but ended in ERROR, since a broken check could be
   hiding bad rows.
-- **Checks counted**, **checks not counted** and **checks not attributed**,
+- **Checks row-level**, **checks not row-level** and **checks not attributable**,
   as integer counts, so a high pass rate cannot hide the fact that half the
   dimension's checks were not row-level, or not in the numbers. The checks themselves, with the route each took and the reason each
   was left out, are listed one per row in
   [`get_row_quality_df(by="check")`](#public-api).
 - **Empty cases**:
-  - A dimension with no counted checks has no row pass rate. Report it as
+  - A dimension with no row-level checks has no row pass rate. Report it as
     missing, not 100%.
   - A table with 0 rows has no pass rate. The previous code reported 100%. It is
     now reported as missing.
-  - A dimension whose counted checks all passed correctly reports 0 failed and
+  - A dimension whose row-level checks all passed correctly reports 0 failed and
     100%.
 
 ### Step 7: Run-level rollup (optional)
@@ -266,15 +274,13 @@ are different rows, so nothing is merged across schemas. This rate is weighted
 by table size. Where an unweighted view is useful, also report the mean of the
 per-schema rates and label which is which.
 
-The implementation computes both rates (`weighted_pass_rate` and
-`mean_pass_rate` on `RowQualityReport`) but keeps them internal. They are not
-exposed through the DataFrame, `print_summary` or OTEL.
+vowl does not compute these run-level rates yet.
 
 ## Routes
 
 ### Pushdown for SQL checks
 
-The query stacks each counted check's own failed-rows query, tags each branch
+The query stacks each row-level check's own row query, tags each branch
 with a check index, and groups in the engine. The inner queries are used
 unchanged, so filter conditions, `TRY_CAST`, FK aliases and cross-table checks
 that project the anchor's columns all work without SQL rewriting. The wrapper is
@@ -286,9 +292,9 @@ names, and splits large schemas into chunks.
 
 ```sql
 WITH tagged AS (
-    SELECT c1, c2, 0 AS _vowl_check FROM (<failed-rows query of check 0>) AS _q0
+    SELECT c1, c2, 0 AS _vowl_check FROM (<row query of check 0>) AS _q0
     UNION ALL
-    SELECT c1, c2, 1 AS _vowl_check FROM (<failed-rows query of check 1>) AS _q1
+    SELECT c1, c2, 1 AS _vowl_check FROM (<row query of check 1>) AS _q1
 ),
 per_check AS (
     SELECT c1, c2, _vowl_check, COUNT(*) AS copies
@@ -328,7 +334,7 @@ rule below closes one of those gaps.
 
 #### Certification
 
-A check joins a pushdown chunk only if its failed-rows query is a pure row
+A check joins a pushdown chunk only if its row query is a pure row
 filter of the anchor. sqlglot must find:
 
 - a single `SELECT` with no `WITH`, whose select list is `*` or `anchor.*`
@@ -342,7 +348,7 @@ filter of the anchor. sqlglot must find:
   operations, joins or nondeterministic functions (`random`, `uuid`, `now`)
 - no window functions outside `WHERE`
 - a scalar query with a single `COUNT`, optionally aliased. For `COUNT(expr)`
-  the derived failed-rows query adds `expr IS NOT NULL`, so it skips the same
+  the derived row query adds `expr IS NOT NULL`, so it skips the same
   NULL rows the count skips
 
 Certification runs before filter conditions are applied. vowl wraps the anchor
@@ -365,7 +371,7 @@ Group on one binary, type-tagged expression per column, aliased by position as
   RTRIM (SQLite), Spark UTF8_LCASE, Databricks collations through the shared
   Spark entry, and Postgres nondeterministic collations. It also keeps `-0.0` apart from `0.0`. SQL Server CI_AS, MySQL PAD
   SPACE and `max_sort_length`, and Snowflake collations raise the same problem,
-  but those dialects have no key entry yet and are reported inexact.
+  but those dialects have no key entry yet and are reported approximate.
 - The type tag separates SQLite's `1`, `1.0` and `'1'` in one column. The
   other keyed dialects hold one type per column, so they need no tag.
 - Positional aliases cannot collide with data columns. With the basic shape's
@@ -381,14 +387,14 @@ The key expression comes from a per-dialect table:
 | SQLite                                           | `typeof(c) \                                                                                                                                                                                                                                    | \                                                                                                                                                                                                                                               | ':' \ | \   | CASE typeof(c) WHEN 'real' THEN printf('%!.17g', c) WHEN 'blob' THEN hex(c) ELSE CAST(c AS TEXT) END` | Tested. `CAST AS BLOB` alone is not enough, and `printf('%.17g')` prints 0.30000000000000004 as `0.3`. `%!.17g` round-trips every double tried. The concatenation drops the column's collation. |
 | Spark and Databricks (shared)                    | `CAST(CAST(c AS STRING) AS BINARY)`. Nested types use `CAST(to_json(c) AS BINARY)`.                                                                                                                                                             | Tested on Spark 4.0.2, including `-0.0` against `0.0` and NaN. Databricks shares the entry and the single-scan form but was not tested separately.                                                                                              |       |     |                                                                                                       |                                                                                                                                                                                                 |
 | Postgres                                         | `float8send(CAST(c AS DOUBLE PRECISION))` for floating types, so the key is the stored bits. `convert_to(CAST(c AS TEXT), 'UTF8')` for everything else, which drops the collation and also groups `json`. `bytea` columns are used as they are. | Tested on Postgres 16 with testcontainers: `-0.0` against `0.0`, NaN, 0.30000000000000004 against 0.3, `a` and `A` under a nondeterministic ICU collation, duplicates, table match, and boolean, `json` and `bytea` columns in the mixed route. |       |     |                                                                                                       |                                                                                                                                                                                                 |
-| Other dialects (BigQuery, Snowflake, SQL Server) | Plain column. `MD5(CAST(c AS VARCHAR))` only for the types ibis reports as JSON, geospatial or nested. Types ibis reports as strings (SQL Server `text` and `xml`, Oracle CLOB) use the plain column.                                           | Untested. Not used when the [keyless mask histogram](#keyless-mask-histogram) can count the schema. Otherwise reported with `exact = false`.                                                                                                    |       |     |                                                                                                       |                                                                                                                                                                                                 |
+| Other dialects (BigQuery, Snowflake, SQL Server) | Plain column. `MD5(CAST(c AS VARCHAR))` only for the types ibis reports as JSON, geospatial or nested. Types ibis reports as strings (SQL Server `text` and `xml`, Oracle CLOB) use the plain column.                                           | Untested. Not used when the [keyless mask histogram](#keyless-mask-histogram) can count the schema. Otherwise reported with `approximate = true`.                                                                                               |       |     |                                                                                                       |                                                                                                                                                                                                 |
 
 A dialect with no entry counts with the keyless mask histogram where it can.
-Otherwise it runs with plain column keys and reports `exact = false`.
+Otherwise it runs with plain column keys and reports `approximate = true`.
 
 #### Keyless mask histogram
 
-When every counted check of a schema is a certified row filter, the union of
+When every row-level check of a schema is a certified row filter, the union of
 their failing rows needs no row identity. In a dialect without a key entry, the
 certified queries are lifted into one scan of the table, as in the single-scan
 form. Each row gets a mask of the checks it fails, and the histogram groups on
@@ -410,10 +416,10 @@ Each row of the scan is one table row, so every copy is counted once and no
 collation or mixed type can merge two rows. The numbers are exact. The table's
 total comes from the same statement.
 
-It runs only when no counted check is on the fetched route, every query lifts
+It runs only when no row-level check is on the fetched route, every query lifts
 into a scan of one FROM clause, and the branches fit in one chunk. If any of
 these fails, or the statement raises, the schema falls back to plain column keys
-and reports `exact = false`. Keyed dialects do not use it, because table match
+and reports `approximate = true`. Keyed dialects do not use it, because table match
 and fetched rows need the per-row keys anyway.
 
 Some types cannot be grouped (Spark VARIANT, BigQuery JSON and GEOGRAPHY,
@@ -427,7 +433,7 @@ grouped preflight (see [Probe](#probe)), which sends a schema whose keys the
 engine cannot group to fetched rows before any chunk runs.
 
 The whole-row width hash is deferred. It only matters for SQL Server, which has
-no key entry yet and already reports `exact = false`, so it belongs with a future
+no key entry yet and already reports `approximate = true`, so it belongs with a future
 SQL Server entry.
 
 #### Flags
@@ -499,10 +505,10 @@ The chunk shape depends on the engine:
 
 #### Probe
 
-A check whose derived failed-rows query is invalid (for example a `GROUP BY`
+A check whose derived row query is invalid (for example a `GROUP BY`
 check, which binds only in its scalar form) fails the whole statement. A failed
 chunk is bisected until the invalid branches are found. They are dropped, and
-their checks stay counted but are not attributed, with the reason `the counting
+their checks stay row-level but are not attributable, with the reason `the counting
 query failed in the data source`. The common case, where every branch is valid, costs no
 extra queries. A per-branch `SELECT * FROM (<q>) AS _p LIMIT 0` probe would be
 the alternative on engines where a failed statement is expensive. It is not
@@ -515,7 +521,7 @@ A failure sends the whole schema to the full-table match up front, instead of fa
 every chunk. Each check routed to table match gets a
 `SELECT * FROM (<q>) AS _vowl_p WHERE 1 = 0` column probe, since its columns
 decide whether it can be matched. A check whose column probe fails is not
-attributed. `WHERE 1 = 0` is used instead of `LIMIT 0`
+attributable. `WHERE 1 = 0` is used instead of `LIMIT 0`
 because not every dialect has `LIMIT`. A single-chunk histogram statement that
 fails is retried as per-row chunks before bisecting.
 
@@ -545,12 +551,12 @@ A valid check that fails certification is counted by one of three routes:
   per table-match check. A second statement counts, per check, the distinct
   failed keys that no anchor row holds, with the same keys and the same
   null-safe equality (an anti-join). A check with any such key is marked
-  `exact = false`, with the reason `some failed rows match no table row`, as
+  `approximate = true`, with the reason `some failed rows could not be attributed to a table row`, as
   the full-table match does. If that statement fails for a check, the check is
-  marked `exact = false` and keeps its reason.
-- **Scalar.** The check's scalar count, with `exact = false` because the check is
-  not certified as a row filter. Used only under
-  `disable_table_attributed_counts`.
+  marked `approximate = true` and keeps its reason.
+- **Scalar.** The check's scalar count, with `approximate = true` because the check is
+  not certified as a row filter. Used only for failed checks under
+  `row_counts="scalar"`.
 
 - **Full-table match.** Export the schema's table once and match the check's
   fetched failed rows onto its rows by value, on your machine. See
@@ -561,9 +567,9 @@ entry uses table match, and every other uncertified check uses the full-table
 match. That covers cross-source checks, adapters without pushdown
 and dialects without a key entry. Table-match checks are listed in `by="check"`
 with route `server_lookup` and the certification rule they failed as the
-reason. Both matching routes also mark a check `exact = false` when its SELECT
+reason. Both matching routes also mark a check `approximate = true` when its SELECT
 list holds anything other than plain table columns or `*`, or vowl cannot parse
-it (`returns_table_values` in `row_quality/mergeable.py`). Such a check may
+it (`returns_table_values` in `row_quality/match_key.py`). Such a check may
 return values no table row holds, or values equal to another row's.
 
 ### Full-table match
@@ -591,38 +597,39 @@ table is there anyway and the plain-column pushdown keys could merge distinct
 values.
 
 A check whose returned rows include keys that no table row holds is counted
-from the keys that do match, marked `exact = false`, with the reason
-`some failed rows match no table row`. This happens with transformed values
+from the keys that do match, marked `approximate = true`, with the reason
+`some failed rows could not be attributed to a table row`. This happens with transformed values
 such as `c * 1.5` or `upper(s)`. The test is per distinct key. A transformed
 value that happens to equal another row's values (`lower('A')` = `'a'` when `a`
 exists) matches that row.
 
-A full-table match check that cannot be matched is not attributed. It adds
+A full-table match check that cannot be matched is not attributable. It adds
 nothing to the row counts. Table match is not an option, since a check that
 could use it already does. It keeps a reason:
 
-| Cause                                                               | Reason                                           |
-| ------------------------------------------------------------------- | ------------------------------------------------ |
-| The export fails, or there is no adapter                            | `the table could not be exported`                |
-| The table's values cannot be turned into row keys                   | `the failed rows could not be keyed`             |
-| The check's failed rows could not be fetched                        | `the failed rows could not be fetched`           |
-| The check's rows were cut short by `max_failed_rows`                | `truncated by max_failed_rows`                   |
-| A tolerated check under `failed_checks`, whose rows are not fetched | `tolerated rows not fetched under failed_checks` |
+| Cause                                                | Reason                                                |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| The export fails, or there is no adapter             | `the table could not be exported`                     |
+| The table's values cannot be turned into row keys    | `the failed rows could not be turned into match keys` |
+| The check's failed rows could not be fetched         | `the failed rows could not be fetched`                |
+| The check's rows were cut short by `max_failed_rows` | `truncated by max_failed_rows`                        |
 
 A table match or pushdown branch that fails in the engine also leaves its check
-not attributed, with the reason `the counting query failed in the data source`.
+not attributable, with the reason `its row query failed in the data source`.
 Table match counts in SQL, so `max_failed_rows` does not affect it.
 
 The other checks of the schema still use the full-table match when one check
-is not attributed because of truncation.
+is not attributable because of truncation.
 
 ### The scalar route
 
-Under `disable_table_attributed_counts` every counted check takes `server_scalar`
-and is not attributed, so `checks_not_attributed` equals `checks_counted`. No pushdown,
+Under `row_counts="scalar"` every failed row-level check takes `server_scalar`
+and is not attributable, so `checks_not_attributable` equals the number of
+failed row-level checks. Passed checks add nothing, unlike an earlier version
+that added their scalars too. No pushdown,
 table match, fetch or export runs. The schema's primary key probe is deferred
 until annotated output asks for the match key, so annotated output still keys
-on it. Each check's scalar count is its `row_count`, exact when the check
+on it. Each check's scalar count is its `scalar_count`, exact when the check
 is certified.
 
 The roll-up adds the scalars of a bucket (schema or dimension). It keeps the
@@ -642,7 +649,7 @@ Pushdown keys are binary encodings, while Python and cross-source rows are Arrow
 values, so they cannot be compared directly. In the mixed route the pushdown
 also returns one original value tuple per key, and the cross-route merge uses
 the normalised Python row keys described in [Merge equality](#merge-equality).
-The merge itself marks the schema and dimension numbers `exact = false` only when
+The merge itself marks the schema and dimension numbers `approximate = true` only when
 a value cannot be turned into a key, for example a type that fails to export.
 
 ### Python engine
@@ -710,7 +717,7 @@ Still out of scope:
 - SQLite columns holding `1`, `1.0` and `'1'`, which also fail on export.
 - The `max_failed_rows` cap.
 
-With these fixed, the Python route reports `exact = false` only when a check's
+With these fixed, the Python route reports `approximate = true` only when a check's
 rows were truncated, the check is not a certified row filter, or a column type
 failed to export.
 
@@ -719,8 +726,8 @@ failed to export.
 These run in a temporary DuckDB that `MultiSourceSQLExecutor.cleanup()` deletes
 afterwards. Their fetched failed rows are matched onto the exported table
 ([Full-table match](#full-table-match)). Under
-`disable_table_attributed_counts` they use their scalar. When they cannot be
-matched they are not attributed.
+`row_counts="scalar"` they use their scalar. When they cannot be
+matched they are not attributable.
 Running the pushdown before cleanup is a possible later improvement.
 
 ## Correctness
@@ -743,7 +750,7 @@ hardened pushdown is provably exact under stated conditions.
 | P6  | A declared primary key used as the key is actually unique        | A duplicate-key probe, run once per schema. The primary key is used only when it returns 0 ([step 4](#step-4-merge)).                                                |
 
 **Theorem.** Under P0 to P4 the pushdown's failed-row count equals the number of
-attributed rows, every copy counted, that fail at least one counted check. The pattern histogram is
+attributed rows, every copy counted, that fail at least one row-level check. The pattern histogram is
 exact too: for every non-empty combination of checks, its row count is the number
 of attributed rows, every copy counted, failing exactly that combination.
 
@@ -796,28 +803,28 @@ a derived table, and the `EXISTS` is correlated on those keys.
 
 A check that returns transformed values (`c * 1.5`, `upper(s)`) is counted from
 the keys that match a table row on both table match and the full-table match.
-Both detect the keys that match no row and report `exact = false`. Neither can
+Both detect the keys that match no row and report `approximate = true`. Neither can
 detect a transformed value that equals another real row's key (`c + 1` where
 that row exists). That row is counted as caught, and the check stays exact.
 
 Two cases used to be wrong in both paths. Both belonged to the check layer and
-are now fixed in `get_failed_rows_query` (`contracts/check_reference_sql.py`):
+are now fixed in `get_row_query` (`contracts/check_reference_sql.py`):
 
-- A scalar query written `COUNT(*) AS n` derived no failed-rows query, because
+- A scalar query written `COUNT(*) AS n` derived no row query, because
   the alias hid the `COUNT`. Such a check was dropped as a probe failure, with
-  `exact = false`. The alias is now unwrapped, so the check is certified and
+  `approximate = true`. The alias is now unwrapped, so the check is certified and
   marked on annotated output.
-- A `COUNT(col)` check skips NULL rows that its failed-rows query returned.
+- A `COUNT(col)` check skips NULL rows that its row query returned.
   The derived query now adds `col IS NOT NULL` to its `WHERE`, so the two
   queries agree and the check is certified. This applies to any `COUNT(expr)`
   other than `COUNT(*)` or a literal.
 - A `COUNT(DISTINCT x, ...)` check counts values, not rows. Its failed rows
   are the rows holding those values, so the derived query keeps the `WHERE`
   and adds `x IS NOT NULL` for each argument. Its scalar is not a row count,
-  so `server_scalar` marks it `exact = false` with
+  so `server_scalar` marks it `approximate = true` with
   `the check counts distinct values, not rows`, and an `ERROR` check of this
-  kind sets `blocks_exact`. Row-value arguments, `(a, b)` and `ROW(a, b)`,
-  are not counted: such a value is not NULL when only some fields are, and
+  kind sets `approximate`. Row-value arguments, `(a, b)` and `ROW(a, b)`,
+  are not row-level: such a value is not NULL when only some fields are, and
   databases disagree on how they count it. A check with no `WHERE` flags every
   row with a non-NULL `x`, which is a cardinality check rather than a row
   filter. This is kept as it is and noted in the user docs.
@@ -825,7 +832,7 @@ are now fixed in `get_failed_rows_query` (`contracts/check_reference_sql.py`):
 Truncation under `max_failed_rows` is detected by fetching `cap + 1` rows
 (`CappedFetch` in `executors/base.py`). Comparing the fetched rows with the
 check's count missed truncation whenever the count was lower than the rows
-the failed-rows query returns (`DISTINCT`, joins, `COUNT(DISTINCT ...)`), and
+the row query returns (`DISTINCT`, joins, `COUNT(DISTINCT ...)`), and
 flagged a check whose count was higher. Annotated output now warns instead of
 raising, and tags the check's `check_info` items with `"truncated": true`.
 
@@ -873,7 +880,7 @@ copy. It raised the previous numbers on tables with duplicates (HDB: 10,273 to
 The exported table was first reserved for annotated output, and counting never
 read it. Counting now reads it too (see [Full-table match](#full-table-match)).
 It is exported only for checks the data source cannot table-match. Under
-`disable_table_attributed_counts` counting never exports it. The export is cached on the `ValidationResult`, so
+`row_counts="scalar"` counting never exports it. The export is cached on the `ValidationResult`, so
 counting and annotated output share one export per table. When counting uses
 the export it keys on the exported column names, as annotated output does.
 
@@ -889,8 +896,8 @@ table's Arrow types, so two checks that return `int32` and `int64` for one
 column no longer fail the concat with `ArrowTypeError`. It matches rows on the key the
 statistics chose in step 4 (`RowQuality.merge_key`): the full columns, or the
 declared primary key when it was found unique. Both paths decide whether a
-check's rows can be merged with one function, `rows_mergeable` in
-`row_quality/mergeable.py`. Counting passes the columns it knows, and marking
+check's rows can be merged with one function, `has_match_key` in
+`row_quality/match_key.py`. Counting passes the columns it knows, and marking
 the columns of the exported table. Its flagged-row counts equal the statistics where both paths are exact
 (see [Where each path fails](#where-each-path-fails)).
 
@@ -935,42 +942,43 @@ count from above. The rule, by operator:
 | `mustBeGreaterThan`, `mustBeGreaterOrEqualTo`                                             | No (inverted, the matched rows are the good ones)            |
 
 Excluded checks still count toward check-level pass and fail. They are listed as
-not counted with reason `operator does not identify bad rows`. Annotated output
+not row-level with reason `operator does not set an upper limit`. Annotated output
 applies the same rule. A FAILED inverted check's matched rows are neither
 flagged nor kept as a residue.
 
-### 4. Tolerated violations are a setting
+### 4. Tolerated rows are a setting
 
 A check can pass while some rows break it, for example `mustBeLessThan 100`
 passing with 50 matching rows. Whether those 50 rows count as rows with issues
 depends on what the user is reporting, so it is a setting:
 
 ```python
-ValidationConfig(row_issue_scope="failed_checks")   # default
-ValidationConfig(row_issue_scope="all_violations")
+ValidationConfig(attribute_tolerated_rows=False)   # default
+ValidationConfig(attribute_tolerated_rows=True)
 ```
 
-| Value                       | Rows counted                                    | Suits                                                                                     |
-| --------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `"failed_checks"` (default) | Only rows from checks that FAILED               | Row counts that agree with the check verdicts. Tolerances mean "this much is acceptable". |
-| `"all_violations"`          | Rows from every counted check, passed or failed | DQ reporting where every rule-breaking row counts as rejected, whatever the tolerance.    |
+| Value             | Rows counted                                      | Suits                                                                                     |
+| ----------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `False` (default) | Only rows from checks that FAILED                 | Row counts that agree with the check verdicts. Tolerances mean "this much is acceptable". |
+| `True`            | Rows from every row-level check, passed or failed | DQ reporting where every rule-breaking row counts as rejected, whatever the tolerance.    |
 
-The default keeps the previous behaviour and matches annotated output. Inverted
-checks stay excluded in both modes (decision 3).
+Inverted checks stay excluded either way (decision 3). The setting applies only
+under `row_counts="attributed"`.
 
-Cost stays low. Each check's scalar count is already known, so checks with zero
-matches add nothing and are skipped. Tolerated checks with a non-zero count join
-the pushdown under both scopes, with their own flags. They are skipped only on
-the fetched route under `"failed_checks"`, where the headline number does not
-need them and their fetch can be large. `tolerated_rows` is then missing.
+Under the default a passed check is not attributed on any route. It runs no
+pushdown, probe, fetch or export, adds nothing to the row counts, is not counted
+in `checks_not_attributable`, does not affect `approximate`, and is not flagged in
+annotated output or kept as a residue. Its reason is `passed, not attributed`.
 
-`tolerated_rows` is the rows caught only by tolerated checks: the rows caught by
-any counted check minus the rows caught by failed checks. It comes from the same
-pass as `failed_rows`. The setting only chooses which figure is the headline, so
-a user can see both without a rerun.
+Under `True` a tolerated check is attributed like a failed one, so it joins the
+pushdown or needs the table exported. An export then moves the failed checks of
+that table that cannot be pushed down onto `client_lookup` too. Annotated output
+flags its rows, and their `check_info` items carry `"tolerated": true`.
 
-Annotated output follows the same setting. Under `"all_violations"`, tolerated
-rows are flagged, and their `check_info` items carry `"tolerated": true`.
+An earlier version reported a separate `tolerated_rows` figure and fetched the
+rows of tolerated checks on most routes even under the default. It was dropped:
+it cost queries for a number the default does not report, and `True` gives the
+same rows in `failed_rows`.
 
 Per-check overrides (a contract-level property that forces one check in or out)
 are a possible extension. They are not part of this design.
@@ -996,28 +1004,26 @@ result.get_row_quality_df(by="check")       # one row per (schema, check)
 ```
 
 Columns for `by="schema"` and `by="dimension"`: `schema_name`, `dimension` (for
-`by="dimension"`), `total_rows`, `failed_rows`, `tolerated_rows`, `passed_rows`,
-`pass_rate`, `exact`, `checks_counted`, `checks_not_counted`,
-`checks_not_attributed`. The last three are integer counts. `failed_rows` here
-is the attributed rows that failed at least one counted check.
+`by="dimension"`), `total_rows`, `failed_rows`, `passed_rows`,
+`pass_rate`, `approximate`, `checks_row_level`, `checks_not_row_level`,
+`checks_not_attributable`. The last three are integer counts. `failed_rows` here
+is the attributed rows that failed at least one row-level check.
 
 `by="check"` is the diagnostic view behind those counts. It reads the same cached
 computation as the headline frames, so it also shows checks dropped at run time.
 Columns:
 
 - `schema_name`, `check_name`, `dimension`, `status`
-- `counted`: whether the check is about bad rows (step 2)
-- `tolerated`: the check passed but matched rows
+- `row_level`: whether the check is about bad rows (step 2)
 - `route`: `server_predicate`, `server_lookup` or `client_lookup`, `server_scalar`
-  under `disable_table_attributed_counts`, and empty when not counted or not
-  attributed
-- `reason`: why the check was not counted or not attributed, or why it left
+  for a failed check under `row_counts="scalar"`, and empty when not row-level,
+  not attributed or not attributable
+- `reason`: why the check was not row-level or not attributable, or why it left
   pushdown
 - `scalar_count`: the check's scalar count
 - `attributed_rows`: the rows of the table the check caught, before the merge.
-  None when the check is not attributed
-- `attributed`: whether the check's attributed rows are in the row counts
-- `exact`: false when this check's rows are incomplete or approximate. The
+  None when the check is not attributable
+- `approximate`: true when this check's rows are incomplete or approximate. The
   causes are:
   - it took `server_scalar` and is not a certified row filter
   - it took `client_lookup` or `server_lookup` and its SELECT list holds more
@@ -1025,34 +1031,34 @@ Columns:
   - it was pushed down in a dialect without a key entry and the keyless mask
     histogram could not count the schema
   - the table's columns are unknown
-  - it ended in ERROR but would have been counted
+  - it ended in ERROR but would have been row-level
 
 A value that cannot be turned into a merge key does not mark a check. It makes
-only the schema and dimension numbers inexact.
+only the schema and dimension numbers approximate.
 
 `reason` uses a short fixed vocabulary:
 
-| Reason                                                                                      | Counted                   | Attributed   | Route                              |
-| ------------------------------------------------------------------------------------------- | ------------------------- | ------------ | ---------------------------------- |
-| `operator does not identify bad rows` (decision 3)                                          | no                        | no           | empty                              |
-| `table-level or not a row filter`                                                           | no                        | no           | empty                              |
-| `check ended in ERROR`                                                                      | no                        | no           | empty                              |
-| `failed rows do not have the table's columns or primary key`                                | yes                       | no, never    | empty                              |
-| `primary key has duplicate values`                                                          | yes                       | no, never    | empty                              |
-| `primary key uniqueness could not be checked`                                               | yes                       | no, never    | empty                              |
-| `not certified for pushdown: uses <rule>`, for example `uses DISTINCT`                      | yes                       | yes          | `client_lookup` or `server_lookup` |
-| `checks tables from more than one data source`                                              | yes                       | yes          | `client_lookup`                    |
-| `data source does not support pushdown`                                                     | yes                       | yes          | `client_lookup`                    |
-| `the counting query failed in the data source`                                              | yes                       | no, this run | empty                              |
-| `truncated by max_failed_rows`                                                              | yes                       | no, this run | empty                              |
-| `the table could not be exported`                                                           | yes                       | no, this run | empty                              |
-| `the failed rows could not be keyed`                                                        | yes                       | no, this run | empty                              |
-| `the failed rows could not be fetched`                                                      | yes                       | no, this run | empty                              |
-| `tolerated rows not fetched under failed_checks`                                            | yes                       | no, this run | empty                              |
-| `the check counts distinct values, not rows` (only under `disable_table_attributed_counts`) | yes, with `exact = false` | no           | `server_scalar`                    |
-| `some failed rows match no table row`                                                       | yes, with `exact = false` | yes          | `client_lookup` or `server_lookup` |
+| Reason                                                                          | Row-level                      | Attributable   | Route                              |
+| ------------------------------------------------------------------------------- | ------------------------------ | -------------- | ---------------------------------- |
+| `operator does not set an upper limit` (decision 3)                             | no                             | no             | empty                              |
+| `not a row-level check`                                                         | no                             | no             | empty                              |
+| `check ended in ERROR`                                                          | no                             | no             | empty                              |
+| `failed rows do not have the table's columns or primary key`                    | yes                            | no, never      | empty                              |
+| `primary key has duplicate values`                                              | yes                            | no, never      | empty                              |
+| `primary key uniqueness could not be checked`                                   | yes                            | no, never      | empty                              |
+| `not certified for pushdown: uses <rule>`, for example `uses DISTINCT`          | yes                            | yes            | `client_lookup` or `server_lookup` |
+| `checks tables from more than one data source`                                  | yes                            | yes            | `client_lookup`                    |
+| `data source does not support pushdown`                                         | yes                            | yes            | `client_lookup`                    |
+| `its row query failed in the data source`                                       | yes                            | no, this run   | empty                              |
+| `truncated by max_failed_rows`                                                  | yes                            | no, this run   | empty                              |
+| `the table could not be exported`                                               | yes                            | no, this run   | empty                              |
+| `the failed rows could not be turned into match keys`                           | yes                            | no, this run   | empty                              |
+| `the failed rows could not be fetched`                                          | yes                            | no, this run   | empty                              |
+| `passed, not attributed` (the default for a PASSED check)                       | yes                            | not attributed | empty                              |
+| `the check counts distinct values, not rows` (only under `row_counts="scalar"`) | yes, with `approximate = true` | no             | `server_scalar`                    |
+| `some failed rows could not be attributed to a table row`                       | yes, with `approximate = true` | yes            | `client_lookup` or `server_lookup` |
 
-Under `disable_table_attributed_counts` every counted check is not attributed
+Under `row_counts="scalar"` every failed row-level check is not attributable
 and takes `server_scalar`, with the reasons above where they apply.
 
 Some reasons cover more than their name suggests:
@@ -1064,7 +1070,7 @@ Some reasons cover more than their name suggests:
 - `truncated by max_failed_rows` replaces an earlier reason, such as the
   cross-source one.
 
-A counted check that matched no rows (for example a passing check with a count
+A row-level check that matched no rows (for example a passing check with a count
 of 0) runs no query and shows an empty route.
 
 This also closes two gaps found during the OTEL work. Dimension statistics become
@@ -1087,7 +1093,7 @@ Prototypes (not in the repo) compared pushdown with annotated output:
 
 Four annotated-output bugs found by the investigation are already fixed:
 
-- The `max_failed_rows` cap was skipped whenever a failed-rows query mentioned
+- The `max_failed_rows` cap was skipped whenever a row query mentioned
   `LIMIT`, for example in a `credit_limit` column. Only an outer `LIMIT`, `TOP`
   or `FETCH` now counts.
 - `max_failed_rows=0` annotated every row as passing instead of warning.
@@ -1101,7 +1107,7 @@ Four annotated-output bugs found by the investigation are already fixed:
 - **Key expressions for untested dialects.** BigQuery, Snowflake and SQL Server
   need a binary key entry, and each needs a round-trip test for floats
   and a collation test. Until then they are exact only where the keyless mask
-  histogram counts the schema, and report `exact = false` otherwise.
+  histogram counts the schema, and report `approximate = true` otherwise.
 - **Declared primary keys.** A duplicated key would merge distinct rows (P6).
   The implementation guards it. The primary key is used only when a
   duplicate-key query over the binary keys returns 0. A check that holds the
@@ -1111,7 +1117,7 @@ Four annotated-output bugs found by the investigation are already fixed:
   check already reports the duplicates.
 - **Cross-route equality.** The mixed route merges on normalised Python keys (see
   [Cross-route merge](#cross-route-merge)). Types that fail on export cannot be
-  matched and mark the schema `exact = false`.
+  matched and mark the schema `approximate = true`.
 - **Snapshots under chunking.** A live table can change between chunks. Engines
   with time travel (Snowflake, BigQuery, Delta) could pin one snapshot. Not in
   scope.
@@ -1120,8 +1126,7 @@ Four annotated-output bugs found by the investigation are already fixed:
 - **Export memory.** For full-table match checks the whole table is held in
   memory on the machine running vowl. At 6 columns: about 3 s and 1 to 1.5 GiB
   at 1M rows, about 13 s and 3.5 GiB at 5M rows. Large tables on a source
-  without table match should set `disable_table_attributed_counts`, which
-  never exports.
+  without table match should set `row_counts="scalar"`, which never exports.
 - **Transformed values that land on another row.** Both matching routes test
   each failed key against the table. A transformed value that equals another
   real row's key matches that row. vowl marks every check whose SELECT list
@@ -1170,33 +1175,33 @@ Four annotated-output bugs found by the investigation are already fixed:
 `tests/test_row_quality_merge_key.py` covers the primary key as the default
 match key: the same numbers as a contract without a key, the two primary key
 reasons, one probe per schema, a table-match check with changed values that
-matches on the key, and `rows_mergeable`. `tests/test_marks_match_counts.py`
+matches on the key, and `has_match_key`. `tests/test_marks_match_counts.py`
 checks that annotated output marks as many rows as `failed_rows` on every exact
-schema, over duplicates, `all_violations`, a column-subset check, a join that
+schema, over duplicates, `attribute_tolerated_rows=True`, a column-subset check, a join that
 projects the anchor's columns and mixed routes. It also covers a contract that
 lists fewer columns than the table when the column types are unknown, which
-reports `exact = false`.
+reports `approximate = true`.
 
 - Filter conditions: they apply to the total and to the rows.
 - Operator rule: each operator in decision 3 is counted or excluded as specified.
-- Tolerance: both `row_issue_scope` values on a check that passes with non-zero
-  matches, in the numbers and in annotated output, and a tolerated check on an
-  adapter without pushdown skipped under `failed_checks`.
-- Trust metadata: `exact` is false under truncation and under an ERROR check in
+- Tolerance: both `attribute_tolerated_rows` values on a check that passes with
+  non-zero matches, in the numbers and in annotated output, and a passed check
+  that runs no query under the default.
+- Trust metadata: `approximate` is true under truncation and under an ERROR check in
   the bucket, empty dimensions and empty tables report missing, and non-row-level
-  checks are not counted.
+  checks are left out.
 - Statistics off, capped statistics no longer capping the total, the report
-  computed once, the OTEL exact attribute, and statement shapes that pass the
+  computed once, the OTEL approximate attribute, and statement shapes that pass the
   security validator.
 
 `tests/test_table_attributed_counts.py` covers
-`disable_table_attributed_counts`: the config default, the routes a mixed
-schema takes, the disabled mode running no query, fetch or export and its capped and
-overlapping sums, certified-only schemas never exporting, one export shared by
+`row_counts`: the config default, the routes a mixed
+schema takes, the scalar mode running no query, fetch or export, its capped and
+overlapping sums over failed checks only, certified-only schemas never exporting, one export shared by
 counting and annotated output, `DISTINCT` and join fan-out, a cross-source
 join, transformed values reported as unmatched, a truncated local check
-counted in SQL and a truncated cross-source check left not attributed, the
-checks not attributed when the export or keying fails, the total taken from the export, NaN, `-0.0`,
+counted in SQL and a truncated cross-source check left not attributable, the
+checks not attributable when the export or keying fails, the total taken from the export, NaN, `-0.0`,
 NULL and case, every column type, and annotated output over checks that
 return different Arrow types.
 
@@ -1230,49 +1235,55 @@ connections (the joins go by the full-table match).
 Details that the sections above leave open:
 
 - **Totals.** In priority order: the single-chunk statement's own count, the
-  exported table's row count when the full-table match ran, the run's recorded total when `max_rows_for_statistics` is -1, an uncapped
-  `get_total_rows`, and last the capped recorded total with `exact = false`.
+  exported table's row count when the full-table match ran, the run's recorded total when the deprecated `max_rows_for_statistics` is -1, an uncapped
+  `get_total_rows`, and last the capped recorded total with `approximate = true`.
   `get_total_rows` returns 0 on errors, so a recorded or fetched total of 0 is
   counted again with a direct `SELECT COUNT(*)` over the filtered table when the
   adapter supports `run_arrow_query`. A table whose total is lower than the rows
-  one of its checks found is reported with `exact = false`.
+  one of its checks found is reported with `approximate = true`.
 - **Pushdown needs** a SQL check whose row source ran in the anchor adapter's
   dialect, not across sources, on an adapter that implements `run_arrow_query`
   and `get_column_types`. Otherwise the check's rows are fetched.
 - **Scalars are certified too.** A check on `server_scalar` that is not a pure
-  row filter reports `exact = false`, since `DISTINCT` or a join changes the
+  row filter reports `approximate = true`, since `DISTINCT` or a join changes the
   copies.
-- **Tolerated checks** meant for the full-table match are not fetched under
-  `failed_checks`. The headline number does not need them, and their fetch can
-  be large. They are not attributed.
+- **Passed checks** are left out before routing under the default
+  `attribute_tolerated_rows=False`, so they never reach a probe, a fetch or the
+  export.
 - **Unknown columns.** When neither the adapter nor the contract lists the
   table's columns, counting takes them from the exported table. When only the
   contract lists them, a check left out as not mergeable reports
-  `exact = false`, because the contract can list fewer columns than the table
+  `approximate = true`, because the contract can list fewer columns than the table
   and annotated output compares with the exported table.
-- **Attribution and `disable_table_attributed_counts`.** `_assign_route` in `row_quality/__init__.py`
+- **Attribution and `row_counts`.** `_assign_route` in `row_quality/__init__.py`
   picks each check's route, and `_fetch` fetches the rows
   of the full-table match checks. `_export_table` exports once through
   `ValidationResult._fetch_full_table`, and `_run_onto_table` counts the schema
   on the export. `_leave_lookup_unattributed` leaves a check that cannot be attributed out of
-  the row counts as not attributed, and `_run_scalars` counts every check from its scalar count under
-  `disable_table_attributed_counts`. The export warnings read
+  the row counts as not attributable, and `_run_scalars` counts every failed check from its scalar count under
+  `row_counts="scalar"`. The export warnings read
   `No adapter for schema %r, so its table cannot be exported.` and
   `Could not export the table of %r: %s`.
 - **Annotated output** reads the same step 2 selection, so inverted checks are
-  not flagged and tolerated checks are flagged only under `all_violations`. It
+  not flagged and tolerated checks are flagged only under
+  `attribute_tolerated_rows=True`. It
   then merges the fetched rows in Python on `RowQuality.merge_key`, the same
   key the statistics chose. That is the full columns, or the declared primary
   key when the key was found unique.
-- **OTEL.** The dimension, schema and run row gauges carry
-  `vowl.row_quality.exact` and `vowl.row_quality.checks_not_attributed`
-  attributes. A gauge is left out when its number is
+- **OTEL.** The row gauges carry no trust attributes. A changing attribute
+  would start a new series each time it flips, and a gauge cannot say which
+  check made a number approximate. The `vowl.validate` span carries
+  `vowl.row_quality.approximate` and `vowl.row_quality.checks_not_attributable`,
+  and each `vowl.check` span and log record that gets row counts carries the
+  check's `vowl.row_quality.approximate`, `route`, `reason` and
+  `attributed_rows`. A separate 0/1 gauge can be added later if users ask to
+  alert on it. A gauge is left out when its number is
   missing. The row counts need a total and a failed count, and the rate also
   needs a non-empty table.
 - **`print_summary`** adds `(approx.)` to a Passed Rows figure that is not
   exact, and prints `N/A` where a number is missing.
-- **Statistics off.** With `enable_additional_schema_statistics=False` the
-  report is disabled. Every number is missing, `exact` is false and no
+- **Statistics off.** With `row_counts="off"` (or the deprecated
+  `enable_additional_schema_statistics=False`) the report is disabled. Every number is missing, `approximate` is true and no
   row-quality query runs.
 
 ## Not included

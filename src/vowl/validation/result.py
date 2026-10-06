@@ -47,9 +47,9 @@ from .row_quality import (
     RowQuality,
     RowQualityReport,
     SchemaRowQuality,
-    flagged_checks,
+    attributed_checks,
 )
-from .row_quality.mergeable import METADATA_COLUMNS, rows_mergeable
+from .row_quality.match_key import METADATA_COLUMNS, has_match_key
 from .row_quality.selection import REASON_OPERATOR, resolve_check_dimension
 
 if TYPE_CHECKING:
@@ -249,8 +249,8 @@ class ValidationResult:
             passed_rows=row_quality.passed_rows if row_quality is not None else None,
             total_rows=row_quality.total_rows if row_quality is not None else None,
             passed_row_percentage=pass_rate * 100 if pass_rate is not None else None,
-            exact=row_quality.exact if row_quality is not None else False,
-            checks_not_attributed=row_quality.checks_not_attributed if row_quality is not None else 0,
+            approximate=row_quality.approximate if row_quality is not None else True,
+            checks_not_attributable=row_quality.checks_not_attributable if row_quality is not None else 0,
         )
         multi_status = self._summarize_check_statuses(multi_table_checks)
         return SchemaValidationBreakdown(
@@ -538,7 +538,7 @@ class ValidationResult:
         ``None`` is returned (and cached) when there is no adapter for the
         schema or the adapter cannot export it.  Annotated output then skips
         the schema and keeps its residues. In the row-quality numbers its
-        ``client_lookup`` checks are then not attributed, with the reason
+        ``client_lookup`` checks are then not attributable, with the reason
         ``the table could not be exported``. Its plain row filters are still
         counted in the data source.
 
@@ -611,7 +611,7 @@ class ValidationResult:
         This single gate handles both single- and cross-table checks: the
         failed-rows column set must exactly equal the anchor table's columns.
         A **cross-table** check (one that JOINs against a reference table) is
-        not rejected outright. If the author shaped its failed-rows query to
+        not rejected outright. If the author shaped its row query to
         project only the anchor schema's columns (e.g. ``SELECT payroll.* FROM
         payroll LEFT JOIN ref ...``), those rows match the anchor table and
         merge. A bare ``JOIN`` whose ``SELECT *`` returns both tables' columns
@@ -623,10 +623,10 @@ class ValidationResult:
         When *key_columns* is given, the schema's rows are matched on its
         declared primary key instead (see :meth:`RowQuality.merge_key`), and
         rows that carry every key column merge. The rule is
-        :func:`~vowl.validation.row_quality.mergeable.rows_mergeable`, the same
+        :func:`~vowl.validation.row_quality.match_key.has_match_key`, the same
         one the row counts use.
         """
-        return rows_mergeable(rows.columns, full_table_columns, key_columns)
+        return has_match_key(rows.columns, full_table_columns, key_columns)
 
     @staticmethod
     def _check_info_item_json(
@@ -643,7 +643,7 @@ class ValidationResult:
         - ``"summary"`` -> ``{check_name, dimension, tags, target}``
         - ``"full"``    -> full ``check_definition`` + ``check_name`` + ``target``
 
-        Under ``row_issue_scope="all_violations"``, the item of a check that
+        Under ``attribute_tolerated_rows=True``, the item of a check that
         passed within its tolerance also carries ``"tolerated": true``. The
         item of a check whose failed rows ``max_failed_rows`` cut short carries
         ``"truncated": true``.
@@ -902,7 +902,7 @@ class ValidationResult:
           file produced in ``output_mode="annotated"`` -- annotated tables and
           residues alike -- is read the same way.
 
-          Under ``row_issue_scope="all_violations"``, rows of checks that
+          Under ``attribute_tolerated_rows=True``, rows of checks that
           passed within their tolerance are flagged too, and their
           ``check_info`` items carry ``"tolerated": true``.
 
@@ -927,12 +927,11 @@ class ValidationResult:
         row_quality = self._row_quality()
 
         # The checks whose rows are flagged: the row-quality component's
-        # counted checks under the configured row_issue_scope. Inverted and
-        # table-level checks are left to the summary. Tolerated checks join
-        # only under row_issue_scope="all_violations".
+        # failed row-level checks. Inverted and table-level checks are left to
+        # the summary. Passed checks join only under attribute_tolerated_rows.
         flagged = [
             selection
-            for selection in flagged_checks(row_quality.selections)
+            for selection in attributed_checks(row_quality.selections)
             if not checks_set or selection.result.check_name in checks_set
         ]
         flagged_ids = {id(selection.result) for selection in flagged}
@@ -1116,32 +1115,32 @@ class ValidationResult:
 
         Every surface reads the same cached numbers: ``print_summary``, the
         OTEL gauges and annotated output agree with this frame. See
-        docs/design-considerations/failed-rows/how-rows-are-counted.md.
+        docs/design-considerations/checks/how-attributed-rows-work.md.
 
         Args:
             by: ``"schema"`` for one row per schema, ``"dimension"`` for one
                 row per (schema, dimension), or ``"check"`` for one row per
                 check, with the route its rows took and why it was or was not
-                counted or attributed.
+                row-level or attributable.
 
         Columns for ``"schema"`` and ``"dimension"``: ``schema_name``,
         ``dimension`` (``"dimension"`` only), ``total_rows``, ``failed_rows``,
-        ``tolerated_rows``, ``passed_rows``, ``pass_rate`` (0 to 1),
-        ``exact``, ``checks_counted``, ``checks_not_counted`` and
-        ``checks_not_attributed``. ``failed_rows`` is the rows of the table
-        that failed, from the attributed rows of the counted checks. A counted
-        check that is not attributed adds nothing and is counted in
-        ``checks_not_attributed``. A missing value (null) means the number is
-        unavailable, for example a dimension with no attributed checks.
+        ``passed_rows``, ``pass_rate`` (0 to 1),
+        ``approximate``, ``checks_row_level``, ``checks_not_row_level`` and
+        ``checks_not_attributable``. ``failed_rows`` is the rows of the table
+        that failed, from the attributed rows of the row-level checks. A counted
+        check that is not attributable adds nothing and is counted in
+        ``checks_not_attributable``. A missing value (null) means the number is
+        unavailable, for example a dimension with no attributable checks.
 
         Columns for ``"check"``: ``schema_name``, ``check_name``,
-        ``dimension``, ``status``, ``counted``, ``tolerated``, ``route``,
-        ``reason``, ``scalar_count``, ``attributed_rows``, ``attributed`` and
-        ``exact``. ``scalar_count`` is the count the check's own query
+        ``dimension``, ``status``, ``row_level``, ``route``, ``reason``,
+        ``scalar_count``, ``attributed_rows`` and ``approximate``. ``scalar_count`` is the count the check's own query
         returned. ``attributed_rows`` is the rows of the table the check
         caught, which differs when the query does not return each such row
         once, for example under ``DISTINCT``. It is null when the check is not
-        attributed.
+        attributed. A passed check is not attributed unless
+        ``attribute_tolerated_rows`` is set.
 
         Raises:
             ValueError: If *by* is not one of the values above.
@@ -1162,17 +1161,14 @@ class ValidationResult:
             "total_rows": pa.int64(),
             "scalar_count": pa.int64(),
             "attributed_rows": pa.int64(),
-            "attributed": pa.bool_(),
             "failed_rows": pa.int64(),
-            "tolerated_rows": pa.int64(),
             "passed_rows": pa.int64(),
             "pass_rate": pa.float64(),
-            "exact": pa.bool_(),
-            "counted": pa.bool_(),
-            "tolerated": pa.bool_(),
-            "checks_counted": pa.int64(),
-            "checks_not_counted": pa.int64(),
-            "checks_not_attributed": pa.int64(),
+            "approximate": pa.bool_(),
+            "row_level": pa.bool_(),
+            "checks_row_level": pa.int64(),
+            "checks_not_row_level": pa.int64(),
+            "checks_not_attributable": pa.int64(),
         }
         table = pa.table(
             {name: pa.array([row[name] for row in rows], type=arrow_types.get(name, pa.string())) for name in names}
@@ -1273,8 +1269,9 @@ class ValidationResult:
         The schema and dimension row gauges use the same row counts as
         :meth:`get_row_quality_df`. If they were not computed yet, they are
         computed now. That can export a table, unless
-        ``ValidationConfig.disable_table_attributed_counts`` is set, which runs no query. The
-        ``vowl.row_quality.exact`` attribute says whether each number is exact.
+        ``ValidationConfig(row_counts="scalar")`` is set, which runs no query. The
+        ``vowl.validate`` and ``vowl.check`` spans carry ``vowl.row_quality.approximate``,
+        which says whether the row numbers are approximate. The metrics do not.
 
         Args:
             signals: Which signals to emit, any subset of ``"metrics"``,

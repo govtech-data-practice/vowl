@@ -36,21 +36,21 @@ result.display_full_report()
 
     ```
     === Data Quality Validation Results ===
-       Contract Version:      v3.1.0
+       Contract Version:      v3.2.0
        Contract ID:           c11443ee-542f-4442-b28d-2d224342be37
        Schemas:               hdb_resale_prices
 
      OVERALL DATA QUALITY
        Overall:
-         Checks Pass Rate:       18 / 20 (90.0%)
+         Checks Pass Rate:       7 / 9 (77.7%)
 
        hdb_resale_prices:
          Overall:
-           Checks Pass Rate:       18 / 20 (90.0%)
+           Checks Pass Rate:       7 / 9 (77.7%)
            ERRORED Checks:         0
-           Passed Rows:            195 / 200 (97.5%)
+           Passed Rows:            201,865 / 201,879 (99.9%)
          Single Table:
-           Checks Pass Rate:       18 / 20 (90.0%)
+           Checks Pass Rate:       7 / 9 (77.7%)
            ERRORED Checks:         0
          Multi Table:
            Checks Pass Rate:       0 / 0 (N/A)
@@ -59,32 +59,21 @@ result.display_full_report()
 
 
      CHECK RESULTS
-    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
-    | check_id                                | Target                                | tables_in_query   | status | operator          | expected | actual | execution time |
-    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
-    | Month                                   | hdb_resale_prices.month               | hdb_resale_prices | FAILED | mustBe            | 0        | 2      | 13.01 ms       |
-    | Year                                    | hdb_resale_prices.lease_commence_date | hdb_resale_prices | FAILED | mustBe            | 0        | 3      | 9.86 ms        |
-    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
-    | AddressBlockHouseNumber                 | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 11.21 ms       |
-    | block_column_exists_check               | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.34 ms        |
-    | flat_model_column_exists_check          | hdb_resale_prices.flat_model          | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.31 ms        |
-    | flat_type_column_exists_check           | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.23 ms        |
-    | flat_type_invalidValues                 | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 11.33 ms       |
-    | floor_area_must_be_less_than_200        | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 9.74 ms        |
-    | floor_area_sqm_column_exists_check      | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.14 ms        |
-    | hdb_resale_prices_rowCount              | hdb_resale_prices                     | hdb_resale_prices | PASSED | mustBeGreaterThan | 0        | 200    | 4.78 ms        |
-    | lease_commence_date_column_exists_check | hdb_resale_prices.lease_commence_date | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.45 ms        |
-    | month_column_exists_check               | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.79 ms        |
-    | month_logical_type_check                | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.77 ms        |
-    | remaining_lease_column_exists_check     | hdb_resale_prices.remaining_lease     | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.28 ms        |
-    | resale_price_column_exists_check        | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.28 ms        |
-    | resale_price_must_not_exceed_2m         | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 9.91 ms        |
-    | storey_range_column_exists_check        | hdb_resale_prices.storey_range        | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 2.24 ms        |
-    | street_name_column_exists_check         | hdb_resale_prices.street_name         | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.72 ms        |
-    | town_column_exists_check                | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 3.53 ms        |
-    | town_nullValues                         | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe            | 0        | 0      | 9.04 ms        |
-    +-----------------------------------------+---------------------------------------+-------------------+--------+-------------------+----------+--------+----------------+
-    Total Execution:       110.94 ms
+    +------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+    | check_id                           | Target                           | tables_in_query   | status | operator | expected | actual | execution time |
+    +------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+    | Month                              | hdb_resale_prices.month          | hdb_resale_prices | FAILED | mustBe   | 0        | 2      | 18.60 ms       |
+    | floor_area_must_be_less_than_200   | hdb_resale_prices.floor_area_sqm | hdb_resale_prices | FAILED | mustBe   | 0        | 12     | 15.28 ms       |
+    +------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+    | flat_type_column_exists_check      | hdb_resale_prices.flat_type      | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.44 ms        |
+    | flat_type_enum_check               | hdb_resale_prices.flat_type      | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 8.24 ms        |
+    | floor_area_sqm_column_exists_check | hdb_resale_prices.floor_area_sqm | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.43 ms        |
+    | month_column_exists_check          | hdb_resale_prices.month          | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.81 ms        |
+    | month_logical_type_check           | hdb_resale_prices.month          | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 10.04 ms       |
+    | resale_price_column_exists_check   | hdb_resale_prices.resale_price   | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.32 ms        |
+    | resale_price_must_not_exceed_2m    | hdb_resale_prices.resale_price   | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 14.53 ms       |
+    +------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+    Total Execution:       84.69 ms
 
     === Failed Checks and Rows (up to 5 row(s) per failed check) ===
 
@@ -96,8 +85,8 @@ result.display_full_report()
             Expected:   0
             Actual:     2
             Target:   hdb_resale_prices.month
-            Details:  Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
-            Rule:     SELECT COUNT(*) FROM `hdb_resale_prices` WHERE NOT ((CAST(month AS CHAR) RLIKE '^[0-9]{4}-(0[1-9]|1[0-2])$'))
+            Details:  Based on ISO 8601 | YYYY-MM
+            Rule:     SELECT COUNT(*) FROM "hdb_resale_prices" WHERE NOT REGEXP_MATCHES(TRY_CAST(month AS TEXT), '^[0-9]{4}-(0[1-9]|1[0-2])$')
             Rows shown: 2 of 2
     +----------+--------+-----------+-------+--------------+--------------+----------------+---------------+---------------------+--------------------+--------------+
     | month    | town   | flat_type | block | street_name  | storey_range | floor_area_sqm | flat_model    | lease_commence_date | remaining_lease    | resale_price |
@@ -106,21 +95,23 @@ result.display_full_report()
     | 2017-jan | BISHAN | 3 ROOM    | 105   | BISHAN ST 12 | 04 TO 06     | 4.0            | Simplified    | 1985                | 67 years 11 months | 395000.0     |
     +----------+--------+-----------+-------+--------------+--------------+----------------+---------------+---------------------+--------------------+--------------+
 
-          [Year]
+          [floor_area_must_be_less_than_200]
             Operator:   mustBe
             Expected:   0
-            Actual:     3
-            Target:   hdb_resale_prices.lease_commence_date
-            Details:  Based on ISO 8601, assumed to be in UTC +8 | YYYY
-            Rule:     SELECT COUNT(*) FROM `hdb_resale_prices` WHERE NOT ((CAST(lease_commence_date AS CHAR) RLIKE '^[0-9]{4}$'))
-            Rows shown: 3 of 3
-    +---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
-    | month   | town       | flat_type | block | street_name      | storey_range | floor_area_sqm | flat_model     | lease_commence_date | remaining_lease    | resale_price |
-    +---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
-    | 2017-01 | ANG MO KIO | 3 ROOM    | 219   | ANG MO KIO AVE 1 | 07 TO 09     | 67.0           | New Generation | 1977.0              | 59 years 06 months | 297000.0     |
-    | 2017-01 | ANG MO KIO | 3 ROOM    | 211   | ANG MO KIO AVE 3 | 01 TO 03     | 67.0           | New Generation | abc                 | 59 years 03 months | 325000.0     |
-    | 2017-01 | ANG MO KIO | 3 ROOM    | 330   | ANG MO KIO AVE 1 | 07 TO 09     | 68.0           | New Generation | nan                 | 63 years           | 338000.0     |
-    +---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
+            Actual:     12
+            Target:   hdb_resale_prices.floor_area_sqm
+            Details:  Check failed: expected mustBe 0, got 12
+            Rule:     SELECT COUNT(*) FROM "hdb_resale_prices" WHERE TRY_CAST(floor_area_sqm AS BIGINT) >= 200
+            Rows shown: 5 of 12
+    +---------+-----------------+-----------+-------+---------------------+--------------+----------------+--------------------+---------------------+--------------------+--------------+
+    | month   | town            | flat_type | block | street_name         | storey_range | floor_area_sqm | flat_model         | lease_commence_date | remaining_lease    | resale_price |
+    +---------+-----------------+-----------+-------+---------------------+--------------+----------------+--------------------+---------------------+--------------------+--------------+
+    | 2017-06 | KALLANG/WHAMPOA | 3 ROOM    | 38    | JLN BAHAGIA         | 01 TO 03     | 215.0          | Terrace            | 1972                | 54 years 01 month  | 830000.0     |
+    | 2017-09 | CHOA CHU KANG   | EXECUTIVE | 641   | CHOA CHU KANG ST 64 | 16 TO 18     | 215.0          | Premium Maisonette | 1998                | 79 years 04 months | 888000.0     |
+    | 2017-12 | KALLANG/WHAMPOA | 3 ROOM    | 65    | JLN MA'MOR          | 01 TO 03     | 249.0          | Terrace            | 1972                | 53 years 07 months | 1053888.0    |
+    | 2018-01 | CHOA CHU KANG   | EXECUTIVE | 639   | CHOA CHU KANG ST 64 | 10 TO 12     | 215.0          | Premium Maisonette | 1998                | 79 years           | 900000.0     |
+    | 2018-09 | KALLANG/WHAMPOA | 3 ROOM    | 41    | JLN BAHAGIA         | 01 TO 03     | 237.0          | Terrace            | 1972                | 52 years 10 months | 1185000.0    |
+    +---------+-----------------+-----------+-------+---------------------+--------------+----------------+--------------------+---------------------+--------------------+--------------+
     ```
 
 ### Reading the summary
@@ -130,11 +121,11 @@ The summary groups the numbers for each schema (one table in the contract):
 - **Checks Pass Rate** is passed checks over all checks.
 - **ERRORED Checks** are checks that could not run, for example because the
   query names a missing column.
-- **Passed Rows** is the share of rows in the table that failed no counted
+- **Passed Rows** is the share of rows in the table that failed no row-level
   check. `(approx.)` after it means the number could be off, and
-  `(approx., 2 checks not attributed)` also says how many counted checks vowl
+  `(approx., 2 checks not attributable)` also says how many row-level checks vowl
   could not attribute to the table. See
-  [How Rows Are Counted](design-considerations/failed-rows/how-rows-are-counted.md).
+  [How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md).
 - **Single Table** covers checks that read only this schema's table.
   **Multi Table** covers cross-table checks, which read more than one table.
 - **Non-unique Failed Rows** adds up the scalar counts of the failed

@@ -89,7 +89,7 @@ def test_negative_zero_nan_and_close_floats_are_kept_apart(con):
 
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, list(predicates.values())) == 6
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
     assert {row["route"] for row in rq._check_rows(result).values() if row["status"] == "FAILED"} == {
         "server_predicate"
     }
@@ -111,7 +111,7 @@ def test_case_insensitive_collation_values_stay_apart(con):
 
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, list(predicates.values())) == 3
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
 
 
 def test_duplicates_count_once_per_copy_not_once_per_check(con):
@@ -122,7 +122,7 @@ def test_duplicates_count_once_per_copy_not_once_per_check(con):
     result = rq._validate(con, [rq._schema("t", checks)])
 
     assert rq._schema_row(result)["failed_rows"] == 3
-    assert {row["failed_rows"] for row in rq._check_rows(result).values() if row["counted"] and row["route"]} == {3}
+    assert {row["failed_rows"] for row in rq._check_rows(result).values() if row["row_level"] and row["route"]} == {3}
 
 
 def test_an_uncertified_check_goes_by_table_match(con):
@@ -145,7 +145,7 @@ def test_an_uncertified_check_goes_by_table_match(con):
     assert rows["twos_distinct"]["failed_rows"] == 3
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c = 2"]) == 4
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
 
 
 def test_boolean_json_and_bytea_columns_merge_with_fetched_rows(con):
@@ -180,4 +180,4 @@ def test_boolean_json_and_bytea_columns_merge_with_fetched_rows(con):
     # Rows 1 (twice) are flagged, row 3 has no match in u.
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["flag", "id NOT IN (1, 2)"]) == 3
-    assert schema["exact"] is True
+    assert schema["approximate"] is False

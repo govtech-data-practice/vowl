@@ -5,8 +5,8 @@ description: How to use the ValidationResult that validate_data returns. Check w
 # The Results Object
 
 `validate_data` returns a `ValidationResult`. This page calls it **the
-result**. It holds the status of every check, the failed rows each check
-caught, and the row counts for each schema.
+result**. It holds the status of every check, the failed rows of each
+check, and the row counts for each schema.
 
 !!! tip "Interactive Demo"
 
@@ -19,7 +19,7 @@ result = validate_data("contract.yaml", df=df)
 
 result.passed                                   # True when no check failed
 result.print_summary()                          # a report in the console
-output = result.get_annotated_output()          # your tables, with the rows that failed annotated
+output = result.get_annotated_output()          # your tables, with the failed rows annotated
 result.save("dq-results/")
 ```
 
@@ -93,10 +93,10 @@ from.
 
 There are two ways to get failed rows. Choose by what you want to do with them.
 
-| You want to                                                   | Use                      |
-| ------------------------------------------------------------- | ------------------------ |
-| See every row of a table, with the rows that failed annotated | `get_annotated_output()` |
-| Look at one check's failed rows on their own                  | `get_output_dfs()`       |
+| You want to                                              | Use                      |
+| -------------------------------------------------------- | ------------------------ |
+| See every row of a table, with the failed rows annotated | `get_annotated_output()` |
+| Look at one check's failed rows on their own             | `get_output_dfs()`       |
 
 **The annotated output** has one annotated table per schema: your full table
 with a `check_info` column. On a failed row, `check_info` lists the checks the
@@ -111,9 +111,9 @@ output["residues"]                              # {"<schema>::<check_name>": fai
 ```
 
 Pass `check_info="summary"` or `"full"` for more detail in `check_info`.
-[What the annotated output holds](design-considerations/failed-rows/annotating-the-source-table.md#what-the-annotated-output-holds)
+[What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds)
 describes each option, and
-[Where each failed check ends up](design-considerations/failed-rows/annotating-the-source-table.md#where-each-failed-check-ends-up)
+[Where each failed check ends up](design-considerations/checks/annotating-the-source-table.md#where-each-failed-check-ends-up)
 explains which checks are annotated and which become residues.
 
 **`get_output_dfs()`** returns each check's failed rows, keyed
@@ -132,7 +132,7 @@ Both methods take `checks=["check_a", "check_b"]` to return only those checks.
 ### Row counts
 
 `get_row_quality_df()` returns, for each schema, how many rows failed at least
-one counted check and how many passed them all. A row that fails two checks counts
+one row-level check and how many passed them all. A row that fails two checks counts
 once. These are the same numbers as **Passed Rows** in the summary and the row
 counts in the [DQ metrics](dq-metrics/understanding-metrics.md).
 
@@ -144,53 +144,51 @@ result.get_row_quality_df(by="check")           # how each check was counted, an
 
 The columns for `by="schema"` and `by="dimension"` are:
 
-| Column                                 | What it holds                                                                                                                          |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `total_rows`                           | The rows in the table                                                                                                                  |
-| `failed_rows`                          | Rows that failed at least one counted check                                                                                            |
-| `tolerated_rows`                       | Failed rows of checks that still passed. See [Tolerated rows](design-considerations/failed-rows/failed-row-results.md#tolerated-rows). |
-| `passed_rows`                          | Rows that failed no counted check                                                                                                      |
-| `pass_rate`                            | `passed_rows` divided by `total_rows`, from 0 to 1                                                                                     |
-| `exact`                                | `False` when a number could be off                                                                                                     |
-| `checks_counted`, `checks_not_counted` | How many checks are and are not counted                                                                                                |
-| `checks_not_attributed`                | How many counted checks are not attributed, so their rows are not in these numbers                                                     |
+| Column                                     | What it holds                                                                          |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `total_rows`                               | The rows in the table                                                                  |
+| `failed_rows`                              | Rows that failed at least one row-level check                                          |
+| `passed_rows`                              | Rows that failed no row-level check                                                    |
+| `pass_rate`                                | `passed_rows` divided by `total_rows`, from 0 to 1                                     |
+| `approximate`                              | `True` when a number could be off                                                      |
+| `checks_row_level`, `checks_not_row_level` | How many checks are and are not row-level                                              |
+| `checks_not_attributable`                  | How many row-level checks are not attributable, so their rows are not in these numbers |
 
-The row counts hold attributed rows only. A counted check that vowl could not
-attribute adds nothing, and is flagged in `checks_not_attributed`. If such a
-check failed, or passed under `row_issue_scope="all_violations"`, and may have rows, `exact` is `False` and the summary marks **Passed Rows**
+The row counts hold attributed rows only. A row-level check that vowl could not
+attribute adds nothing, and is flagged in `checks_not_attributable`. If such a
+check failed and may have rows, `approximate` is `True` and the summary marks **Passed Rows**
 as approximate:
 
 ```text
-Passed Rows: 4 / 5 (80.0%) (approx., 2 checks not attributed)
+Passed Rows: 4 / 5 (80.0%) (approx., 2 checks not attributable)
 ```
 
-When every counted check of a schema or dimension is not attributed, its
+When every row-level check of a schema or dimension is not attributable, its
 numbers are `None`.
 
 `by="check"` has one row per check, with these columns:
 
-| Column            | What it holds                                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `counted`         | Whether the check is counted                                                                                          |
-| `attributed`      | Whether the check's attributed rows are in the row counts                                                             |
-| `route`           | How vowl counted the check. Empty when it is not counted or not attributed.                                           |
-| `reason`          | Why the check is not counted or not attributed                                                                        |
-| `scalar_count`    | The check's scalar count, the number that decides pass or fail                                                        |
-| `attributed_rows` | The rows of the table its failed rows are attributed to, every copy counted. `None` when the check is not attributed. |
-| `exact`           | `False` when this check's rows are incomplete or approximate                                                          |
+| Column            | What it holds                                                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `row_level`       | Whether the check is a row-level check                                                                                  |
+| `route`           | How vowl counted the check. Empty when it is not row-level, not attributable or passed.                                 |
+| `reason`          | Why the check is not row-level or not attributable. A passed check has `passed, not attributed`.                        |
+| `scalar_count`    | The check's scalar count, the number that decides pass or fail                                                          |
+| `attributed_rows` | The rows of the table its failed rows are attributed to, every copy counted. `None` when the check is not attributable. |
+| `approximate`     | `True` when this check's rows are incomplete or approximate                                                             |
 
 `scalar_count` and `attributed_rows` differ for a check that uses `DISTINCT`
 or a join, or that counts distinct values. See
-[How Rows Are Counted](design-considerations/failed-rows/how-rows-are-counted.md#checks-can-change-the-rows-they-return).
+[How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md#checks-can-change-the-rows-they-return).
 
 vowl counts rows inside the data source where it can, so the row counts stay
 exact on large tables and do not depend on `max_failed_rows`. Where the data
 source can't attribute a check's failed rows, vowl downloads the table and
 attributes them on your machine. `get_annotated_output()` reuses that
 download. To skip this work, set
-[`disable_table_attributed_counts`](run-settings.md#disable_table_attributed_counts).
-[How Rows Are Counted](design-considerations/failed-rows/how-rows-are-counted.md)
-explains which checks are counted and how.
+[`row_counts="scalar"`](run-settings.md#row_counts).
+[How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md)
+explains which checks are row-level and how they are counted.
 
 ## DQ metrics and OpenTelemetry
 

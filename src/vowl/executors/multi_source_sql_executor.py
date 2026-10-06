@@ -283,7 +283,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
 
         Args:
             select_query: A SELECT query for the failing rows (from
-                CheckReference.get_failed_rows_query). None if the
+                CheckReference.get_row_query). None if the
                 transformation was not possible.
             table_names: Tables referenced in the query
             owner_schema: Schema the check sits under.
@@ -495,7 +495,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     security_violation=sec_error.violation_type,
                 )
 
-            failed_query = check_ref.get_failed_rows_query(
+            failed_query = check_ref.get_row_query(
                 output_dialect,
                 query_filters,
                 use_try_cast=use_try_cast,
@@ -522,7 +522,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     dialect=output_dialect,
                     filter_conditions=query_filters,
                     use_try_cast=use_try_cast,
-                    failed_rows_query=failed_query,
+                    row_query=failed_query,
                     fetch=fetcher,
                     cross_source=True,
                 )
@@ -704,7 +704,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                         )
                         return
 
-                    failed_query = ref.get_failed_rows_query(
+                    failed_query = ref.get_row_query(
                         output_dialect,
                         None,
                         use_try_cast=use_try_cast,
@@ -740,7 +740,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                             check_ref=ref,
                             dialect=output_dialect,
                             use_try_cast=use_try_cast,
-                            failed_rows_query=failed_query,
+                            row_query=failed_query,
                             fetch=fetcher,
                             cross_source=True,
                         )

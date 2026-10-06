@@ -13,11 +13,13 @@ A contract has one entry under `schema` for each table. Each **schema** lists it
 - **Checks you write**, in a [`quality` block](#data-quality), either as SQL (`type: sql`) or as [library checks](#library-checks) (`type: library`), where vowl writes the SQL for you.
 - **[Generated checks](#auto-generated-checks)**, which vowl builds from the column details you declare, such as `logicalType`, `required` or `unique`.
 
-**Example `hdb_resale_simple.yaml`** (trimmed for readability):
+**Example `hdb_resale_simple.yaml`**:
 
 ```yaml
 kind: DataContract
-apiVersion: v3.1.0
+apiVersion: v3.2.0
+version: 1.0.0
+id: c11443ee-542f-4442-b28d-2d224342be37
 name: HDB Resale Flat Prices
 schema:
   - name: hdb_resale_prices
@@ -28,7 +30,7 @@ schema:
         quality:
           - type: sql
             name: Month
-            description: Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
+            description: Based on ISO 8601 | YYYY-MM
             mustBe: 0
             query: |-
               SELECT COUNT(*)
@@ -36,58 +38,34 @@ schema:
               WHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';
             dimension: conformity
 
-      # Library check: null values
-      - name: town
-        quality:
-          - type: library
-            metric: nullValues
-            mustBe: 0
-            dimension: completeness
-
-      # Library check: allowed values
+      # Generated check: allowed values from enum
       - name: flat_type
-        quality:
-          - type: library
-            metric: invalidValues
-            mustBe: 0
-            dimension: conformity
-            arguments:
-              validValues:
-                - 1 ROOM
-                - 2 ROOM
-                - 3 ROOM
-                - 4 ROOM
-                - 5 ROOM
-                - EXECUTIVE
-                - MULTI-GENERATION
+        enum:
+          - value: 1 ROOM
+          - value: 2 ROOM
+          - value: 3 ROOM
+          - value: 4 ROOM
+          - value: 5 ROOM
+          - value: EXECUTIVE
+          - value: MULTI-GENERATION
 
       # SQL check: business rule
       - name: floor_area_sqm
         quality:
           - name: floor_area_must_be_less_than_200
-            description: Validates that floor area must be less than 200
             type: sql
-            dimension: consistency
             query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE floor_area_sqm >= 200
             mustBe: 0
+            dimension: consistency
 
       # SQL check: resale price cap
       - name: resale_price
         quality:
           - name: resale_price_must_not_exceed_2m
-            description: Resale price must not be more than 2 million SGD
             type: sql
-            dimension: conformity
-            query: >-
-              SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price > 2000000
+            query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price > 2000000
             mustBe: 0
-
-    # Table-level library check
-    quality:
-      - type: library
-        metric: rowCount
-        mustBeGreaterThan: 0
-        dimension: completeness
+            dimension: consistency
 ```
 
 ## Data Quality

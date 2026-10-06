@@ -171,12 +171,12 @@ Two more things to know:
 
 ## Annotating the failed rows of a cross-table check
 
-A cross-table check annotates rows on the [annotated table](../failed-rows/annotating-the-source-table.md)
+A cross-table check annotates rows on the [annotated table](../checks/annotating-the-source-table.md)
 like any other check, as long as its failed rows hold only the columns of the
 schema the check belongs to. vowl goes by the columns, not by what the query
 means.
 
-The [failed rows query](../failed-rows/how-failed-rows-are-derived.md#two-queries-from-one)
+The [row query](../checks/how-failed-rows-are-derived.md#two-queries-from-one)
 swaps the outer `SELECT COUNT(*)` for `SELECT *`, so the outer `FROM` decides
 which columns the failed rows have. For "every payroll row has an employee in
 the master list":
@@ -188,7 +188,7 @@ the master list":
 | `WHERE NOT EXISTS (SELECT 1 FROM ref ...)`             | Payroll columns only                     | Yes                         |
 
 This check annotates rows. The subquery returns only payroll columns, so each
-failed row matches a row of `demo_employee_payroll`. `payroll.*` picks which
+failed row can be attributed to a row of `demo_employee_payroll`. `payroll.*` picks which
 table's columns to return, and keeps their names as they are:
 
 ```yaml
@@ -220,7 +220,7 @@ WHERE NOT EXISTS (
 ```
 
 This one becomes a residue. A plain join returns the columns of both tables,
-so its failed rows don't match either table:
+so its failed rows can't be attributed to either table:
 
 ```yaml
 quality:
@@ -235,10 +235,10 @@ quality:
 
 Its failed rows are kept under
 `"demo_employee_payroll::employee_id_exists_in_master_list"`. The check is
-still counted, but it is not attributed, so it adds nothing to the row counts
-of `demo_employee_payroll` and is counted in `checks_not_attributed`.
+still row-level, but it is not attributable, so it adds nothing to the row counts
+of `demo_employee_payroll` and is counted in `checks_not_attributable`.
 
 The foreign-key checks vowl generates from `relationships` are already
 written the first way, so they annotate rows on the referencing table. A check is
-only ever matched against its own schema's table. A query that returns rows
+only ever attributed to its own schema's table. A query that returns rows
 with the right columns for the wrong reason still annotates them.

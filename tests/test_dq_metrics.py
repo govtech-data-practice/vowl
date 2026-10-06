@@ -109,7 +109,8 @@ def test_run_numbers(result):
     assert rows == {"PASSED": 2, "FAILED": 2}
     (row_rate,) = _points(document, "vowl.run.row.pass_rate")
     assert row_rate["value"] == 0.5
-    assert row_rate["attributes"]["vowl.row_quality.exact"] is True
+    # Whether a row number is approximate is on the spans, not the metrics.
+    assert row_rate["attributes"] == {}
 
 
 def test_errored_checks_count_against_the_check_pass_rate():
@@ -231,11 +232,13 @@ def test_a_join_that_fans_out_goes_negative_at_check_level_only(rq):
     from vowl.otel._common import check_row_attributes
 
     (check,) = [cr for cr in result.check_results if cr.check_name == "fan"]
-    assert check_row_attributes(result)[id(check)] == {
+    attrs = check_row_attributes(result)[id(check)]
+    assert {key: attrs[key] for key in ("row.count.passed", "row.count.failed", "row.pass_rate")} == {
         "row.count.passed": -3,
         "row.count.failed": 7,
         "row.pass_rate": -0.75,
     }
+    assert attrs["vowl.row_quality.attributed_rows"] == 3
 
 
 def test_distinct_reports_the_scalar_at_check_level(rq):
@@ -259,22 +262,13 @@ def test_count_distinct_reports_the_values_it_counted(rq):
     assert _row_points(result.get_dq_metrics(), "check", check_name="values")["FAILED"] == 2
 
 
-def test_row_points_flag_the_checks_not_attributed(rq):
-    result = rq._not_attributed_pair()
+def test_spans_name_the_checks_not_attributable(rq):
+    result = rq._not_attributable_pair()
 
     document = result.get_dq_metrics()
-    key = "vowl.row_quality.checks_not_attributed"
-    for level, expected in (("run", {2}), ("schema", {0, 2}), ("dimension", {0, 1})):
-        points = _points(document, f"vowl.{level}.row.count") + _points(document, f"vowl.{level}.row.pass_rate")
-        assert {p["attributes"][key] for p in points} == expected
-    (schema,) = {
-        p["attributes"][key]
-        for p in _points(document, "vowl.schema.row.count")
-        if p["attributes"]["schema_name"] == "t"
-    }
-    assert schema == 2
-    # The check level always reports the scalar count and carries no flag.
-    assert all(key not in p["attributes"] for p in _points(document, "vowl.check.row.count"))
+    # The metrics carry no trust attributes at any level.
+    for point in document["points"]:
+        assert not any(key.startswith("vowl.row_quality.") for key in point["attributes"])
     assert _row_points(document, "check", check_name="id_in_u")["FAILED"] == 2
 
     pytest.importorskip("opentelemetry")
@@ -284,12 +278,23 @@ def test_row_points_flag_the_checks_not_attributed(rq):
 
     provider, exporter = _tracer_provider()
     TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(result)
-    (root,) = [s for s in exporter.get_finished_spans() if s.name == "vowl.validate"]
-    assert root.attributes[key] == 2
-    assert root.attributes["vowl.row_quality.exact"] is False
+    spans = exporter.get_finished_spans()
+    (root,) = [s for s in spans if s.name == "vowl.validate"]
+    assert root.attributes["vowl.row_quality.checks_not_attributable"] == 2
+    assert root.attributes["vowl.row_quality.approximate"] is True
+
+    # The check spans say which checks made it approximate, and why.
+    checks = {s.attributes["check_name"]: s.attributes for s in spans if s.name == "vowl.check"}
+    flagged = {name for name, attrs in checks.items() if attrs.get("vowl.row_quality.approximate")}
+    rows = rq._check_rows(result)
+    assert flagged == {name for name, row in rows.items() if row["approximate"] and name in checks}
+    assert flagged
+    for name in flagged:
+        assert checks[name]["vowl.row_quality.reason"] == rows[name]["reason"]
+        assert "vowl.row_quality.attributed_rows" not in checks[name]
 
 
-def test_the_summary_names_the_checks_not_attributed(rq, capsys):
-    rq._not_attributed_pair().print_summary()
+def test_the_summary_names_the_checks_not_attributable(rq, capsys):
+    rq._not_attributable_pair().print_summary()
 
-    assert "(approx., 2 checks not attributed)" in capsys.readouterr().out
+    assert "(approx., 2 checks not attributable)" in capsys.readouterr().out

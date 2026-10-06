@@ -139,10 +139,10 @@ def test_check_reference_navigation_and_defaults(monkeypatch: pytest.MonkeyPatch
         ("SELECT AVG(price) FROM products", None),
     ],
 )
-def test_get_failed_rows_query_handles_empty_invalid_and_count_queries(query: str, expected: str | None):
+def test_get_row_query_handles_empty_invalid_and_count_queries(query: str, expected: str | None):
     ref = _StubSQLCheckReference(query)
 
-    assert ref.get_failed_rows_query("postgres") == expected
+    assert ref.get_row_query("postgres") == expected
 
 
 def test_apply_filters_warns_and_returns_original_query_on_parse_failure():
@@ -395,7 +395,7 @@ def test_logical_type_check_reference_flags_only_non_integer_rows(monkeypatch: p
     con.execute("INSERT INTO users VALUES ('44'), ('44.0'), ('44.5'), ('abc'), (NULL)")
 
     result = con.execute(ref.get_query("duckdb")).fetchone()[0]
-    failed_rows = con.execute(ref.get_failed_rows_query("duckdb")).fetchall()
+    failed_rows = con.execute(ref.get_row_query("duckdb")).fetchall()
 
     assert result == 2
     assert failed_rows == [("44.5",), ("abc",)]

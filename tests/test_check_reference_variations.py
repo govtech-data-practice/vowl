@@ -613,7 +613,7 @@ class TestPercentMetricsValidSql:
 #
 # These count *participating rows* (not duplicate groups), so their scalar
 # query stays a single top-level COUNT(*) (aggregation_type == "count") and the
-# auto-derived failed-rows query is ``SELECT * FROM table WHERE <pred>`` --
+# auto-derived row query is ``SELECT * FROM table WHERE <pred>`` --
 # full rows, identical columns to the source table, hence mergeable into the
 # annotated output rather than forced into residues.
 # ===================================================================
@@ -635,7 +635,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         assert failed.upper().startswith("SELECT *")
 
     def test_primary_key_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
@@ -646,7 +646,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         assert failed.upper().startswith("SELECT *")
         # PK violations = NULL keys OR duplicate-group members.
         assert "IS NULL" in failed.upper()
@@ -665,7 +665,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        assert ref.get_failed_rows_query("duckdb").upper().startswith("SELECT *")
+        assert ref.get_row_query("duckdb").upper().startswith("SELECT *")
 
     def test_duplicate_values_table_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
         ref = self._ref(
@@ -686,7 +686,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         assert failed.upper().startswith("SELECT *")
         # Multi-column duplicates use a correlated EXISTS (portable to SQL Server).
         assert "EXISTS" in failed.upper()
@@ -719,12 +719,12 @@ class TestDuplicateUniquePkMergeable:
 
 
 # ===================================================================
-# Group D3 — cross-table checks whose failed-rows query projects only the
+# Group D3 — cross-table checks whose row query projects only the
 # anchor table's columns are annotated-mergeable.
 #
 # The COUNT(*) -> SELECT * rewrite only touches the OUTER select list, so a
 # subquery-wrapped ``SELECT payroll.*`` still governs the projection: the
-# failed-rows query returns payroll-only columns, matching the anchor schema.
+# row query returns payroll-only columns, matching the anchor schema.
 # A bare JOIN's ``SELECT *`` returns both tables' columns and stays a residue.
 # ===================================================================
 
@@ -767,7 +767,7 @@ class TestCrossTableFailedRowsProjection:
 
     def test_subquery_wrapped_count_rewrites_to_select_star_over_subquery(self, monkeypatch: pytest.MonkeyPatch):
         ref = self._ref(monkeypatch, self._SUBQUERY_WRAPPED)
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         upper = failed.upper()
         # Outer COUNT(*) becomes SELECT *, but the inner projection is untouched.
         assert upper.startswith("SELECT *")
@@ -775,7 +775,7 @@ class TestCrossTableFailedRowsProjection:
         assert "FROM (" in upper
 
     def test_subquery_wrapped_failed_rows_yield_anchor_only_columns(self, monkeypatch: pytest.MonkeyPatch):
-        # Execute the rewritten failed-rows query against a real DuckDB and
+        # Execute the rewritten row query against a real DuckDB and
         # assert the resulting columns are exactly the payroll table's columns.
         import ibis
 
@@ -787,7 +787,7 @@ class TestCrossTableFailedRowsProjection:
         )
         con.create_table("demo_employee_list", pa.table({"employee_id": ["e1", "e2"]}))
 
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         rows = con.sql(failed_sql).to_pyarrow()
         # Orphan row e3 only; columns match the payroll (anchor) table exactly.
         assert set(rows.column_names) == {"employee_id", "amount"}
@@ -799,7 +799,7 @@ class TestCrossTableFailedRowsProjection:
         # The rewritten query is a top-level SELECT * over the JOIN (no subquery
         # projection to constrain it), so both tables' columns are returned.
         ref = self._ref(monkeypatch, self._BARE_JOIN)
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         upper = failed.upper()
         assert upper.startswith("SELECT *")
         # No wrapping subquery projection: the JOIN is at the top level.
@@ -1030,13 +1030,13 @@ class TestEnumCheck:
             "orders",
             pa.table({"status": ["active", "inactive", "archived", "deleted", None]}),
         )
-        # Count query: "archived" and "deleted" are out of set; NULL not counted.
+        # Scalar query: "archived" and "deleted" are out of set; NULL not counted.
         count = con.sql(ref.get_query("duckdb")).to_pyarrow().to_pylist()
         assert count == [{"count_star()": 2}]
 
-        # Failed-rows query (COUNT(*) -> SELECT *) returns exactly the violators.
+        # Row query (COUNT(*) -> SELECT *) returns exactly the violators.
         assert ref.supports_row_level_output is True
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         assert failed_sql.upper().startswith("SELECT *")
         rows = con.sql(failed_sql).to_pyarrow().to_pylist()
         assert sorted(r["status"] for r in rows) == ["archived", "deleted"]
@@ -1159,7 +1159,7 @@ class TestArrayChecks:
         ref = self._cardinality_ref(monkeypatch, "minItems", 2)
         con = self._list_table([["a", "b"], ["x"], None])
         assert ref.supports_row_level_output is True
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         assert failed_sql.upper().startswith("SELECT *")
         rows = con.sql(failed_sql).to_pyarrow().to_pylist()
         assert [r["tags"] for r in rows] == [["x"]]
@@ -1583,7 +1583,7 @@ class TestForeignKeyCheck:
 
         # Failed-rows projection returns only the offending from-table row.
         assert ref.supports_row_level_output is True
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         assert failed_sql.upper().startswith("SELECT *")
         rows = con.sql(failed_sql).to_pyarrow().to_pylist()
         assert [r["customer_id"] for r in rows] == [99]
@@ -1824,7 +1824,7 @@ class TestCompositePrimaryKeyCheck:
         assert check["mustBe"] == 0
         assert ref.get_query("postgres") == self._SQL
         assert ref.supports_row_level_output is True
-        assert ref.get_failed_rows_query("postgres") == self._SQL.replace("SELECT COUNT(*)", "SELECT *", 1)
+        assert ref.get_row_query("postgres") == self._SQL.replace("SELECT COUNT(*)", "SELECT *", 1)
 
     def test_order_follows_primary_key_position(self, monkeypatch: pytest.MonkeyPatch):
         refs = self._refs(

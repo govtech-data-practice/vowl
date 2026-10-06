@@ -33,7 +33,7 @@ def test_safe_filename_component_strips_traversal(value: str, expected: str):
     assert not result.startswith(".")
 
 
-def _summary(*, total_rows, passed_row_percentage, passed_rows=0, exact=True):
+def _summary(*, total_rows, passed_row_percentage, passed_rows=0, approximate=False):
     return OverallSummary(
         passed_checks=0,
         error_checks=0,
@@ -42,7 +42,7 @@ def _summary(*, total_rows, passed_row_percentage, passed_rows=0, exact=True):
         passed_rows=passed_rows,
         total_rows=total_rows,
         passed_row_percentage=passed_row_percentage,
-        exact=exact,
+        approximate=approximate,
     )
 
 
@@ -66,21 +66,22 @@ def test_format_passed_rows_formats_percentage():
 
 
 def test_format_passed_rows_marks_approximate_numbers():
-    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_rows=999, exact=False)
+    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_rows=999, approximate=True)
     assert format_passed_rows(summary) == "999 / 1,000 (99.9%) (approx.)"
 
 
-def test_format_passed_rows_without_counted_checks_is_na():
+def test_format_passed_rows_without_row_level_checks_is_na():
     summary = _summary(total_rows=1000, passed_row_percentage=None, passed_rows=None)
     assert format_passed_rows(summary) == "N/A"
 
 
 @pytest.mark.parametrize(
     ("count", "suffix"),
-    [(0, " (approx.)"), (1, " (approx., 1 check not attributed)"), (2, " (approx., 2 checks not attributed)")],
+    [(0, " (approx.)"), (1, " (approx., 1 check not attributable)"), (2, " (approx., 2 checks not attributable)")],
 )
-def test_format_passed_rows_names_the_checks_not_attributed(count, suffix):
+def test_format_passed_rows_names_the_checks_not_attributable(count, suffix):
     summary = replace(
-        _summary(total_rows=10, passed_row_percentage=80.0, passed_rows=8, exact=False), checks_not_attributed=count
+        _summary(total_rows=10, passed_row_percentage=80.0, passed_rows=8, approximate=True),
+        checks_not_attributable=count,
     )
     assert format_passed_rows(summary) == f"8 / 10 (80.0%){suffix}"

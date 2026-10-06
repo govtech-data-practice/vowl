@@ -9,30 +9,27 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
-from ...config import RowIssueScope
-
 
 @dataclass(frozen=True)
 class SchemaRowQuality:
     """Row-quality numbers for one schema.
 
-    ``failed_rows``, ``tolerated_rows``, ``passed_rows`` and ``pass_rate`` are
-    None when no counted check was attributed. ``pass_rate`` is also None when
-    the table is empty or its row count is unknown. ``tolerated_rows`` is None
-    when tolerated rows were not collected. ``checks_not_attributed`` counts the
-    counted checks whose rows are not in these numbers.
+    ``failed_rows``, ``passed_rows`` and ``pass_rate`` are None when no check
+    in scope could be attributed. ``pass_rate`` is also None when the table is
+    empty or its row count is unknown. ``checks_not_attributable`` counts the
+    checks in scope whose rows are not in these numbers. A passed check that is
+    not attributed is not one of them.
     """
 
     schema_name: str
     total_rows: int | None
     failed_rows: int | None
-    tolerated_rows: int | None
     passed_rows: int | None
     pass_rate: float | None
-    exact: bool
-    checks_counted: int
-    checks_not_counted: int
-    checks_not_attributed: int
+    approximate: bool
+    checks_row_level: int
+    checks_not_row_level: int
+    checks_not_attributable: int
 
 
 @dataclass(frozen=True)
@@ -43,13 +40,12 @@ class DimensionRowQuality:
     dimension: str
     total_rows: int | None
     failed_rows: int | None
-    tolerated_rows: int | None
     passed_rows: int | None
     pass_rate: float | None
-    exact: bool
-    checks_counted: int
-    checks_not_counted: int
-    checks_not_attributed: int
+    approximate: bool
+    checks_row_level: int
+    checks_not_row_level: int
+    checks_not_attributable: int
 
 
 @dataclass(frozen=True)
@@ -58,33 +54,31 @@ class CheckRowQuality:
 
     Attributes:
         route: ``"server_predicate"``, ``"server_lookup"``, ``"client_lookup"`` or
-            ``"server_scalar"``, or empty when the check is not counted or not
+            ``"server_scalar"``, or empty when the check is not row-level or not
             attributed. ``"server_scalar"`` is used only under
-            ``disable_table_attributed_counts``.
-        reason: Why the check was not counted or not attributed, or why it
+            ``row_counts="scalar"``.
+        reason: Why the check was not row-level or not attributed, or why it
             left pushdown.
         scalar_count: The number the check's own query returned, as a count.
             It decides pass or fail, and is what the summary shows as ``actual``.
         attributed_rows: The rows of the table the check caught, before the
             merge. It differs from ``scalar_count`` when the check's query does
             not return each failing row of the table once, for example under
-            ``DISTINCT``. None when the check is not attributed.
-        attributed: The check's attributed rows are in the row counts.
-        exact: False when this check's rows are incomplete or approximate.
+            ``DISTINCT``. None when the check is not attributed, and
+            ``reason`` then says why.
+        approximate: True when this check's rows are incomplete or approximate.
     """
 
     schema_name: str
     check_name: str
     dimension: str
     status: str
-    counted: bool
-    tolerated: bool
+    row_level: bool
     route: str
     reason: str
     scalar_count: int | None
     attributed_rows: int | None
-    attributed: bool
-    exact: bool
+    approximate: bool
 
 
 @dataclass(frozen=True)
@@ -95,18 +89,13 @@ class RowQualityReport:
         schemas: One entry per schema.
         dimensions: One entry per (schema, dimension) with at least one check.
         checks: One entry per check anchored to a schema.
-        enabled: False when ``enable_additional_schema_statistics`` is off.
-        weighted_pass_rate: Passed rows over total rows, summed across the
-            schemas that have a pass rate. Weighted by table size.
-        mean_pass_rate: The mean of the per-schema pass rates.
+        enabled: False under ``row_counts="off"``.
     """
 
     schemas: list[SchemaRowQuality] = field(default_factory=list)
     dimensions: list[DimensionRowQuality] = field(default_factory=list)
     checks: list[CheckRowQuality] = field(default_factory=list)
     enabled: bool = True
-    weighted_pass_rate: float | None = None
-    mean_pass_rate: float | None = None
 
     def schema(self, schema_name: str) -> SchemaRowQuality | None:
         return next((item for item in self.schemas if item.schema_name == schema_name), None)
@@ -119,25 +108,26 @@ class CheckState:
     Attributes:
         check_id: Schema-local id, the bit the check owns in the masks.
         dimension: The check's dimension.
-        counted: The check is about bad rows.
-        failed: The check FAILED. False for tolerated and zero-count checks.
+        row_level: The check is about bad rows.
+        in_scope: The check's rows belong in the row counts: it FAILED, or it
+            PASSED under ``attribute_tolerated_rows``.
         collected: The check's rows are in the merged entries.
-        attributed: The check's attributed rows are in the row counts.
-        scalar: The check is counted from its scalar count, outside the
-            merged entries. Only under ``disable_table_attributed_counts``.
-        inexact: The check makes its buckets inexact.
+        attributable: The check's attributed rows are in the row counts.
+        from_scalar: The check is counted from its scalar count, outside the
+            merged entries. Only under ``row_counts="scalar"``.
+        approximate: The check makes its buckets approximate.
         attributed_rows: The check's attributed rows, when known.
         scalar_count: The count the check's own query returned.
     """
 
     check_id: int
     dimension: str
-    counted: bool
-    failed: bool
+    row_level: bool
+    in_scope: bool
     collected: bool
-    attributed: bool = True
-    scalar: bool = False
-    inexact: bool = False
+    attributable: bool = True
+    from_scalar: bool = False
+    approximate: bool = False
     attributed_rows: int | None = None
     scalar_count: int | None = None
 
@@ -154,9 +144,9 @@ def attributed_rows_from_entries(entries: Iterable[tuple[int, int]], check_ids: 
 
 def bucket_rows(state: CheckState) -> int | None:
     """The rows *state* adds to its buckets: its attributed rows, or its scalar count when counted from it."""
-    if state.scalar:
+    if state.from_scalar:
         return state.scalar_count
-    return state.attributed_rows if state.attributed else None
+    return state.attributed_rows if state.attributable else None
 
 
 def _may_have_rows(state: CheckState) -> bool:
@@ -175,67 +165,45 @@ def roll_up_bucket(
     entries: Sequence[tuple[int, int]],
     total_rows: int | None,
     *,
-    scope: RowIssueScope,
-    exact: bool,
-) -> tuple[int | None, int | None, int | None, float | None, bool, int, int]:
+    approximate: bool,
+) -> tuple[int | None, int | None, float | None, bool, int, int]:
     """Roll up one bucket of checks.
 
-    A counted check that is not attributed adds nothing, unless it is counted
-    from its scalar count. When it caught rows in scope the bucket is not exact.
+    Only checks in scope count. A check out of scope adds nothing and never
+    makes the bucket approximate or N/A. A check in scope that is not attributable
+    adds nothing, unless it is counted from its scalar count. When it may have
+    rows the bucket is approximate.
 
     Returns:
-        ``(failed_rows, tolerated_rows, passed_rows, pass_rate, exact,
-        checks_counted, checks_not_attributed)``.
+        ``(failed_rows, passed_rows, pass_rate, approximate, checks_row_level,
+        checks_not_attributable)``.
     """
-    counted = [state for state in states if state.counted]
-    exact = exact and not any(state.inexact for state in states)
-    if not counted:
-        return None, None, None, None, exact, 0, 0
-    not_attributed = [state for state in counted if not state.attributed]
-    if any(
-        not state.scalar and (state.failed or scope == "all_violations") and _may_have_rows(state)
-        for state in not_attributed
-    ):
+    row_level = [state for state in states if state.row_level]
+    scoped = [state for state in row_level if state.in_scope]
+    approximate = approximate or any(state.approximate for state in states)
+    if not row_level:
+        return None, None, None, approximate, 0, 0
+    not_attributable = [state for state in scoped if not state.attributable]
+    if any(not state.from_scalar and _may_have_rows(state) for state in not_attributable):
         # Rows in scope are missing from the numbers.
-        exact = False
-    if not any(state.attributed or state.scalar for state in counted):
-        return None, None, None, None, exact, len(counted), len(not_attributed)
+        approximate = True
+    if scoped and not any(state.attributable or state.from_scalar for state in scoped):
+        return None, None, None, approximate, len(row_level), len(not_attributable)
 
-    collected = [state for state in counted if state.collected]
-    strict_mask = _mask(state for state in collected if state.failed)
-    all_mask = _mask(collected)
-    strict = sum(copies for mask, copies in entries if mask & strict_mask)
-    everything = sum(copies for mask, copies in entries if mask & all_mask)
+    scoped_mask = _mask(state for state in scoped if state.collected)
+    failed_rows = sum(copies for mask, copies in entries if mask & scoped_mask)
 
-    scalars = [state for state in counted if state.scalar]
+    scalars = [state for state in scoped if state.from_scalar]
     if scalars:
-        # Scalars cannot tell which rows overlap, so their sum is exact only
-        # when no other check of the bucket has failing rows.
-        with_rows = [state for state in counted if (bucket_rows(state) or 0) > 0]
-        if len(with_rows) > 1 and any(state.scalar for state in with_rows):
-            exact = False
-        strict += sum(state.scalar_count or 0 for state in scalars if state.failed)
-        everything += sum(state.scalar_count or 0 for state in scalars)
+        # Scalars cannot tell which rows overlap, so their sum is approximate
+        # when another check of the bucket also has failing rows.
+        with_rows = [state for state in scoped if (bucket_rows(state) or 0) > 0]
+        if len(with_rows) > 1 and any(state.from_scalar for state in with_rows):
+            approximate = True
+        failed_rows += sum(state.scalar_count or 0 for state in scalars)
         if total_rows is not None:
-            strict, everything = min(strict, total_rows), min(everything, total_rows)
+            failed_rows = min(failed_rows, total_rows)
 
-    failed_rows = strict if scope == "failed_checks" else everything
-    tolerated_rows: int | None = max(everything - strict, 0)
-    if any(not state.scalar and not state.failed and _may_have_rows(state) for state in not_attributed):
-        # A tolerated check's rows are missing, so the tolerated rows are unknown.
-        tolerated_rows = None
     passed_rows = max(total_rows - failed_rows, 0) if total_rows is not None else None
     pass_rate = passed_rows / total_rows if total_rows and passed_rows is not None else None
-    return failed_rows, tolerated_rows, passed_rows, pass_rate, exact, len(counted), len(not_attributed)
-
-
-def run_level_rates(schemas: Sequence[SchemaRowQuality]) -> tuple[float | None, float | None]:
-    """The weighted and the mean pass rate across schemas that have one."""
-    rated = [item for item in schemas if item.pass_rate is not None and item.total_rows]
-    if not rated:
-        return None, None
-    total = sum(item.total_rows or 0 for item in rated)
-    failed = sum(item.failed_rows or 0 for item in rated)
-    weighted = max(total - failed, 0) / total if total else None
-    mean = sum(item.pass_rate or 0.0 for item in rated) / len(rated)
-    return weighted, mean
+    return failed_rows, passed_rows, pass_rate, approximate, len(row_level), len(not_attributable)

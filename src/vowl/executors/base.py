@@ -27,7 +27,7 @@ class CappedFetch:
     rows and sets :attr:`truncated`.
 
     Args:
-        run: Runs the failed rows query with a row limit (``-1`` for none) and
+        run: Runs the row query with a row limit (``-1`` for none) and
             returns the rows, or None.
         max_rows: Returns the cap when called. It is read at fetch time,
             because the runner sets it on the adapter after the checks are
@@ -51,7 +51,7 @@ class RowSource:
     """How a SQL check's rows were produced, kept for the row-quality component.
 
     The executor attaches one to every PASSED or FAILED SQL result, so the
-    row-quality component can rebuild the check's failed-rows query in the
+    row-quality component can rebuild the check's row query in the
     same dialect, with the same filters, against the same adapter. It is
     runtime state only and never appears in ``metadata`` or saved output.
 
@@ -61,7 +61,7 @@ class RowSource:
         filter_conditions: The filters applied when the check ran.
         use_try_cast: Whether TRY_CAST rewriting was on.
         adapter: The adapter that executed the check.
-        failed_rows_query: The filtered failed-rows query, exactly as run.
+        row_query: The filtered row query, exactly as run.
         fetch: Zero-argument callable returning the failed rows, capped by
             ``max_failed_rows``.
         cross_source: True when the check ran on a local copy of tables from
@@ -74,7 +74,7 @@ class RowSource:
     filter_conditions: Any = None
     use_try_cast: bool = True
     adapter: Any = None
-    failed_rows_query: str | None = None
+    row_query: str | None = None
     fetch: Callable[[], nw.DataFrame | None] | None = field(default=None, repr=False)
     cross_source: bool = False
 

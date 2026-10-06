@@ -78,8 +78,6 @@ are three of them, one of each type:
       "value": 7,
       "attributes": {
         "schema_name": "orders",
-        "vowl.row_quality.exact": true,
-        "vowl.row_quality.checks_not_attributed": 0,
         "status": "FAILED"
       }
     },
@@ -129,10 +127,8 @@ A few things to notice:
 - 7 rows of `orders` failed at schema level, not 5 + 3 = 8, because one row
   failed both checks. See [How rows are counted](understanding-metrics.md#how-failed-rows-are-counted).
 - The run level adds up the schemas: 7 + 2 = 9 rows failed.
-- The `row.count` and `row.pass_rate` points at dimension, schema and run
-  level carry `vowl.row_quality.exact` and
-  `vowl.row_quality.checks_not_attributed`. They are `true` and `0` for every
-  point here, because every counted check ran and was attributed.
+- The points do not say whether a row count is approximate. Use
+  `get_row_quality_df()` or the [traces](otel-export.md#traces) for that.
 
 ### Reading it with pandas
 

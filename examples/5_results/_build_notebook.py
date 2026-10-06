@@ -155,9 +155,9 @@ All three return the **same shape** (a list of objects) so you always read a val
 ```text
 "names"    [{"check_name": "Month"}]
 "summary"  [{"check_name": "Month", "dimension": "conformity",
-             "tags": ["SG-DRM v5.0"], "target": "hdb_resale_prices.month"}]
+             "tags": null, "target": "hdb_resale_prices.month"}]
 "full"     [{"type": "sql", "name": "Month", "description": "...", "mustBe": 0,
-             "query": "SELECT COUNT(*) ...", "tags": ["SG-DRM v5.0"],
+             "query": "SELECT COUNT(*) ...",
              "dimension": "conformity", "check_name": "Month",
              "target": "hdb_resale_prices.month"}]
 ```
@@ -245,7 +245,7 @@ The HDB examples above are single-table, so `residues` is empty. Residues appear
 
 Residues are **per-check**: `get_annotated_output()` returns one entry for each non-mergeable check, keyed `"<schema>::<check_name>"`. They are never grouped together, so a row that fails two such checks appears once under each check's entry. Each entry carries the failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array, shaped by the `check_info` preset) and `tables_in_query`, so everything `get_annotated_output()` returns is read the same way.
 
-> **A cross-table check can *merge* instead of becoming a residue.** If you shape its failed-rows query to project only the anchor table's columns (e.g. `SELECT payroll.*` inside a subquery), the orphan rows match that schema and land directly in its `check_info` column, with no residue. The Employee contract below carries both shapes: `orphan_payroll_rows_merge_onto_payroll` (subquery-projected, merges onto `demo_employee_payroll`) and `employee_id_exists_in_master_list` / `phone_number_exists_in_master_list` (bare JOINs, stay residues). See [Known Issues: Annotated Output](../../docs/known-issues.md#annotated-output-not-all-checks-can-be-merged) for the rules.
+> **A cross-table check can *merge* instead of becoming a residue.** If you shape its row query to project only the anchor table's columns (e.g. `SELECT payroll.*` inside a subquery), the orphan rows match that schema and land directly in its `check_info` column, with no residue. The Employee contract below carries both shapes: `orphan_payroll_rows_merge_onto_payroll` (subquery-projected, merges onto `demo_employee_payroll`) and `employee_id_exists_in_master_list` / `phone_number_exists_in_master_list` (bare JOINs, stay residues). See [Known Issues: Annotated Output](../../docs/known-issues.md#annotated-output-not-all-checks-can-be-merged) for the rules.
 
 Below is a quick multi-source run on the Employee dataset, whose contract has cross-table checks. (Multi-source validation is covered in the [Multiple Sources notebook](../2_multiple_sources/multiple_sources.ipynb); we borrow it here just to produce residues.)
 """
@@ -288,7 +288,7 @@ Whether a cross-table check merges is decided entirely by **the columns its fail
 
 The *same* referential question **merges** when you wrap it so the inner query projects only the payroll columns (`SELECT payroll.* ...`). The contract's `orphan_payroll_rows_merge_onto_payroll` check does exactly that, so its failed rows come back with exactly the payroll columns and are annotated **directly onto the payroll table's `check_info` column** (notice it's absent from the residue keys above).
 
-> For the full mechanics (how vowl derives the scalar and failed-rows queries, and why the `COUNT(*)` -> `SELECT *` rewrite only touches the outer projection), see [Known Issues: Cross-table checks, mergeable when the failed rows match the home schema](../../docs/known-issues.md#1-cross-table-checks-mergeable-when-the-failed-rows-match-the-home-schema).
+> For the full mechanics (how vowl derives the scalar and row queries, and why the `COUNT(*)` -> `SELECT *` rewrite only touches the outer projection), see [Known Issues: Cross-table checks, mergeable when the failed rows match the home schema](../../docs/known-issues.md#1-cross-table-checks-mergeable-when-the-failed-rows-match-the-home-schema).
 """
 )
 
@@ -382,7 +382,6 @@ month_check = next(c for c in summary["check_results"] if c["name"] == "Month")
 
 print("Target:    ", month_check["target"])
 print("Dimension: ", month_check["check_definition"]["dimension"])
-print("Tags:      ", month_check["check_definition"]["tags"])
 print("\\nFull check_definition:")
 print(json.dumps(month_check["check_definition"], indent=2))
 """

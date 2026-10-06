@@ -402,8 +402,7 @@ def _view(result, name: str) -> dict[str, Any]:
         "residue": key in annotated["residues"],
         "annotated_flags": flags,
         "row_quality": {
-            field: row_quality[field]
-            for field in ("counted", "tolerated", "attributed", "reason", "scalar_count", "attributed_rows")
+            field: row_quality[field] for field in ("row_level", "route", "reason", "scalar_count", "attributed_rows")
         },
         "check_row_metrics": metric_points,
     }
@@ -433,7 +432,7 @@ def test_check_matches_its_sql_twin(case_name: str, outcome: str, backend: str):
 
 def test_failing_row_count_reports_the_table_size_and_no_rows():
     """rowCount mustBeGreaterThan behaves like SELECT COUNT(*) FROM t: the
-    count is the table size and the operator does not identify bad rows."""
+    count is the table size and the operator does not set an upper limit."""
     case = _CASES["rowCount_lower_bound"]
     result = _run(case, case["fail"], "duckdb")
 
@@ -442,7 +441,7 @@ def test_failing_row_count_reports_the_table_size_and_no_rows():
     assert view["failed_rows_count"] == 2
     assert view["supports_row_level_output"] is True
     assert view["residue"] is False
-    assert view["row_quality"]["counted"] is False
-    assert view["row_quality"]["reason"] == "operator does not identify bad rows"
+    assert view["row_quality"]["row_level"] is False
+    assert view["row_quality"]["reason"] == "operator does not set an upper limit"
     assert view["check_row_metrics"] == []
     assert not any(view["annotated_flags"]["t"])

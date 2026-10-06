@@ -1284,7 +1284,7 @@ class TestPercentChecksExecuteEndToEnd:
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: a cross-table referential check whose failed-rows query projects
+# End-to-end: a cross-table referential check whose row query projects
 # only the anchor table's columns (SELECT payroll.* over a LEFT JOIN) merges
 # onto that schema's annotated table instead of falling to residues.
 # Uses the employee_payroll fixtures (tests/employee/).

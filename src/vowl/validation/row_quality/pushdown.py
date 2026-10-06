@@ -1,6 +1,6 @@
 """The pushdown and table_match routes: count failing rows inside the data source.
 
-Every counted check becomes one tagged branch. Branches are packed into chunks
+Every row-level check becomes one tagged branch. Branches are packed into chunks
 that stay within the engine limits, each chunk is one statement, and a chunk
 that fails is bisected until the failing branches are found and dropped. See
 "Hardened form" in ``design/row-quality-statistics.md``.
@@ -91,7 +91,7 @@ class Branch:
         check_id: Schema-local check id, the bit the check owns in the masks.
         kind: ``"server_predicate"`` for a certified row filter, ``"server_lookup"`` for
             a check whose anchor rows are matched against its failed rows.
-        query: The check's filtered failed-rows query.
+        query: The check's filtered row query.
         scan_from: For the single-scan form, the rendered FROM clause.
         scan_alias: For the single-scan form, the FROM clause's alias.
         scan_predicate: For the single-scan form, the lifted WHERE predicate.
@@ -117,7 +117,7 @@ class Chunk:
 
 
 def lift_scan(query: str, dialect: str) -> tuple[str, str, str] | None:
-    """Split a certified failed-rows query into (FROM, alias, predicate)."""
+    """Split a certified row query into (FROM, alias, predicate)."""
     try:
         parsed = sqlglot.parse_one(query, dialect=dialect)
     except Exception:

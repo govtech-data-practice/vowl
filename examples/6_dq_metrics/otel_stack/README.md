@@ -230,7 +230,7 @@ contracts are left:
 - **Catalog check pass rate** is passed checks divided by all checks, over the
   latest run of every contract. Big contracts weigh more than small ones.
 - **Failed rows (latest runs)** adds up the rows that failed in every
-  contract's latest run. Checks that are not attributed are not in it.
+  contract's latest run. Checks that are not attributable are not in it.
 - **Contract scorecard** has one row per contract, worst check pass rate
   first. Start here to decide which contract to look at. Pass rates show as a
   bar, and failed checks counts both FAILED and ERROR.

@@ -4,6 +4,7 @@ Validation configuration for data quality checks.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import asdict, dataclass
 from typing import Literal
 
@@ -29,16 +30,17 @@ OutputMode = Literal["failed_rows", "annotated", "both"]
 #: - ``"full"``    -- ``[<full check_definition> + check_name + target, ...]``.
 CheckInfoPreset = Literal["names", "summary", "full"]
 
-#: Which rows count as failed in the row-quality numbers:
+#: How the row-quality numbers count rows:
 #:
-#: - ``"failed_checks"``  -- only rows caught by checks that FAILED (default).
-#:                           Rows caught by a check that stayed within its
-#:                           tolerance are reported separately as tolerated.
-#: - ``"all_violations"`` -- every row that breaks any check, including rows
-#:                           caught by a check that PASSED within its tolerance.
-RowIssueScope = Literal["failed_checks", "all_violations"]
+#: - ``"attributed"`` -- attribute each failed row to its table row, so a row
+#:                       caught by several checks counts once (default).
+#: - ``"scalar"``     -- add up the scalar counts of the failed checks. No
+#:                       query runs, but a row caught by several checks counts
+#:                       more than once.
+#: - ``"off"``        -- no row counts.
+RowCounts = Literal["attributed", "scalar", "off"]
 
-_ROW_ISSUE_SCOPES = ("failed_checks", "all_violations")
+_ROW_COUNTS = ("attributed", "scalar", "off")
 
 
 @dataclass
@@ -52,10 +54,12 @@ class ValidationConfig:
     Attributes:
         max_rows_for_statistics: Cap on the number of rows counted when
             computing per-schema row statistics.  ``-1`` (default) means
-            count all rows with no cap.
-        enable_additional_schema_statistics: When ``True`` (default),
-            per-schema row counts are included in the validation summary.
-            Set to ``False`` to skip row counting entirely.
+            count all rows with no cap.  **Deprecated:** a cap only makes
+            the row counts not exact.  Any other value emits a
+            ``DeprecationWarning``.
+        enable_additional_schema_statistics: **Deprecated**, use
+            ``row_counts="off"`` instead.  ``False`` sets
+            ``row_counts="off"``.  Setting it emits a ``DeprecationWarning``.
         max_failed_rows: Maximum number of failed rows to fetch per check
             when deriving row-level failure details.  ``-1`` (default)
             means fetch all failing rows (no cap).
@@ -77,35 +81,52 @@ class ValidationConfig:
             ``get_annotated_output(check_info=...)`` / ``save(check_info=...)``
             override this per call; when their argument is ``None`` this config
             value is used.
-        row_issue_scope: Which rows count as failed in the row-quality
-            numbers (``print_summary``, ``get_row_quality_df``, OTEL and the
-            annotated output).  One of ``"failed_checks"`` (default) or
-            ``"all_violations"``.  See :data:`RowIssueScope`.
-        disable_table_attributed_counts: When ``False`` (default), the
-            row-quality numbers attribute each failed row to its table row, so
-            a row caught by several checks counts once.  This can export a
-            whole table for checks that are not plain row filters.  Set to
-            ``True`` to skip that work and count every check from its
-            scalar count on the ``server_scalar`` route.  Every counted check
-            is then not attributed.  The sums are then approximate once two checks of a
-            table have failing rows.
+        row_counts: How the row-quality numbers (``print_summary``,
+            ``get_row_quality_df``, the DQ metrics and OTEL) count rows.  One
+            of ``"attributed"`` (default), ``"scalar"`` or ``"off"``.  See
+            :data:`RowCounts`.
+        attribute_tolerated_rows: When ``False`` (default), only the rows of
+            FAILED checks are attributed, and passed checks add nothing to
+            the row counts or the annotated output.  Set to ``True`` to also
+            attribute the rows of row-level checks that PASSED within their
+            tolerance.  Applies only under ``row_counts="attributed"``.
     """
 
     max_rows_for_statistics: int = -1
-    enable_additional_schema_statistics: bool = True
+    enable_additional_schema_statistics: bool | None = None
     max_failed_rows: int = -1
     use_try_cast: bool = True
     output_mode: OutputMode = "annotated"
     annotated_check_info: CheckInfoPreset = "names"
-    row_issue_scope: RowIssueScope = "failed_checks"
-    disable_table_attributed_counts: bool = False
+    row_counts: RowCounts = "attributed"
+    attribute_tolerated_rows: bool = False
 
     def __post_init__(self) -> None:
-        if self.row_issue_scope not in _ROW_ISSUE_SCOPES:
-            raise ValueError(
-                f"row_issue_scope must be one of {', '.join(_ROW_ISSUE_SCOPES)}, got {self.row_issue_scope!r}"
+        if self.row_counts not in _ROW_COUNTS:
+            raise ValueError(f"row_counts must be one of {', '.join(_ROW_COUNTS)}, got {self.row_counts!r}")
+        if self.enable_additional_schema_statistics is not None:
+            warnings.warn(
+                "enable_additional_schema_statistics is deprecated, use row_counts='off' instead.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            if not self.enable_additional_schema_statistics:
+                if self.row_counts == "scalar":
+                    raise ValueError("enable_additional_schema_statistics=False conflicts with row_counts='scalar'")
+                self.row_counts = "off"
+        if self.max_rows_for_statistics != -1:
+            warnings.warn(
+                "max_rows_for_statistics is deprecated: a cap only makes the row counts not exact.",
+                DeprecationWarning,
+                stacklevel=3,
             )
 
     def to_dict(self) -> dict:
-        """Return a plain dict representation of the config."""
-        return asdict(self)
+        """Return a plain dict representation of the config.
+
+        The deprecated ``enable_additional_schema_statistics`` is left out,
+        because ``row_counts`` already holds its value.
+        """
+        data = asdict(self)
+        data.pop("enable_additional_schema_statistics", None)
+        return data

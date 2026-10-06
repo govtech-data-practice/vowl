@@ -19,8 +19,8 @@ class OverallSummary(CheckStatusSummary):
     """A schema's check counts plus its row-quality numbers.
 
     ``passed_rows`` and ``passed_row_percentage`` are None when no check was
-    counted or the numbers are unavailable. ``exact`` is False when the
-    numbers are approximate. ``checks_not_attributed`` counts the counted
+    row-level or the numbers are unavailable. ``approximate`` is True when the
+    numbers are not exact. ``checks_not_attributable`` counts the row-level
     checks whose rows are not in the numbers.
     """
 
@@ -28,8 +28,8 @@ class OverallSummary(CheckStatusSummary):
     passed_rows: int | None
     total_rows: int | None
     passed_row_percentage: float | None
-    exact: bool
-    checks_not_attributed: int = 0
+    approximate: bool
+    checks_not_attributable: int = 0
 
 
 @dataclass(frozen=True)

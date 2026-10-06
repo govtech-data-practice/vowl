@@ -72,7 +72,7 @@ is:
   and found bad data. `ERROR` means the check could not run, for example
   because its query names a column that does not exist.
 - **Rows** are `PASSED` or `FAILED`. A row is `FAILED` at a level when it
-  failed at least one counted check at that level.
+  failed at least one row-level check at that level.
 - **Schemas** (`vowl.run.schema.count`) are `FAILED` when any of their checks
   failed, else `ERROR` when any check could not run, else `PASSED`. A known
   data problem outranks a check that could not say.
@@ -132,7 +132,7 @@ counts for less than a large one.
 ## How rows are counted {#how-failed-rows-are-counted}
 
 The row counts follow the
-[grains of row counts](../design-considerations/failed-rows/how-rows-are-counted.md#grains-of-failed-row-counts).
+[grains of row counts](../design-considerations/checks/how-attributed-rows-work.md#grains-of-failed-row-counts).
 `vowl.check.row.count` and `vowl.check.row.pass_rate` use the check's
 [scalar count](../glossary.md#results), the number that decides pass or
 fail. They can differ from `attributed_rows` in `get_row_quality_df(by="check")`,
@@ -147,35 +147,25 @@ which counts the check's [attributed rows](../glossary.md#results):
   reports its scalar count.
 
 See
-[Checks can change the rows they return](../design-considerations/failed-rows/how-rows-are-counted.md#checks-can-change-the-rows-they-return).
+[Checks can change the rows they return](../design-considerations/checks/how-attributed-rows-work.md#checks-can-change-the-rows-they-return).
 The dimension, schema and run row counts use attributed rows and count each
 row once. They are the same numbers as `get_row_quality_df()` and
 **Passed Rows** in `print_summary()`, and stay between 0 and the table's rows.
 
 At every level, `PASSED` plus `FAILED` is the number of rows in the table, or
 in all tables at run level. Only
-[counted checks](../design-considerations/failed-rows/failed-row-results.md#counted-checks)
-are in the row counts. At check level, every counted check gets row counts,
-attributed or not. A check that is not counted, such as an average or a lower
+[row-level checks](../design-considerations/checks/check-results.md#counted-checks)
+are in the row counts. At check level, every row-level check gets row counts,
+attributable or not. A check that is not row-level, such as an average or a lower
 limit on a count, gets check counts only. At dimension, schema and run level
-only the attributed rows of counted checks are in the row counts. A dimension or schema with no counted check has none,
-and neither has one whose counted checks are all not attributed.
+only the attributed rows of row-level checks are in the row counts. A dimension or schema with no row-level check has none,
+and neither has one whose row-level checks are all not attributable.
 
-The dimension, schema and run row counts carry two more attributes:
-
-| Attribute                                | What it holds                                                                                                                                               |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `vowl.row_quality.exact`                 | The [exact flag](../design-considerations/failed-rows/counting-mechanisms.md#exact-numbers). At run level it is `true` only when every schema is exact.     |
-| `vowl.row_quality.checks_not_attributed` | How many counted checks are [not attributed](../glossary.md#results), so their rows are not in the row counts. At run level it is the sum over the schemas. |
-
-A check that is not attributed adds nothing to the row counts. If its rows are
-in scope, because it failed or it passed under `all_violations`,
-`vowl.row_quality.exact` is `false`. For example, a schema whose
-`max_failed_rows` cut one check's failed rows short sends:
-
-```
-vowl.schema.row.count:  93  {status="PASSED", schema_name="orders", vowl.row_quality.exact=false, vowl.row_quality.checks_not_attributed=1}
-```
+The row counts do not say whether they are
+[approximate](../design-considerations/checks/counting-mechanisms.md#exact-numbers).
+That is on the [traces](otel-export.md#traces). The `vowl.validate` span says
+whether the run's row counts are approximate, and each `vowl.check` span says
+which check made them so.
 
 ## Attributes
 
@@ -183,26 +173,26 @@ Each reading carries attributes that say what it is for. All levels also
 carry the [run identity attributes](otel-export.md#run-identity-attributes),
 such as `vowl.contract.id`.
 
-| Metric                           | Attributes                                                                                               |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `vowl.check.check.count`         | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine`                                 |
-| `vowl.check.row.count`           | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine`                                 |
-| `vowl.check.row.pass_rate`       | `check_name`, `schema_name`, `dimension`, `severity`, `engine`                                           |
-| `vowl.check.duration`            | `check_name`, `schema_name`, `dimension`, `severity`, `engine`                                           |
-| `vowl.dimension.check.count`     | `status`, `schema_name`, `dimension`                                                                     |
-| `vowl.dimension.check.pass_rate` | `schema_name`, `dimension`                                                                               |
-| `vowl.dimension.row.count`       | `status`, `schema_name`, `dimension`, `vowl.row_quality.exact`, `vowl.row_quality.checks_not_attributed` |
-| `vowl.dimension.row.pass_rate`   | `schema_name`, `dimension`, `vowl.row_quality.exact`, `vowl.row_quality.checks_not_attributed`           |
-| `vowl.schema.check.count`        | `status`, `schema_name`                                                                                  |
-| `vowl.schema.check.pass_rate`    | `schema_name`                                                                                            |
-| `vowl.schema.row.count`          | `status`, `schema_name`, `vowl.row_quality.exact`, `vowl.row_quality.checks_not_attributed`              |
-| `vowl.schema.row.pass_rate`      | `schema_name`, `vowl.row_quality.exact`, `vowl.row_quality.checks_not_attributed`                        |
-| `vowl.run.schema.count`          | `status`                                                                                                 |
-| `vowl.run.check.count`           | `status`                                                                                                 |
-| `vowl.run.check.pass_rate`       | none                                                                                                     |
-| `vowl.run.row.count`             | `status`, `vowl.row_quality.exact`, `vowl.row_quality.checks_not_attributed`                             |
-| `vowl.run.row.pass_rate`         | `vowl.row_quality.exact`, `vowl.row_quality.checks_not_attributed`                                       |
-| `vowl.run.duration`              | none                                                                                                     |
+| Metric                           | Attributes                                                               |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| `vowl.check.check.count`         | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.count`           | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.pass_rate`       | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
+| `vowl.check.duration`            | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
+| `vowl.dimension.check.count`     | `status`, `schema_name`, `dimension`                                     |
+| `vowl.dimension.check.pass_rate` | `schema_name`, `dimension`                                               |
+| `vowl.dimension.row.count`       | `status`, `schema_name`, `dimension`                                     |
+| `vowl.dimension.row.pass_rate`   | `schema_name`, `dimension`                                               |
+| `vowl.schema.check.count`        | `status`, `schema_name`                                                  |
+| `vowl.schema.check.pass_rate`    | `schema_name`                                                            |
+| `vowl.schema.row.count`          | `status`, `schema_name`                                                  |
+| `vowl.schema.row.pass_rate`      | `schema_name`                                                            |
+| `vowl.run.schema.count`          | `status`                                                                 |
+| `vowl.run.check.count`           | `status`                                                                 |
+| `vowl.run.check.pass_rate`       | none                                                                     |
+| `vowl.run.row.count`             | `status`                                                                 |
+| `vowl.run.row.pass_rate`         | none                                                                     |
+| `vowl.run.duration`              | none                                                                     |
 
 Every check-level metric carries the same attributes, apart from `status` on
 the counts, so you can filter and join them the same way. `severity` is left
@@ -238,8 +228,7 @@ the 3 columns in the contract, and they all pass. So the run has 7 checks: 4
 passed and 3 failed. The numbers below are the real output of this run.
 
 To keep it short, the check counts leave out statuses with a count of 0 (for
-example `status="ERROR"`), and every reading leaves out
-`vowl.row_quality.exact`, `vowl.row_quality.checks_not_attributed`, the durations and the run identity attributes. The
+example `status="ERROR"`), and every reading leaves out the durations and the run identity attributes. The
 check lines show only the attributes that tell them apart. Every other reading
 the run sends is shown.
 
@@ -329,7 +318,7 @@ vowl.run.row.pass_rate:     0.925  {}
 ```
 
 Every level has 7 checks in total, because check counts add up. Rows do not
-add up until the run level: 5 + 3 rows that failed at dimension level become 7 at
+add up until the run level: 5 + 3 failed rows at dimension level become 7 at
 schema level for `orders`, and the run level adds `orders` and `refunds`.
 [Exporting to dq_metrics.json](json-export.md#worked-example) shows the same
 run as it appears in the file.

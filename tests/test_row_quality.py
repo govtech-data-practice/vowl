@@ -23,16 +23,16 @@ from vowl.adapters.ibis_adapter import IbisAdapter
 from vowl.config import ValidationConfig
 from vowl.contracts.models import get_latest_version
 from vowl.validation.row_quality import keys, pushdown
-from vowl.validation.row_quality.certify import certify_failed_rows_query, certify_scalar_query
+from vowl.validation.row_quality.certify import certify_row_query, certify_scalar_query
 from vowl.validation.row_quality.selection import (
     REASON_COUNTS_VALUES,
     REASON_CROSS_SOURCE,
     REASON_ERROR,
-    REASON_NOT_MERGEABLE,
+    REASON_NO_MATCH_KEY,
     REASON_NOT_ROW_LEVEL,
     REASON_OPERATOR,
-    REASON_PROBE_FAILURE,
-    REASON_TOLERATED_NOT_FETCHED,
+    REASON_PASSED_NOT_ATTRIBUTED,
+    REASON_QUERY_FAILED,
     REASON_TRUNCATED,
     identifies_bad_rows,
 )
@@ -149,16 +149,14 @@ def test_counts_match_the_truth_per_schema_and_dimension(backend: str):
     schema = _schema_row(result)
     assert schema["total_rows"] == 11
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"]) == 9
-    assert schema["tolerated_rows"] == 1
     assert schema["passed_rows"] == 2
     assert schema["pass_rate"] == pytest.approx(2 / 11)
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
 
     dimensions = _dimension_rows(result)
     assert dimensions["validity"]["failed_rows"] == _truth(con, ["c < 0", "c > 5"])
     assert dimensions["uniqueness"]["failed_rows"] == 3
     assert dimensions["completeness"]["failed_rows"] == 2
-    assert dimensions["completeness"]["tolerated_rows"] == 1
 
     checks = _check_rows(result)
     assert checks["negative"]["route"] == "server_predicate"
@@ -167,17 +165,65 @@ def test_counts_match_the_truth_per_schema_and_dimension(backend: str):
     assert checks["twos_distinct"]["route"] == "server_lookup"
     assert checks["twos_distinct"]["reason"] == "not certified for pushdown: uses a FROM that is not the table itself"
     assert checks["twos_distinct"]["attributed_rows"] == 3
-    assert checks["ones_inverted"]["counted"] is False
+    assert checks["ones_inverted"]["row_level"] is False
     assert checks["ones_inverted"]["reason"] == REASON_OPERATOR
-    assert checks["threes_tolerated"]["tolerated"] is True
+    threes = checks["threes_tolerated"]
+    assert (threes["route"], threes["reason"]) == ("", REASON_PASSED_NOT_ATTRIBUTED)
+    assert (threes["scalar_count"], threes["attributed_rows"], threes["approximate"]) == (1, None, False)
 
 
-def test_all_violations_counts_tolerated_rows_as_failed():
-    con, result = _mixed("duckdb", ValidationConfig(row_issue_scope="all_violations"))
+def test_attribute_tolerated_rows_counts_passed_checks_as_failed():
+    con, result = _mixed("duckdb", ValidationConfig(attribute_tolerated_rows=True))
 
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL", "c = 3"]) == 10
-    assert schema["tolerated_rows"] == 1
+    threes = _check_rows(result)["threes_tolerated"]
+    assert (threes["route"], threes["reason"], threes["attributed_rows"]) == ("server_predicate", "", 1)
+
+
+def test_passed_checks_run_no_query_by_default(monkeypatch: pytest.MonkeyPatch):
+    calls: list[str] = []
+    original = IbisAdapter.run_arrow_query
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", lambda self, sql: calls.append(sql) or original(self, sql))
+    _, result = _mixed("duckdb")
+
+    result.get_row_quality_df()
+
+    assert calls and not any("c = 3" in sql for sql in calls)
+
+
+def test_a_dimension_with_only_passed_checks_has_no_failed_rows():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, 3), (3, 4)")
+    checks = [_check("negative", "c < 0"), _check("threes", "c = 3", dimension="completeness", mustBeLessThan=5)]
+
+    result = _validate(con, [_schema("t", checks)])
+
+    completeness = _dimension_rows(result)["completeness"]
+    assert (completeness["failed_rows"], completeness["pass_rate"], completeness["approximate"]) == (0, 1.0, False)
+    assert (completeness["checks_row_level"], completeness["checks_not_attributable"]) == (1, 0)
+    assert _schema_row(result)["failed_rows"] == 1
+
+
+def test_a_passed_check_with_no_count_is_not_attributed(monkeypatch: pytest.MonkeyPatch):
+    import vowl.validation.row_quality.selection as selection_module
+
+    original = selection_module.scalar_row_count
+    monkeypatch.setattr(
+        selection_module,
+        "scalar_row_count",
+        lambda cr: None if cr.check_name == "threes_tolerated" else original(cr),
+    )
+    _, result = _mixed("duckdb")
+
+    threes = _check_rows(result)["threes_tolerated"]
+    assert (threes["reason"], threes["attributed_rows"], threes["approximate"]) == (
+        REASON_PASSED_NOT_ATTRIBUTED,
+        None,
+        False,
+    )
+    assert _schema_row(result)["approximate"] is False
 
 
 def test_print_summary_reports_the_same_numbers(capsys: pytest.CaptureFixture[str]):
@@ -238,7 +284,7 @@ def test_duckdb_nested_and_blob_columns():
     result = _validate(con, [_schema("t", checks, properties)])
 
     assert _schema_row(result)["failed_rows"] == 4
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
 
 
 def test_duckdb_data_columns_named_like_vowl_aliases_do_not_collide():
@@ -297,7 +343,7 @@ def test_duckdb_interval_and_bit_columns_are_counted_without_an_annotated_table(
 
     assert _check_rows(result)["one_day"]["route"] == "server_predicate"
     assert _schema_row(result)["failed_rows"] == 3
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
     # Arrow cannot export INTERVAL, so annotated output keeps the checks as residues.
     output = result.get_annotated_output()
     assert "t" not in output["annotated"]
@@ -330,7 +376,7 @@ def test_duplicates_count_once_per_copy_not_once_per_check():
     result = _validate(con, [_schema("t", checks)])
 
     assert _schema_row(result)["failed_rows"] == 3
-    assert {row["attributed_rows"] for row in _check_rows(result).values() if row["counted"] and row["route"]} == {3}
+    assert {row["attributed_rows"] for row in _check_rows(result).values() if row["row_level"] and row["route"]} == {3}
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +395,7 @@ def test_duplicates_count_once_per_copy_not_once_per_check():
     ],
 )
 def test_certification_accepts_pure_row_filters(query: str):
-    assert certify_failed_rows_query(query, "t", "duckdb") == (True, "")
+    assert certify_row_query(query, "t", "duckdb") == (True, "")
 
 
 @pytest.mark.parametrize(
@@ -378,7 +424,7 @@ def test_certification_accepts_pure_row_filters(query: str):
     ],
 )
 def test_certification_rejects_other_shapes(query: str, rule: str):
-    assert certify_failed_rows_query(query, "t", "duckdb") == (False, rule)
+    assert certify_row_query(query, "t", "duckdb") == (False, rule)
 
 
 @pytest.mark.parametrize(
@@ -386,13 +432,13 @@ def test_certification_rejects_other_shapes(query: str, rule: str):
     [("SELECT TOP 5 * FROM t", "tsql"), ("SELECT * FROM t FETCH FIRST 5 ROWS ONLY", "postgres")],
 )
 def test_certification_rejects_top_and_fetch(query: str, dialect: str):
-    assert certify_failed_rows_query(query, "t", dialect) == (False, "LIMIT")
+    assert certify_row_query(query, "t", dialect) == (False, "LIMIT")
 
 
 def test_certification_matches_the_qualifiers_the_query_writes():
-    assert certify_failed_rows_query("SELECT * FROM t", "db.t", "duckdb") == (True, "")
-    assert certify_failed_rows_query("SELECT * FROM db.t", "db.t", "duckdb") == (True, "")
-    assert certify_failed_rows_query("SELECT * FROM x.t", "db.t", "duckdb")[0] is False
+    assert certify_row_query("SELECT * FROM t", "db.t", "duckdb") == (True, "")
+    assert certify_row_query("SELECT * FROM db.t", "db.t", "duckdb") == (True, "")
+    assert certify_row_query("SELECT * FROM x.t", "db.t", "duckdb")[0] is False
 
 
 def test_certification_accepts_a_single_count():
@@ -421,7 +467,7 @@ def test_composite_primary_key_certifies_as_a_row_filter(dialect: str):
     refs = _contract([_schema("t", [], properties=_COMPOSITE_KEY)]).get_check_references_by_schema()["t"]
     (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
     assert certify_check(ref, "t", dialect, use_try_cast=False) == (True, "")
-    assert certify_failed_rows_query(ref.get_failed_rows_query(dialect), "t", dialect) == (True, "")
+    assert certify_row_query(ref.get_row_query(dialect), "t", dialect) == (True, "")
 
 
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
@@ -449,7 +495,7 @@ def test_count_of_an_expression_skips_null_rows_and_is_pushed_down():
     assert row["route"] == "server_predicate"
     assert row["attributed_rows"] == 2
     assert _schema_row(result)["failed_rows"] == 2
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
     annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
     assert sorted(row["id"] for row in annotated if row["check_info"]) == [1, 4]
 
@@ -465,7 +511,7 @@ def test_aliased_count_is_counted_and_annotated():
     row = _check_rows(result)["negative"]
     assert row["route"] == "server_predicate"
     assert row["attributed_rows"] == 2
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
     output = result.get_annotated_output()
     assert "t::negative" not in output["residues"]
     annotated = output["annotated"]["t"].to_arrow().to_pylist()
@@ -521,7 +567,7 @@ def test_chunk_size_does_not_change_the_numbers(monkeypatch: pytest.MonkeyPatch,
     result = _validate(con, [_schema("t", checks)])
 
     assert _schema_row(result)["failed_rows"] == _count(con, "SELECT COUNT(*) FROM t WHERE c < 70")
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
     counts = {cr.check_name: cr.failed_rows_count for cr in result.check_results}
     assert all(row["attributed_rows"] == counts[name] for name, row in _check_rows(result).items() if row["route"])
 
@@ -534,10 +580,10 @@ def test_more_than_five_hundred_checks_on_sqlite():
     result = _validate(con, [_schema("t", checks)])
 
     assert _schema_row(result)["failed_rows"] == _count(con, "SELECT COUNT(*) FROM t WHERE c < 510")
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
 
 
-def test_a_branch_that_fails_is_not_attributed(monkeypatch: pytest.MonkeyPatch):
+def test_a_branch_that_fails_is_not_attributable(monkeypatch: pytest.MonkeyPatch):
     original = IbisAdapter.run_arrow_query
 
     def failing(self, sql: str):
@@ -555,18 +601,13 @@ def test_a_branch_that_fails_is_not_attributed(monkeypatch: pytest.MonkeyPatch):
 
     checks_df = _check_rows(result)
     marker = checks_df["marker"]
-    assert (marker["counted"], marker["route"], marker["reason"]) == (True, "", REASON_PROBE_FAILURE)
-    assert (marker["attributed"], marker["scalar_count"], marker["attributed_rows"], marker["exact"]) == (
-        False,
-        1,
-        None,
-        False,
-    )
+    assert (marker["row_level"], marker["route"], marker["reason"]) == (True, "", REASON_QUERY_FAILED)
+    assert (marker["scalar_count"], marker["attributed_rows"], marker["approximate"]) == (1, None, True)
     schema = _schema_row(result)
     # The marker's row is left out, so the numbers are approximate.
     assert schema["failed_rows"] == 2
-    assert schema["exact"] is False
-    assert (schema["checks_not_counted"], schema["checks_not_attributed"]) == (0, 1)
+    assert schema["approximate"] is True
+    assert (schema["checks_not_row_level"], schema["checks_not_attributable"]) == (0, 1)
 
 
 def test_single_scan_form_matches_the_union_form(monkeypatch: pytest.MonkeyPatch):
@@ -596,7 +637,7 @@ def test_max_failed_rows_does_not_change_pushdown_numbers(cap: int):
     _, result = _mixed("duckdb", ValidationConfig(max_failed_rows=cap))
 
     assert _schema_row(result)["failed_rows"] == 9
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -648,7 +689,7 @@ def test_collation_does_not_merge_rows_without_a_key_entry(unkeyed, monkeypatch:
     assert (checks_df["upper_a"]["route"], checks_df["upper_a"]["attributed_rows"]) == ("server_predicate", 2)
     schema = _schema_row(result)
     # Grouping on the plain NOCASE column merges the three rows into one of two copies.
-    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (4, 3, True)
+    assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (4, 3, False)
     assert not any("_vowl_per_row" in sql for sql in statements)
 
 
@@ -662,7 +703,7 @@ def test_plain_column_keys_merge_rows_when_the_keyless_count_cannot_run(unkeyed,
     result = _validate(con, [_schema("t", checks, properties=[{"name": "name"}])])
 
     schema = _schema_row(result)
-    assert (schema["failed_rows"], schema["exact"]) == (2, False)
+    assert (schema["failed_rows"], schema["approximate"]) == (2, True)
 
 
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
@@ -673,11 +714,10 @@ def test_certified_checks_are_exact_without_a_key_entry(backend: str, request: p
 
     schema = _schema_row(unkeyed_result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c IS NULL"]) == _schema_row(keyed)["failed_rows"]
-    assert schema["tolerated_rows"] == _schema_row(keyed)["tolerated_rows"] == 1
     assert schema["total_rows"] == 11
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
     assert _dimension_rows(unkeyed_result) == _dimension_rows(keyed)
-    assert all(row["exact"] for row in _check_rows(unkeyed_result).values() if row["counted"])
+    assert not any(row["approximate"] for row in _check_rows(unkeyed_result).values() if row["row_level"])
 
 
 @pytest.mark.parametrize("cap", [0, 1])
@@ -686,28 +726,28 @@ def test_max_failed_rows_does_not_change_keyless_numbers(unkeyed, cap: int):
 
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c IS NULL"])
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
 
 
 def test_uncertified_check_without_a_key_entry_is_exact_on_the_table(unkeyed):
     con, result = _mixed("duckdb")
 
     twos = _check_rows(result)["twos_distinct"]
-    assert (twos["route"], twos["attributed_rows"], twos["exact"]) == ("client_lookup", 3, True)
+    assert (twos["route"], twos["attributed_rows"], twos["approximate"]) == ("client_lookup", 3, False)
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"])
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
 
 
 def test_uncertified_check_is_not_exact_with_attribution_disabled():
-    con, result = _mixed("duckdb", ValidationConfig(disable_table_attributed_counts=True))
+    con, result = _mixed("duckdb", ValidationConfig(row_counts="scalar"))
 
     twos = _check_rows(result)["twos_distinct"]
-    assert (twos["route"], twos["exact"]) == ("server_scalar", False)
+    assert (twos["route"], twos["approximate"]) == ("server_scalar", True)
     schema = _schema_row(result)
     # DISTINCT returns one of the three copies, so the count is low and flagged.
     assert schema["failed_rows"] < _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"])
-    assert schema["exact"] is False
+    assert schema["approximate"] is True
 
 
 @pytest.mark.parametrize("fallback", ["chunk_limit", "statement_fails"])
@@ -722,7 +762,7 @@ def test_keyless_fallback_is_not_exact(unkeyed, monkeypatch: pytest.MonkeyPatch,
 
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c IS NULL"])
-    assert schema["exact"] is False
+    assert schema["approximate"] is True
 
 
 def _two_sources(config: ValidationConfig | None = None):
@@ -761,7 +801,7 @@ def test_pushdown_table_match_and_cross_source_rows_merge():
     assert checks["id_in_u"]["reason"] == REASON_CROSS_SOURCE
     # Rows (4, 5) twice and (9, 0) have no match in u. (2, 2) and (3, 2) have one.
     assert _schema_row(result)["failed_rows"] == _truth(con, ["c < 0", "c = 2", "id NOT IN (1, 2, 3)"]) == 7
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
 
 
 def test_join_fan_out_counts_each_table_row_once():
@@ -782,20 +822,20 @@ def test_join_fan_out_counts_each_table_row_once():
     assert sorted(row["id"] for row in annotated if row["check_info"]) == [1, 2, 3]
 
 
-def test_a_truncated_check_is_not_attributed():
+def test_a_truncated_check_is_not_attributable():
     _, result = _two_sources(ValidationConfig(max_failed_rows=1))
 
     row = _check_rows(result)["id_in_u"]
-    assert (row["route"], row["reason"], row["counted"], row["attributed"]) == ("", REASON_TRUNCATED, True, False)
+    assert (row["route"], row["reason"], row["row_level"], row["attributed_rows"]) == ("", REASON_TRUNCATED, True, None)
     # Its rows are left out of the row counts.
     schema = _schema_row(result)
-    assert (schema["exact"], schema["checks_not_attributed"]) == (False, 1)
+    assert (schema["approximate"], schema["checks_not_attributable"]) == (True, 1)
 
 
-def _not_attributed_pair():
+def _not_attributable_pair():
     """t has a truncated client_lookup check and a check with no match key.
 
-    Both are counted, neither is attributed."""
+    Both are row-level, neither is attributable."""
     t_con, u_con = _connect("duckdb"), _connect("duckdb")
     t_con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
     t_con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -2), (3, 3), (5, 4), (6, 9)")
@@ -821,42 +861,41 @@ def _not_attributed_pair():
     return _run_validation(_contract(schemas), adapters=adapters, config=ValidationConfig(max_failed_rows=1))
 
 
-def test_checks_not_attributed_is_counted_at_every_level():
-    result = _not_attributed_pair()
+def test_checks_not_attributable_is_counted_at_every_level():
+    result = _not_attributable_pair()
 
     checks = _check_rows(result)
-    assert (checks["id_in_u"]["reason"], checks["ids_negative"]["reason"]) == (REASON_TRUNCATED, REASON_NOT_MERGEABLE)
+    assert (checks["id_in_u"]["reason"], checks["ids_negative"]["reason"]) == (REASON_TRUNCATED, REASON_NO_MATCH_KEY)
     for name in ("id_in_u", "ids_negative"):
-        assert (checks[name]["counted"], checks[name]["attributed"], checks[name]["attributed_rows"]) == (
-            True,
-            False,
-            None,
-        )
-        assert checks[name]["exact"] is False
-    assert (checks["nine"]["attributed"], checks["nine"]["attributed_rows"]) == (True, 1)
+        assert (checks[name]["row_level"], checks[name]["route"], checks[name]["attributed_rows"]) == (True, "", None)
+        assert checks[name]["approximate"] is True
+    assert checks["nine"]["attributed_rows"] == 1
 
-    # Only the attributed check adds rows. The other two are flagged.
+    # Only the attributable check adds rows. The other two are flagged.
     schema = _schema_row(result)
-    assert (schema["failed_rows"], schema["checks_not_attributed"], schema["exact"]) == (1, 2, False)
+    assert (schema["failed_rows"], schema["checks_not_attributable"], schema["approximate"]) == (1, 2, True)
     dimensions = _dimension_rows(result)
     validity = dimensions["validity"]
-    assert (validity["failed_rows"], validity["checks_not_attributed"], validity["exact"]) == (1, 1, False)
-    assert (dimensions["conformity"]["checks_not_attributed"], dimensions["conformity"]["exact"]) == (0, True)
-    # A dimension whose counted checks are all not attributed has no row numbers.
-    assert (dimensions["consistency"]["failed_rows"], dimensions["consistency"]["checks_not_attributed"]) == (None, 1)
-    assert dimensions["consistency"]["exact"] is False
+    assert (validity["failed_rows"], validity["checks_not_attributable"], validity["approximate"]) == (1, 1, True)
+    assert (dimensions["conformity"]["checks_not_attributable"], dimensions["conformity"]["approximate"]) == (0, False)
+    # A dimension whose row-level checks are all not attributable has no row numbers.
+    assert (dimensions["consistency"]["failed_rows"], dimensions["consistency"]["checks_not_attributable"]) == (None, 1)
+    assert dimensions["consistency"]["approximate"] is True
 
     from vowl.validation.dq_metrics import run_row_counts
 
-    assert run_row_counts(result)[2:] == (False, 2)
+    assert run_row_counts(result)[2:] == (True, 2)
 
 
-def test_without_attribution_every_counted_check_is_not_attributed():
-    _, result = _two_sources(ValidationConfig(disable_table_attributed_counts=True))
+def test_without_attribution_every_row_level_check_is_not_attributable():
+    _, result = _two_sources(ValidationConfig(row_counts="scalar"))
 
     schema = _schema_row(result)
-    assert schema["checks_not_attributed"] == schema["checks_counted"] > 0
-    assert not any(row["attributed"] for row in _check_rows(result).values())
+    checks = _check_rows(result).values()
+    failed = sum(row["row_level"] and row["status"] == "FAILED" for row in checks)
+    # Passed checks are never attributed, so they are not counted as not attributable.
+    assert schema["checks_not_attributable"] == failed > 0
+    assert all(row["attributed_rows"] is None for row in checks)
 
 
 def test_primary_key_lets_a_column_subset_check_merge():
@@ -872,7 +911,7 @@ def test_primary_key_lets_a_column_subset_check_merge():
 
     assert _check_rows(keyed)["ids_negative"]["route"] == "server_lookup"
     assert _schema_row(keyed)["failed_rows"] == 3
-    assert _check_rows(unkeyed)["ids_negative"]["reason"] == REASON_NOT_MERGEABLE
+    assert _check_rows(unkeyed)["ids_negative"]["reason"] == REASON_NO_MATCH_KEY
     assert _schema_row(unkeyed)["failed_rows"] == 1
 
     # Annotated output merges the same checks on the same key.
@@ -928,7 +967,7 @@ def test_filter_conditions_apply_to_the_total_and_the_rows():
 
 
 @pytest.mark.parametrize(
-    ("operator", "expected", "counted"),
+    ("operator", "expected", "row_level"),
     [
         (None, None, True),
         ("mustBeLessThan", 5, True),
@@ -944,18 +983,18 @@ def test_filter_conditions_apply_to_the_total_and_the_rows():
         ("unknown", 0, False),
     ],
 )
-def test_operator_rule(operator, expected, counted: bool):
-    assert identifies_bad_rows(operator, expected) is counted
+def test_operator_rule(operator, expected, row_level: bool):
+    assert identifies_bad_rows(operator, expected) is row_level
 
 
-@pytest.mark.parametrize("scope", ["failed_checks", "all_violations"])
-def test_tolerated_rows_in_annotated_output(scope: str):
-    _, result = _mixed("duckdb", ValidationConfig(row_issue_scope=scope))
+@pytest.mark.parametrize("attribute_tolerated", [False, True])
+def test_tolerated_rows_in_annotated_output(attribute_tolerated: bool):
+    _, result = _mixed("duckdb", ValidationConfig(attribute_tolerated_rows=attribute_tolerated))
 
     annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
     items = [item for row in annotated if row["check_info"] for item in json.loads(row["check_info"])]
     tolerated = [item for item in items if item["check_name"] == "threes_tolerated"]
-    if scope == "all_violations":
+    if attribute_tolerated:
         assert tolerated == [{"check_name": "threes_tolerated", "tolerated": True}]
     else:
         assert tolerated == []
@@ -972,7 +1011,7 @@ def test_annotated_flagged_rows_equal_failed_rows():
     assert sum(1 for row in annotated if row["check_info"]) == _schema_row(result)["failed_rows"]
 
 
-def test_a_tolerated_check_without_pushdown_is_not_attributed_under_failed_checks():
+def test_a_passed_check_without_pushdown_is_not_fetched():
     class NoPushdown(IbisAdapter):
         def run_arrow_query(self, sql: str):
             raise NotImplementedError
@@ -984,17 +1023,15 @@ def test_a_tolerated_check_without_pushdown_is_not_attributed_under_failed_check
 
     checks = _check_rows(result)
     tolerated = checks["threes_tolerated"]
-    assert (tolerated["route"], tolerated["reason"]) == ("", REASON_TOLERATED_NOT_FETCHED)
-    assert (tolerated["attributed"], tolerated["attributed_rows"]) == (False, None)
+    assert (tolerated["route"], tolerated["reason"]) == ("", REASON_PASSED_NOT_ATTRIBUTED)
+    assert tolerated["attributed_rows"] is None
     assert tolerated["scalar_count"] == _truth(con, ["c = 3"])
     assert checks["negative"]["route"] == "client_lookup"
     schema = _schema_row(result)
-    # Its rows are not known, so neither are the tolerated rows.
-    assert schema["tolerated_rows"] is None
     # Without pushdown every check is matched onto the table, so DISTINCT keeps its copies.
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"]) == 9
-    # Tolerated rows are out of scope under failed_checks, so the headline stays exact.
-    assert (schema["exact"], schema["checks_not_attributed"]) == (True, 1)
+    # A passed check is never attributed, so the numbers stay exact.
+    assert (schema["approximate"], schema["checks_not_attributable"]) == (False, 0)
 
 
 def test_error_check_makes_the_numbers_inexact():
@@ -1008,12 +1045,12 @@ def test_error_check_makes_the_numbers_inexact():
     rows = _check_rows(result)
     assert rows["broken"]["reason"] == REASON_ERROR
     schema = _schema_row(result)
-    assert (schema["failed_rows"], schema["exact"]) == (1, False)
+    assert (schema["failed_rows"], schema["approximate"]) == (1, True)
     dimensions = _dimension_rows(result)
-    # accuracy has no counted check: no pass rate, not 100%.
+    # accuracy has no row-level check: no pass rate, not 100%.
     assert dimensions["accuracy"]["pass_rate"] is None
-    assert dimensions["accuracy"]["exact"] is False
-    assert dimensions["validity"]["exact"] is True
+    assert dimensions["accuracy"]["approximate"] is True
+    assert dimensions["validity"]["approximate"] is False
 
 
 def test_a_dimension_with_only_excluded_checks_has_no_pass_rate():
@@ -1023,8 +1060,8 @@ def test_a_dimension_with_only_excluded_checks_has_no_pass_rate():
     result = _validate(con, [_schema("t", [_check("inverted", "c = 1", dimension="accuracy", mustBeGreaterThan=5)])])
 
     accuracy = _dimension_rows(result)["accuracy"]
-    assert (accuracy["failed_rows"], accuracy["pass_rate"], accuracy["checks_counted"]) == (None, None, 0)
-    assert accuracy["checks_not_counted"] == 1
+    assert (accuracy["failed_rows"], accuracy["pass_rate"], accuracy["checks_row_level"]) == (None, None, 0)
+    assert accuracy["checks_not_row_level"] == 1
 
 
 def test_an_empty_table_has_no_pass_rate():
@@ -1037,7 +1074,7 @@ def test_an_empty_table_has_no_pass_rate():
     assert (schema["total_rows"], schema["failed_rows"], schema["pass_rate"]) == (0, 0, None)
 
 
-def test_non_row_level_checks_are_not_counted():
+def test_non_row_level_checks_are_not_row_level():
     con = _connect("duckdb")
     con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
     con.raw_sql("INSERT INTO t VALUES (1, 1), (2, 5)")
@@ -1049,7 +1086,7 @@ def test_non_row_level_checks_are_not_counted():
 
 
 def test_statistics_turned_off(capsys: pytest.CaptureFixture[str]):
-    _, result = _mixed("duckdb", ValidationConfig(enable_additional_schema_statistics=False))
+    _, result = _mixed("duckdb", ValidationConfig(row_counts="off"))
 
     schema = _schema_row(result)
     assert (schema["total_rows"], schema["failed_rows"], schema["pass_rate"]) == (None, None, None)
@@ -1058,10 +1095,12 @@ def test_statistics_turned_off(capsys: pytest.CaptureFixture[str]):
 
 
 def test_capped_statistics_no_longer_cap_the_total():
-    _, result = _mixed("duckdb", ValidationConfig(max_rows_for_statistics=2))
+    with pytest.warns(DeprecationWarning, match="max_rows_for_statistics"):
+        config = ValidationConfig(max_rows_for_statistics=2)
+    _, result = _mixed("duckdb", config)
 
     assert _schema_row(result)["total_rows"] == 11
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
 
 
 def test_the_report_is_computed_once(monkeypatch: pytest.MonkeyPatch):
@@ -1079,7 +1118,7 @@ def test_the_report_is_computed_once(monkeypatch: pytest.MonkeyPatch):
     assert len(calls) == first
 
 
-def test_otel_row_gauges_carry_the_exact_attribute():
+def test_otel_row_gauges_carry_no_trust_attributes():
     pytest.importorskip("opentelemetry.sdk")
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import InMemoryMetricReader
@@ -1096,7 +1135,11 @@ def test_otel_row_gauges_carry_the_exact_attribute():
                     points[metric.name] = [(dict(p.attributes), p.value) for p in metric.data.data_points]
     failed = [value for attrs, value in points["vowl.schema.row.count"] if attrs["status"] == "FAILED"]
     assert failed == [9]
-    assert all(attrs["vowl.row_quality.exact"] is True for attrs, _ in points["vowl.schema.row.count"])
+    assert all(
+        not any(key.startswith("vowl.row_quality.") for key in attrs)
+        for series in points.values()
+        for attrs, _ in series
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1146,7 +1189,7 @@ def test_spark_single_scan_keeps_negative_zero_and_nan_apart(spark_session):
     result = _run_validation(_contract([_schema("t", checks)]), adapters={"t": IbisAdapter(con)})
 
     schema = _schema_row(result)
-    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (7, 7, True)
+    assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (7, 7, False)
     rows_by_check = _check_rows(result)
     assert rows_by_check["neg_zero"]["route"] == "server_predicate"
     # The default matches it onto the exported table, so the export must keep NaN.
@@ -1170,7 +1213,7 @@ def test_spark_utf8_lcase_values_caught_by_different_checks_stay_apart(spark_ses
     result = _run_validation(_contract([_schema("t", checks)]), adapters={"t": IbisAdapter(con)})
 
     schema = _schema_row(result)
-    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (4, 3, True)
+    assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (4, 3, False)
     # With a plain column key the merged group lands in one dimension, so they would not split 2 and 1.
     dimensions = _dimension_rows(result)
     assert (dimensions["validity"]["failed_rows"], dimensions["conformity"]["failed_rows"]) == (2, 1)
@@ -1239,7 +1282,7 @@ def test_a_small_byte_budget_does_not_change_the_numbers(monkeypatch: pytest.Mon
     con, result = _mixed("duckdb")
 
     assert _schema_row(result)["failed_rows"] == 9
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
 
 
 def test_an_ungroupable_key_sends_the_schema_to_fetched_rows(monkeypatch: pytest.MonkeyPatch):
@@ -1273,7 +1316,7 @@ def test_a_zero_total_from_a_failed_count_is_counted_again():
     result = _run_validation(_contract([_schema("t", [_check("negative", "c < 0")])]), adapters={"t": ZeroTotals(con)})
 
     schema = _schema_row(result)
-    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (3, 1, True)
+    assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (3, 1, False)
 
 
 def test_a_total_below_a_checks_rows_is_not_exact():
@@ -1290,13 +1333,13 @@ def test_a_total_below_a_checks_rows_is_not_exact():
     adapters = {"t": LowTotalsNoPushdown(con)}
     contract = _contract([_schema("t", [_check("negative", "c < 0")])])
 
-    fast = _run_validation(contract, adapters=adapters, config=ValidationConfig(disable_table_attributed_counts=True))
-    assert _schema_row(fast)["exact"] is False
+    fast = _run_validation(contract, adapters=adapters, config=ValidationConfig(row_counts="scalar"))
+    assert _schema_row(fast)["approximate"] is True
 
     # The exported table gives the true total.
     attributed = _run_validation(contract, adapters=adapters)
     schema = _schema_row(attributed)
-    assert (schema["total_rows"], schema["failed_rows"], schema["exact"]) == (3, 2, True)
+    assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (3, 2, False)
 
 
 def test_arrow_values_survive_the_cross_route_merge():
@@ -1310,9 +1353,9 @@ def test_arrow_values_survive_the_cross_route_merge():
     outcome.rows = {(b"1",): [0b01, 2, (0, 0)], (b"2",): [0b01, 1, (0, 1)]}
     fetched = [(1, pa.table({"id": pa.array([1, 3], pa.int32())}))]
 
-    entries, exact, matched = merge_onto_table(outcome, fetched, ["id"], table, table_key_index(table, ["id"]))
+    entries, approximate, matched = merge_onto_table(outcome, fetched, ["id"], table, table_key_index(table, ["id"]))
 
-    assert exact is True
+    assert approximate is False
     assert sorted(entries) == [(0b01, 1), (0b10, 2), (0b11, 2)]
     assert matched == {1: (4, 0)}
 
@@ -1339,7 +1382,7 @@ def test_hdb_resale_numbers_match_annotated_output(hdb_frame, cap: int | None):
 
     schema = _schema_row(result, "hdb_resale_prices")
     assert schema["failed_rows"] == 10_571
-    assert schema["exact"] is True
+    assert schema["approximate"] is False
     dimensions = _dimension_rows(result, "hdb_resale_prices")
     assert dimensions["uniqueness"]["failed_rows"] == 10_551
     assert dimensions["conformity"]["failed_rows"] == 10
@@ -1415,27 +1458,31 @@ def test_count_distinct_checks_count_the_rows_holding_the_values():
 
     checks = _check_rows(result)
     for name in ("distinct_twos", "distinct_twos_sub"):
-        assert checks[name]["counted"] is True
-        assert (checks[name]["scalar_count"], checks[name]["attributed_rows"], checks[name]["exact"]) == (1, 3, True)
+        assert checks[name]["row_level"] is True
+        assert (checks[name]["scalar_count"], checks[name]["attributed_rows"], checks[name]["approximate"]) == (
+            1,
+            3,
+            False,
+        )
     # COUNT(DISTINCT c) skips NULLs, so the check catches no rows and passes.
     assert checks["distinct_nulls"]["status"] == "PASSED"
-    assert (checks["distinct_nulls"]["scalar_count"], checks["distinct_nulls"]["attributed_rows"]) == (0, 0)
+    assert (checks["distinct_nulls"]["scalar_count"], checks["distinct_nulls"]["attributed_rows"]) == (0, None)
     assert _schema_row(result)["failed_rows"] == _truth(con, ["c = 2"])
-    assert _schema_row(result)["exact"] is True
+    assert _schema_row(result)["approximate"] is False
 
 
 def test_count_distinct_checks_are_not_exact_with_attribution_disabled():
-    _, result = _distinct(ValidationConfig(disable_table_attributed_counts=True))
+    _, result = _distinct(ValidationConfig(row_counts="scalar"))
 
     check = _check_rows(result)["distinct_twos"]
-    assert (check["route"], check["scalar_count"], check["attributed"], check["exact"]) == (
+    assert (check["route"], check["scalar_count"], check["attributed_rows"], check["approximate"]) == (
         "server_scalar",
         1,
-        False,
-        False,
+        None,
+        True,
     )
     assert check["reason"] == REASON_COUNTS_VALUES
-    assert _schema_row(result)["exact"] is False
+    assert _schema_row(result)["approximate"] is True
 
 
 def test_count_distinct_annotates_every_row_holding_the_value():
@@ -1448,7 +1495,7 @@ def test_count_distinct_annotates_every_row_holding_the_value():
     assert flagged == [2, 2, 2]
 
 
-def test_errored_count_distinct_check_blocks_exact():
+def test_errored_count_distinct_check_is_inexact():
     checks = [
         _check("negative", "c < 0"),
         {"name": "broken", "query": "SELECT COUNT(DISTINCT nope) FROM t WHERE c = 2", "mustBe": 0},
@@ -1456,7 +1503,7 @@ def test_errored_count_distinct_check_blocks_exact():
     _, result = _distinct(checks=checks)
 
     assert _check_rows(result)["broken"]["reason"] == REASON_ERROR
-    assert _schema_row(result)["exact"] is False
+    assert _schema_row(result)["approximate"] is True
 
 
 @pytest.mark.parametrize(("cap", "truncated"), [(2, True), (3, False)])
@@ -1467,7 +1514,7 @@ def test_truncation_is_detected_from_the_rows_not_the_check_count(cap: int, trun
 
     check = _check_rows(result)["distinct_twos_sub"]
     # server_lookup counts in SQL, so the cap only reaches the annotated output.
-    assert (check["route"], check["attributed_rows"], check["exact"]) == ("server_lookup", 3, True)
+    assert (check["route"], check["attributed_rows"], check["approximate"]) == ("server_lookup", 3, False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         annotated = result.get_annotated_output()["annotated"]["t"].to_arrow()

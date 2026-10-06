@@ -120,19 +120,19 @@ def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | Non
 def format_passed_rows(overall: OverallSummary) -> str:
     """Format a schema's passed rows as ``passed / total (percent)``.
 
-    ``N/A`` stands in for numbers that are unavailable: no check was counted,
-    every counted check is not attributed, row statistics are off, or the table
+    ``N/A`` stands in for numbers that are unavailable: no check was row-level,
+    every row-level check is not attributable, row statistics are off, or the table
     is empty. ``(approx.)`` marks numbers
-    that are not exact, with the number of counted checks left out of them
+    that are approximate, with the number of row-level checks left out of them
     when there are any.
     """
     if overall.passed_rows is None:
         return "N/A"
     suffix = ""
-    if not overall.exact:
-        count = overall.checks_not_attributed
+    if overall.approximate:
+        count = overall.checks_not_attributable
         noun = "check" if count == 1 else "checks"
-        suffix = f" (approx., {count} {noun} not attributed)" if count else " (approx.)"
+        suffix = f" (approx., {count} {noun} not attributable)" if count else " (approx.)"
     # total_rows may be 0 (empty table), in which case passed_row_percentage
     # is None. Treat any falsy total_rows as N/A rather than feeding None into
     # _truncate_pct.

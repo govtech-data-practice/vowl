@@ -1,27 +1,26 @@
 ---
-title: How Rows Are Counted
+title: How Attributed Rows Work
 description: >-
-  Why counting the rows that failed is harder than adding up checks, the
+  Why the row counts are harder to get than adding up checks, the
   grains vowl counts at, and why counts are exact only when each failed row is
   attributed to the source table.
 ---
 
-# How Rows Are Counted
+# How Attributed Rows Work
 
-[How Failed Rows Are Derived](how-failed-rows-are-derived.md) showed how each
-check returns its failed rows. This page covers
-[attributed rows](failed-row-results.md#failed-row-results): how vowl
-attributes the failed rows to the source table and turns them into row
-counts, such as **Passed Rows** in the summary and `get_row_quality_df()`.
+This page explains how vowl turns failed rows into
+[attributed rows](check-results.md#from-query-output-to-row-counts), and
+attributed rows into the row counts.
 
-## Why counting the rows that failed is hard {#why-counting-failed-rows-is-hard}
+## Why the row counts are hard to get {#why-counting-failed-rows-is-hard}
 
 Adding up each check's failed rows seems enough, but three things get in the
 way:
 
-- **One row can fail several checks.** In a table with 5 rows, no more than
-  5 rows can fail, so vowl counts each row once within each grain: the
-  dimension, the schema and the run.
+- **One row can fail several checks.** In the `orders` table, the milk row
+  fails two checks. The table has 5 rows, so no more than 5 rows can fail.
+  vowl counts each row once within each grain: the dimension, the schema and
+  the run.
 - **Some checks return rows that can't be traced back to the source table.**
   A `DISTINCT` drops copies, a join can repeat rows, and a check may return
   only some columns. Such rows can't be counted as they are.
@@ -32,9 +31,8 @@ way:
 
 ## Grains of row counts {#grains-of-failed-row-counts}
 
-vowl counts the rows that failed at four grains. This page uses the `orders` table
-from the [example](failed-row-results.md#the-example-used-in-this-section)
-and its three counted checks. A ✗ marks a row the check catches:
+vowl gives row counts at four grains. This page uses an `orders` table with
+three row-level checks. A ✗ marks a failed row of the check:
 
 | Row | order_id | item  | price | quantity | `price_must_be_positive` | `quantity_is_filled` | `order_id_is_unique` |
 | --- | -------- | ----- | ----- | -------- | ------------------------ | -------------------- | -------------------- |
@@ -45,20 +43,20 @@ and its three counted checks. A ✗ marks a row the check catches:
 | 5   | 2        | bread | -2.00 | 1        | ✗                        |                      | ✗                    |
 
 Rows 2 and 5 are exact copies. Rows 2, 3 and 5 fail at least one check. Rows
-1 and 4 are clean. The fourth check, `average_price_in_range`, is not counted,
-so it has no row counts at any grain.
+1 and 4 are clean. A check that returns one number, such as an average, is
+not row-level, so it has no row counts at any grain.
 
-| Grain         | What it counts                                      | In the example                                                                | Where to see it                                                                                                                                                                                |
-| ------------- | --------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Check**     | The rows one counted check caught                   | `price_must_be_positive`: 3, `quantity_is_filled`: 1, `order_id_is_unique`: 2 | `scalar_count` in `get_row_quality_df(by="check")` and the check-level [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted). `attributed_rows` sits next to it. |
-| **Dimension** | The rows that failed any check of the dimension     | conformity: 3, completeness: 1, uniqueness: 2                                 | `get_row_quality_df(by="dimension")`                                                                                                                                                           |
-| **Schema**    | The rows of the table that failed any counted check | 3 of 5                                                                        | **Passed Rows** in the summary, `get_row_quality_df()`                                                                                                                                         |
-| **Run**       | The schema numbers added up                         | 3 of 5                                                                        | the run-level [DQ metrics](../../dq-metrics/understanding-metrics.md)                                                                                                                          |
+| Grain         | What it counts                                        | In the example                                                                | Where to see it                                                                                                                                                                                |
+| ------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Check**     | The failed rows of one row-level check                | `price_must_be_positive`: 3, `quantity_is_filled`: 1, `order_id_is_unique`: 2 | `scalar_count` in `get_row_quality_df(by="check")` and the check-level [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted). `attributed_rows` sits next to it. |
+| **Dimension** | The rows that fail any check of the dimension         | conformity: 3, completeness: 1, uniqueness: 2                                 | `get_row_quality_df(by="dimension")`                                                                                                                                                           |
+| **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | **Passed Rows** in the summary, `get_row_quality_df()`                                                                                                                                         |
+| **Run**       | The schema numbers added up                           | 3 of 5                                                                        | the run-level [DQ metrics](../../dq-metrics/understanding-metrics.md)                                                                                                                          |
 
 The check numbers add up to 3 + 1 + 2 = 6, but only 3 rows failed. Each of
-them was caught by two checks:
+them failed two checks:
 
-| Row       | Caught by                                      |
+| Row       | Failed                                         |
 | --------- | ---------------------------------------------- |
 | 2 (bread) | `price_must_be_positive`, `order_id_is_unique` |
 | 3 (milk)  | `price_must_be_positive`, `quantity_is_filled` |
@@ -99,14 +97,15 @@ third is worked out from it:
 
 | Number              | What it is                                                       | Shows | Where you see it                                                                                                           |
 | ------------------- | ---------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | The number the count query returned. It decides pass or fail.    | 2     | `actual`, `failed_rows_count`, `scalar_count` in `get_row_quality_df(by="check")` and the check-level DQ metrics           |
-| **Failed rows**     | The rows the failed rows query returned                          | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                                      |
+| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count`, `scalar_count` in `get_row_quality_df(by="check")` and the check-level DQ metrics           |
+| **Failed rows**     | The rows the row query returned                                  | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                                      |
 | **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_row_quality_df(by="check")`, the annotated output and every count above the check grain[^scalar] |
 
 [^scalar]:
     Except with
-    [`disable_table_attributed_counts`](../../run-settings.md#disable_table_attributed_counts)
-    set. The counts above the check grain then add up the scalar counts.
+    [`row_counts="scalar"`](../../run-settings.md#row_counts)
+    set. The counts above the check grain then add up the scalar counts of the
+    failed checks.
 
 For a plain filter such as `WHERE price <= 0` without `DISTINCT`, all three
 show 3. A join can do the opposite and return one row twice, so the scalar
@@ -139,7 +138,7 @@ It splits each table's checks into two groups:
 
 Under **Multi Table**, the summary shows **Non-unique Failed Rows**. It is
 the scalar counts (`actual`) of the failed Multi Table checks, simply added up.
-Unlike **Passed Rows**, it doesn't check whether two checks caught the same
+Unlike **Passed Rows**, it doesn't check whether two checks share a failed
 row.
 
 Say `orders` has two Multi Table checks, and `customers` holds customer 10
@@ -199,16 +198,16 @@ SELECT line_id, price FROM orders WHERE price < 0
 | 5       | -2.00 |
 
 - **If the match key is every column**, these rows lack `order_id`, `item`
-  and `quantity`, so vowl can't attribute them. The check is counted but
-  not attributed.
+  and `quantity`, so vowl can't attribute them. The check is row-level but
+  not attributable.
 - **If the match key is `line_id`**, vowl knows these are rows 2 and 5. The
-  check is attributed, and the bread rows still count once each.
+  check is attributable, and the bread rows still count once each.
 
 A check whose failed rows lack the match key columns is never attributable.
-It stays counted but is not attributed. It adds nothing to the row counts,
-which are marked not exact when it caught rows, and its failed rows become a
-[residue](annotating-the-source-table.md#residues). See
-[From query output to row counts](failed-row-results.md#from-query-output-to-row-counts).
+It stays row-level but is not attributable. It adds nothing to the row counts.
+When it has failed rows, the row counts are marked not exact. Its failed rows
+become a [residue](annotating-the-source-table.md#residues). See
+[Attributed rows](check-results.md#from-query-output-to-row-counts).
 The `reason` column of `get_row_quality_df(by="check")` says why:
 
 | `reason`                                                     | Meaning                                                                                                                                                              |
@@ -245,9 +244,9 @@ up in the table, or vowl downloads the table and looks them up on your
 machine. A plain filter, which only keeps or drops rows, needs neither.
 
 So vowl attributes the rows in the cheapest way it can, lets you turn
-attribution off, and marks every number that could be off. A counted check
+attribution off, and marks every number that could be off. A row-level check
 it can't attribute is left out of the row counts and flagged in
-`checks_not_attributed`. See
+`checks_not_attributable`. See
 [Counting Mechanisms](counting-mechanisms.md).
 
 ## How the numbers are put together
@@ -255,14 +254,14 @@ it can't attribute is left out of the row counts and flagged in
 Once each check's failed rows are attributed, vowl counts each table once, in
 five steps:
 
-1. **Collect each check's attributed rows.** For each counted check, vowl
+1. **Collect each check's attributed rows.** For each row-level check, vowl
    finds how many copies of each failed row the table holds, using one of the
    [routes](counting-mechanisms.md#the-four-routes). A check that is not
-   attributed adds nothing.
+   attributable adds nothing.
 2. **Merge them into one list.** Using the match key, vowl lists each
-   attributed row once, with the checks that caught it.
+   attributed row once, with the checks it failed.
 3. **Count the table's rows**, to get the total.
-4. **Add up** the rows that failed per dimension and per schema.
+4. **Add up** the row counts per dimension and per schema.
 5. **Flag numbers that may be off** as not
    [exact](counting-mechanisms.md#exact-numbers).
 
@@ -286,7 +285,7 @@ vowl works with distinct rows because a database can't point to "row 2" or
 appears twice".
 
 vowl puts the attributed rows of all checks into one list, with each distinct row
-once. For each one it keeps the checks that caught it and its number of
+once. For each one it keeps the checks it failed and its number of
 copies. For the copies it takes the highest number any check found, not the
 sum. Two checks found the 2 bread rows, and adding them would give 4:
 
@@ -299,7 +298,7 @@ sum. Two checks found the 2 bread rows, and adding them would give 4:
 
 The merged list:
 
-| Distinct row | Checks that caught it                          | Copies |
+| Distinct row | Checks it failed                               | Copies |
 | ------------ | ---------------------------------------------- | ------ |
 | bread        | `price_must_be_positive`, `order_id_is_unique` | 2      |
 | milk         | `price_must_be_positive`, `quantity_is_filled` | 1      |
@@ -328,8 +327,8 @@ It is never capped by `max_failed_rows`.
 
     1. The count from the merge query, if everything ran in one query.
     2. The row count of the downloaded table, if vowl downloaded it.
-    3. A count taken earlier in the run, if `max_rows_for_statistics` did not
-       cap it.
+    3. A count taken earlier in the run, if the deprecated
+       `max_rows_for_statistics` did not cap it.
     4. A new count from the data source.
     5. The capped count from earlier in the run. The numbers are then not
        exact.
@@ -340,36 +339,34 @@ It is never capped by `max_failed_rows`.
 
 From the merged list:
 
-- **`failed_rows`** is the copies of every distinct row caught by a failed
-  check.
-- **Tolerated rows** are the copies of every distinct row caught only by
-  checks that passed. See
-  [Tolerated rows](failed-row-results.md#tolerated-rows).
+- **`failed_rows`** is the copies of every distinct row that is a failed row
+  of a failed check. Passed checks add nothing unless
+  [`attribute_tolerated_rows`](../../run-settings.md#attribute_tolerated_rows)
+  is set. See [Tolerated rows](check-results.md#tolerated-rows).
 - **Passed rows** are the total minus `failed_rows`.
 - **Pass rate** is the passed rows divided by the total.
 - **Per dimension**, the same, using only that dimension's checks.
 
-| Grain        | Checks used              | Rows that failed | Pass rate |
-| ------------ | ------------------------ | ---------------- | --------- |
-| orders       | all three                | 2, 3, 5 → 3      | 2 / 5     |
-| conformity   | `price_must_be_positive` | 2, 3, 5 → 3      | 2 / 5     |
-| completeness | `quantity_is_filled`     | 3 → 1            | 4 / 5     |
-| uniqueness   | `order_id_is_unique`     | 2, 5 → 2         | 3 / 5     |
+| Grain        | Checks used              | `failed_rows` | Pass rate |
+| ------------ | ------------------------ | ------------- | --------- |
+| orders       | all three                | 2, 3, 5 → 3   | 2 / 5     |
+| conformity   | `price_must_be_positive` | 2, 3, 5 → 3   | 2 / 5     |
+| completeness | `quantity_is_filled`     | 3 → 1         | 4 / 5     |
+| uniqueness   | `order_id_is_unique`     | 2, 5 → 2      | 3 / 5     |
 
-A dimension with no counted checks, a dimension whose counted checks are all
-not attributed, or an empty table, shows N/A, not 100%.
+A dimension with no row-level checks, a dimension whose row-level checks are all
+not attributable, or an empty table, shows N/A, not 100%.
 
 `get_row_quality_df()` has these columns, per schema or per dimension:
 
-| Column                                 | Meaning                                         |
-| -------------------------------------- | ----------------------------------------------- |
-| `total_rows`                           | Rows in the table, after your filter conditions |
-| `failed_rows`                          | Rows that failed at least one counted check     |
-| `tolerated_rows`                       | Rows caught only by checks that passed          |
-| `passed_rows`                          | `total_rows` minus `failed_rows`                |
-| `pass_rate`                            | `passed_rows` divided by `total_rows`, 0 to 1   |
-| `exact`                                | Whether the numbers are exact                   |
-| `checks_counted`, `checks_not_counted` | How many checks were counted, and how many not  |
-| `checks_not_attributed`                | How many counted checks were not attributed     |
+| Column                                     | Meaning                                          |
+| ------------------------------------------ | ------------------------------------------------ |
+| `total_rows`                               | Rows in the table, after your filter conditions  |
+| `failed_rows`                              | Rows that failed at least one row-level check    |
+| `passed_rows`                              | `total_rows` minus `failed_rows`                 |
+| `pass_rate`                                | `passed_rows` divided by `total_rows`, 0 to 1    |
+| `approximate`                              | Whether the numbers could be off                 |
+| `checks_row_level`, `checks_not_row_level` | How many checks were row-level, and how many not |
+| `checks_not_attributable`                  | How many row-level checks were not attributable  |
 
 An empty value means there is no number to give.

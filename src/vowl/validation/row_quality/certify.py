@@ -1,4 +1,4 @@
-"""Certification: is a check's failed-rows query a pure row filter of its table?
+"""Certification: is a check's row query a pure row filter of its table?
 
 A certified check returns every copy of each failing row and nothing
 else, so its rows can be counted in the data source by the pushdown route. See
@@ -84,7 +84,7 @@ def _same_table(table: exp.Table, schema_name: str) -> bool:
     return len(written) <= len(anchor) and anchor[len(anchor) - len(written) :] == written
 
 
-def certify_failed_rows_query(query: str | None, schema_name: str, dialect: str) -> tuple[bool, str]:
+def certify_row_query(query: str | None, schema_name: str, dialect: str) -> tuple[bool, str]:
     """Check that *query* is a pure row filter of the table *schema_name*.
 
     Returns:
@@ -92,7 +92,7 @@ def certify_failed_rows_query(query: str | None, schema_name: str, dialect: str)
         the construct that failed, for example ``"DISTINCT"``.
     """
     if not query:
-        return False, "no failed-rows query"
+        return False, "no row query"
     try:
         parsed = sqlglot.parse_one(query, dialect=dialect)
     except Exception:
@@ -163,7 +163,7 @@ def certify_failed_rows_query(query: str | None, schema_name: str, dialect: str)
 def certify_scalar_query(query: str | None, aggregation_type: str, dialect: str) -> tuple[bool, str]:
     """Check that a count check's scalar query counts with a single ``COUNT``.
 
-    The derived failed-rows query keeps only the rows a ``COUNT(expr)`` counts,
+    The derived row query keeps only the rows a ``COUNT(expr)`` counts,
     by adding ``expr IS NOT NULL``, so the two queries agree. ``"none"`` checks
     are wrapped in ``COUNT(*)`` by vowl and always pass.
     """
@@ -198,20 +198,20 @@ def certify_check(
     which keeps the row-filter shape.
 
     Args:
-        rendered: The ``(failed-rows query, scalar query)`` the check already
+        rendered: The ``(row query, scalar query)`` the check already
             ran, when it ran without filter conditions. Rendering them again
             resolves the contract, which is slow for many checks.
     """
     try:
         if rendered is not None:
-            failed_rows_query, scalar_query = rendered
+            row_query, scalar_query = rendered
         else:
-            failed_rows_query = check_ref.get_failed_rows_query(dialect, None, use_try_cast=use_try_cast)
+            row_query = check_ref.get_row_query(dialect, None, use_try_cast=use_try_cast)
             scalar_query = check_ref.get_query(dialect, None, use_try_cast=use_try_cast)
         aggregation_type = check_ref.aggregation_type
     except Exception:
         return False, "SQL that could not be rendered"
-    ok, rule = certify_failed_rows_query(failed_rows_query, schema_name, dialect)
+    ok, rule = certify_row_query(row_query, schema_name, dialect)
     if not ok:
         return ok, rule
     return certify_scalar_query(scalar_query, aggregation_type, dialect)

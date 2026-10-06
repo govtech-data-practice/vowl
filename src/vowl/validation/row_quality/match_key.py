@@ -1,10 +1,10 @@
-"""Whether a check's failed rows can be merged with the other checks of a table.
+"""Whether a check's failed rows carry the match key of their table.
 
-Counting (``_SchemaComputation._check_mergeable``) and marking
+Counting (``_SchemaComputation._check_match_key``) and marking
 (``ValidationResult._is_mergeable_for_full_table``) both use
-:func:`rows_mergeable`, so they apply the same rule. Each passes its own
+:func:`has_match_key`, so they apply the same rule. Each passes its own
 columns: counting the table columns it knows, marking the columns of the
-exported table. See ``docs/design-considerations/failed-rows/how-rows-are-counted.md``.
+exported table. See ``docs/design-considerations/checks/how-attributed-rows-work.md``.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from sqlglot import exp
 METADATA_COLUMNS = ("check_id", "check_ids", "check_info", "check_info_item", "tables_in_query")
 
 
-def rows_mergeable(
+def has_match_key(
     row_columns: Iterable[str],
     table_columns: Collection[str],
     key_columns: Sequence[str] | None,
@@ -95,7 +95,7 @@ def _returns_plain_columns(query: exp.Expression, ctes: dict[str, exp.Expression
 
 
 def returns_table_values(query: str | None, dialect: str) -> bool:
-    """True when a failed-rows query returns only plain columns or ``*``.
+    """True when a row query returns only plain columns or ``*``.
 
     Its rows then hold the table's own values, so they can be matched onto
     table rows. ``c * 1.5``, ``upper(s)`` or a column renamed to another's

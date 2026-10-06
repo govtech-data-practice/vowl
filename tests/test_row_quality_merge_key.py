@@ -2,7 +2,7 @@
 
 A unique declared primary key groups the rows as the full columns do, so it is
 the match key whenever the data source can run the pushdown and no key value
-appears twice. See docs/design-considerations/failed-rows/how-rows-are-counted.md.
+appears twice. See docs/design-considerations/checks/how-attributed-rows-work.md.
 """
 
 from __future__ import annotations
@@ -14,12 +14,12 @@ import test_row_quality as rq
 
 import vowl.validation.row_quality as row_quality_module
 from vowl.validation.result import ValidationResult
-from vowl.validation.row_quality.mergeable import METADATA_COLUMNS, rows_mergeable
+from vowl.validation.row_quality.match_key import METADATA_COLUMNS, has_match_key
 from vowl.validation.row_quality.selection import (
-    REASON_NOT_MERGEABLE,
+    REASON_NO_MATCH_KEY,
     REASON_PK_NOT_UNIQUE,
     REASON_PK_UNCHECKED,
-    REASON_UNMATCHED,
+    REASON_UNATTRIBUTED,
 )
 
 _skip_contract_validation = rq._skip_contract_validation
@@ -53,7 +53,7 @@ def test_a_unique_primary_key_is_the_match_key_for_full_column_checks(backend: s
     assert keyed._row_quality().merge_key("t") == ["id"]
     assert unkeyed._row_quality().merge_key("t") is None
     assert rq._schema_row(keyed)["failed_rows"] == rq._schema_row(unkeyed)["failed_rows"] == 4
-    assert rq._schema_row(keyed)["exact"] is True
+    assert rq._schema_row(keyed)["approximate"] is False
     # The keyed contract also generates a primary key check, which passes.
     assert rq._dimension_rows(keyed)["validity"] == rq._dimension_rows(unkeyed)["validity"]
     assert _marked(keyed) == _marked(unkeyed)
@@ -70,7 +70,7 @@ def test_a_primary_key_that_is_every_column_is_not_a_merge_key():
     assert rq._schema_row(result)["failed_rows"] == 1
 
 
-def test_a_duplicated_primary_key_is_not_attributed_with_its_own_reason():
+def test_a_duplicated_primary_key_is_not_attributable_with_its_own_reason():
     con = _table("(1, -1), (1, 3), (2, 5)")
 
     result = rq._validate(con, [rq._schema("t", [_SUBSET, rq._check("five", "c = 5")], _PK)])
@@ -78,14 +78,14 @@ def test_a_duplicated_primary_key_is_not_attributed_with_its_own_reason():
     assert result._row_quality().merge_key("t") is None
     checks = rq._check_rows(result)
     assert checks["ids_negative"]["reason"] == REASON_PK_NOT_UNIQUE
-    # Still about bad rows, so counted, but its rows become residues.
-    assert (checks["ids_negative"]["counted"], checks["ids_negative"]["attributed"]) == (True, False)
+    # Still about bad rows, so row-level, but its rows become residues.
+    assert (checks["ids_negative"]["row_level"], checks["ids_negative"]["attributed_rows"]) == (True, None)
     assert checks["ids_negative"]["attributed_rows"] is None
     # A full-column check still merges on the full columns.
-    assert checks["five"]["counted"] is True
+    assert checks["five"]["row_level"] is True
     # The two id = 1 rows fail the generated primary key check, and (2, 5) fails five.
     schema = rq._schema_row(result)
-    assert (schema["failed_rows"], schema["checks_not_attributed"], schema["exact"]) == (3, 1, False)
+    assert (schema["failed_rows"], schema["checks_not_attributable"], schema["approximate"]) == (3, 1, True)
     assert "t::ids_negative" in result.get_annotated_output()["residues"]
 
 
@@ -109,7 +109,7 @@ def test_a_check_without_the_primary_key_keeps_the_general_reason():
 
     result = rq._validate(con, [rq._schema("t", [only_c], _PK)])
 
-    assert rq._check_rows(result)["c_negative"]["reason"] == REASON_NOT_MERGEABLE
+    assert rq._check_rows(result)["c_negative"]["reason"] == REASON_NO_MATCH_KEY
 
 
 def test_the_primary_key_is_probed_once_per_schema(monkeypatch: pytest.MonkeyPatch):
@@ -146,17 +146,17 @@ def test_a_table_match_check_with_transformed_values_matches_on_the_primary_key(
 
     assert rq._check_rows(keyed)["shifted"]["route"] == "server_lookup"
     # c * 10 is not a plain column, so the check is marked approximate.
-    assert rq._check_rows(keyed)["shifted"]["exact"] is False
+    assert rq._check_rows(keyed)["shifted"]["approximate"] is True
     assert rq._schema_row(keyed)["failed_rows"] == 2
     assert _marked(keyed) == {1: {"shifted"}, 2: {"shifted"}}
     assert rq._schema_row(unkeyed)["failed_rows"] == 0
     # No table row has the changed values, which the count reports.
     shifted_row = rq._check_rows(unkeyed)["shifted"]
-    assert (shifted_row["reason"], shifted_row["exact"]) == (REASON_UNMATCHED, False)
+    assert (shifted_row["reason"], shifted_row["approximate"]) == (REASON_UNATTRIBUTED, True)
 
 
 # ---------------------------------------------------------------------------
-# rows_mergeable
+# has_match_key
 # ---------------------------------------------------------------------------
 
 
@@ -176,7 +176,7 @@ def test_a_table_match_check_with_transformed_values_matches_on_the_primary_key(
     ],
 )
 def test_rows_mergeable(row_columns: list[str], key: list[str] | None, expected: bool):
-    assert rows_mergeable(row_columns, ["id", "c"], key) is expected
+    assert has_match_key(row_columns, ["id", "c"], key) is expected
 
 
 def test_annotated_output_uses_the_shared_rule():

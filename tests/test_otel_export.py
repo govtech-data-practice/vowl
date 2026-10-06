@@ -273,7 +273,7 @@ def test_metric_emitter_check_level_metrics(result):
     assert failing.attributes["dimension"] == "consistency"
     assert failing.attributes["schema_name"] == "orders"
 
-    # Per-check row pass rate: every counted check gets one.
+    # Per-check row pass rate: every row-level check gets one.
     check_row_rates = {p.attributes["check_name"]: p.value for p in points["vowl.check.row.pass_rate"]}
     assert check_row_rates["amount_non_negative"] == 0.5  # 2 of 4 rows failed
     assert all(v == 1.0 for k, v in check_row_rates.items() if k != "amount_non_negative")
@@ -412,7 +412,7 @@ def test_run_level_metrics(result):
     assert rows == {"PASSED": 2, "FAILED": 2}
     (row_rate,) = points["vowl.run.row.pass_rate"]
     assert row_rate.value == 0.5
-    assert row_rate.attributes["vowl.row_quality.exact"] is True
+    assert dict(row_rate.attributes) == {}
 
 
 @pytest.fixture
@@ -1235,7 +1235,7 @@ def test_check_span_row_attributes_match_the_metrics(result):
 
 def test_run_span_attributes_match_the_run_metrics(two_schema_result):
     from vowl.otel._traces import TraceEmitter
-    from vowl.validation.dq_metrics import compute_points
+    from vowl.validation.dq_metrics import compute_points, run_row_counts
 
     points = compute_points(two_schema_result)
 
@@ -1256,8 +1256,7 @@ def test_run_span_attributes_match_the_run_metrics(two_schema_result):
     assert root.attributes["row.count.passed"] == one("vowl.run.row.count", "PASSED")
     assert root.attributes["row.count.failed"] == one("vowl.run.row.count", "FAILED")
     assert root.attributes["row.pass_rate"] == one("vowl.run.row.pass_rate")
-    (exact,) = {p.attributes["vowl.row_quality.exact"] for p in points if p.name == "vowl.run.row.count"}
-    assert root.attributes["vowl.row_quality.exact"] is exact
+    assert root.attributes["vowl.row_quality.approximate"] is run_row_counts(two_schema_result)[2]
 
 
 def test_errored_check_has_no_row_attributes(errored_result):

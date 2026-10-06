@@ -391,7 +391,7 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
         table = _table_ref(schema_name)
 
         # Count *participating rows* (rows whose key-tuple belongs to a
-        # duplicate group) so the auto-derived failed-rows query is
+        # duplicate group) so the auto-derived row query is
         # SELECT * FROM table WHERE EXISTS(...) -- full rows that merge into the
         # annotated table.  A correlated EXISTS is used instead of a tuple-IN
         # subquery because row-value IN-subqueries do not execute on SQL Server;

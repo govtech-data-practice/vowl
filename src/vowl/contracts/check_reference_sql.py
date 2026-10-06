@@ -96,7 +96,7 @@ class SQLCheckReference(CheckReference, ABC):
     def _counts_rows(self) -> bool:
         """Whether the check's query counts rows, so its failed rows are the counted rows.
 
-        ``COUNT(DISTINCT x)`` counts values, but its failed rows query returns
+        ``COUNT(DISTINCT x)`` counts values, but its row query returns
         the rows holding them, with ``x IS NOT NULL``, so it qualifies too.
         """
         if self.aggregation_type in ("count", "none"):
@@ -126,7 +126,7 @@ class SQLCheckReference(CheckReference, ABC):
         metadata["aggregation_type"] = self.aggregation_type
         return metadata
 
-    def get_failed_rows_query(
+    def get_row_query(
         self,
         dialect: str,
         filter_conditions: dict[str, FilterConditionType] | None = None,

@@ -1,7 +1,7 @@
 """Annotated output marks as many rows as the row numbers count, wherever both are exact.
 
 Counting and marking merge failed rows separately (see
-docs/design-considerations/failed-rows/how-rows-are-counted.md). They pick the same checks and the same match
+docs/design-considerations/checks/how-attributed-rows-work.md). They pick the same checks and the same match
 key, so on an exact schema the rows with a ``check_info`` in the annotated
 table must equal the schema's ``failed_rows``.
 """
@@ -29,7 +29,7 @@ def _assert_marks_match_counts(result) -> int:
     annotated = result.get_annotated_output()["annotated"]
     checked = 0
     for schema in report.schemas:
-        if not schema.exact or schema.failed_rows is None or schema.schema_name not in annotated:
+        if schema.approximate or schema.failed_rows is None or schema.schema_name not in annotated:
             continue
         rows = annotated[schema.schema_name].to_arrow().column("check_info").to_pylist()
         marked = sum(1 for cell in rows if cell is not None)
@@ -42,8 +42,8 @@ def _duplicates():
     return rq._mixed("duckdb")[1]
 
 
-def _all_violations():
-    return rq._mixed("sqlite", ValidationConfig(row_issue_scope="all_violations"))[1]
+def _tolerated_rows_attributed():
+    return rq._mixed("sqlite", ValidationConfig(attribute_tolerated_rows=True))[1]
 
 
 def _pk_subset_check():
@@ -79,7 +79,7 @@ def _sqlite_one_and_one_point_zero():
 _SCENARIOS: dict[str, tuple[Callable, bool]] = {
     # name: (build the result, whether at least one schema must be exact)
     "duplicates": (_duplicates, True),
-    "all_violations": (_all_violations, True),
+    "tolerated_rows_attributed": (_tolerated_rows_attributed, True),
     "pk_subset_check": (_pk_subset_check, True),
     "anchor_projection_join": (_anchor_projection_join, True),
     "mixed_routes": (_mixed_routes, True),
@@ -100,7 +100,7 @@ def test_marks_match_counts(scenario: str):
 
 
 def test_statistics_off_does_not_break_the_helper():
-    _, result = rq._mixed("duckdb", ValidationConfig(enable_additional_schema_statistics=False))
+    _, result = rq._mixed("duckdb", ValidationConfig(row_counts="off"))
 
     assert _assert_marks_match_counts(result) == 0
     assert "t" in result.get_annotated_output()["annotated"]
@@ -124,11 +124,11 @@ def test_unknown_column_types_with_a_partial_contract_count_on_the_exported_tabl
     result = _partial_contract(monkeypatch)
 
     check = rq._check_rows(result)["negative"]
-    assert (check["counted"], check["route"], check["attributed_rows"], check["exact"]) == (
+    assert (check["row_level"], check["route"], check["attributed_rows"], check["approximate"]) == (
         True,
         "client_lookup",
         2,
-        True,
+        False,
     )
     assert rq._schema_row(result)["failed_rows"] == 2
     assert _assert_marks_match_counts(result) == 1
@@ -139,10 +139,15 @@ def test_unknown_column_types_with_a_partial_contract_count_from_the_scalar_with
 ):
     # With attribution disabled vowl reads the plain filter's own count, so the missing column
     # types do not matter, and the count matches the marks.
-    result = _partial_contract(monkeypatch, ValidationConfig(disable_table_attributed_counts=True))
+    result = _partial_contract(monkeypatch, ValidationConfig(row_counts="scalar"))
 
     check = rq._check_rows(result)["negative"]
-    assert (check["counted"], check["route"], check["scalar_count"], check["exact"]) == (True, "server_scalar", 2, True)
-    assert (check["attributed"], check["attributed_rows"]) == (False, None)
+    assert (check["row_level"], check["route"], check["scalar_count"], check["approximate"]) == (
+        True,
+        "server_scalar",
+        2,
+        False,
+    )
+    assert check["attributed_rows"] is None
     assert rq._schema_row(result)["failed_rows"] == 2
     assert _assert_marks_match_counts(result) == 1

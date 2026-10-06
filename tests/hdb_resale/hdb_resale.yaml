@@ -50,7 +50,7 @@ schema:
         quality:
           - type: sql
             name: Month
-            description: Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
+            description: Based on ISO 8601 | YYYY-MM
             mustBe: 0
             query: |-
               SELECT COUNT(*)
@@ -95,20 +95,6 @@ schema:
           - value: 5 ROOM
           - value: EXECUTIVE
           - value: MULTI-GENERATION
-        quality:
-          - type: library
-            metric: invalidValues
-            mustBe: 0
-            dimension: conformity
-            arguments:
-              validValues:
-                - 1 ROOM
-                - 2 ROOM
-                - 3 ROOM
-                - 4 ROOM
-                - 5 ROOM
-                - EXECUTIVE
-                - MULTI-GENERATION
       - name: block
         description: The block number of the HDB building where the resale flat is located
         logicalType: string
@@ -276,7 +262,7 @@ schema:
           - name: resale_price_must_not_exceed_2m
             description: Resale price must not be more than 2 million SGD
             type: sql
-            dimension: conformity
+            dimension: consistency
             severity: error
             query: >-
               SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price >
