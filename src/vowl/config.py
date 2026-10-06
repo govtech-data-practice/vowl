@@ -11,12 +11,13 @@ from typing import Literal
 #: Output styles ``save()`` can write. These are mutually exclusive modes,
 #: not independent toggles, which is why this is an enum rather than a boolean:
 #:
-#: - ``"annotated"``    -- full in-scope tables with a ``check_info`` column
-#:                          plus residues; no standalone failed-rows CSVs
-#:                          (default).
-#: - ``"failed_rows"``  -- legacy consolidated failed-rows CSVs (deprecated).
-#: - ``"both"``         -- failed-rows CSVs *and* annotated tables
-#:                          (deprecated).
+#: - ``"annotated"``    -- full in-scope tables with a ``check_info`` column,
+#:                          residues and ``dq_metrics.json`` (default).
+#: - ``"failed_rows"``  -- grouped failed-rows CSVs only. The cheap mode: no
+#:                          table export, no row attribution and no
+#:                          ``dq_metrics.json``.
+#: - ``"both"``         -- failed-rows CSVs, annotated tables and
+#:                          ``dq_metrics.json``.
 OutputMode = Literal["failed_rows", "annotated", "both"]
 
 #: Presets controlling the contents of the annotated table's ``check_info``
@@ -57,10 +58,8 @@ class ValidationConfig:
         output_mode: Selects what ``ValidationResult.save()`` writes.  One of
             ``"annotated"`` (default), ``"failed_rows"``, or ``"both"``.  See
             :data:`OutputMode`.  ``save(output_mode=...)`` overrides this per
-            call; when its argument is ``None`` this config value is used.
-            **Deprecated:** ``"failed_rows"`` and ``"both"`` still work but
-            emit a ``DeprecationWarning`` and will be removed in a future
-            release.
+            call. When its argument is ``None`` this config value is used.
+            ``"failed_rows"`` is the cheap mode for large tables.
         annotated_check_info: Preset controlling the annotated table's
             ``check_info`` column.  One of ``"names"`` (default),
             ``"summary"``, or ``"full"``.  See :data:`CheckInfoPreset`.

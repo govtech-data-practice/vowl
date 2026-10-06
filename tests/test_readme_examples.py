@@ -723,10 +723,8 @@ class TestValidationResultAPI:
             assert "tables_in_query" in df.columns
 
     def test_get_consolidated_output_dfs(self, result):
-        # The public method is deprecated and warns; it delegates to a private
-        # helper that stays quiet so internal callers (e.g. save_outputs in
-        # failed_rows mode) don't emit the warning.
-        with pytest.warns(DeprecationWarning, match="get_annotated_output"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
             consolidated = result.get_consolidated_output_dfs()
 
         assert isinstance(consolidated, dict)
@@ -734,7 +732,7 @@ class TestValidationResultAPI:
             assert isinstance(df, nw.DataFrame)
 
         with warnings.catch_warnings():
-            warnings.simplefilter("error")  # the private helper must not warn
+            warnings.simplefilter("error", DeprecationWarning)
             internal = result._get_consolidated_output_dfs()
         assert list(consolidated.keys()) == list(internal.keys())
 
@@ -761,15 +759,15 @@ class TestValidationResultAPI:
             files = {p.name for p in tmp_path.iterdir()}
             assert any(f.startswith("test_readme_results_") and f.endswith("_annotated.csv") for f in files)
 
-            # Explicit deprecated modes each warn; the new "annotated" mode does not.
-            with pytest.warns(DeprecationWarning, match="failed_rows"):
-                result.save(prefix="fr_run", output_mode="failed_rows")
-            with pytest.warns(DeprecationWarning, match="both"):
-                result.save(prefix="both_run", output_mode="both")
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                result.save(prefix="annotated_run", output_mode="annotated")
-            assert not [w for w in caught if "output_mode" in str(w.message)]
+            # No mode warns.
+            for mode in ("failed_rows", "both", "annotated"):
+                with warnings.catch_warnings(record=True) as caught:
+                    warnings.simplefilter("always")
+                    result.save(prefix=f"{mode}_run", output_mode=mode)
+                assert not [w for w in caught if "output_mode" in str(w.message)]
+            files = {p.name for p in tmp_path.iterdir()}
+            assert "test_readme_results_dq_metrics.json" in files
+            assert "failed_rows_run_dq_metrics.json" not in files
         finally:
             os.chdir(original_dir)
 

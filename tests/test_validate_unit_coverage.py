@@ -987,8 +987,7 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
 def test_validation_result_save_and_save_dataframe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     result = _sample_validation_result()
 
-    with pytest.warns(DeprecationWarning, match="output_mode='failed_rows'"):
-        result.save(output_dir=str(tmp_path), prefix="artifact", output_mode="failed_rows")
+    result.save(output_dir=str(tmp_path), prefix="artifact", output_mode="failed_rows")
 
     assert (tmp_path / "artifact_check_results.csv").exists()
     assert (tmp_path / "artifact_users.csv").exists()

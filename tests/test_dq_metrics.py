@@ -153,8 +153,8 @@ def test_points_with_the_same_name_and_attributes_are_merged(result):
     assert len(timings) == 2
 
 
-def test_save_dq_metrics_writes_the_document(result, tmp_path):
-    result.save_dq_metrics(str(tmp_path), prefix="dq")
+def test_save_writes_the_dq_metrics_document(result, tmp_path):
+    result.save(str(tmp_path), prefix="dq")
     document = json.loads((tmp_path / "dq_dq_metrics.json").read_text())
 
     assert document == json.loads(json.dumps(result.get_dq_metrics(), default=str))
@@ -163,8 +163,8 @@ def test_save_dq_metrics_writes_the_document(result, tmp_path):
     assert document["run_started_at"] and document["run_finished_at"]
 
 
-def test_save_writes_no_dq_metrics(result, tmp_path):
-    result.save(str(tmp_path), prefix="dq", output_mode="annotated")
+def test_failed_rows_save_writes_no_dq_metrics(result, tmp_path):
+    result.save(str(tmp_path), prefix="dq", output_mode="failed_rows")
     assert not (tmp_path / "dq_dq_metrics.json").exists()
 
 

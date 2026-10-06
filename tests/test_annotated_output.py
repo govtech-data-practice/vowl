@@ -952,7 +952,7 @@ class TestSaveModes:
         assert "r_orders.csv" not in files  # no legacy failed-rows CSV
 
     @pytest.mark.parametrize("mode", ["failed_rows", "both"])
-    def test_deprecated_mode_from_config_warns(self, tmp_path, mode):
+    def test_failed_rows_modes_from_config_do_not_warn(self, tmp_path, mode):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check("c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders")
         result = _make_result(
@@ -960,14 +960,21 @@ class TestSaveModes:
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(output_mode=mode),
         )
-        with pytest.warns(DeprecationWarning, match=f"output_mode='{mode}'"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
             result.save(str(tmp_path), prefix="r")  # mode comes from the config
         assert "r_orders.csv" in {p.name for p in tmp_path.iterdir()}
 
     @pytest.mark.parametrize("mode", ["failed_rows", "both"])
-    def test_deprecated_mode_argument_warns(self, tmp_path, mode):
-        with pytest.warns(DeprecationWarning, match=f"output_mode='{mode}'"):
+    def test_failed_rows_mode_argument_does_not_warn(self, tmp_path, mode):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
             self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=mode)
+
+    @pytest.mark.parametrize(("mode", "written"), [("failed_rows", False), ("annotated", True), ("both", True)])
+    def test_dq_metrics_json_follows_the_mode(self, tmp_path, mode, written):
+        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=mode)
+        assert (tmp_path / "r_dq_metrics.json").exists() is written
 
     @staticmethod
     def _read_csv(path):

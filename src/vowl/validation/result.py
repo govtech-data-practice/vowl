@@ -420,31 +420,14 @@ class ValidationResult:
         emitting a per-check residue otherwise.  See docs/known-issues.md for
         details.
 
-        .. deprecated::
-            Prefer :meth:`get_annotated_output`, which returns your full
-            in-scope tables with failing rows flagged in place (plus per-check
-            residues for the checks that cannot be merged).  This grouped view
-            will be removed in a future release.
+        This is the view ``save(output_mode="failed_rows")`` writes. It runs
+        no extra queries and never attributes rows, so it stays cheap on
+        large tables.
         """
-        warnings.warn(
-            "get_consolidated_output_dfs() is deprecated and will be removed in a "
-            "future release. Use get_annotated_output() instead, which returns your "
-            "full tables with failing rows flagged in place plus per-check residues. "
-            "Note the output shape differs: annotated tables carry a 'check_info' "
-            "JSON-array column (per row) rather than the grouped 'check_ids' "
-            "comma-joined string, and include passing rows too.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self._get_consolidated_output_dfs(checks=checks)
 
     def _get_consolidated_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
-        """Implementation of the grouped failed-rows view.
-
-        Kept as a private method so internal callers (e.g. ``save_outputs`` in
-        ``failed_rows``/``both`` mode) can reuse the grouping without emitting the
-        public method's ``DeprecationWarning``.
-        """
+        """Implementation of the grouped failed-rows view."""
         per_check = self.get_output_dfs(checks=checks)
         # A FAILED check whose operator sets no upper limit matched the good
         # rows, so they are left out, as in annotated output.
@@ -899,10 +882,9 @@ class ValidationResult:
           passed within their tolerance are flagged too, and their
           ``check_info`` items carry ``"tolerated": true``.
 
-          (The standalone ``failed_rows``/``both`` CSVs still come from the
-          grouped :meth:`get_consolidated_output_dfs`, which is unchanged and
-          keeps its legacy comma-joined ``check_ids`` column; only annotated
-          output uses ``check_info``.)
+          (The ``failed_rows``/``both`` CSVs come from the grouped
+          :meth:`get_consolidated_output_dfs`, which keeps its comma-joined
+          ``check_ids`` column. Only annotated output uses ``check_info``.)
 
         Args:
             checks: Optional check-name filter.
@@ -1283,7 +1265,7 @@ class ValidationResult:
                 point, span, and log record. vowl never inspects or reroutes
                 a key.
             run_id: Id for this export. When omitted, :attr:`run_id` is used,
-                the same id :meth:`save_dq_metrics` writes into ``dq_metrics.json``.
+                the same id ``save()`` writes into ``dq_metrics.json``.
             max_failed_rows_sample: Max failing rows to attach per check to
                 logs and span events. ``0`` (default) exports no cell values.
                 A positive value is also capped by the run's ``max_failed_rows``.
@@ -1338,10 +1320,14 @@ class ValidationResult:
         check_info: CheckInfoPreset | None = None,
         filesystem: Any | None = None,
     ) -> ValidationResult:
-        """Write the check-results CSV, per-mode row outputs and the summary JSON.
+        """Write the check-results CSV, the row outputs of ``output_mode`` and the summary JSON.
 
-        These are the scalar outputs. They never attribute rows. To write the
-        DQ metrics as well, call :meth:`save_dq_metrics`.
+        The annotated modes also write ``<prefix>_dq_metrics.json`` (see
+        :meth:`get_dq_metrics`). Annotated output and the DQ metrics share one
+        table export and one row attribution, so the file adds no cost.
+        ``"failed_rows"`` is the cheap mode: it runs no extra queries, never
+        exports a table and never attributes rows, so it writes no
+        ``dq_metrics.json``.
 
         ``output_dir`` is a local folder or a URI such as
         ``s3://bucket/dq-results/run-1/``. URIs (``s3://``, ``gs://``,
@@ -1356,45 +1342,18 @@ class ValidationResult:
 
         - ``"annotated"`` -- **default.** Full in-scope tables with failing
           rows flagged in place via a per-row ``check_info`` column, plus
-          per-check residues for non-mergeable checks.
-        - ``"failed_rows"`` -- *deprecated.* The legacy consolidated CSVs
-          (failing rows only, grouped per table, comma-joined ``check_ids``).
-        - ``"both"`` -- writes annotated tables *and* the deprecated
-          failed-rows CSVs; a migration bridge.
-
-        .. deprecated::
-            ``output_mode="failed_rows"`` (and the ``"failed_rows"`` half of
-            ``"both"``) is deprecated and will be removed in a future release.
-            Either value emits a ``DeprecationWarning``, whether it is passed
-            to ``save()`` or set through ``ValidationConfig(output_mode=...)``.
+          per-check residues for non-mergeable checks, plus
+          ``dq_metrics.json``.
+        - ``"failed_rows"`` -- the cheap mode. Failing rows only, grouped per
+          table with a comma-joined ``check_ids`` column (see
+          :meth:`get_consolidated_output_dfs`). No ``dq_metrics.json``.
+        - ``"both"`` -- the annotated tables, the failed-rows CSVs and
+          ``dq_metrics.json``. Residues are not written, since their rows are
+          in the failed-rows CSVs.
         """
         mode = output_mode if output_mode is not None else self._config.output_mode
         if mode not in ("failed_rows", "annotated", "both"):
             raise ValueError(f"Unknown output_mode: {mode!r}. Expected one of 'failed_rows', 'annotated', 'both'.")
-
-        # The mode may come from the argument or from ValidationConfig, so
-        # the messages below fit both.
-        if mode in ("failed_rows", "both"):
-            if mode == "both":
-                # Annotated CSVs are written too, so this is a valid migration
-                # bridge; just flag the deprecated half.
-                warnings.warn(
-                    "output_mode='both' still writes the deprecated consolidated failed-rows "
-                    "CSVs alongside the annotated tables. The failed-rows shape will be removed "
-                    "in a future release; migrate to output_mode='annotated' when ready.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-            else:
-                # output_mode="failed_rows": honoured, but deprecated.
-                warnings.warn(
-                    "output_mode='failed_rows' writes the deprecated consolidated failed-rows "
-                    "CSVs (grouped rows with a 'check_ids' column) and will be removed in a "
-                    "future release. Use output_mode='annotated' instead (full tables with a "
-                    "per-row 'check_info' column plus per-check residues).",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
 
         target = OutputDir(output_dir, filesystem)
 
@@ -1435,28 +1394,14 @@ class ValidationResult:
 
         saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str)))
 
+        if mode in ("annotated", "both"):
+            saved_files.append(
+                target.write_text(f"{prefix}_dq_metrics.json", json.dumps(self.get_dq_metrics(), indent=2, default=str))
+            )
+
         print("\nResults saved:")
         for fp in saved_files:
             print(f"   - {fp}")
-        return self
-
-    def save_dq_metrics(
-        self,
-        output_dir: str = ".",
-        prefix: str = "vowl_results",
-        *,
-        filesystem: Any | None = None,
-    ) -> ValidationResult:
-        """Write the DQ metrics (see :meth:`get_dq_metrics`) to ``<prefix>_dq_metrics.json``.
-
-        This attributes rows, once per result. Later calls to
-        :meth:`get_dq_metrics`, :meth:`export_otel` or this method reuse the
-        same numbers. ``output_dir`` and ``filesystem`` work as in :meth:`save`.
-        """
-        target = OutputDir(output_dir, filesystem)
-        prefix = _safe_filename_component(prefix, fallback="vowl_results")
-        path = target.write_text(f"{prefix}_dq_metrics.json", json.dumps(self.get_dq_metrics(), indent=2, default=str))
-        print(f"\nDQ metrics saved:\n   - {path}")
         return self
 
     @staticmethod

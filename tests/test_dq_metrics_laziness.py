@@ -1,9 +1,10 @@
 """Guard test for the two tiers of failed-row counts.
 
 The basic tier (``print_summary``, ``get_check_results_df``, ``summary``,
-``save``) runs only the check SQL and never attributes rows. The DQ-metrics
-tier (``get_dq_metrics``, ``get_dq_metrics_df``, ``save_dq_metrics``,
-``export_otel``) attributes rows once and reuses the cached report.
+``save(output_mode="failed_rows")``) runs only the check SQL and never
+attributes rows. The DQ-metrics tier (``get_dq_metrics``, ``get_dq_metrics_df``,
+``export_otel`` and the annotated ``save`` modes, which write
+``dq_metrics.json``) attributes rows once and reuses the cached report.
 
 Attribution always goes through ``RowQuality._compute``, so counting its calls
 is enough. Table totals are counted separately through
@@ -12,6 +13,8 @@ is enough. Table totals are counted separately through
 """
 
 from __future__ import annotations
+
+import json
 
 import pandas as pd
 import pytest
@@ -60,6 +63,7 @@ class _Calls:
     def __init__(self) -> None:
         self.compute = 0
         self.total_rows = 0
+        self.export = 0
 
 
 @pytest.fixture
@@ -74,6 +78,7 @@ def calls(result, monkeypatch) -> _Calls:
     counter = _Calls()
     compute = RowQuality._compute
     get_total_rows = IbisAdapter.get_total_rows
+    export_table_as_arrow = IbisAdapter.export_table_as_arrow
 
     def counted_compute(self):
         counter.compute += 1
@@ -83,7 +88,12 @@ def calls(result, monkeypatch) -> _Calls:
         counter.total_rows += 1
         return get_total_rows(self, *args, **kwargs)
 
+    def counted_export(self, *args, **kwargs):
+        counter.export += 1
+        return export_table_as_arrow(self, *args, **kwargs)
+
     monkeypatch.setattr(RowQuality, "_compute", counted_compute)
+    monkeypatch.setattr(IbisAdapter, "export_table_as_arrow", counted_export)
     monkeypatch.setattr(IbisAdapter, "get_total_rows", counted_total_rows)
     return counter
 
@@ -94,7 +104,7 @@ def calls(result, monkeypatch) -> _Calls:
 
 
 def _assert_basic(calls: _Calls) -> None:
-    assert (calls.compute, calls.total_rows) == (0, 0)
+    assert (calls.compute, calls.total_rows, calls.export) == (0, 0, 0)
 
 
 def test_print_summary_does_not_attribute(result, calls, capsys):
@@ -113,15 +123,9 @@ def test_summary_does_not_attribute(result, calls):
 
 
 def test_save_failed_rows_does_not_attribute(result, calls, tmp_path):
-    with pytest.warns(DeprecationWarning):
-        result.save(str(tmp_path), output_mode="failed_rows")
+    result.save(str(tmp_path), output_mode="failed_rows")
     _assert_basic(calls)
-
-
-@pytest.mark.xfail(strict=True, reason="annotated output still attributes through merge_key() (decision 11)")
-def test_save_annotated_does_not_attribute(result, calls, tmp_path):
-    result.save(str(tmp_path), output_mode="annotated")
-    _assert_basic(calls)
+    assert not (tmp_path / "vowl_results_dq_metrics.json").exists()
 
 
 # --------------------------------------------------------------------------- #
@@ -144,9 +148,19 @@ def test_dq_metrics_methods_share_one_attribution(result, calls):
     assert calls.compute == 1
 
 
-def test_save_dq_metrics_reuses_the_attribution(result, calls, tmp_path):
+@pytest.mark.parametrize("mode", ["annotated", "both"])
+def test_annotated_save_writes_dq_metrics_from_one_attribution(result, calls, tmp_path, mode):
+    result.save(str(tmp_path), output_mode=mode)
+    assert calls.compute == 1
+    assert calls.export <= 1
+    written = json.loads((tmp_path / "vowl_results_dq_metrics.json").read_text())
+    assert written == json.loads(json.dumps(result.get_dq_metrics(), default=str))
+    assert calls.compute == 1
+
+
+def test_annotated_save_reuses_an_earlier_attribution(result, calls, tmp_path):
     result.get_dq_metrics()
-    result.save_dq_metrics(str(tmp_path))
+    result.save(str(tmp_path))
     assert (tmp_path / "vowl_results_dq_metrics.json").exists()
     assert calls.compute == 1
 
