@@ -50,7 +50,7 @@ not row-level, so it has no row counts at any grain.
 | ------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Check**     | The failed rows of one row-level check                | `price_must_be_positive`: 3, `quantity_is_filled`: 1, `order_id_is_unique`: 2 | `attributed_rows` in `get_dq_metrics_df(by="check")` and the check-level [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted). `scalar_count` sits next to it. |
 | **Dimension** | The rows that fail any check of the dimension         | conformity: 3, completeness: 1, uniqueness: 2                                 | `get_dq_metrics_df(by="dimension")`                                                                                                                                                           |
-| **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | **Passed Rows** in the summary, `get_dq_metrics_df()`                                                                                                                                         |
+| **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | `get_dq_metrics_df()`                                                                                                                                                                         |
 | **Run**       | The schema numbers added up                           | 3 of 5                                                                        | the run-level [DQ metrics](../../dq-metrics/understanding-metrics.md)                                                                                                                         |
 
 The check numbers add up to 3 + 1 + 2 = 6, but only 3 rows failed. Each of
@@ -62,8 +62,7 @@ them failed two checks:
 | 3 (milk)  | `price_must_be_positive`, `quantity_is_filled` |
 | 5 (bread) | `price_must_be_positive`, `order_id_is_unique` |
 
-So above the check grain, each row counts once. The summary,
-`get_dq_metrics_df()` and the
+So above the check grain, each row counts once. `get_dq_metrics_df()` and the
 [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted)
 all show these same numbers.
 
@@ -122,8 +121,11 @@ row counts and its annotated output treat every such row as bad.
 ### Counts from separate checks don't add up
 
 When each check is only counted on its own, the counts can't be added up,
-because they don't say which rows overlap. The summary shows one such number.
-It splits each table's checks into two groups:
+because they don't say which rows overlap. The summary shows two such
+numbers. **Failed Rows (approximate)**, under **Overall**, adds up the scalar
+counts of every row-level check of the table. A row that fails two checks
+counts twice, so it can be higher than the rows that failed. The summary also splits each table's checks into
+two groups:
 
 - **Single Table**: checks that read only this table, like every check in
   the example.
@@ -132,8 +134,8 @@ It splits each table's checks into two groups:
 
 Under **Multi Table**, the summary shows **Non-unique Failed Rows**. It is
 the scalar counts (`actual`) of the failed Multi Table checks, simply added up.
-Unlike **Passed Rows**, it doesn't check whether two checks share a failed
-row.
+Like **Failed Rows (approximate)**, it doesn't check whether two checks share
+a failed row.
 
 Say `orders` has two Multi Table checks, and `customers` holds customer 10
 (in `SG`) and customer 30 (in `XX`, an unknown country):
@@ -148,15 +150,15 @@ Say `orders` has two Multi Table checks, and `customers` holds customer 10
 ```text
 orders:
   Overall:
-    Passed Rows:            2 / 4 (50.0%)
+    Failed Rows (approximate): 3
   Multi Table:
-    Non-unique Failed Rows: 3
+    Non-unique Failed Rows:    3
 ```
 
-**Passed Rows** says 2 rows failed, orders 2 and 3. **Non-unique Failed
-Rows** says 3, because order 2 is counted once for each check. Use **Passed
-Rows** for how many rows failed, and **Non-unique Failed Rows** only as a
-rough size of the Multi Table problems.
+Both say 3, because order 2 is counted once for each check. Only 2 rows
+failed, orders 2 and 3. `get_dq_metrics_df()` gives that number, because it
+counts each failed row once. Use it for how many rows failed, and the summary
+numbers only as a rough size of the problems.
 
 ### The match key
 
@@ -321,11 +323,8 @@ It is never capped by `max_failed_rows`.
 
     1. The count from the merge query, if everything ran in one query.
     2. The row count of the downloaded table, if vowl downloaded it.
-    3. A count taken earlier in the run, if the deprecated
-       `max_rows_for_statistics` did not cap it.
-    4. A new count from the data source.
-    5. The capped count from earlier in the run. The numbers are then not
-       exact.
+    3. A new `COUNT(*)` from the data source, with no cap. vowl runs it only
+       when you first ask for DQ metrics.
 
     A total of 0 is counted again, because a failed count also returns 0.
 

@@ -42,20 +42,20 @@ result.display_full_report()
 
      OVERALL DATA QUALITY
        Overall:
-         Checks Pass Rate:       7 / 9 (77.7%)
+         Checks Pass Rate:          7 / 9 (77.7%)
 
        hdb_resale_prices:
          Overall:
-           Checks Pass Rate:       7 / 9 (77.7%)
-           ERRORED Checks:         0
-           Passed Rows:            201,865 / 201,879 (99.9%)
+           Checks Pass Rate:          7 / 9 (77.7%)
+           ERRORED Checks:            0
+           Failed Rows (approximate): 14
          Single Table:
-           Checks Pass Rate:       7 / 9 (77.7%)
-           ERRORED Checks:         0
+           Checks Pass Rate:          7 / 9 (77.7%)
+           ERRORED Checks:            0
          Multi Table:
-           Checks Pass Rate:       0 / 0 (N/A)
-           ERRORED Checks:         0
-           Non-unique Failed Rows: 0
+           Checks Pass Rate:          0 / 0 (N/A)
+           ERRORED Checks:            0
+           Non-unique Failed Rows:    0
 
 
      CHECK RESULTS
@@ -121,10 +121,11 @@ The summary groups the numbers for each schema (one table in the contract):
 - **Checks Pass Rate** is passed checks over all checks.
 - **ERRORED Checks** are checks that could not run, for example because the
   query names a missing column.
-- **Passed Rows** is the share of rows in the table that failed no row-level
-  check. `(approx.)` after it means the number could be off, and
-  `(approx., 2 checks not attributable)` also says how many row-level checks vowl
-  could not attribute to the table. See
+- **Failed Rows (approximate)** adds up the failed rows of each row-level
+  check for this schema. A row that fails two checks counts twice, so the
+  number is approximate. It shows `N/A` when the schema has no row-level
+  checks. For how many rows failed at least once, and the row pass rate, call
+  `result.get_dq_metrics_df()`. See
   [How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md).
 - **Single Table** covers checks that read only this schema's table.
   **Multi Table** covers cross-table checks, which read more than one table.

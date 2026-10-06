@@ -111,20 +111,20 @@ result.display_full_report()
 
  OVERALL DATA QUALITY
    Overall:
-     Checks Pass Rate:       7 / 9 (77.7%)
+     Checks Pass Rate:          7 / 9 (77.7%)
 
    hdb_resale_prices:
      Overall:
-       Checks Pass Rate:       7 / 9 (77.7%)
-       ERRORED Checks:         0
-       Passed Rows:            201,865 / 201,879 (99.9%)
+       Checks Pass Rate:          7 / 9 (77.7%)
+       ERRORED Checks:            0
+       Failed Rows (approximate): 14
      Single Table:
-       Checks Pass Rate:       7 / 9 (77.7%)
-       ERRORED Checks:         0
+       Checks Pass Rate:          7 / 9 (77.7%)
+       ERRORED Checks:            0
      Multi Table:
-       Checks Pass Rate:       0 / 0 (N/A)
-       ERRORED Checks:         0
-       Non-unique Failed Rows: 0
+       Checks Pass Rate:          0 / 0 (N/A)
+       ERRORED Checks:            0
+       Non-unique Failed Rows:    0
 
 
  CHECK RESULTS
@@ -483,22 +483,22 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 #### Core Methods
 
-| Method/Property                                                                      | What It Does                                                                                                                                                                                                                     | Returns                         |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                                                       | `self` (chainable)              |
-| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                                                       | `self` (chainable)              |
-| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                                          | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"annotated"` (default), `"failed_rows"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`)                  | `self` (chainable)              |
-| **`save_dq_metrics(output_dir=".", prefix="vowl_results")`**                         | Saves the DQ metrics to `<prefix>_dq_metrics.json`. Same `output_dir`, `prefix` and `filesystem` as `save()`                                                                                                                     | `self` (chainable)              |
-| **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                                                         | Dict[str, DataFrame]            |
-| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                                           | Dict[str, Dict[str, DataFrame]] |
-| **`get_dq_metrics_df(by="schema")`**                                                 | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                                             | DataFrame                       |
-| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                                               | dict                            |
-| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                                          | `True`/`False`                  |
+| Method/Property                                                                      | What It Does                                                                                                                                                                                                    | Returns                         |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                                      | `self` (chainable)              |
+| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                                      | `self` (chainable)              |
+| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                         | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"annotated"` (default), `"failed_rows"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
+| **`save_dq_metrics(output_dir=".", prefix="vowl_results")`**                         | Saves the DQ metrics to `<prefix>_dq_metrics.json`. Same `output_dir`, `prefix` and `filesystem` as `save()`                                                                                                    | `self` (chainable)              |
+| **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                                        | Dict[str, DataFrame]            |
+| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                          | Dict[str, Dict[str, DataFrame]] |
+| **`get_dq_metrics_df(by="schema")`**                                                 | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                            | DataFrame                       |
+| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                              | dict                            |
+| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                         | `True`/`False`                  |
 
 #### Row Quality
 
-`get_dq_metrics_df()` returns the row counts behind **Passed Rows** in the summary: for each table, how many rows failed at least one row-level check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `approximate` flag for the cases where it could be off. A check whose failed rows vowl can't attribute to the table is left out and counted in `checks_not_attributable`. See [When counting and annotating differ](docs/design-considerations/checks/annotating-the-source-table.md#when-counting-and-annotating-differ) for how the row counts relate to annotated output.
+`get_dq_metrics_df()` returns the row counts. The summary does not show them. It shows **Failed Rows (approximate)**, a sum of each check's scalar count. For each table, `get_dq_metrics_df()` gives how many rows failed at least one row-level check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `approximate` flag for the cases where it could be off. A check whose failed rows vowl can't attribute to the table is left out and counted in `checks_not_attributable`. See [When counting and annotating differ](docs/design-considerations/checks/annotating-the-source-table.md#when-counting-and-annotating-differ) for how the row counts relate to annotated output.
 
 ```python
 result.get_dq_metrics_df()                  # one row per table

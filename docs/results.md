@@ -31,6 +31,21 @@ connection to your data open until you are done with the result.
 The words on this page, such as _failed rows_, _row counts_ and _residue_,
 mean the same as in the [Glossary](glossary.md).
 
+## Two tiers of results
+
+The result has two tiers. The basic tier is the default and is cheap. The DQ
+metrics tier is opt in and does more work.
+
+| Tier       | Methods                                                                                     | Cost                                                                                                                        | Counts                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Basic      | `print_summary()`, `get_check_results_df()`, `result.summary`, `save()`                     | Runs the check queries only. Never attributes rows to the table.                                                            | Each check's scalar `failed_rows_count`. A sum across checks is marked approximate.         |
+| DQ metrics | `get_dq_metrics()`, `get_dq_metrics_df(by=...)`, `save_dq_metrics(...)`, `export_otel(...)` | Attributes failed rows to the table once and reuses that work. Runs a `COUNT(*)` on each table the first time it is needed. | Rows that failed at least one check, rows that passed, pass rates and an `approximate` flag |
+
+A sum of scalar counts across checks is approximate. A row that fails two
+checks counts twice, and `DISTINCT` or a join can change a check's count. The
+DQ metrics count each failed row once. Only the DQ metrics tier counts the rows
+in each table.
+
 ## Did the run pass?
 
 `result.passed` is `True` when no check has the status `FAILED`.
@@ -54,12 +69,12 @@ if not result.passed or len(errored) > 0:
 These methods print to the console. Each returns the result, so you can chain
 them, for example `result.print_summary().show_failed_checks()`.
 
-| Method                            | What it prints                                                                |
-| --------------------------------- | ----------------------------------------------------------------------------- |
-| `print_summary()`                 | The summary: check and row counts for each schema, and a table of every check |
-| `show_failed_checks()`            | Each failed check with its operator, expected value and actual value          |
-| `show_failed_rows(max_rows=5)`    | Up to `max_rows` failed rows for each failed check. `max_rows=-1` prints all. |
-| `display_full_report(max_rows=5)` | `print_summary()` followed by `show_failed_rows()`                            |
+| Method                            | What it prints                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `print_summary()`                 | The summary: check counts and approximate failed rows for each schema, and a table of every check |
+| `show_failed_checks()`            | Each failed check with its operator, expected value and actual value                              |
+| `show_failed_rows(max_rows=5)`    | Up to `max_rows` failed rows for each failed check. `max_rows=-1` prints all.                     |
+| `display_full_report(max_rows=5)` | `print_summary()` followed by `show_failed_rows()`                                                |
 
 [Reading the summary](getting-started.md#reading-the-summary) explains each
 line of the summary.
@@ -133,8 +148,10 @@ Both methods take `checks=["check_a", "check_b"]` to return only those checks.
 
 `get_dq_metrics_df()` returns, for each schema, how many rows failed at least
 one row-level check and how many passed them all. A row that fails two checks counts
-once. These are the same numbers as **Passed Rows** in the summary and the row
-counts in the [DQ metrics](dq-metrics/understanding-metrics.md).
+once. These are the row counts in the
+[DQ metrics](dq-metrics/understanding-metrics.md). The summary does not show
+them. It shows **Failed Rows (approximate)**, a sum of each check's scalar
+count.
 
 ```python
 result.get_dq_metrics_df()                     # one row per schema
@@ -156,12 +173,7 @@ The columns for `by="schema"` and `by="dimension"` are:
 
 The row counts hold attributed rows only. A row-level check that vowl could not
 attribute adds nothing, and is flagged in `checks_not_attributable`. If such a
-check failed and may have rows, `approximate` is `True` and the summary marks **Passed Rows**
-as approximate:
-
-```text
-Passed Rows: 4 / 5 (80.0%) (approx., 2 checks not attributable)
-```
+check failed and may have rows, `approximate` is `True`.
 
 When every row-level check of a schema or dimension is not attributable, its
 numbers are `None`.

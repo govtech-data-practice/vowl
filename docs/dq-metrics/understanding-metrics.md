@@ -17,10 +17,15 @@ for them, not during the run. You can get them in two ways:
   tool, such as Grafana or Datadog, for dashboards and alerts.
 - [Exporting to dq_metrics.json](json-export.md) writes them to a file next to
   the rest of the run's output, for a data warehouse or a notebook.
+  `save_dq_metrics()` writes the file. `save()` does not.
 
 Both come from the same calculation. The names, attributes and values are
 the same in both, so a number on a dashboard always matches the number in
 the file. This page describes the metrics once for both.
+
+The DQ metrics are the opt-in tier of the result. They attribute failed rows
+to each table and count its rows, which the basic summary never does. See
+[Two tiers of results](../results.md#two-tiers-of-results).
 
 ## The four levels
 
@@ -56,12 +61,12 @@ The `prefix` option of `export_otel` replaces `vowl` at the start of every name.
 
 ## All metrics
 
-| Level     | Check count                  | Check pass rate                  | Row count                  | Row pass rate                  | Other                                                                     |
-| --------- | ---------------------------- | -------------------------------- | -------------------------- | ------------------------------ | ------------------------------------------------------------------------- |
+| Level     | Check count                  | Check pass rate                  | Row count                  | Row pass rate                  | Other                                                                                   |
+| --------- | ---------------------------- | -------------------------------- | -------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
 | check     | `vowl.check.check.count`     |                                  | `vowl.check.row.count`     | `vowl.check.row.pass_rate`     | `vowl.check.row.scalar_count`, `vowl.check.row.scalar_pass_rate`, `vowl.check.duration` |
-| dimension | `vowl.dimension.check.count` | `vowl.dimension.check.pass_rate` | `vowl.dimension.row.count` | `vowl.dimension.row.pass_rate` |                                                                           |
-| schema    | `vowl.schema.check.count`    | `vowl.schema.check.pass_rate`    | `vowl.schema.row.count`    | `vowl.schema.row.pass_rate`    |                                                                           |
-| run       | `vowl.run.check.count`       | `vowl.run.check.pass_rate`       | `vowl.run.row.count`       | `vowl.run.row.pass_rate`       | `vowl.run.schema.count`, `vowl.run.duration`                              |
+| dimension | `vowl.dimension.check.count` | `vowl.dimension.check.pass_rate` | `vowl.dimension.row.count` | `vowl.dimension.row.pass_rate` |                                                                                         |
+| schema    | `vowl.schema.check.count`    | `vowl.schema.check.pass_rate`    | `vowl.schema.row.count`    | `vowl.schema.row.pass_rate`    |                                                                                         |
+| run       | `vowl.run.check.count`       | `vowl.run.check.pass_rate`       | `vowl.run.row.count`       | `vowl.run.row.pass_rate`       | `vowl.run.schema.count`, `vowl.run.duration`                                            |
 
 There is no check pass rate at check level. For one check it would always be
 0 or 1, which `vowl.check.check.count` already says.
@@ -209,10 +214,10 @@ vowl has two numbers for the rows a check failed:
 
 Every level counts attributed rows:
 
-| Metric                                                               | Counts                                 | Clamped |
-| -------------------------------------------------------------------- | -------------------------------------- | ------- |
-| `row.count` and `row.pass_rate`, at every level                      | Attributed rows, each row counted once | Yes     |
-| `vowl.check.row.scalar_count` and `vowl.check.row.scalar_pass_rate`  | The scalar count of one check          | No      |
+| Metric                                                              | Counts                                 | Clamped |
+| ------------------------------------------------------------------- | -------------------------------------- | ------- |
+| `row.count` and `row.pass_rate`, at every level                     | Attributed rows, each row counted once | Yes     |
+| `vowl.check.row.scalar_count` and `vowl.check.row.scalar_pass_rate` | The scalar count of one check          | No      |
 
 !!! warning "Breaking change"
 
@@ -247,7 +252,8 @@ At every level, `PASSED` plus `FAILED` is the number of rows in the table, or
 in all tables at run level.
 
 Row counts stay between 0 and the table's rows. Above check level they match
-`get_dq_metrics_df()` and **Passed Rows** in `print_summary()`.
+`get_dq_metrics_df()`. `print_summary()` does not show them. Its
+**Failed Rows (approximate)** is a sum of scalar counts.
 
 The scalar count can go outside that range. When it is higher than the
 table's rows, `PASSED` and `scalar_pass_rate` go negative. vowl does not
@@ -259,11 +265,11 @@ Only [row-level checks](../design-considerations/checks/check-results.md#counted
 have row counts. A check that is not row-level, such as an average, has check
 counts only.
 
-| Check                                  | `scalar_count` | `row.count` at check level                                      |
-| -------------------------------------- | -------------- | --------------------------------------------------------------- |
-| Failed, attributable                   | Yes            | Its attributed rows                                             |
-| Passed                                 | Yes            | `FAILED` is 0, or its attributed rows with `attribute_tolerated_rows=True` |
-| Failed, not attributable               | Yes            | None                                                            |
+| Check                    | `scalar_count` | `row.count` at check level                                                 |
+| ------------------------ | -------------- | -------------------------------------------------------------------------- |
+| Failed, attributable     | Yes            | Its attributed rows                                                        |
+| Passed                   | Yes            | `FAILED` is 0, or its attributed rows with `attribute_tolerated_rows=True` |
+| Failed, not attributable | Yes            | None                                                                       |
 
 A passed check follows the same rule as [tolerated rows](../design-considerations/checks/check-results.md#tolerated-rows).
 By default it adds no rows, so its `FAILED` is 0. With
@@ -286,28 +292,28 @@ Each reading carries attributes that say what it is for. All levels also
 carry the [run identity attributes](otel-export.md#run-identity-attributes),
 such as `vowl.contract.id`.
 
-| Metric                           | Attributes                                                               |
-| -------------------------------- | ------------------------------------------------------------------------ |
-| `vowl.check.check.count`         | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
-| `vowl.check.row.count`           | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
-| `vowl.check.row.pass_rate`       | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
-| `vowl.check.row.scalar_count`    | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
-| `vowl.check.row.scalar_pass_rate`| `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
-| `vowl.check.duration`            | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
-| `vowl.dimension.check.count`     | `status`, `schema_name`, `dimension`                                     |
-| `vowl.dimension.check.pass_rate` | `schema_name`, `dimension`                                               |
-| `vowl.dimension.row.count`       | `status`, `schema_name`, `dimension`                                     |
-| `vowl.dimension.row.pass_rate`   | `schema_name`, `dimension`                                               |
-| `vowl.schema.check.count`        | `status`, `schema_name`                                                  |
-| `vowl.schema.check.pass_rate`    | `schema_name`                                                            |
-| `vowl.schema.row.count`          | `status`, `schema_name`                                                  |
-| `vowl.schema.row.pass_rate`      | `schema_name`                                                            |
-| `vowl.run.schema.count`          | `status`                                                                 |
-| `vowl.run.check.count`           | `status`                                                                 |
-| `vowl.run.check.pass_rate`       | none                                                                     |
-| `vowl.run.row.count`             | `status`                                                                 |
-| `vowl.run.row.pass_rate`         | none                                                                     |
-| `vowl.run.duration`              | none                                                                     |
+| Metric                            | Attributes                                                               |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| `vowl.check.check.count`          | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.count`            | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.pass_rate`        | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
+| `vowl.check.row.scalar_count`     | `status`, `check_name`, `schema_name`, `dimension`, `severity`, `engine` |
+| `vowl.check.row.scalar_pass_rate` | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
+| `vowl.check.duration`             | `check_name`, `schema_name`, `dimension`, `severity`, `engine`           |
+| `vowl.dimension.check.count`      | `status`, `schema_name`, `dimension`                                     |
+| `vowl.dimension.check.pass_rate`  | `schema_name`, `dimension`                                               |
+| `vowl.dimension.row.count`        | `status`, `schema_name`, `dimension`                                     |
+| `vowl.dimension.row.pass_rate`    | `schema_name`, `dimension`                                               |
+| `vowl.schema.check.count`         | `status`, `schema_name`                                                  |
+| `vowl.schema.check.pass_rate`     | `schema_name`                                                            |
+| `vowl.schema.row.count`           | `status`, `schema_name`                                                  |
+| `vowl.schema.row.pass_rate`       | `schema_name`                                                            |
+| `vowl.run.schema.count`           | `status`                                                                 |
+| `vowl.run.check.count`            | `status`                                                                 |
+| `vowl.run.check.pass_rate`        | none                                                                     |
+| `vowl.run.row.count`              | `status`                                                                 |
+| `vowl.run.row.pass_rate`          | none                                                                     |
+| `vowl.run.duration`               | none                                                                     |
 
 Every check-level metric carries the same attributes, apart from `status` on
 the counts, so you can filter and join them the same way. `severity` is left

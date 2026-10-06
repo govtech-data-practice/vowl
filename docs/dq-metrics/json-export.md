@@ -7,7 +7,9 @@ description: How vowl writes a run's DQ metrics to dq_metrics.json, and how to l
 `result.save_dq_metrics(...)` writes the run's [DQ metrics](understanding-metrics.md) to
 `<prefix>_dq_metrics.json`. It takes the same `output_dir`, `prefix` and
 `filesystem` as `save()`, so the file can sit next to the check results and
-`summary.json`. `save()` itself does not write it. The
+`summary.json`. `save()` itself does not write it, because the DQ metrics
+attribute failed rows and count each table. See
+[Two tiers of results](../results.md#two-tiers-of-results). The
 file holds the same readings that
 [Exporting to OpenTelemetry](otel-export.md) sends, with the same names,
 attributes and values. Use it when you want the metrics in a data warehouse,
@@ -101,28 +103,28 @@ This table shows how many points each one has in this run, and one reading
 from each. Counts have one point per status, zeros included, so
 `vowl.check.check.count` has 7 checks times 3 statuses, which is 21 points.
 
-| Metric                           | Type      | Unit       | Points | One reading from this run                         |
-| -------------------------------- | --------- | ---------- | -----: | ------------------------------------------------- |
-| `vowl.check.check.count`         | counter   | `{check}`  |     21 | `1` for `email_required_check`, `status="FAILED"` |
-| `vowl.check.row.count`           | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
-| `vowl.check.row.pass_rate`       | gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
-| `vowl.check.row.scalar_count`    | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
-| `vowl.check.row.scalar_pass_rate`| gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
-| `vowl.check.duration`            | histogram | `ms`       |      7 | `11.6` for `email_required_check`                 |
-| `vowl.dimension.check.count`     | counter   | `{check}`  |     15 | `1` for `orders` completeness, `status="FAILED"`  |
-| `vowl.dimension.check.pass_rate` | gauge     | `1`        |      5 | `0.5` for `orders` completeness                   |
-| `vowl.dimension.row.count`       | gauge     | `{row}`    |     10 | `5` for `orders` completeness, `status="FAILED"`  |
-| `vowl.dimension.row.pass_rate`   | gauge     | `1`        |      5 | `0.95` for `orders` completeness                  |
-| `vowl.schema.check.count`        | counter   | `{check}`  |      6 | `2` for `orders`, `status="FAILED"`               |
-| `vowl.schema.check.pass_rate`    | gauge     | `1`        |      2 | `0.6` for `orders`                                |
-| `vowl.schema.row.count`          | gauge     | `{row}`    |      4 | `7` for `orders`, `status="FAILED"`               |
-| `vowl.schema.row.pass_rate`      | gauge     | `1`        |      2 | `0.93` for `orders`                               |
-| `vowl.run.schema.count`          | counter   | `{schema}` |      3 | `2` with `status="FAILED"`                        |
-| `vowl.run.check.count`           | counter   | `{check}`  |      3 | `3` with `status="FAILED"`                        |
-| `vowl.run.check.pass_rate`       | gauge     | `1`        |      1 | `0.571`, which is 4 of 7 checks                   |
-| `vowl.run.row.count`             | gauge     | `{row}`    |      2 | `9` with `status="FAILED"`                        |
-| `vowl.run.row.pass_rate`         | gauge     | `1`        |      1 | `0.925`, which is 111 of 120 rows                 |
-| `vowl.run.duration`              | histogram | `ms`       |      1 | `400.1`                                           |
+| Metric                            | Type      | Unit       | Points | One reading from this run                         |
+| --------------------------------- | --------- | ---------- | -----: | ------------------------------------------------- |
+| `vowl.check.check.count`          | counter   | `{check}`  |     21 | `1` for `email_required_check`, `status="FAILED"` |
+| `vowl.check.row.count`            | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
+| `vowl.check.row.pass_rate`        | gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
+| `vowl.check.row.scalar_count`     | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
+| `vowl.check.row.scalar_pass_rate` | gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
+| `vowl.check.duration`             | histogram | `ms`       |      7 | `11.6` for `email_required_check`                 |
+| `vowl.dimension.check.count`      | counter   | `{check}`  |     15 | `1` for `orders` completeness, `status="FAILED"`  |
+| `vowl.dimension.check.pass_rate`  | gauge     | `1`        |      5 | `0.5` for `orders` completeness                   |
+| `vowl.dimension.row.count`        | gauge     | `{row}`    |     10 | `5` for `orders` completeness, `status="FAILED"`  |
+| `vowl.dimension.row.pass_rate`    | gauge     | `1`        |      5 | `0.95` for `orders` completeness                  |
+| `vowl.schema.check.count`         | counter   | `{check}`  |      6 | `2` for `orders`, `status="FAILED"`               |
+| `vowl.schema.check.pass_rate`     | gauge     | `1`        |      2 | `0.6` for `orders`                                |
+| `vowl.schema.row.count`           | gauge     | `{row}`    |      4 | `7` for `orders`, `status="FAILED"`               |
+| `vowl.schema.row.pass_rate`       | gauge     | `1`        |      2 | `0.93` for `orders`                               |
+| `vowl.run.schema.count`           | counter   | `{schema}` |      3 | `2` with `status="FAILED"`                        |
+| `vowl.run.check.count`            | counter   | `{check}`  |      3 | `3` with `status="FAILED"`                        |
+| `vowl.run.check.pass_rate`        | gauge     | `1`        |      1 | `0.571`, which is 4 of 7 checks                   |
+| `vowl.run.row.count`              | gauge     | `{row}`    |      2 | `9` with `status="FAILED"`                        |
+| `vowl.run.row.pass_rate`          | gauge     | `1`        |      1 | `0.925`, which is 111 of 120 rows                 |
+| `vowl.run.duration`               | histogram | `ms`       |      1 | `400.1`                                           |
 
 A few things to notice:
 
@@ -261,15 +263,15 @@ The rules for combining runs are the same as on a dashboard:
 
 ## dq_metrics.json and summary.json
 
-`summary.json` is unchanged. It is the record of the run: its settings, every
+`summary.json` is written by `save()`. It is the record of the run: its settings, every
 check and what each check found. `dq_metrics.json` is the numbers computed
 from it, in the vocabulary on [Understanding DQ Metrics](understanding-metrics.md).
 
 Some fields in `summary.json` look like DQ metrics but follow older rules.
 Prefer `dq_metrics.json` for these:
 
-| In `summary.json`                            | Use instead                | Why                                                                                                 |
-| -------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------- |
-| `success_rate`                               | `vowl.run.check.pass_rate` | `success_rate` is a percentage from 0 to 100. Pass rates are from 0 to 1.                           |
-| `failed_rows`                                | `vowl.run.row.count`       | `failed_rows` adds up the scalar counts of each check, so a row that fails two checks counts twice. |
-| `total_checks`, `passed`, `failed`, `errors` | `vowl.run.check.count`     | The same numbers, as one metric with a `status` attribute.                                          |
+| In `summary.json`                            | Use instead                | Why                                                                                                             |
+| -------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `success_rate`                               | `vowl.run.check.pass_rate` | `success_rate` is a percentage from 0 to 100. Pass rates are from 0 to 1.                                       |
+| `failed_rows_approximate`                    | `vowl.run.row.count`       | `failed_rows_approximate` adds up the scalar counts of each check, so a row that fails two checks counts twice. |
+| `total_checks`, `passed`, `failed`, `errors` | `vowl.run.check.count`     | The same numbers, as one metric with a `status` attribute.                                                      |

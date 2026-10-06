@@ -372,8 +372,8 @@ A check that passes costs one query.
 
 The row query runs when a check fails and something needs its rows:
 
-- The [row counts](how-attributed-rows-work.md), such as **Passed Rows**
-  in the summary and `get_dq_metrics_df()`. Where it can, vowl runs the
+- The [row counts](how-attributed-rows-work.md), such as
+  `get_dq_metrics_df()` and the DQ metrics. Where it can, vowl runs the
   row queries inside the data source as part of one attribution query,
   so only numbers come back.
 - The [annotated output](annotating-the-source-table.md), from
@@ -467,5 +467,4 @@ count is still in `vowl.check.row.scalar_count`.
 
 `checks_not_attributable` counts the checks left out. It is a column of
 `get_dq_metrics_df()`, the `vowl.row_quality.checks_not_attributable`
-attribute of the OTEL root span, and a note in the
-summary: `Passed Rows: 4 / 5 (80.0%) (approx., 2 checks not attributable)`.
+attribute of the OTEL root span. The summary does not show it.
