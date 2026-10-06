@@ -33,13 +33,14 @@ mean the same as in the [Glossary](glossary.md).
 
 ## Two tiers of results
 
-The result has two tiers. The basic tier is the default and is cheap. The DQ
-metrics tier is opt in and does more work.
+The result has two tiers. The basic tier is cheap. The DQ metrics tier does
+more work. `save()` is in the DQ metrics tier by default. Pass
+`output_mode="failed_rows"` to keep it in the basic tier.
 
-| Tier       | Methods                                                                                     | Cost                                                                                                                        | Counts                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Basic      | `print_summary()`, `get_check_results_df()`, `result.summary`, `save()`                     | Runs the check queries only. Never attributes rows to the table.                                                            | Each check's scalar `failed_rows_count`. A sum across checks is marked approximate.         |
-| DQ metrics | `get_dq_metrics()`, `get_dq_metrics_df(by=...)`, `save_dq_metrics(...)`, `export_otel(...)` | Attributes failed rows to the table once and reuses that work. Runs a `COUNT(*)` on each table the first time it is needed. | Rows that failed at least one check, rows that passed, pass rates and an `approximate` flag |
+| Tier       | Methods                                                                                                                       | Cost                                                                                                                        | Counts                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Basic      | `print_summary()`, `get_check_results_df()`, `result.summary`, `save(output_mode="failed_rows")`                              | Runs the check queries only. Never attributes rows to the table.                                                            | Each check's scalar `failed_rows_count`. A sum across checks is marked approximate.         |
+| DQ metrics | `get_dq_metrics()`, `get_dq_metrics_df(by=...)`, `export_otel(...)`, `get_annotated_output()`, `save()` (the annotated modes) | Attributes failed rows to the table once and reuses that work. Runs a `COUNT(*)` on each table the first time it is needed. | Rows that failed at least one check, rows that passed, pass rates and an `approximate` flag |
 
 A sum of scalar counts across checks is approximate. A row that fails two
 checks counts twice, and `DISTINCT` or a join can change a check's count. The
@@ -197,7 +198,8 @@ vowl counts rows inside the data source where it can, so the row counts stay
 exact on large tables and do not depend on `max_failed_rows`. Where the data
 source can't attribute a check's failed rows, vowl downloads the table and
 attributes them on your machine. `get_annotated_output()` reuses that
-download. This work runs only when you ask for DQ metrics.
+download. This work runs only when you ask for DQ metrics or annotated
+output.
 [How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md)
 explains which checks are row-level and how they are counted.
 
@@ -206,12 +208,12 @@ explains which checks are row-level and how they are counted.
 The DQ metrics are the counts and pass rates at check, dimension, schema and
 run level, ready for a dashboard.
 
-| Method or property     | What it does                                                                                                                                  |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_dq_metrics()`     | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
-| `save_dq_metrics(...)` | Writes the DQ metrics to `<prefix>_dq_metrics.json`. It takes the same `output_dir`, `prefix` and `filesystem` as `save()`.                   |
-| `export_otel(...)`     | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
-| `run_id`               | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
+| Method or property | What it does                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_dq_metrics()` | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
+| `save(...)`        | Writes the DQ metrics to `<prefix>_dq_metrics.json`, next to the annotated tables. See [Saving results](#saving-results).                     |
+| `export_otel(...)` | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
+| `run_id`           | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
 
 ## Saving results
 
@@ -222,18 +224,31 @@ files it wrote.
 result.save("dq-results/", prefix="orders")
 ```
 
-| File                                  | What it holds                       |
-| ------------------------------------- | ----------------------------------- |
-| `orders_check_results.csv`            | The [check results](#check-results) |
-| `orders_<schema>_annotated.csv`       | One annotated table per schema      |
-| `orders_<schema>_<check>_residue.csv` | One file per residue                |
-| `orders_summary.json`                 | The numbers behind the summary      |
+| File                                  | What it holds                               |
+| ------------------------------------- | ------------------------------------------- |
+| `orders_check_results.csv`            | The [check results](#check-results)         |
+| `orders_<schema>_annotated.csv`       | One annotated table per schema              |
+| `orders_<schema>_<check>_residue.csv` | One file per residue                        |
+| `orders_summary.json`                 | The numbers behind the summary              |
+| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md) |
 
 Without `prefix`, the files start with `vowl_results`.
 
-`save()` writes no DQ metrics, so it never attributes rows. To save them too,
-call `result.save_dq_metrics("dq-results/", prefix="orders")`, which writes
-`orders_dq_metrics.json`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).
+The annotated tables and the DQ metrics share one table download and one row
+attribution, so writing both costs no more than writing one. On a large table
+that work can be slow. `output_mode` picks what `save()` writes:
+
+| `output_mode`           | Writes                                                                                    | Cost                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `"annotated"` (default) | The annotated tables, residues and `dq_metrics.json`                                      | Attributes rows and can download tables                            |
+| `"failed_rows"`         | One CSV per table with only the failed rows, grouped, with the check names in `check_ids` | Runs no extra queries. Never downloads a table or attributes rows. |
+| `"both"`                | The annotated tables, the `"failed_rows"` CSVs and `dq_metrics.json`. No residues.        | As `"annotated"`                                                   |
+
+Every mode also writes the check results and `summary.json`. The
+`"failed_rows"` CSVs are the same tables `get_consolidated_output_dfs()`
+returns. A check that failed because too few rows matched, such as
+`mustBeGreaterThan`, is left out of them, since the rows it matched are the
+good ones.
 
 `save()` takes the same `check_info`, `include_check_definition` and
 `include_contract_definition` options as the methods above.
@@ -315,12 +330,4 @@ These still work but will be removed in a future release.
 
 | Deprecated                          | Use instead                                       |
 | ----------------------------------- | ------------------------------------------------- |
-| `save(output_mode="failed_rows")`   | `save()`                                          |
-| `save(output_mode="both")`          | `save()`                                          |
-| `get_consolidated_output_dfs()`     | `get_annotated_output()`                          |
 | `ValidationResult.save_dataframe()` | `pyarrow.parquet.write_table(df.to_arrow(), ...)` |
-
-`output_mode="failed_rows"` writes the older set of files, which group the
-failed rows of several checks together. `output_mode="both"` writes the
-annotated tables and the older files together, which can help while you move
-over.

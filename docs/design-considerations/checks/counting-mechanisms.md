@@ -13,9 +13,9 @@ what each way costs. vowl picks a **route** for each check.
 By default vowl attributes the failed rows of every row-level check that
 failed. A check that passed takes no route and runs no extra query, unless
 [`attribute_tolerated_rows`](../../run-settings.md#attribute_tolerated_rows)
-is set. This work runs only when you ask for DQ metrics, through
-`get_dq_metrics()`, `get_dq_metrics_df()`, `save_dq_metrics()` or
-`export_otel()`.
+is set. This work runs only when you ask for DQ metrics or annotated output,
+through `get_dq_metrics()`, `get_dq_metrics_df()`, `export_otel()`,
+`get_annotated_output()` or `save()` in its annotated modes.
 
 ## Which route a check takes
 

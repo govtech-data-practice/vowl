@@ -177,6 +177,7 @@ give you the failed rows without it:
 | `result.show_failed_rows(max_rows=5)` | Prints a few failed rows for each failed check. `max_rows=-1` prints them all.  |
 | `result.get_output_dfs()`             | Each check's failed rows as a separate table, under `"<schema>::<check_name>"`. |
 
-`result.save()` saves the annotated tables, residues and `summary.json` as
-files. The older `output_mode="failed_rows"` and
-`get_consolidated_output_dfs()` will be removed.
+`result.save()` saves the annotated tables, residues, `summary.json` and
+`dq_metrics.json` as files. `output_mode="failed_rows"` is the cheap
+alternative. It saves the rows from `get_consolidated_output_dfs()` and never
+annotates the table. See [Saving results](../../results.md#saving-results).

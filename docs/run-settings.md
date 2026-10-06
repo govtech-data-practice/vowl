@@ -29,7 +29,7 @@ These change what each check returns.
 
 These change the row counts: `failed_rows`, `passed_rows` and `pass_rate` per
 table, dimension and check. They apply to the DQ metrics: `get_dq_metrics`,
-`get_dq_metrics_df`, `save_dq_metrics` and `export_otel`. vowl attributes each
+`get_dq_metrics_df`, `export_otel` and the annotated modes of `save()`. vowl attributes each
 failed row to its table row, so a row that fails two checks counts once. See
 [Counting Mechanisms](design-considerations/checks/counting-mechanisms.md).
 
@@ -44,7 +44,7 @@ the matching argument. An argument you pass always wins.
 
 | Setting                                                 | Default       | What it does                                                                                                                                                                       |
 | ------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="output_mode"></a>`output_mode`                   | `"annotated"` | What `save()` writes. `"failed_rows"` and `"both"` are deprecated. See [Saving results](results.md#saving-results) and [Deprecated](results.md#deprecated).                        |
+| <a id="output_mode"></a>`output_mode`                   | `"annotated"` | What `save()` writes. `"failed_rows"` is the cheap mode. `"both"` writes everything. See [Saving results](results.md#saving-results).                                              |
 | <a id="annotated_check_info"></a>`annotated_check_info` | `"names"`     | How much detail the `check_info` column holds. See [What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds). |
 
 ## Deprecated

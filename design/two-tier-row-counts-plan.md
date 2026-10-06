@@ -3,6 +3,8 @@
 Status: done. Steps 1-7 committed (13c0200..8ded82f). Decision 11 (annotated output) is owned elsewhere. Branch `feat/otel-exporter`.
 Starts after the handoff work in `design/handoff-check-attributed-row-metric.md` is committed.
 
+> **Superseded in part (2026-10-07).** Decisions 4, 5 and 11 changed. `save()` now writes `<prefix>_dq_metrics.json` in its annotated modes (`"annotated"`, the default, and `"both"`), because the annotated tables already pay for attribution and the table download. `save_dq_metrics()` is removed. `output_mode="failed_rows"` is no longer deprecated. It is the cheap mode, writes the grouped failed-rows CSVs and no `dq_metrics.json`, and never attributes rows. See commit e7eb4aa and `docs/results.md#saving-results`.
+
 ## Goal
 
 Two separate tiers, with one consistent rule for each.
