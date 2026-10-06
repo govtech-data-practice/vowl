@@ -1,7 +1,7 @@
 ---
 title: Counting Mechanisms
 description: >-
-  How vowl attributes each check's failed rows to the source table, the four
+  How vowl attributes each check's failed rows to the source table, the three
   routes it uses, what each costs, and when the numbers are exact.
 ---
 
@@ -13,18 +13,9 @@ what each way costs. vowl picks a **route** for each check.
 By default vowl attributes the failed rows of every row-level check that
 failed. A check that passed takes no route and runs no extra query, unless
 [`attribute_tolerated_rows`](../../run-settings.md#attribute_tolerated_rows)
-is set. To skip the work, for example on very large tables, set
-[`row_counts="scalar"`](../../run-settings.md#row_counts):
-
-```python
-from vowl import ValidationConfig
-
-config = ValidationConfig(row_counts="scalar")
-```
-
-Every failed row-level check then takes `server_scalar` and is not
-attributable, and the numbers can be approximate. The check's status and scalar count stay the
-same, and so does the annotated output.
+is set. This work runs only when you ask for DQ metrics, through
+`get_dq_metrics()`, `get_dq_metrics_df()`, `save_dq_metrics()` or
+`export_otel()`.
 
 ## Which route a check takes
 
@@ -65,12 +56,6 @@ vowl asks up to three questions about each check:
     No ──────────────────────────────────────▶  client_lookup
 ```
 
-With `row_counts="scalar"`, vowl asks no questions:
-
-```text
- Any failed row-level check  ──────────────────▶  server_scalar
-```
-
 One more rule applies. When the table is downloaded anyway and the data
 source is not a tested source, the plain filters are attributed in the
 downloaded table too, and take `client_lookup`.
@@ -84,10 +69,9 @@ wrong. See [When something goes wrong](#fallbacks).
 
 ## Trade-offs {#when-exact}
 
-| `row_counts`             | What vowl downloads                                                  | Extra work in the data source                                               | Memory on your machine | Exact                                                       |
-| ------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------- |
-| `"attributed"` (default) | The whole table, only where the data source can't attribute the rows | An attribution query, which also attributes the checks that are not filters | Low on a tested source | Yes[^7]                                                     |
-| `"scalar"`               | Nothing                                                              | None                                                                        | None                   | Approximate once two checks of a table have failed rows[^8] |
+| What vowl downloads                                                  | Extra work in the data source                                               | Memory on your machine | Exact   |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------- |
+| The whole table, only where the data source can't attribute the rows | An attribution query, which also attributes the checks that are not filters | Low on a tested source | Yes[^6] |
 
 A table whose checks are all plain filters on a source that can count is
 never downloaded to count it.
@@ -99,7 +83,6 @@ never downloaded to count it.
 | `server_predicate` | Yes          | Not used           | Yes[^1]                | Approx[^2]      | Yes[^3]                                    |
 | `server_lookup`    | Yes          | Yes                | Approx[^4]             | Not used        | Yes[^3]                                    |
 | `client_lookup`    | Yes          | Yes                | Approx[^4]             | Yes             | Not attributable[^5]                       |
-| `server_scalar`    | Yes          | Approx[^6]         | Approx[^6]             | Yes             | Yes[^3]                                    |
 
 [^1]:
     It counts the table rows the filter keeps, so the values the check
@@ -111,9 +94,7 @@ never downloaded to count it.
     `server_predicate`. Once the table is downloaded, the plain filters move
     to `client_lookup` instead.
 
-[^3]:
-    It counts in the data source or uses the scalar count, so the cap
-    doesn't apply.
+[^3]: It counts in the data source, so the cap doesn't apply.
 
 [^4]:
     Marked approximate whenever the check's SELECT list holds anything other
@@ -124,38 +105,25 @@ never downloaded to count it.
     [When something goes wrong](#fallbacks).
 
 [^6]:
-    Only a plain filter's scalar count matches its failed rows. A
-    `COUNT(DISTINCT ...)` check counts values, not rows, so it is not exact
-    either, with the `reason`
-    `the check counts distinct values, not rows`.
-
-[^7]:
     Unless one of the table's checks is approximate, or a row-level check with
     failed rows is not attributable. Then the table, its dimensions and the run
     total are approximate too.
 
-[^8]:
-    Scalar counts can't tell which rows overlap. The sum is capped at the
-    table's row count. With only one check that has failed rows, the table is
-    exact if that check is.
-
 ### Every case {#route-scenarios}
 
 Each cell is the route, then whether the check's number is exact. "Can
-count" refers to question 1. Under `row_counts="scalar"` every failed
-row-level check is not attributable, and "exact" refers to its scalar
-count. A scalar count of 0 is always exact.
+count" refers to question 1.
 
-| Check                                    | Data source                 | Default                                                                                                              | `row_counts="scalar"`      |
-| ---------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Plain filter                             | Tested, can count           | `server_predicate`, exact                                                                                            | `server_scalar`, exact     |
-| Plain filter                             | Not tested, can count       | `server_predicate`, exact only if every row-level check takes it. `client_lookup`, exact, if the table is downloaded | `server_scalar`, exact     |
-| Not a plain filter (`DISTINCT`, join...) | Tested, can count           | `server_lookup`, exact                                                                                               | `server_scalar`, not exact |
-| Not a plain filter                       | Not tested, can count       | `client_lookup`, exact                                                                                               | `server_scalar`, not exact |
-| Plain filter                             | Can't count                 | `client_lookup`, exact                                                                                               | `server_scalar`, exact     |
-| Not a plain filter, or reads two sources | Can't count, or two sources | `client_lookup`, exact                                                                                               | `server_scalar`, not exact |
+| Check                                    | Data source                 | Default                                                                                                              |
+| ---------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Plain filter                             | Tested, can count           | `server_predicate`, exact                                                                                            |
+| Plain filter                             | Not tested, can count       | `server_predicate`, exact only if every row-level check takes it. `client_lookup`, exact, if the table is downloaded |
+| Not a plain filter (`DISTINCT`, join...) | Tested, can count           | `server_lookup`, exact                                                                                               |
+| Not a plain filter                       | Not tested, can count       | `client_lookup`, exact                                                                                               |
+| Plain filter                             | Can't count                 | `client_lookup`, exact                                                                                               |
+| Not a plain filter, or reads two sources | Can't count, or two sources | `client_lookup`, exact                                                                                               |
 
-## The four routes
+## The three routes {#the-four-routes}
 
 A route is how vowl finds how many copies of each failed row the table holds.
 For `price_must_be_positive`, that is "bread 2 copies, milk 1 copy".
@@ -164,12 +132,11 @@ On `server_predicate` and `server_lookup`, vowl puts the row queries of a
 table's checks into one **attribution query** and runs it in the data source.
 It attributes the rows there, and only the numbers come back.
 
-| Route                                         | When it's used                                                                  | What vowl downloads                 | Exact                                        |
-| --------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------- |
-| [`server_predicate`](#route-server-predicate) | The query is a plain filter, so the data source just counts                     | Only numbers                        | Yes on a tested source                       |
-| [`server_lookup`](#route-server-lookup)       | Not a plain filter. The data source attributes the rows to the table            | Only numbers                        | Yes, unless the check returns changed values |
-| [`client_lookup`](#route-client-lookup)       | Not a plain filter. vowl attributes the rows in the downloaded table            | The whole table and the failed rows | Yes, unless the check returns changed values |
-| [`server_scalar`](#route-server-scalar)       | Only with `row_counts="scalar"`. vowl uses the count the check already returned | Nothing                             | Only for a plain filter, and see the warning |
+| Route                                         | When it's used                                                       | What vowl downloads                 | Exact                                        |
+| --------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------- |
+| [`server_predicate`](#route-server-predicate) | The query is a plain filter, so the data source just counts          | Only numbers                        | Yes on a tested source                       |
+| [`server_lookup`](#route-server-lookup)       | Not a plain filter. The data source attributes the rows to the table | Only numbers                        | Yes, unless the check returns changed values |
+| [`client_lookup`](#route-client-lookup)       | Not a plain filter. vowl attributes the rows in the downloaded table | The whole table and the failed rows | Yes, unless the check returns changed values |
 
 The `route` column of `get_dq_metrics_df(by="check")` shows each check's
 route. It is empty for a check that is not row-level, or not attributable on a
@@ -292,7 +259,7 @@ and for checks that read two data sources.
   at most once per run, and counting and annotating flag the same rows.
 - The whole table is held in memory. At 6 columns this took about 3 s and 1
   to 1.5 GiB for 1 million rows, and about 13 s and 3.5 GiB for 5 million
-  rows. On large tables, set `row_counts="scalar"`.
+  rows. The download happens only when you ask for DQ metrics.
 
 !!! note "Checks that return changed values"
 
@@ -304,42 +271,6 @@ and for checks that read two data sources.
     rows that can be attributed. When some failed rows can't be attributed,
     the `reason` is `some failed rows could not be attributed to a table row`. On
     `server_lookup`, finding them costs one more query per table.
-
-### `server_scalar` {#route-server-scalar}
-
-The cheapest route. It is used only with `row_counts="scalar"`, and then
-every failed row-level check takes it. vowl uses each check's scalar count,
-the number that decided pass or fail, as it is, without attributing any row.
-Every failed row-level check is then not attributable, and
-`checks_not_attributable` counts it. Passed checks add nothing.
-
-```text
- IN THE DATA SOURCE
- ┌──────────────────────────────────────────────────┐
- │ The check already ran and returned its           │
- │ scalar count                                     │
- │      SELECT DISTINCT ...   →   2                 │
- └─────────────────────────┬────────────────────────┘
-                           │  nothing more
-                           ▼
- ON YOUR MACHINE      2 rows   (the table has 3)   →   not exact
-```
-
-- A plain filter's scalar count is every row it keeps, so it is exact. So is
-  a scalar count of 0. `distinct_bad_prices` counted 2, not 3, so it is
-  marked not exact.
-- A `COUNT(DISTINCT item)` check counts values, not the rows that hold them,
-  so it is marked not exact, with the `reason`
-  `the check counts distinct values, not rows`.
-- The scalar count is never cut short by `max_failed_rows`.
-
-!!! warning "Scalar counts can't tell which rows overlap"
-
-    A scalar count says how many rows failed, not which ones. When two checks
-    of a table have failed rows, vowl can't tell whether they share them. It
-    adds the scalar counts, caps the sum at the table's row count and marks
-    the table not exact. With only one check that has failed rows, the
-    table is exact if that check is.
 
 ## When something goes wrong {#fallbacks}
 
@@ -379,31 +310,30 @@ same attributes on its `vowl.check` span. The DQ metrics do not carry the flag.
 
 A number is approximate when:
 
-| Cause                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A row-level check ended in `ERROR`, so it may hide failed rows                                                                                    |
-| A row-level check that may have failed rows was not attributable, so its rows are left out                                                        |
-| With `row_counts="scalar"`, a scalar count is not a plain filter's row count, or two checks overlap (see [`server_scalar`](#route-server-scalar)) |
-| A check returns changed values, such as `price * 1.5`, that may match no row of the table                                                         |
-| The data source is not a tested source and may treat different values as equal                                                                    |
-| vowl doesn't know the table's columns, or a value could not be compared during the merge                                                          |
-| The total was capped, or is lower than the rows one check found                                                                                   |
+| Cause                                                                                      |
+| ------------------------------------------------------------------------------------------ |
+| A row-level check ended in `ERROR`, so it may hide failed rows                             |
+| A row-level check that may have failed rows was not attributable, so its rows are left out |
+| A check returns changed values, such as `price * 1.5`, that may match no row of the table  |
+| The data source is not a tested source and may treat different values as equal             |
+| vowl doesn't know the table's columns, or a value could not be compared during the merge   |
+| The total was capped, or is lower than the rows one check found                            |
 
 ## Where to look in the code
 
-| Step                              | Code in `src/vowl/validation/`                                                                                             |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Pick the row-level checks         | `row_quality/selection.py`                                                                                                 |
-| Pick the match key                | `_choose_key` in `row_quality/__init__.py`, `row_quality/match_key.py`                                                     |
-| Pick the route                    | `_assign_route` in `row_quality/__init__.py`, `row_quality/certify.py`                                                     |
-| `client_lookup`                   | `_fetch`, `_export_table` and `_run_onto_table` in `row_quality/__init__.py`, `merge_onto_table` in `row_quality/merge.py` |
-| `server_scalar`, not attributable | `_run_scalars`, `_leave_unattributed`, `_leave_lookup_unattributed` and `_check_match_key` in `row_quality/__init__.py`    |
-| Merging the attributed rows       | `row_quality/pushdown.py` (data source), `row_quality/merge.py` (your machine)                                             |
-| Counting the table's rows         | `_total_rows` in `row_quality/__init__.py`                                                                                 |
-| Adding up, approximate flags      | `row_quality/rollup.py`                                                                                                    |
-| DQ metrics                        | `dq_metrics.py`                                                                                                            |
-| Annotating                        | `get_annotated_output` in `result.py`                                                                                      |
-| Comparing values on your machine  | `row_keys` in `result_row_quality.py`                                                                                      |
+| Step                             | Code in `src/vowl/validation/`                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Pick the row-level checks        | `row_quality/selection.py`                                                                                                 |
+| Pick the match key               | `_choose_key` in `row_quality/__init__.py`, `row_quality/match_key.py`                                                     |
+| Pick the route                   | `_assign_route` in `row_quality/__init__.py`, `row_quality/certify.py`                                                     |
+| `client_lookup`                  | `_fetch`, `_export_table` and `_run_onto_table` in `row_quality/__init__.py`, `merge_onto_table` in `row_quality/merge.py` |
+| Not attributable                 | `_leave_unattributed`, `_leave_lookup_unattributed` and `_check_match_key` in `row_quality/__init__.py`                    |
+| Merging the attributed rows      | `row_quality/pushdown.py` (data source), `row_quality/merge.py` (your machine)                                             |
+| Counting the table's rows        | `_total_rows` in `row_quality/__init__.py`                                                                                 |
+| Adding up, approximate flags     | `row_quality/rollup.py`                                                                                                    |
+| DQ metrics                       | `dq_metrics.py`                                                                                                            |
+| Annotating                       | `get_annotated_output` in `result.py`                                                                                      |
+| Comparing values on your machine | `row_keys` in `result_row_quality.py`                                                                                      |
 
 The full design, with the reasoning and measurements, is in
 `design/row-quality-statistics.md`.

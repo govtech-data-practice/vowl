@@ -46,12 +46,12 @@ Rows 2 and 5 are exact copies. Rows 2, 3 and 5 fail at least one check. Rows
 1 and 4 are clean. A check that returns one number, such as an average, is
 not row-level, so it has no row counts at any grain.
 
-| Grain         | What it counts                                        | In the example                                                                | Where to see it                                                                                                                                                                                |
-| ------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Check**     | The failed rows of one row-level check                | `price_must_be_positive`: 3, `quantity_is_filled`: 1, `order_id_is_unique`: 2 | `attributed_rows` in `get_dq_metrics_df(by="check")` and the check-level [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted). `scalar_count` sits next to it.    |
-| **Dimension** | The rows that fail any check of the dimension         | conformity: 3, completeness: 1, uniqueness: 2                                 | `get_dq_metrics_df(by="dimension")`                                                                                                                                                            |
-| **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | **Passed Rows** in the summary, `get_dq_metrics_df()`                                                                                                                                          |
-| **Run**       | The schema numbers added up                           | 3 of 5                                                                        | the run-level [DQ metrics](../../dq-metrics/understanding-metrics.md)                                                                                                                          |
+| Grain         | What it counts                                        | In the example                                                                | Where to see it                                                                                                                                                                               |
+| ------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Check**     | The failed rows of one row-level check                | `price_must_be_positive`: 3, `quantity_is_filled`: 1, `order_id_is_unique`: 2 | `attributed_rows` in `get_dq_metrics_df(by="check")` and the check-level [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted). `scalar_count` sits next to it. |
+| **Dimension** | The rows that fail any check of the dimension         | conformity: 3, completeness: 1, uniqueness: 2                                 | `get_dq_metrics_df(by="dimension")`                                                                                                                                                           |
+| **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | **Passed Rows** in the summary, `get_dq_metrics_df()`                                                                                                                                         |
+| **Run**       | The schema numbers added up                           | 3 of 5                                                                        | the run-level [DQ metrics](../../dq-metrics/understanding-metrics.md)                                                                                                                         |
 
 The check numbers add up to 3 + 1 + 2 = 6, but only 3 rows failed. Each of
 them failed two checks:
@@ -95,17 +95,11 @@ the two bread rows:
 So the check has three numbers. The first two are its query output, and the
 third is worked out from it:
 
-| Number              | What it is                                                       | Shows | Where you see it                                                                                                           |
-| ------------------- | ---------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")` and `vowl.check.row.scalar_count`         |
-| **Failed rows**     | The rows the row query returned                                  | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                                      |
-| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_dq_metrics_df(by="check")`, the annotated output and every row count of the DQ metrics[^scalar]  |
-
-[^scalar]:
-    Except with
-    [`row_counts="scalar"`](../../run-settings.md#row_counts)
-    set. The counts above the check grain then add up the scalar counts of the
-    failed checks, and failed checks have no check-level `row.count`.
+| Number              | What it is                                                       | Shows | Where you see it                                                                                                   |
+| ------------------- | ---------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ |
+| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")` and `vowl.check.row.scalar_count` |
+| **Failed rows**     | The rows the row query returned                                  | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                              |
+| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_dq_metrics_df(by="check")`, the annotated output and every row count of the DQ metrics   |
 
 For a plain filter such as `WHERE price <= 0` without `DISTINCT`, all three
 show 3. A join can do the opposite and return one row twice, so the scalar

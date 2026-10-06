@@ -30,18 +30,6 @@ OutputMode = Literal["failed_rows", "annotated", "both"]
 #: - ``"full"``    -- ``[<full check_definition> + check_name + target, ...]``.
 CheckInfoPreset = Literal["names", "summary", "full"]
 
-#: How the row-quality numbers count rows:
-#:
-#: - ``"attributed"`` -- attribute each failed row to its table row, so a row
-#:                       caught by several checks counts once (default).
-#: - ``"scalar"``     -- add up the scalar counts of the failed checks. No
-#:                       query runs, but a row caught by several checks counts
-#:                       more than once.
-#: - ``"off"``        -- no row counts.
-RowCounts = Literal["attributed", "scalar", "off"]
-
-_ROW_COUNTS = ("attributed", "scalar", "off")
-
 
 @dataclass
 class ValidationConfig:
@@ -52,14 +40,12 @@ class ValidationConfig:
     the entire validation.
 
     Attributes:
-        max_rows_for_statistics: Cap on the number of rows counted when
-            computing per-schema row statistics.  ``-1`` (default) means
-            count all rows with no cap.  **Deprecated:** a cap only makes
-            the row counts not exact.  Any other value emits a
-            ``DeprecationWarning``.
-        enable_additional_schema_statistics: **Deprecated**, use
-            ``row_counts="off"`` instead.  ``False`` sets
-            ``row_counts="off"``.  Setting it emits a ``DeprecationWarning``.
+        max_rows_for_statistics: **Deprecated** and has no effect.  Table
+            totals are counted without a cap.  Any value other than ``-1``
+            emits a ``DeprecationWarning``.
+        enable_additional_schema_statistics: **Deprecated** and has no
+            effect.  The row counts are computed only when a DQ-metrics
+            method asks for them.  Setting it emits a ``DeprecationWarning``.
         max_failed_rows: Maximum number of failed rows to fetch per check
             when deriving row-level failure details.  ``-1`` (default)
             means fetch all failing rows (no cap).
@@ -81,15 +67,11 @@ class ValidationConfig:
             ``get_annotated_output(check_info=...)`` / ``save(check_info=...)``
             override this per call; when their argument is ``None`` this config
             value is used.
-        row_counts: How the row-quality numbers (``print_summary``,
-            ``get_dq_metrics_df``, the DQ metrics and OTEL) count rows.  One
-            of ``"attributed"`` (default), ``"scalar"`` or ``"off"``.  See
-            :data:`RowCounts`.
         attribute_tolerated_rows: When ``False`` (default), only the rows of
             FAILED checks are attributed, and passed checks add nothing to
             the row counts or the annotated output.  Set to ``True`` to also
             attribute the rows of row-level checks that PASSED within their
-            tolerance.  Applies only under ``row_counts="attributed"``.
+            tolerance.
     """
 
     max_rows_for_statistics: int = -1
@@ -98,25 +80,18 @@ class ValidationConfig:
     use_try_cast: bool = True
     output_mode: OutputMode = "annotated"
     annotated_check_info: CheckInfoPreset = "names"
-    row_counts: RowCounts = "attributed"
     attribute_tolerated_rows: bool = False
 
     def __post_init__(self) -> None:
-        if self.row_counts not in _ROW_COUNTS:
-            raise ValueError(f"row_counts must be one of {', '.join(_ROW_COUNTS)}, got {self.row_counts!r}")
         if self.enable_additional_schema_statistics is not None:
             warnings.warn(
-                "enable_additional_schema_statistics is deprecated, use row_counts='off' instead.",
+                "enable_additional_schema_statistics is deprecated and has no effect.",
                 DeprecationWarning,
                 stacklevel=3,
             )
-            if not self.enable_additional_schema_statistics:
-                if self.row_counts == "scalar":
-                    raise ValueError("enable_additional_schema_statistics=False conflicts with row_counts='scalar'")
-                self.row_counts = "off"
         if self.max_rows_for_statistics != -1:
             warnings.warn(
-                "max_rows_for_statistics is deprecated: a cap only makes the row counts not exact.",
+                "max_rows_for_statistics is deprecated and has no effect.",
                 DeprecationWarning,
                 stacklevel=3,
             )
@@ -125,7 +100,7 @@ class ValidationConfig:
         """Return a plain dict representation of the config.
 
         The deprecated ``enable_additional_schema_statistics`` is left out,
-        because ``row_counts`` already holds its value.
+        because it has no effect.
         """
         data = asdict(self)
         data.pop("enable_additional_schema_statistics", None)

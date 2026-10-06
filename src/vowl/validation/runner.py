@@ -146,11 +146,9 @@ class ValidationRunner:
         check_results = self._multi_adapter.run_checks(check_refs_by_schema)
         run_finished_ns = time.time_ns()
 
-        total_rows_by_schema: dict[str, int] = {}
-        if self._config.row_counts != "off":
-            total_rows_by_schema = self._multi_adapter.get_total_rows_by_schema(
-                self._config.max_rows_for_statistics,
-            )
+        total_rows_by_schema = self._multi_adapter.get_total_rows_by_schema(
+            self._config.max_rows_for_statistics,
+        )
 
         summary = self._build_summary(check_results, total_rows_by_schema, connection_results)
         schema_names = list(self._multi_adapter.adapters.keys())

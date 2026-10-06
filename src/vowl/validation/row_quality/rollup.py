@@ -53,10 +53,9 @@ class CheckRowQuality:
     """How one check took part in the row-quality numbers.
 
     Attributes:
-        route: ``"server_predicate"``, ``"server_lookup"``, ``"client_lookup"`` or
-            ``"server_scalar"``, or empty when the check is not row-level or not
-            attributed. ``"server_scalar"`` is used only under
-            ``row_counts="scalar"``.
+        route: ``"server_predicate"``, ``"server_lookup"`` or
+            ``"client_lookup"``, or empty when the check is not row-level or not
+            attributed.
         reason: Why the check was not row-level or not attributed, or why it
             left pushdown.
         scalar_count: The number the check's own query returned, as a count.
@@ -89,13 +88,11 @@ class RowQualityReport:
         schemas: One entry per schema.
         dimensions: One entry per (schema, dimension) with at least one check.
         checks: One entry per check anchored to a schema.
-        enabled: False under ``row_counts="off"``.
     """
 
     schemas: list[SchemaRowQuality] = field(default_factory=list)
     dimensions: list[DimensionRowQuality] = field(default_factory=list)
     checks: list[CheckRowQuality] = field(default_factory=list)
-    enabled: bool = True
 
     def schema(self, schema_name: str) -> SchemaRowQuality | None:
         return next((item for item in self.schemas if item.schema_name == schema_name), None)
@@ -113,8 +110,6 @@ class CheckState:
             PASSED under ``attribute_tolerated_rows``.
         collected: The check's rows are in the merged entries.
         attributable: The check's attributed rows are in the row counts.
-        from_scalar: The check is counted from its scalar count, outside the
-            merged entries. Only under ``row_counts="scalar"``.
         approximate: The check makes its buckets approximate.
         attributed_rows: The check's attributed rows, when known.
         scalar_count: The count the check's own query returned.
@@ -126,7 +121,6 @@ class CheckState:
     in_scope: bool
     collected: bool
     attributable: bool = True
-    from_scalar: bool = False
     approximate: bool = False
     attributed_rows: int | None = None
     scalar_count: int | None = None
@@ -143,9 +137,7 @@ def attributed_rows_from_entries(entries: Iterable[tuple[int, int]], check_ids: 
 
 
 def bucket_rows(state: CheckState) -> int | None:
-    """The rows *state* adds to its buckets: its attributed rows, or its scalar count when counted from it."""
-    if state.from_scalar:
-        return state.scalar_count
+    """The rows *state* adds to its buckets: its attributed rows, when attributable."""
     return state.attributed_rows if state.attributable else None
 
 
@@ -171,8 +163,7 @@ def roll_up_bucket(
 
     Only checks in scope count. A check out of scope adds nothing and never
     makes the bucket approximate or N/A. A check in scope that is not attributable
-    adds nothing, unless it is counted from its scalar count. When it may have
-    rows the bucket is approximate.
+    adds nothing, and when it may have rows the bucket is approximate.
 
     Returns:
         ``(failed_rows, passed_rows, pass_rate, approximate, checks_row_level,
@@ -184,26 +175,14 @@ def roll_up_bucket(
     if not row_level:
         return None, None, None, approximate, 0, 0
     not_attributable = [state for state in scoped if not state.attributable]
-    if any(not state.from_scalar and _may_have_rows(state) for state in not_attributable):
+    if any(_may_have_rows(state) for state in not_attributable):
         # Rows in scope are missing from the numbers.
         approximate = True
-    if scoped and not any(state.attributable or state.from_scalar for state in scoped):
+    if scoped and not any(state.attributable for state in scoped):
         return None, None, None, approximate, len(row_level), len(not_attributable)
 
     scoped_mask = _mask(state for state in scoped if state.collected)
     failed_rows = sum(copies for mask, copies in entries if mask & scoped_mask)
-
-    scalars = [state for state in scoped if state.from_scalar]
-    if scalars:
-        # Scalars cannot tell which rows overlap, so their sum is approximate
-        # when another check of the bucket also has failing rows.
-        with_rows = [state for state in scoped if (bucket_rows(state) or 0) > 0]
-        if len(with_rows) > 1 and any(state.from_scalar for state in with_rows):
-            approximate = True
-        failed_rows += sum(state.scalar_count or 0 for state in scalars)
-        if total_rows is not None:
-            failed_rows = min(failed_rows, total_rows)
-
     passed_rows = max(total_rows - failed_rows, 0) if total_rows is not None else None
     pass_rate = passed_rows / total_rows if total_rows and passed_rows is not None else None
     return failed_rows, passed_rows, pass_rate, approximate, len(row_level), len(not_attributable)

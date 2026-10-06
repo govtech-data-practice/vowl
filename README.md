@@ -508,13 +508,7 @@ result.get_dq_metrics_df(by="check")        # which checks are row-level, and ho
 
 By default only failed checks add rows. A check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) adds nothing. Set [`ValidationConfig(attribute_tolerated_rows=True)`](docs/run-settings.md#attribute_tolerated_rows) to put its rows into the row counts too. See [Tolerated rows](docs/design-considerations/checks/check-results.md#tolerated-rows).
 
-Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, vowl attributes each failed row to the source table, so a row that fails several checks counts once. On DuckDB, SQLite, Spark, Databricks and PostgreSQL the data source does this. Elsewhere vowl downloads the table and holds it in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download.
-
-To skip this work on large tables, turn attribution off. The row counts then add up the scalar counts of the failed checks, so they can be approximate:
-
-```python
-ValidationConfig(row_counts="scalar")
-```
+Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, vowl attributes each failed row to the source table, so a row that fails several checks counts once. On DuckDB, SQLite, Spark, Databricks and PostgreSQL the data source does this. Elsewhere vowl downloads the table and holds it in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download. This work runs only when you ask for DQ metrics. `print_summary()`, `get_check_results_df()` and `save()` use the scalar counts only.
 
 See [Counting Mechanisms](docs/design-considerations/checks/counting-mechanisms.md).
 

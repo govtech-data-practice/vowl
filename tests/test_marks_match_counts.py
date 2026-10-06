@@ -24,8 +24,6 @@ _PK = [{"name": "id", "primaryKey": True, "primaryKeyPosition": 1}, {"name": "c"
 def _assert_marks_match_counts(result) -> int:
     """Assert the invariant on every exact schema, and return how many were checked."""
     report = result._row_quality().report()
-    if not report.enabled:
-        return 0
     annotated = result.get_annotated_output()["annotated"]
     checked = 0
     for schema in report.schemas:
@@ -99,14 +97,7 @@ def test_marks_match_counts(scenario: str):
         assert checked >= 1
 
 
-def test_statistics_off_does_not_break_the_helper():
-    _, result = rq._mixed("duckdb", ValidationConfig(row_counts="off"))
-
-    assert _assert_marks_match_counts(result) == 0
-    assert "t" in result.get_annotated_output()["annotated"]
-
-
-def _partial_contract(monkeypatch: pytest.MonkeyPatch, config: ValidationConfig | None = None):
+def _partial_contract(monkeypatch: pytest.MonkeyPatch):
     def no_types(self, schema_name):
         raise NotImplementedError
 
@@ -114,7 +105,7 @@ def _partial_contract(monkeypatch: pytest.MonkeyPatch, config: ValidationConfig 
     con = rq._connect("duckdb")
     con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER, extra INTEGER)")
     con.raw_sql("INSERT INTO t VALUES (1, -1, 0), (2, 2, 0), (3, -3, 0)")
-    return rq._validate(con, [rq._schema("t", [rq._check("negative", "c < 0")])], config)
+    return rq._validate(con, [rq._schema("t", [rq._check("negative", "c < 0")])])
 
 
 def test_unknown_column_types_with_a_partial_contract_count_on_the_exported_table(monkeypatch: pytest.MonkeyPatch):
@@ -130,24 +121,5 @@ def test_unknown_column_types_with_a_partial_contract_count_on_the_exported_tabl
         2,
         False,
     )
-    assert rq._schema_row(result)["failed_rows"] == 2
-    assert _assert_marks_match_counts(result) == 1
-
-
-def test_unknown_column_types_with_a_partial_contract_count_from_the_scalar_with_attribution_disabled(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    # With attribution disabled vowl reads the plain filter's own count, so the missing column
-    # types do not matter, and the count matches the marks.
-    result = _partial_contract(monkeypatch, ValidationConfig(row_counts="scalar"))
-
-    check = rq._check_rows(result)["negative"]
-    assert (check["row_level"], check["route"], check["scalar_count"], check["approximate"]) == (
-        True,
-        "server_scalar",
-        2,
-        False,
-    )
-    assert check["attributed_rows"] is None
     assert rq._schema_row(result)["failed_rows"] == 2
     assert _assert_marks_match_counts(result) == 1

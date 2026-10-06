@@ -1,4 +1,4 @@
-"""Tests for ``ValidationConfig.row_counts`` and the table match.
+"""Tests for the row-quality config and the table match.
 
 By default a row-level check that is not a certified row filter is matched onto
 its table, in the data source on a tested source and onto the exported table
@@ -36,9 +36,6 @@ unkeyed = rq.unkeyed
 _ALL_FAILED = ["c < 0", "c > 5", "c = 2", "c IS NULL"]
 
 
-_SCALARS = ValidationConfig(row_counts="scalar")
-
-
 def _flagged(result, schema: str = "t") -> int:
     cells = result.get_annotated_output()["annotated"][schema].to_arrow().column("check_info").to_pylist()
     return sum(cell is not None for cell in cells)
@@ -60,38 +57,29 @@ def _spy_exports(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 # Config
 
 
-def test_config_defaults_to_attributed_counts_and_serialises():
+def test_config_defaults_and_serialises():
     config = ValidationConfig()
-    assert (config.row_counts, config.attribute_tolerated_rows) == ("attributed", False)
+    assert config.attribute_tolerated_rows is False
     data = config.to_dict()
-    assert (data["row_counts"], data["attribute_tolerated_rows"]) == ("attributed", False)
+    assert data["attribute_tolerated_rows"] is False
+    assert "row_counts" not in data
     assert "enable_additional_schema_statistics" not in data
 
 
-def test_row_counts_rejects_an_unknown_value():
-    with pytest.raises(ValueError, match="row_counts"):
-        ValidationConfig(row_counts="exact")
-
-
-@pytest.mark.parametrize("enabled, expected", [(True, "attributed"), (False, "off")])
-def test_the_deprecated_statistics_flag_sets_row_counts(enabled: bool, expected: str):
-    with pytest.warns(DeprecationWarning, match="enable_additional_schema_statistics"):
+@pytest.mark.parametrize("enabled", [True, False])
+def test_the_deprecated_statistics_flag_only_warns(enabled: bool):
+    with pytest.warns(DeprecationWarning, match="no effect"):
         config = ValidationConfig(enable_additional_schema_statistics=enabled)
-    assert config.row_counts == expected
-
-
-def test_the_deprecated_statistics_flag_conflicts_with_scalar_counts():
-    with pytest.warns(DeprecationWarning), pytest.raises(ValueError, match="conflicts"):
-        ValidationConfig(enable_additional_schema_statistics=False, row_counts="scalar")
+    assert config.to_dict() == ValidationConfig().to_dict()
 
 
 def test_max_rows_for_statistics_is_deprecated():
-    with pytest.warns(DeprecationWarning, match="max_rows_for_statistics"):
+    with pytest.warns(DeprecationWarning, match="max_rows_for_statistics is deprecated and has no effect"):
         ValidationConfig(max_rows_for_statistics=5)
 
 
 # ---------------------------------------------------------------------------
-# Both modes on the mixed checks
+# The mixed checks
 
 
 @pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
@@ -108,97 +96,6 @@ def test_attributed_counts_count_the_mixed_checks(backend: str):
     assert checks["negative"]["route"] == "server_predicate"
     assert checks["twos_distinct"]["route"] == "server_lookup"
     assert checks["twos_distinct"]["attributed_rows"] == 3
-
-
-@pytest.mark.parametrize("backend", ["duckdb", "sqlite"])
-def test_disabled_attribution_counts_every_check_from_its_scalar(backend: str):
-    con, result = rq._mixed(backend, _SCALARS)
-
-    checks = rq._check_rows(result)
-    failed = [row for row in checks.values() if row["row_level"] and row["status"] == "FAILED"]
-    passed = [row for row in checks.values() if row["row_level"] and row["status"] == "PASSED"]
-    assert {row["route"] for row in failed} == {"server_scalar"}
-    # A passed check's scalar is never added.
-    assert {row["route"] for row in passed} <= {""}
-    # No row-level check is attributed. The scalar counts of failed checks are summed.
-    assert all(row["attributed_rows"] is None for row in checks.values())
-    # A plain filter's own count is its row count. DISTINCT's is not.
-    assert (checks["negative"]["scalar_count"], checks["negative"]["approximate"]) == (rq._truth(con, ["c < 0"]), False)
-    assert (checks["twos_distinct"]["scalar_count"], checks["twos_distinct"]["approximate"]) == (1, True)
-    schema = rq._schema_row(result)
-    assert schema["total_rows"] == 11
-    assert schema["approximate"] is True
-    assert schema["failed_rows"] <= schema["total_rows"]
-    assert schema["checks_not_attributable"] == len(failed)
-
-
-def test_disabled_attribution_runs_no_query_fetch_or_export(monkeypatch: pytest.MonkeyPatch):
-    _, result = rq._mixed("duckdb", _SCALARS)
-    calls = _spy_exports(monkeypatch)
-    queries: list[str] = []
-    original = IbisAdapter.run_arrow_query
-
-    def run(self, sql: str):
-        queries.append(sql)
-        return original(self, sql)
-
-    monkeypatch.setattr(IbisAdapter, "run_arrow_query", run)
-    result.get_dq_metrics_df()
-
-    fetched = [check.check_name for check in result.check_results if check._failed_rows is not None]
-    assert (calls, queries, fetched) == ([], [], [])
-
-
-def test_disabled_attribution_keeps_one_failing_exact_check_exact():
-    con = _table("(1, -1), (1, -1), (2, 5), (3, 6)")
-    checks = [rq._check("negative", "c < 0"), rq._check("big", "c > 100")]
-
-    result = rq._validate(con, [rq._schema("t", checks)], _SCALARS)
-
-    schema = rq._schema_row(result)
-    assert (schema["failed_rows"], schema["approximate"]) == (2, False)
-
-
-def test_disabled_attribution_sums_two_failing_checks_as_approximate():
-    con = _table("(1, -1), (1, -1), (2, 5), (3, 6)")
-    checks = [rq._check("negative", "c < 0"), rq._check("low", "c < 1")]
-
-    result = rq._validate(con, [rq._schema("t", checks)], _SCALARS)
-
-    schema = rq._schema_row(result)
-    # Both catch the same two rows, which scalars cannot see.
-    assert (schema["failed_rows"], schema["approximate"]) == (4, True)
-
-
-def test_disabled_attribution_caps_the_sum_at_the_row_count():
-    con = _table("(1, -1), (2, -2), (3, 5)")
-    checks = [rq._check("a", "c < 0"), rq._check("b", "c < 1"), rq._check("c", "c < 10")]
-
-    result = rq._validate(con, [rq._schema("t", checks)], _SCALARS)
-
-    schema = rq._schema_row(result)
-    assert (schema["total_rows"], schema["failed_rows"], schema["passed_rows"], schema["approximate"]) == (
-        3,
-        3,
-        0,
-        True,
-    )
-
-
-def test_disabled_attribution_with_distinct_alone_is_approximate():
-    con = _table("(1, 2), (1, 2), (2, 5)")
-    check = {"name": "d", "query": "SELECT COUNT(*) FROM (SELECT DISTINCT * FROM t WHERE c = 2) AS s", "mustBe": 0}
-
-    result = rq._validate(con, [rq._schema("t", [check])], _SCALARS)
-
-    row = rq._check_rows(result)["d"]
-    assert (row["route"], row["scalar_count"], row["attributed_rows"], row["approximate"]) == (
-        "server_scalar",
-        1,
-        None,
-        True,
-    )
-    assert rq._schema_row(result)["approximate"] is True
 
 
 def test_checks_without_a_key_entry_are_matched_onto_the_exported_table(unkeyed):

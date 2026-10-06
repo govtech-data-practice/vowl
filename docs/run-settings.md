@@ -10,7 +10,7 @@ description: The ValidationConfig settings that apply to a whole vowl run. TRY_C
 ```python
 from vowl import ValidationConfig, validate_data
 
-config = ValidationConfig(max_failed_rows=100, row_counts="scalar")
+config = ValidationConfig(max_failed_rows=100)
 result = validate_data("contract.yaml", df=df, config=config)
 ```
 
@@ -28,13 +28,14 @@ These change what each check returns.
 ## Row counts
 
 These change the row counts: `failed_rows`, `passed_rows` and `pass_rate` per
-table, dimension and check. They apply to `print_summary`, the DQ metrics and
-`get_dq_metrics_df`.
+table, dimension and check. They apply to the DQ metrics: `get_dq_metrics`,
+`get_dq_metrics_df`, `save_dq_metrics` and `export_otel`. vowl attributes each
+failed row to its table row, so a row that fails two checks counts once. See
+[Counting Mechanisms](design-considerations/checks/counting-mechanisms.md).
 
-| Setting                                                         | Default        | What it does                                                                                                                                                                                                                                                                                                                                                                      |
-| --------------------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="row_counts"></a>`row_counts`                             | `"attributed"` | How vowl counts rows. `"attributed"` attributes each failed row to its table row, so a row that fails two checks counts once. `"scalar"` adds up the scalar counts of the failed checks instead. It runs no extra queries, but the row counts can be approximate. `"off"` computes no row counts. See [Counting Mechanisms](design-considerations/checks/counting-mechanisms.md). |
-| <a id="attribute_tolerated_rows"></a>`attribute_tolerated_rows` | `False`        | `True` also attributes the tolerated rows of checks that passed, so they count as failed rows and are flagged in the annotated output. Applies only under `row_counts="attributed"`. See [Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows).                                                                                                          |
+| Setting                                                         | Default | What it does                                                                                                                                                                                                               |
+| --------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="attribute_tolerated_rows"></a>`attribute_tolerated_rows` | `False` | `True` also attributes the tolerated rows of checks that passed, so they count as failed rows and are flagged in the annotated output. See [Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows). |
 
 ## Saving results
 
@@ -48,9 +49,9 @@ the matching argument. An argument you pass always wins.
 
 ## Deprecated
 
-These still work but emit a `DeprecationWarning`.
+These emit a `DeprecationWarning` and have no effect.
 
-| Setting                                                                               | Default       | Use instead                                                                                                    |
-| ------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| <a id="enable_additional_schema_statistics"></a>`enable_additional_schema_statistics` | not set       | [`row_counts="off"`](#row_counts). `False` sets `row_counts="off"`.                                            |
-| <a id="max_rows_for_statistics"></a>`max_rows_for_statistics`                         | `-1` (no cap) | Nothing. It only caps the table size in the summary, which makes the row counts approximate. Leave it at `-1`. |
+| Setting                                                                               | Default       | Use instead                                                        |
+| ------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------ |
+| <a id="enable_additional_schema_statistics"></a>`enable_additional_schema_statistics` | not set       | Nothing. Row counts are computed only when you ask for DQ metrics. |
+| <a id="max_rows_for_statistics"></a>`max_rows_for_statistics`                         | `-1` (no cap) | Nothing. vowl no longer caps the table size.                       |

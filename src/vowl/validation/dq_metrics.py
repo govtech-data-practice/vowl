@@ -253,7 +253,7 @@ def check_row_counts(result: ValidationResult) -> dict[int, CheckRows]:
     ``0``, as at the dimension and schema levels.
     """
     # The row-quality totals are uncapped. Fall back to the run's recorded
-    # totals when row statistics are off.
+    # totals when the report has none.
     total_by_schema = dict(result._vs.get("total_rows_by_schema", {}) or {})
     for item in result._row_quality_report().schemas:
         if item.total_rows is not None:
@@ -434,7 +434,7 @@ def _dimension_level(points: _Points, result: ValidationResult) -> None:
 
     # Row counts come from the row-quality component, the same numbers as
     # print_summary and get_dq_metrics_df. A bucket without them (no row-level
-    # checks, or statistics off) is left out rather than reported as 100%.
+    # checks) is left out rather than reported as 100%.
     rows = [
         item
         for item in result._row_quality_report().dimensions

@@ -57,6 +57,9 @@ Open questions to settle before coding:
    `vowl.check.row.count` is then absent, or falls back to the scalar count
    the way the higher levels do in that mode. Falling back keeps the
    higher levels and the check level consistent within a run.
+   **Closed:** `row_counts` was removed (see
+   `design/two-tier-row-counts-plan.md`, decision 8), so attribution is the
+   only DQ-metrics mode and this case no longer exists.
 5. **The span attributes.** `row.count.passed`, `row.count.failed` and
    `row.pass_rate` on the `vowl.check` span mirror the check metrics.
    `design/naming-stocktake.md` row P7 kept these names to avoid breaking

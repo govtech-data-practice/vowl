@@ -8,7 +8,7 @@ reports the same counts of attributed rows, every copy counted. The process is d
 
 1. Total rows per schema.
 2. Select the row-level checks (:mod:`.selection`).
-3. Collect each check's attributed rows, copies included, by one of four routes:
+3. Collect each check's attributed rows, copies included, by one of three routes:
 
    - ``server_predicate``: certified row filters (:mod:`.certify`), counted
      inside the data source (:mod:`.pushdown`).
@@ -16,10 +16,6 @@ reports the same counts of attributed rows, every copy counted. The process is d
      counted in SQL as the table rows the check's failed rows are attributed to.
    - ``client_lookup``: other checks, whose fetched failed rows are attributed
      to the exported table, so each row's copies come from the table.
-   - ``server_scalar``: the check's scalar count, from its count query. Nothing
-     is run, but a sum of these counts cannot see overlapping rows. Used only
-     under ``ValidationConfig(row_counts="scalar")``, where every failed
-     row-level check takes it.
 
    A check that is not a certified row filter uses ``server_lookup`` on a
    tested source and ``client_lookup`` elsewhere. A check whose rows cannot be
@@ -113,7 +109,6 @@ __all__ = [
 ROUTE_SERVER_PREDICATE = "server_predicate"
 ROUTE_SERVER_LOOKUP = "server_lookup"
 ROUTE_CLIENT_LOOKUP = "client_lookup"
-ROUTE_SERVER_SCALAR = "server_scalar"
 
 # The outcome of the duplicate-key probe of a declared primary key.
 PK_UNIQUE = "unique"
@@ -141,7 +136,6 @@ class _Work:
     route: str = ""
     reason: str = ""
     approximate: bool = False
-    certified: bool = False
     # Runs on the table's own connection, which can run the pushdown.
     local: bool = False
     # Its select list returns values other than the table's own columns.
@@ -207,15 +201,11 @@ class RowQuality:
     def __init__(self, result: ValidationResult) -> None:
         self._result = result
         self._config = result._config
-        # Passed checks are attributed only on the attributed route.
-        attribute_tolerated = self._config.attribute_tolerated_rows and self._config.row_counts == "attributed"
-        self._selections = select(result.check_results, attribute_tolerated)
+        self._selections = select(result.check_results, self._config.attribute_tolerated_rows)
         self._report: RowQualityReport | None = None
         self._by_check: dict[int, CheckRowQuality] = {}
         self._tolerated_rows: dict[int, nw.DataFrame] = {}
         self._merge_keys: dict[str, list[str]] = {}
-        # Schemas counted without a query, whose key is found only when asked.
-        self._key_probes: dict[str, _SchemaComputation] = {}
 
     @property
     def selections(self) -> list[CheckSelection]:
@@ -242,11 +232,6 @@ class RowQuality:
         the same checks.
         """
         self.report()
-        probe = self._key_probes.pop(schema_name, None)
-        if probe is not None:
-            found = probe.annotation_key()
-            if found is not None:
-                self._merge_keys[schema_name] = found
         key = self._merge_keys.get(schema_name)
         return list(key) if key is not None else None
 
@@ -288,9 +273,6 @@ class RowQuality:
             if selection.schema_name in by_schema:
                 by_schema[selection.schema_name].append(selection)
 
-        if self._config.row_counts == "off":
-            return self._disabled_report(by_schema)
-
         schemas: list[SchemaRowQuality] = []
         dimensions: list[DimensionRowQuality] = []
         checks: list[CheckRowQuality] = []
@@ -304,43 +286,6 @@ class RowQuality:
 
         return RowQualityReport(schemas=schemas, dimensions=dimensions, checks=checks)
 
-    def _disabled_report(self, by_schema: dict[str, list[CheckSelection]]) -> RowQualityReport:
-        schemas = [
-            SchemaRowQuality(
-                schema_name=schema_name,
-                total_rows=None,
-                failed_rows=None,
-                passed_rows=None,
-                pass_rate=None,
-                approximate=True,
-                checks_row_level=sum(item.row_level for item in selections),
-                checks_not_row_level=sum(not item.row_level for item in selections),
-                # No check is attributed with row counts off.
-                checks_not_attributable=sum(item.row_level and item.in_scope for item in selections),
-            )
-            for schema_name, selections in by_schema.items()
-        ]
-        checks = [
-            CheckRowQuality(
-                schema_name=item.schema_name,
-                check_name=item.result.check_name,
-                dimension=item.dimension,
-                status=item.result.status,
-                row_level=item.row_level,
-                route="",
-                reason=item.reason,
-                scalar_count=item.scalar_count,
-                attributed_rows=None,
-                approximate=True,
-            )
-            for selections in by_schema.values()
-            for item in selections
-        ]
-        selections = [item for items in by_schema.values() for item in items]
-        for selection, entry in zip(selections, checks, strict=True):
-            self._by_check[id(selection.result)] = entry
-        return RowQualityReport(schemas=schemas, checks=checks, enabled=False)
-
 
 class _SchemaComputation:
     """Steps 1 to 5 for one schema."""
@@ -349,7 +294,6 @@ class _SchemaComputation:
         self._component = component
         self._result = component._result
         self._schema = schema_name
-        self._scalar_only: bool = component._config.row_counts == "scalar"
         self._work = [
             _Work(
                 selection=selection,
@@ -419,8 +363,6 @@ class _SchemaComputation:
 
     def run(self) -> tuple[SchemaRowQuality, list[DimensionRowQuality], list[CheckRowQuality]]:
         pending = [work for work in self._work if work.needs_rows]
-        if self._scalar_only:
-            return self._run_scalars(pending)
         spec = self._full_spec() if pending else None
         pushdown_ok = spec is not None and self._preflight(spec)
 
@@ -476,30 +418,6 @@ class _SchemaComputation:
         total_rows = self._total_rows(outcome)
         return self._roll_up(entries, total_rows, False)
 
-    def _run_scalars(
-        self, pending: Sequence[_Work]
-    ) -> tuple[SchemaRowQuality, list[DimensionRowQuality], list[CheckRowQuality]]:
-        """Count every failed check from its scalar count, as ``row_counts="scalar"`` asks. No query runs.
-
-        Every row-level check is then not attributable.
-        """
-        pending_ids = {work.check_id for work in pending}
-        for work in self._work:
-            if work.check_id in pending_ids:
-                ok, rule = self._certify(work)
-                self._leave_unattributed(work, "" if ok else rule)
-            elif work.row_level and work.in_scope:
-                self._leave_unattributed(work)
-        # Annotated output can still ask for the primary key to match on.
-        self._component._key_probes[self._schema] = self
-        return self._roll_up([], self._recorded_total(), False)
-
-    def annotation_key(self) -> list[str] | None:
-        """The primary key annotated output matches on, when no count ran to find it."""
-        spec = self._full_spec()
-        key = self._choose_key(spec is not None and self._preflight(spec))
-        return key if len(key) < len(self._columns) else None
-
     # -- routes ----------------------------------------------------------
 
     def _certify(self, work: _Work) -> tuple[bool, str]:
@@ -515,7 +433,6 @@ class _SchemaComputation:
         ok, rule = certify_check(
             row_source.check_ref, self._schema, row_source.dialect, row_source.use_try_cast, rendered=rendered
         )
-        work.certified = ok
         work.transformed = not returns_table_values(row_source.row_query, row_source.dialect)
         return ok, "" if ok else uncertified_reason(rule)
 
@@ -543,20 +460,10 @@ class _SchemaComputation:
             work.route, work.reason = ROUTE_CLIENT_LOOKUP, reason
 
     def _leave_unattributed(self, work: _Work, reason: str = "") -> None:
-        """Leave *work* out of the attributed rows, explaining why.
-
-        Under ``row_counts="scalar"`` it is counted from its scalar
-        count on server_scalar, approximate unless it is a plain row filter or a
-        zero count. Otherwise it is not attributable and adds nothing to the row counts.
-        """
+        """Leave *work* out of the attributed rows, explaining why. It adds nothing to the row counts."""
         # One value can sit on many rows, so a count of values is a lower bound.
         counts_values = work.result.metadata.get("aggregation_type") == "count_distinct"
         work.not_attributable(reason or (REASON_COUNTS_VALUES if counts_values else ""))
-        if not self._scalar_only:
-            return
-        work.route = ROUTE_SERVER_SCALAR
-        count = work.selection.scalar_count
-        work.approximate = count is None or (count > 0 and (counts_values or not work.certified))
 
     def _leave_lookup_unattributed(self, work: _Work, reason: str) -> None:
         """Mark a client_lookup check whose rows cannot be attributed to the table as not attributable, explaining why.
@@ -799,7 +706,7 @@ class _SchemaComputation:
 
     def _check_match_key(self, work: _Work, key_columns: Sequence[str]) -> None:
         """Leave a check whose rows can never be attributed to the table out. Its rows become residues."""
-        if not (work.row_level and work.attributable) or work.route in ("", ROUTE_SERVER_SCALAR):
+        if not (work.row_level and work.attributable) or not work.route:
             return
         columns = set(work.columns or [])
         key = key_columns if len(key_columns) < len(self._columns) else None
@@ -847,18 +754,6 @@ class _SchemaComputation:
                 return recount
         return total
 
-    def _recorded_total(self) -> int | None:
-        """The row count the validation run recorded, without running a query."""
-        stats = self._result._vs.get("total_rows_by_schema", {}) or {}
-        recorded = stats.get(self._schema)
-        if not isinstance(recorded, int) or isinstance(recorded, bool):
-            self._total_approximate = True
-            return None
-        if self._result._config.max_rows_for_statistics >= 0:
-            # Capped by max_rows_for_statistics, so possibly too low.
-            self._total_approximate = True
-        return recorded
-
     def _recorded_or_fetched_total(self) -> int | None:
         stats = self._result._vs.get("total_rows_by_schema", {}) or {}
         recorded = stats.get(self._schema)
@@ -896,7 +791,7 @@ class _SchemaComputation:
         return work.row_level and work.transformed and work.route in (ROUTE_SERVER_LOOKUP, ROUTE_CLIENT_LOOKUP)
 
     def _check_approximate(self, work: _Work) -> bool:
-        if work.row_level and work.in_scope and not work.attributable and work.route != ROUTE_SERVER_SCALAR:
+        if work.row_level and work.in_scope and not work.attributable:
             # Its rows are not known.
             return True
         return self._makes_approximate(work)
@@ -908,9 +803,8 @@ class _SchemaComputation:
             dimension=selection.dimension,
             row_level=work.row_level,
             in_scope=work.in_scope,
-            collected=work.row_level and work.attributable and work.route not in ("", ROUTE_SERVER_SCALAR),
+            collected=work.row_level and work.attributable and bool(work.route),
             attributable=work.attributable,
-            from_scalar=work.row_level and work.route == ROUTE_SERVER_SCALAR,
             approximate=self._makes_approximate(work),
             attributed_rows=work.attributed_rows,
             scalar_count=selection.scalar_count,

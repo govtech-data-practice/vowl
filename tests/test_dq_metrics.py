@@ -186,7 +186,9 @@ def _row_points(document: dict, level: str, measure: str = "count", **attributes
     def matches(p):
         return all(p["attributes"].get(key) == value for key, value in attributes.items())
 
-    values = {p["attributes"]["status"]: p["value"] for p in _points(document, f"vowl.{level}.row.{measure}") if matches(p)}
+    values = {
+        p["attributes"]["status"]: p["value"] for p in _points(document, f"vowl.{level}.row.{measure}") if matches(p)
+    }
     rates = [p["value"] for p in _points(document, f"vowl.{level}.row.{rate_name}") if matches(p)]
     if not values and not rates:
         return {}

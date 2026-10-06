@@ -158,17 +158,13 @@ annotated rows. Here is when it doesn't:
 | The table has a column vowl can't download (`INTERVAL`, `BIT`, `UNION`)        | Right for plain filters. Other checks are [not attributable](counting-mechanisms.md#fallbacks) and left out                                                                                                                 | None. The failed rows become residues                                                                     |
 | A check's failed rows can never be attributed, such as rows with fewer columns | The check is left out, and the numbers are approximate                                                                                                                                                                      | None. The failed rows become a residue                                                                    |
 | An untested data source treats different values as equal (`a` and `A`)         | Two rows can count as one, marked not exact. When the table was downloaded, both rows count                                                                                                                                 | Both rows are annotated                                                                                   |
-| With attribution disabled, two checks share a failed row                       | The row counts twice, capped at the table's row count. Marked not exact                                                                                                                                                     | The row is annotated once                                                                                 |
-| With attribution disabled, a `DISTINCT` check returns one of three copies      | One copy is counted. Marked not exact                                                                                                                                                                                       | All three copies are annotated                                                                            |
 | The table changes while vowl reads it                                          | Read at one moment                                                                                                                                                                                                          | Read again later                                                                                          |
 
 vowl can't detect the last case. It only matters if the table is written to
 during the run.
 
 Use the **row counts** for how many rows have issues, and for pass rates.
-They stay cheap on large tables with
-[`row_counts="scalar"`](../../run-settings.md#row_counts)
-set, or when every check is a plain filter. Use the **annotated table** or the
+They stay cheap on large tables when every check is a plain filter. Use the **annotated table** or the
 **residues** for which rows have issues.
 
 ## Other ways to see failed rows

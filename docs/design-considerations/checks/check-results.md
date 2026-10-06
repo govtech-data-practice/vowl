@@ -295,11 +295,11 @@ flowchart LR
     ar --> u3["Row counts, annotated output,<br/>row count DQ metrics at every level"]
 ```
 
-| Result              | Where you see it                                                                                      |
-| ------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | `actual` in the summary, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")`       |
-| **Failed rows**     | `show_failed_rows()`, `get_output_dfs()`, residues                                                    |
-| **Attributed rows** | `attributed_rows` in `get_dq_metrics_df(by="check")`, and `failed_rows` per schema and per dimension  |
+| Result              | Where you see it                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Scalar count**    | `actual` in the summary, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")`      |
+| **Failed rows**     | `show_failed_rows()`, `get_output_dfs()`, residues                                                   |
+| **Attributed rows** | `attributed_rows` in `get_dq_metrics_df(by="check")`, and `failed_rows` per schema and per dimension |
 
 ### Scalar and row queries {#two-queries-from-one}
 
@@ -375,9 +375,7 @@ The row query runs when a check fails and something needs its rows:
 - The [row counts](how-attributed-rows-work.md), such as **Passed Rows**
   in the summary and `get_dq_metrics_df()`. Where it can, vowl runs the
   row queries inside the data source as part of one attribution query,
-  so only numbers come back. With
-  [`row_counts="scalar"`](../../run-settings.md#row_counts)
-  set, the row counts use the scalar query only.
+  so only numbers come back.
 - The [annotated output](annotating-the-source-table.md), from
   `get_annotated_output()` or `save()`.
 - `show_failed_rows()` and `get_output_dfs()`.
@@ -471,8 +469,3 @@ count is still in `vowl.check.row.scalar_count`.
 `get_dq_metrics_df()`, the `vowl.row_quality.checks_not_attributable`
 attribute of the OTEL root span, and a note in the
 summary: `Passed Rows: 4 / 5 (80.0%) (approx., 2 checks not attributable)`.
-
-With [`row_counts="scalar"`](../../run-settings.md#row_counts), vowl
-attributes no rows. Every failed row-level check is not attributable, and the
-row counts add up the scalar counts of the failed checks instead (see
-[`server_scalar`](counting-mechanisms.md#route-server-scalar)).

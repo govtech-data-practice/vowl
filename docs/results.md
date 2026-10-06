@@ -185,8 +185,7 @@ vowl counts rows inside the data source where it can, so the row counts stay
 exact on large tables and do not depend on `max_failed_rows`. Where the data
 source can't attribute a check's failed rows, vowl downloads the table and
 attributes them on your machine. `get_annotated_output()` reuses that
-download. To skip this work, set
-[`row_counts="scalar"`](run-settings.md#row_counts).
+download. This work runs only when you ask for DQ metrics.
 [How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md)
 explains which checks are row-level and how they are counted.
 
@@ -195,12 +194,12 @@ explains which checks are row-level and how they are counted.
 The DQ metrics are the counts and pass rates at check, dimension, schema and
 run level, ready for a dashboard.
 
-| Method or property | What it does                                                                                                                                  |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_dq_metrics()` | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
-| `save_dq_metrics(...)` | Writes the DQ metrics to `<prefix>_dq_metrics.json`. It takes the same `output_dir`, `prefix` and `filesystem` as `save()`.               |
-| `export_otel(...)` | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
-| `run_id`           | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
+| Method or property     | What it does                                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_dq_metrics()`     | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
+| `save_dq_metrics(...)` | Writes the DQ metrics to `<prefix>_dq_metrics.json`. It takes the same `output_dir`, `prefix` and `filesystem` as `save()`.                   |
+| `export_otel(...)`     | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
+| `run_id`               | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
 
 ## Saving results
 
@@ -211,12 +210,12 @@ files it wrote.
 result.save("dq-results/", prefix="orders")
 ```
 
-| File                                  | What it holds                               |
-| ------------------------------------- | ------------------------------------------- |
-| `orders_check_results.csv`            | The [check results](#check-results)         |
-| `orders_<schema>_annotated.csv`       | One annotated table per schema              |
-| `orders_<schema>_<check>_residue.csv` | One file per residue                        |
-| `orders_summary.json`                 | The numbers behind the summary              |
+| File                                  | What it holds                       |
+| ------------------------------------- | ----------------------------------- |
+| `orders_check_results.csv`            | The [check results](#check-results) |
+| `orders_<schema>_annotated.csv`       | One annotated table per schema      |
+| `orders_<schema>_<check>_residue.csv` | One file per residue                |
+| `orders_summary.json`                 | The numbers behind the summary      |
 
 Without `prefix`, the files start with `vowl_results`.
 

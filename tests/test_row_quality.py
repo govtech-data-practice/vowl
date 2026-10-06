@@ -25,7 +25,6 @@ from vowl.contracts.models import get_latest_version
 from vowl.validation.row_quality import keys, pushdown
 from vowl.validation.row_quality.certify import certify_row_query, certify_scalar_query
 from vowl.validation.row_quality.selection import (
-    REASON_COUNTS_VALUES,
     REASON_CROSS_SOURCE,
     REASON_ERROR,
     REASON_NO_MATCH_KEY,
@@ -741,17 +740,6 @@ def test_uncertified_check_without_a_key_entry_is_exact_on_the_table(unkeyed):
     assert schema["approximate"] is False
 
 
-def test_uncertified_check_is_not_exact_with_attribution_disabled():
-    con, result = _mixed("duckdb", ValidationConfig(row_counts="scalar"))
-
-    twos = _check_rows(result)["twos_distinct"]
-    assert (twos["route"], twos["approximate"]) == ("server_scalar", True)
-    schema = _schema_row(result)
-    # DISTINCT returns one of the three copies, so the count is low and flagged.
-    assert schema["failed_rows"] < _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"])
-    assert schema["approximate"] is True
-
-
 @pytest.mark.parametrize("fallback", ["chunk_limit", "statement_fails"])
 def test_keyless_fallback_is_not_exact(unkeyed, monkeypatch: pytest.MonkeyPatch, fallback: str):
     if fallback == "chunk_limit":
@@ -887,17 +875,6 @@ def test_checks_not_attributable_is_counted_at_every_level():
     from vowl.validation.dq_metrics import run_row_counts
 
     assert run_row_counts(result)[2:] == (True, 2)
-
-
-def test_without_attribution_every_row_level_check_is_not_attributable():
-    _, result = _two_sources(ValidationConfig(row_counts="scalar"))
-
-    schema = _schema_row(result)
-    checks = _check_rows(result).values()
-    failed = sum(row["row_level"] and row["status"] == "FAILED" for row in checks)
-    # Passed checks are never attributed, so they are not counted as not attributable.
-    assert schema["checks_not_attributable"] == failed > 0
-    assert all(row["attributed_rows"] is None for row in checks)
 
 
 def test_primary_key_lets_a_column_subset_check_merge():
@@ -1087,13 +1064,13 @@ def test_non_row_level_checks_are_not_row_level():
     assert _check_rows(result)["average"]["reason"] == REASON_NOT_ROW_LEVEL
 
 
-def test_statistics_turned_off(capsys: pytest.CaptureFixture[str]):
-    _, result = _mixed("duckdb", ValidationConfig(row_counts="off"))
+def test_the_deprecated_statistics_flag_does_not_turn_row_counts_off():
+    with pytest.warns(DeprecationWarning, match="enable_additional_schema_statistics"):
+        config = ValidationConfig(enable_additional_schema_statistics=False)
+    con, result = _mixed("duckdb", config)
 
     schema = _schema_row(result)
-    assert (schema["total_rows"], schema["failed_rows"], schema["pass_rate"]) == (None, None, None)
-    result.print_summary()
-    assert "Failed Rows (approximate): 8" in capsys.readouterr().out
+    assert (schema["total_rows"], schema["failed_rows"]) == (11, _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"]))
 
 
 def test_capped_statistics_no_longer_cap_the_total():
@@ -1321,7 +1298,7 @@ def test_a_zero_total_from_a_failed_count_is_counted_again():
     assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (3, 1, False)
 
 
-def test_a_total_below_a_checks_rows_is_not_exact():
+def test_a_low_total_gives_way_to_the_exported_table():
     class LowTotalsNoPushdown(IbisAdapter):
         def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int:
             return 1
@@ -1334,9 +1311,6 @@ def test_a_total_below_a_checks_rows_is_not_exact():
     con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -2), (3, 4)")
     adapters = {"t": LowTotalsNoPushdown(con)}
     contract = _contract([_schema("t", [_check("negative", "c < 0")])])
-
-    fast = _run_validation(contract, adapters=adapters, config=ValidationConfig(row_counts="scalar"))
-    assert _schema_row(fast)["approximate"] is True
 
     # The exported table gives the true total.
     attributed = _run_validation(contract, adapters=adapters)
@@ -1471,20 +1445,6 @@ def test_count_distinct_checks_count_the_rows_holding_the_values():
     assert (checks["distinct_nulls"]["scalar_count"], checks["distinct_nulls"]["attributed_rows"]) == (0, None)
     assert _schema_row(result)["failed_rows"] == _truth(con, ["c = 2"])
     assert _schema_row(result)["approximate"] is False
-
-
-def test_count_distinct_checks_are_not_exact_with_attribution_disabled():
-    _, result = _distinct(ValidationConfig(row_counts="scalar"))
-
-    check = _check_rows(result)["distinct_twos"]
-    assert (check["route"], check["scalar_count"], check["attributed_rows"], check["approximate"]) == (
-        "server_scalar",
-        1,
-        None,
-        True,
-    )
-    assert check["reason"] == REASON_COUNTS_VALUES
-    assert _schema_row(result)["approximate"] is True
 
 
 def test_count_distinct_annotates_every_row_holding_the_value():

@@ -1254,8 +1254,7 @@ class ValidationResult:
 
         The schema and dimension row gauges use the same row counts as
         :meth:`get_dq_metrics_df`. If they were not computed yet, they are
-        computed now. That can export a table, unless
-        ``ValidationConfig(row_counts="scalar")`` is set, which runs no query. The
+        computed now, which can export a table. The
         ``vowl.validate`` and ``vowl.check`` spans carry ``vowl.row_quality.approximate``,
         which says whether the row numbers are approximate. The metrics do not.
 

@@ -34,8 +34,7 @@ result = validate_data("orders.yaml", df=df, config=config)
 
 - **The row counts mostly stay the same.** Checks whose rows the data
   source attributes (`server_predicate` and `server_lookup`) don't use the downloaded
-  failed rows, and neither do scalar counts under
-  `row_counts="scalar"`. A `client_lookup` check that is cut
+  failed rows. A `client_lookup` check that is cut
   short is [not attributable](counting-mechanisms.md#fallbacks), with the
   `reason` `truncated by max_failed_rows`. It is left out of the row counts,
   which become [approximate](counting-mechanisms.md#exact-numbers). Its
@@ -56,5 +55,5 @@ reported as cut short, and one with more always is. The scalar count is
 not used for this, because it does not always equal the number of failed
 rows, for example under `DISTINCT` or a join.
 
-`max_rows_for_statistics` is deprecated and no longer caps the row counts. vowl always counts
+`max_rows_for_statistics` is deprecated and has no effect. vowl always counts
 the whole table.
