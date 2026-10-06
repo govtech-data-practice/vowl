@@ -97,7 +97,7 @@ class ValidationRunner:
         failed = sum(1 for cr in check_results if cr.status == "FAILED")
         errors = sum(1 for cr in check_results if cr.status == "ERROR")
         total_time = sum(cr.execution_time_ms for cr in check_results)
-        failed_rows = sum(
+        failed_rows_approximate = sum(
             cr.failed_rows_count for cr in check_results if cr.failed_rows_count and cr.supports_row_level_output
         )
 
@@ -123,7 +123,7 @@ class ValidationRunner:
                 "errors": errors,
                 "total_rows_by_schema": total_rows_by_schema,
                 "config": self._config.to_dict(),
-                "failed_rows": failed_rows,
+                "failed_rows_approximate": failed_rows_approximate,
                 "total_execution_time_ms": total_time,
                 "success_rate": (passed / len(check_results) * 100) if check_results else 100,
                 "connection_results": connection_results or {},

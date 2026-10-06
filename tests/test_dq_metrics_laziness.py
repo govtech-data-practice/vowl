@@ -97,7 +97,6 @@ def _assert_basic(calls: _Calls) -> None:
     assert (calls.compute, calls.total_rows) == (0, 0)
 
 
-@pytest.mark.xfail(strict=True, reason="step 2: print_summary still attributes rows")
 def test_print_summary_does_not_attribute(result, calls, capsys):
     result.print_summary()
     _assert_basic(calls)

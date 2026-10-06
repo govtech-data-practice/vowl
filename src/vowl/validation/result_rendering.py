@@ -14,7 +14,7 @@ STATUS_ORDER = ("FAILED", "ERROR", "PASSED")
 SUMMARY_LABELS = (
     "Checks Pass Rate:",
     "ERRORED Checks:",
-    "Passed Rows:",
+    "Failed Rows (approximate):",
     "Non-unique Failed Rows:",
 )
 
@@ -117,28 +117,15 @@ def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | Non
     return "\n".join(lines)
 
 
-def format_passed_rows(overall: OverallSummary) -> str:
-    """Format a schema's passed rows as ``passed / total (percent)``.
+def format_failed_rows_approximate(overall: OverallSummary) -> str:
+    """Format a schema's approximate failed rows, or ``N/A`` without row-level checks.
 
-    ``N/A`` stands in for numbers that are unavailable: no check was row-level,
-    every row-level check is not attributable, row statistics are off, or the table
-    is empty. ``(approx.)`` marks numbers
-    that are approximate, with the number of row-level checks left out of them
-    when there are any.
+    The number sums each row-level check's failed rows, so a row caught by
+    two checks counts twice. The DQ metrics give the exact count.
     """
-    if overall.passed_rows is None:
+    if overall.failed_rows_approximate is None:
         return "N/A"
-    suffix = ""
-    if overall.approximate:
-        count = overall.checks_not_attributable
-        noun = "check" if count == 1 else "checks"
-        suffix = f" (approx., {count} {noun} not attributable)" if count else " (approx.)"
-    # total_rows may be 0 (empty table), in which case passed_row_percentage
-    # is None. Treat any falsy total_rows as N/A rather than feeding None into
-    # _truncate_pct.
-    if not overall.total_rows or overall.passed_row_percentage is None:
-        return f"{overall.passed_rows:,} / {overall.total_rows or 0:,} (N/A){suffix}"
-    return f"{overall.passed_rows:,} / {overall.total_rows:,} ({_truncate_pct(overall.passed_row_percentage)}){suffix}"
+    return f"{overall.failed_rows_approximate:,}"
 
 
 def _check_status_lines(
@@ -175,7 +162,7 @@ def build_schema_summary_lines(
     lines += (
         ["     Overall:"]
         + _check_status_lines(overall, w)
-        + [format_summary_metric("       ", "Passed Rows:", format_passed_rows(overall), w)]
+        + [format_summary_metric("       ", "Failed Rows (approximate):", format_failed_rows_approximate(overall), w)]
     )
     lines += ["     Single Table:"] + _check_status_lines(single_table, w)
     lines += (

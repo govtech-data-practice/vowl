@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import replace
-
 import pytest
 
 from vowl.validation.result import _safe_filename_component
 from vowl.validation.result_models import OverallSummary
-from vowl.validation.result_rendering import format_passed_rows
+from vowl.validation.result_rendering import format_failed_rows_approximate
 
 
 @pytest.mark.parametrize(
@@ -33,55 +31,22 @@ def test_safe_filename_component_strips_traversal(value: str, expected: str):
     assert not result.startswith(".")
 
 
-def _summary(*, total_rows, passed_row_percentage, passed_rows=0, approximate=False):
+def _summary(failed_rows_approximate):
     return OverallSummary(
         passed_checks=0,
         error_checks=0,
         total_checks=0,
-        failed_rows=0 if passed_rows is not None else None,
-        passed_rows=passed_rows,
-        total_rows=total_rows,
-        passed_row_percentage=passed_row_percentage,
-        approximate=approximate,
+        failed_rows_approximate=failed_rows_approximate,
     )
 
 
-def test_format_passed_rows_handles_none_total_rows():
-    summary = _summary(total_rows=None, passed_row_percentage=None, passed_rows=5)
-    assert format_passed_rows(summary) == "5 / 0 (N/A)"
+def test_format_failed_rows_approximate_groups_thousands():
+    assert format_failed_rows_approximate(_summary(1234)) == "1,234"
 
 
-def test_format_passed_rows_handles_zero_total_rows():
-    """A zero-row table has passed_row_percentage None; must not crash in
-    _truncate_pct. Regression for 'unsupported operand *: NoneType and int'
-    when every check errored on an empty/unstatted table."""
-    summary = _summary(total_rows=0, passed_row_percentage=None)
-    assert format_passed_rows(summary) == "0 / 0 (N/A)"
+def test_format_failed_rows_approximate_shows_zero():
+    assert format_failed_rows_approximate(_summary(0)) == "0"
 
 
-def test_format_passed_rows_formats_percentage():
-    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_rows=999)
-    # Truncated (not rounded) to one decimal place.
-    assert format_passed_rows(summary) == "999 / 1,000 (99.9%)"
-
-
-def test_format_passed_rows_marks_approximate_numbers():
-    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_rows=999, approximate=True)
-    assert format_passed_rows(summary) == "999 / 1,000 (99.9%) (approx.)"
-
-
-def test_format_passed_rows_without_row_level_checks_is_na():
-    summary = _summary(total_rows=1000, passed_row_percentage=None, passed_rows=None)
-    assert format_passed_rows(summary) == "N/A"
-
-
-@pytest.mark.parametrize(
-    ("count", "suffix"),
-    [(0, " (approx.)"), (1, " (approx., 1 check not attributable)"), (2, " (approx., 2 checks not attributable)")],
-)
-def test_format_passed_rows_names_the_checks_not_attributable(count, suffix):
-    summary = replace(
-        _summary(total_rows=10, passed_row_percentage=80.0, passed_rows=8, approximate=True),
-        checks_not_attributable=count,
-    )
-    assert format_passed_rows(summary) == f"8 / 10 (80.0%){suffix}"
+def test_format_failed_rows_approximate_without_row_level_checks_is_na():
+    assert format_failed_rows_approximate(_summary(None)) == "N/A"

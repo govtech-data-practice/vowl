@@ -324,7 +324,9 @@ def test_spans_name_the_checks_not_attributable(rq):
         assert "vowl.row_quality.attributed_rows" not in checks[name]
 
 
-def test_the_summary_names_the_checks_not_attributable(rq, capsys):
-    rq._not_attributable_pair().print_summary()
+def test_the_schema_rows_name_the_checks_not_attributable(rq):
+    result = rq._not_attributable_pair()
 
-    assert "(approx., 2 checks not attributable)" in capsys.readouterr().out
+    schemas = result.get_row_quality_df(by="schema").to_pandas()
+    assert schemas["checks_not_attributable"].max() == 2
+    assert schemas["approximate"].any()

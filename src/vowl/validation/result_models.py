@@ -16,20 +16,14 @@ class CheckStatusSummary:
 
 @dataclass(frozen=True)
 class OverallSummary(CheckStatusSummary):
-    """A schema's check counts plus its row-quality numbers.
+    """A schema's check counts plus its approximate failed rows.
 
-    ``passed_rows`` and ``passed_row_percentage`` are None when no check was
-    row-level or the numbers are unavailable. ``approximate`` is True when the
-    numbers are not exact. ``checks_not_attributable`` counts the row-level
-    checks whose rows are not in the numbers.
+    ``failed_rows_approximate`` sums ``failed_rows_count`` over the schema's
+    row-level checks. A row caught by two checks counts twice, so the sum is
+    approximate. It is None when the schema has no row-level check.
     """
 
-    failed_rows: int | None
-    passed_rows: int | None
-    total_rows: int | None
-    passed_row_percentage: float | None
-    approximate: bool
-    checks_not_attributable: int = 0
+    failed_rows_approximate: int | None
 
 
 @dataclass(frozen=True)

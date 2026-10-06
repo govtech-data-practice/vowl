@@ -251,14 +251,13 @@ def test_validation_result_print_summary_show_methods_and_chaining(capsys: pytes
     assert "Data Quality Validation Results" in output
     assert "OVERALL DATA QUALITY" in output
     assert "Overall:" in output
-    assert "Checks Pass Rate:       1 / 4 (25.0%)" in output
+    assert "Checks Pass Rate:          1 / 4 (25.0%)" in output
     assert "Single Table:" in output
     assert "Multi Table:" in output
-    assert "ERRORED Checks:         1" in output
-    # The table cannot be exported, so rule_a and rule_b are not attributable.
-    # rule_c passed, so it is not attributed, and no number is left.
-    assert "Passed Rows:            N/A" in output
-    assert "Non-unique Failed Rows: 0" in output
+    assert "ERRORED Checks:            1" in output
+    # The basic tier sums each row-level check's failed rows without attributing.
+    assert "Failed Rows (approximate): 2" in output
+    assert "Non-unique Failed Rows:    0" in output
     assert "VALIDATION CHECKS" not in output
     assert "CHECK RESULTS" in output
     assert "Total Execution:       7.50 ms" in output
@@ -685,19 +684,19 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
     assert "Overall:" in output
     assert "Single Table:" in output
     assert "Multi Table:" in output
-    assert "Checks Pass Rate:       0 / 2 (0.0%)" in output
-    assert "Checks Pass Rate:       1 / 2 (50.0%)" in output
-    assert "Checks Pass Rate:       0 / 1 (0.0%)" in output
-    assert "Checks Pass Rate:       1 / 1 (100.0%)" in output
-    assert "Checks Pass Rate:       0 / 3 (0.0%)" in output
-    assert output.count("ERRORED Checks:         0") >= 4
-    assert "ERRORED Checks:         1" in output
-    # The fake adapters cannot export the tables, so no check with rows is
-    # attributable, and cross_pass_rule PASSED, so it is not attributed. Both
-    # tables are N/A.
-    assert output.count("Passed Rows:            N/A") == 2
-    assert "Non-unique Failed Rows: 2" in output
-    assert "Non-unique Failed Rows: 0" in output
+    assert "Checks Pass Rate:          0 / 2 (0.0%)" in output
+    assert "Checks Pass Rate:          1 / 2 (50.0%)" in output
+    assert "Checks Pass Rate:          0 / 1 (0.0%)" in output
+    assert "Checks Pass Rate:          1 / 1 (100.0%)" in output
+    assert "Checks Pass Rate:          0 / 3 (0.0%)" in output
+    assert output.count("ERRORED Checks:            0") >= 4
+    assert "ERRORED Checks:            1" in output
+    # Each table sums the failed rows of its own row-level checks, including the
+    # cross-table ones, so a row caught twice counts twice.
+    assert "Failed Rows (approximate): 4" in output
+    assert "Failed Rows (approximate): 2" in output
+    assert "Non-unique Failed Rows:    2" in output
+    assert "Non-unique Failed Rows:    0" in output
     assert "CHECK RESULTS" in output
     assert "payroll" in output
     assert "employee_list" in output
@@ -755,13 +754,13 @@ def test_validation_result_print_summary_leaves_out_a_cross_table_failure_it_can
     assert "orders:" in output
     assert "Overall:" in output
     assert "Single Table:" in output
-    assert "Checks Pass Rate:       0 / 0 (N/A)" in output
-    assert "ERRORED Checks:         0" in output
-    # The only check reads two tables and its rows cannot be matched onto
-    # users, so it is not attributable, and orders has no row-level check.
-    assert output.count("Passed Rows:            N/A") == 2
+    assert "Checks Pass Rate:          0 / 0 (N/A)" in output
+    assert "ERRORED Checks:            0" in output
+    # users sums its one cross-table check, and orders has no row-level check.
+    assert "Failed Rows (approximate): 2" in output
+    assert "Failed Rows (approximate): N/A" in output
     assert "Multi Table:" in output
-    assert output.count("Non-unique Failed Rows: 2") == 1
+    assert output.count("Non-unique Failed Rows:    2") == 1
     assert "CHECK RESULTS" in output
     assert "users" in output
     assert "Target" in output
@@ -1161,7 +1160,7 @@ def test_validation_runner_build_summary_aggregates_counts(monkeypatch: pytest.M
     assert summary["validation_summary"]["passed"] == 1
     assert summary["validation_summary"]["failed"] == 1
     assert summary["validation_summary"]["errors"] == 1
-    assert summary["validation_summary"]["failed_rows"] == 3
+    assert summary["validation_summary"]["failed_rows_approximate"] == 3
     assert summary["validation_summary"]["total_execution_time_ms"] == 7.0
 
 

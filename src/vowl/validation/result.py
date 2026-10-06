@@ -217,15 +217,10 @@ class ValidationResult:
         if self._schema_validation_breakdown is not None:
             return self._schema_validation_breakdown
 
-        report = self._row_quality_report()
-        breakdown: dict[str, SchemaValidationBreakdown] = {}
-        for schema_name in self._schema_names:
-            breakdown[schema_name] = self._build_schema_breakdown(
-                self._get_checks_for_schema(schema_name),
-                report.schema(schema_name),
-            )
-
-        self._schema_validation_breakdown = breakdown
+        self._schema_validation_breakdown = {
+            schema_name: self._build_schema_breakdown(self._get_checks_for_schema(schema_name))
+            for schema_name in self._schema_names
+        }
         return self._schema_validation_breakdown
 
     @staticmethod
@@ -236,21 +231,12 @@ class ValidationResult:
             total_checks=len(check_results),
         )
 
-    def _build_schema_breakdown(
-        self,
-        schema_checks: Sequence[CheckResult],
-        row_quality: SchemaRowQuality | None,
-    ) -> SchemaValidationBreakdown:
+    def _build_schema_breakdown(self, schema_checks: Sequence[CheckResult]) -> SchemaValidationBreakdown:
         single_table_checks, multi_table_checks = self._split_checks_by_scope(schema_checks)
-        pass_rate = row_quality.pass_rate if row_quality is not None else None
+        row_level = [cr for cr in schema_checks if self._supports_row_level_output(cr)]
         overall = OverallSummary(
             **asdict(self._summarize_check_statuses(schema_checks)),
-            failed_rows=row_quality.failed_rows if row_quality is not None else None,
-            passed_rows=row_quality.passed_rows if row_quality is not None else None,
-            total_rows=row_quality.total_rows if row_quality is not None else None,
-            passed_row_percentage=pass_rate * 100 if pass_rate is not None else None,
-            approximate=row_quality.approximate if row_quality is not None else True,
-            checks_not_attributable=row_quality.checks_not_attributable if row_quality is not None else 0,
+            failed_rows_approximate=sum(cr.failed_rows_count or 0 for cr in row_level) if row_level else None,
         )
         multi_status = self._summarize_check_statuses(multi_table_checks)
         return SchemaValidationBreakdown(

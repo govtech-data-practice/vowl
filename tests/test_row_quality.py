@@ -226,12 +226,14 @@ def test_a_passed_check_with_no_count_is_not_attributed(monkeypatch: pytest.Monk
     assert _schema_row(result)["approximate"] is False
 
 
-def test_print_summary_reports_the_same_numbers(capsys: pytest.CaptureFixture[str]):
+def test_print_summary_sums_failed_rows_without_attributing(capsys: pytest.CaptureFixture[str]):
     _, result = _mixed("duckdb")
 
     result.print_summary()
 
-    assert "Passed Rows:            2 / 11 (18.1%)" in capsys.readouterr().out
+    # The basic tier adds up each check's own count. twos_distinct reports one
+    # row for three copies, so the sum is 8 while the attributed count is 9.
+    assert "Failed Rows (approximate): 8" in capsys.readouterr().out
 
 
 def test_get_check_results_df_has_the_resolved_dimension():
@@ -1091,7 +1093,7 @@ def test_statistics_turned_off(capsys: pytest.CaptureFixture[str]):
     schema = _schema_row(result)
     assert (schema["total_rows"], schema["failed_rows"], schema["pass_rate"]) == (None, None, None)
     result.print_summary()
-    assert "Passed Rows:            N/A" in capsys.readouterr().out
+    assert "Failed Rows (approximate): 8" in capsys.readouterr().out
 
 
 def test_capped_statistics_no_longer_cap_the_total():
