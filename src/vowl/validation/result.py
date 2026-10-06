@@ -446,7 +446,14 @@ class ValidationResult:
         public method's ``DeprecationWarning``.
         """
         per_check = self.get_output_dfs(checks=checks)
-        per_check = {k: v for k, v in per_check.items() if len(v) > 0}
+        # A FAILED check whose operator sets no upper limit matched the good
+        # rows, so they are left out, as in annotated output.
+        inverted_keys = {
+            self._output_key(selection.result)
+            for selection in self._row_quality().selections
+            if selection.reason == REASON_OPERATOR
+        }
+        per_check = {k: v for k, v in per_check.items() if len(v) > 0 and k not in inverted_keys}
         if not per_check:
             return {}
 
