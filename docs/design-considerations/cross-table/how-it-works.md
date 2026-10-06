@@ -176,7 +176,7 @@ like any other check, as long as its failed rows hold only the columns of the
 schema the check belongs to. vowl goes by the columns, not by what the query
 means.
 
-The [row query](../checks/how-failed-rows-are-derived.md#two-queries-from-one)
+The [row query](../checks/check-results.md#two-queries-from-one)
 swaps the outer `SELECT COUNT(*)` for `SELECT *`, so the outer `FROM` decides
 which columns the failed rows have. For "every payroll row has an employee in
 the master list":

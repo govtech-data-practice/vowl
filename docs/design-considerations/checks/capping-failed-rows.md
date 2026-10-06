@@ -10,7 +10,7 @@ This page explains how to cap the failed rows of each check, and what the cap
 changes.
 
 By default the
-[row query](how-failed-rows-are-derived.md#two-queries-from-one)
+[row query](check-results.md#two-queries-from-one)
 of each check returns every failed row. On a
 very large table with many failed rows, you can cap how many vowl downloads
 for each check with

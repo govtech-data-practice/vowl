@@ -58,7 +58,6 @@ nav:
       - How vowl Works: architecture.md
       - Checks:
           - Check Results: design-considerations/checks/check-results.md
-          - How Failed Rows Are Derived: design-considerations/checks/how-failed-rows-are-derived.md
           - Attributed Rows:
               - How Attributed Rows Work: design-considerations/checks/how-attributed-rows-work.md
               - Counting Mechanisms: design-considerations/checks/counting-mechanisms.md
