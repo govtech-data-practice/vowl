@@ -52,6 +52,9 @@ from .row_quality import (
 from .row_quality.match_key import METADATA_COLUMNS, has_match_key
 from .row_quality.selection import REASON_OPERATOR, resolve_check_dimension
 
+# Columns get_output_dfs adds to each check's rows.
+_OUTPUT_METADATA_COLUMNS = ("check_id", "tables_in_query", "tolerated")
+
 if TYPE_CHECKING:
     from ..adapters.multi_source_adapter import MultiSourceAdapter
 
@@ -141,11 +144,12 @@ class ValidationResult:
 
     def _get_failed_checks_summary_by_schema(self) -> dict[str, dict[str, list[CheckResult]]]:
         summary: dict[str, dict[str, list[CheckResult]]] = {}
+        tolerated = self._tolerated_check_ids()
         for schema_name in self._schema_names:
             single_checks, multi_checks = self._split_checks_by_scope(
                 check_result
                 for check_result in self._get_checks_for_schema(schema_name)
-                if check_result.status == "FAILED"
+                if check_result.status == "FAILED" or id(check_result) in tolerated
             )
             if single_checks or multi_checks:
                 summary[schema_name] = {
@@ -208,6 +212,36 @@ class ValidationResult:
         if self._row_quality_component is None:
             self._row_quality_component = RowQuality(self)
         return self._row_quality_component
+
+    def _tolerated_check_ids(self) -> set[int]:
+        """``id()`` of each check whose tolerated rows the outputs report.
+
+        Empty unless ``attribute_tolerated_rows`` is set. A check counts when
+        it PASSED within its threshold but its row query may still return
+        rows, by the same rules the row-quality numbers use.
+        """
+        if not self._config.attribute_tolerated_rows:
+            return set()
+        return {
+            id(selection.result)
+            for selection in self._row_quality().selections
+            if selection.tolerated and selection.in_scope
+        }
+
+    def _reported_rows(self, check_result: CheckResult, tolerated: set[int]) -> nw.DataFrame | None:
+        """The rows the outputs report for a check, or ``None`` to leave it out.
+
+        A FAILED check reports its failed rows. A tolerated check (see
+        :meth:`_tolerated_check_ids`) reports the rows its row query returned,
+        through the same fetch annotated output and the metrics use. Any
+        other check is left out, without running its row query.
+        """
+        if check_result.status == "FAILED":
+            return check_result.failed_rows
+        if id(check_result) not in tolerated:
+            return None
+        selection = next(s for s in self._row_quality().selections if s.result is check_result)
+        return self._row_quality().rows_for(selection)
 
     def _row_quality_report(self) -> RowQualityReport:
         """Every row-quality number of this run, computed once and cached."""
@@ -317,6 +351,7 @@ class ValidationResult:
             print("\n No failed rows found!")
             return self
 
+        tolerated = self._tolerated_check_ids()
         mode_label = "all" if max_rows == -1 else f"up to {max_rows} row(s) per failed check"
         print(f"\n=== Failed Checks and Rows ({mode_label}) ===")
 
@@ -336,6 +371,7 @@ class ValidationResult:
                 for check_result in check_results:
                     self._print_failed_check_rows(
                         check_result,
+                        self._reported_rows(check_result, tolerated),
                         max_rows=max_rows,
                     )
 
@@ -344,6 +380,7 @@ class ValidationResult:
     @staticmethod
     def _print_failed_check_rows(
         check_result: CheckResult,
+        df: nw.DataFrame | None,
         *,
         max_rows: int,
     ) -> None:
@@ -352,7 +389,10 @@ class ValidationResult:
 
         operator = check_result.metadata.get("operator", "")
 
-        print(f"\n      [{check_result.check_name}]")
+        # A check that PASSED within its threshold is listed only under
+        # attribute_tolerated_rows, labelled so it does not read as a failure.
+        label = " (tolerated)" if check_result.status == "PASSED" else ""
+        print(f"\n      [{check_result.check_name}]{label}")
         print(f"        Operator:   {operator}")
         print(f"        Expected:   {check_result.expected_value}")
         print(f"        Actual:     {check_result.actual_value}")
@@ -364,8 +404,7 @@ class ValidationResult:
         if rule:
             print(f"        Rule:     {rule}")
 
-        df = check_result.failed_rows
-        if len(df) == 0:
+        if df is None or len(df) == 0:
             print("        No failed rows returned.")
             return
 
@@ -375,17 +414,22 @@ class ValidationResult:
         print(format_ascii_table(sample))
 
     @staticmethod
-    def _append_output_metadata(df: nw.DataFrame, check_name: str, tables_str: str) -> nw.DataFrame:
+    def _append_output_metadata(
+        df: nw.DataFrame, check_name: str, tables_str: str, tolerated: bool | None = None
+    ) -> nw.DataFrame:
+        """Add ``check_id`` and ``tables_in_query``, and ``tolerated`` unless it is ``None``."""
         if len(df) > 0:
-            return df.with_columns(
-                nw.lit(check_name).alias("check_id"),
-                nw.lit(tables_str).alias("tables_in_query"),
-            )
+            columns = [nw.lit(check_name).alias("check_id"), nw.lit(tables_str).alias("tables_in_query")]
+            if tolerated is not None:
+                columns.append(nw.lit(tolerated).alias("tolerated"))
+            return df.with_columns(*columns)
 
         arrow_df = df.to_arrow()
         arrow_df = arrow_df.append_column("check_id", pa.array([], type=pa.utf8())).append_column(
             "tables_in_query", pa.array([], type=pa.utf8())
         )
+        if tolerated is not None:
+            arrow_df = arrow_df.append_column("tolerated", pa.array([], type=pa.bool_()))
         return nw.from_native(arrow_df, eager_only=True)
 
     def _output_key(self, cr: CheckResult) -> str:
@@ -393,18 +437,31 @@ class ValidationResult:
         return f"{schema}::{cr.check_name}" if schema else cr.check_name
 
     def get_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
+        """Each reported check's rows, keyed by ``schema::check``.
+
+        A FAILED check gives its failed rows. Under
+        ``attribute_tolerated_rows=True`` a check that PASSED within its
+        threshold gives its tolerated rows too, and every frame carries a
+        ``tolerated`` column saying which kind it is. Other checks are left
+        out.
+        """
         result: dict[str, nw.DataFrame] = {}
         checks_set = set(checks) if checks else None
+        tolerated = self._tolerated_check_ids()
+        mark_tolerated = self._config.attribute_tolerated_rows
 
         for cr in self.check_results:
-            if cr.status == "ERROR":
-                continue
             if checks_set and cr.check_name not in checks_set:
+                continue
+            rows = self._reported_rows(cr, tolerated)
+            if rows is None:
                 continue
 
             tables = get_tables_in_query(cr)
             tables_str = ", ".join(sorted(tables)) if tables else ""
-            result[self._output_key(cr)] = self._append_output_metadata(cr.failed_rows, cr.check_name, tables_str)
+            result[self._output_key(cr)] = self._append_output_metadata(
+                rows, cr.check_name, tables_str, (id(cr) in tolerated) if mark_tolerated else None
+            )
 
         return dict(sorted(result.items()))
 
@@ -423,6 +480,13 @@ class ValidationResult:
         This is the view ``save(output_mode="failed_rows")`` writes. It runs
         no extra queries and never attributes rows, so it stays cheap on
         large tables.
+
+        Under ``attribute_tolerated_rows=True`` it also holds the rows of
+        checks that PASSED within their threshold. A group they contributed
+        to gets a ``tolerated_check_ids`` column listing those checks, next
+        to ``check_ids``. A row picked out by a failed check A and a
+        tolerated check B has ``check_ids = "A, B"`` and
+        ``tolerated_check_ids = "B"``.
         """
         return self._get_consolidated_output_dfs(checks=checks)
 
@@ -443,7 +507,7 @@ class ValidationResult:
         groups: dict[tuple, list[nw.DataFrame]] = {}
         for df in per_check.values():
             tables_key = df["tables_in_query"][0] if len(df) > 0 else ""
-            cols_key = frozenset(c for c in df.columns if c not in ("check_id", "tables_in_query"))
+            cols_key = frozenset(c for c in df.columns if c not in _OUTPUT_METADATA_COLUMNS)
             group_key = (tables_key, cols_key)
             groups.setdefault(group_key, []).append(df)
 
@@ -467,37 +531,50 @@ class ValidationResult:
 
     @staticmethod
     def _consolidate_grouped_output(combined: nw.DataFrame) -> nw.DataFrame:
-        data_cols = [column for column in combined.columns if column not in ("check_id", "tables_in_query")]
-
-        if not data_cols:
-            return nw.from_native(
-                pa.table(
-                    {
-                        "check_ids": [", ".join(sorted(set(combined["check_id"].to_list())))],
-                        "tables_in_query": [combined["tables_in_query"][0]],
-                    }
-                ),
-                eager_only=True,
-            )
-
+        data_cols = [column for column in combined.columns if column not in _OUTPUT_METADATA_COLUMNS]
         arrow_table = combined.to_arrow()
         check_ids = arrow_table.column("check_id").to_pylist()
         tables = arrow_table.column("tables_in_query").to_pylist()
+        tolerated_flags = arrow_table.column("tolerated").to_pylist() if "tolerated" in arrow_table.column_names else []
+        # Only a group a tolerated check contributed to gets the column, so
+        # the default output keeps its format.
+        has_tolerated = any(tolerated_flags)
+
+        def joined(ids: Iterable[str]) -> str:
+            return ", ".join(sorted(set(ids)))
+
+        if not data_cols:
+            columns: dict[str, list[Any]] = {"check_ids": [joined(check_ids)]}
+            if has_tolerated:
+                columns["tolerated_check_ids"] = [
+                    joined(c for c, t in zip(check_ids, tolerated_flags, strict=True) if t)
+                ]
+            columns["tables_in_query"] = [tables[0]]
+            return nw.from_native(pa.table(columns), eager_only=True)
 
         first_index: dict[tuple[Any, ...], int] = {}
         check_ids_by_key: dict[tuple[Any, ...], set[str]] = {}
+        tolerated_by_key: dict[tuple[Any, ...], set[str]] = {}
         for row_index, row_key in enumerate(row_keys(arrow_table, data_cols)):
             first_index.setdefault(row_key, row_index)
             check_ids_by_key.setdefault(row_key, set()).add(check_ids[row_index])
+            tolerated_ids = tolerated_by_key.setdefault(row_key, set())
+            if has_tolerated and tolerated_flags[row_index]:
+                tolerated_ids.add(check_ids[row_index])
 
         # Rebuild from the original Arrow rows rather than from Python values,
         # so types such as timestamp[ns] and uint64 are kept exactly.
         indices = list(first_index.values())
         result = arrow_table.select(data_cols).take(pa.array(indices, type=pa.int64()))
         result = result.append_column(
-            "check_ids",
-            pa.array([", ".join(sorted(ids)) for ids in check_ids_by_key.values()], type=pa.string()),
-        ).append_column("tables_in_query", pa.array([tables[i] for i in indices]))
+            "check_ids", pa.array([joined(ids) for ids in check_ids_by_key.values()], type=pa.string())
+        )
+        if has_tolerated:
+            result = result.append_column(
+                "tolerated_check_ids",
+                pa.array([joined(ids) for ids in tolerated_by_key.values()], type=pa.string()),
+            )
+        result = result.append_column("tables_in_query", pa.array([tables[i] for i in indices]))
         return nw.from_native(result, eager_only=True)
 
     # ------------------------------------------------------------------

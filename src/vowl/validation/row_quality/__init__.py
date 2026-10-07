@@ -204,7 +204,7 @@ class RowQuality:
         self._selections = select(result.check_results, self._config.attribute_tolerated_rows)
         self._report: RowQualityReport | None = None
         self._by_check: dict[int, CheckRowQuality] = {}
-        self._tolerated_rows: dict[int, nw.DataFrame] = {}
+        self._fetch_errors: set[int] = set()
         self._merge_keys: dict[str, list[str]] = {}
 
     @property
@@ -238,29 +238,27 @@ class RowQuality:
     def rows_for(self, selection: CheckSelection) -> nw.DataFrame:
         """A row-level check's failing rows, as annotated output flags them.
 
-        FAILED checks use their own lazily fetched failed rows. A passed
-        check has no fetcher of its own, so its rows are fetched through its
-        row source, once.
+        FAILED checks use their failed rows. A passed check uses the same
+        lazily fetched rows (:attr:`CheckResult.rows`), so every output reads
+        one fetch. A fetch error on a passed check yields no rows.
         """
         check_result = selection.result
         if check_result.status != "PASSED":
             return check_result.failed_rows
         key = id(check_result)
-        if key not in self._tolerated_rows:
-            fetch = getattr(getattr(check_result, "row_source", None), "fetch", None)
-            fetched = _safe(fetch) if fetch is not None else None
-            self._tolerated_rows[key] = (
-                fetched if fetched is not None else nw.from_native(pa.table({}), eager_only=True)
-            )
-        return self._tolerated_rows[key]
+        fetched = None if key in self._fetch_errors else _safe(lambda: check_result.rows)
+        if fetched is None:
+            # Remember the error so the row query is not run again.
+            self._fetch_errors.add(key)
+            return nw.from_native(pa.table({}), eager_only=True)
+        return fetched
 
     def rows_truncated(self, selection: CheckSelection) -> bool:
         """Whether ``max_failed_rows`` cut :meth:`rows_for` short (fetches the rows first)."""
         self.rows_for(selection)
-        if selection.result.status != "PASSED":
-            return selection.result.failed_rows_truncated
-        fetch = getattr(getattr(selection.result, "row_source", None), "fetch", None)
-        return bool(getattr(fetch, "truncated", False))
+        if id(selection.result) in self._fetch_errors:
+            return False
+        return selection.result.rows_truncated
 
     # ------------------------------------------------------------------
     # Computation

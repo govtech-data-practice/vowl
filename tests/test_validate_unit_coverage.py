@@ -401,9 +401,9 @@ def test_validation_result_output_and_consolidation_helpers():
     result = _sample_validation_result()
 
     output_dfs = result.get_output_dfs(checks=["rule_a", "rule_c"])
-    assert list(output_dfs) == ["users::rule_a", "users::rule_c"]
+    # rule_c passed, so it has no rows to report.
+    assert list(output_dfs) == ["users::rule_a"]
     assert output_dfs["users::rule_a"].to_pandas()["check_id"].tolist() == ["rule_a"]
-    assert output_dfs["users::rule_c"].to_pandas().empty
 
     consolidated = result.get_consolidated_output_dfs(checks=["rule_a", "rule_b"])
     assert list(consolidated) == ["users"]

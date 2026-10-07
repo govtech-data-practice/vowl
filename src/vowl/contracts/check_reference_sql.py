@@ -230,6 +230,7 @@ class SQLCheckReference(CheckReference, ABC):
                 details=check.get("description") or f"Check passed: {operator} {expected_value}",
                 actual_value=actual_value,
                 expected_value=expected_value,
+                failed_rows_fetcher=failed_rows_fetcher,
                 supports_row_level_output=self.supports_row_level_output,
                 metadata=metadata,
                 execution_time_ms=execution_time_ms,

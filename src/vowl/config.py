@@ -70,7 +70,14 @@ class ValidationConfig:
             FAILED checks are attributed, and passed checks add nothing to
             the row counts or the annotated output.  Set to ``True`` to also
             attribute the rows of row-level checks that PASSED within their
-            tolerance.
+            tolerance. Every output then holds them: annotated output marks
+            their ``check_info`` items ``"tolerated": true``,
+            ``get_output_dfs()`` adds a ``tolerated`` column, the grouped
+            failed-rows view adds ``tolerated_check_ids`` and
+            ``show_failed_rows()`` labels them ``(tolerated)``. A row picked
+            out only by such a check counts as failing in the DQ metrics.
+            OpenTelemetry's ``failed_rows_sample`` still holds failed checks
+            only.
     """
 
     max_rows_for_statistics: int = -1

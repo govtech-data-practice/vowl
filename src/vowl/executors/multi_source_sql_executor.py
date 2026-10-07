@@ -523,7 +523,6 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     filter_conditions=query_filters,
                     use_try_cast=use_try_cast,
                     row_query=failed_query,
-                    fetch=fetcher,
                     cross_source=True,
                 )
             return result
@@ -741,7 +740,6 @@ class MultiSourceSQLExecutor(SQLExecutor):
                             dialect=output_dialect,
                             use_try_cast=use_try_cast,
                             row_query=failed_query,
-                            fetch=fetcher,
                             cross_source=True,
                         )
                     results[index] = built

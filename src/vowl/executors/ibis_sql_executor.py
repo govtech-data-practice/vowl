@@ -217,8 +217,6 @@ class IbisSQLExecutor(SQLExecutor):
                 use_try_cast=use_try_cast,
             )
             if result.status != "ERROR":
-                # A PASSED result carries no fetcher, but a tolerated PASSED
-                # check still has rows the row-quality component may count.
                 result.row_source = RowSource(
                     check_ref=check_ref,
                     dialect=dialect,
@@ -226,7 +224,6 @@ class IbisSQLExecutor(SQLExecutor):
                     use_try_cast=use_try_cast,
                     adapter=self._adapter,
                     row_query=failed_query,
-                    fetch=fetcher,
                 )
             return result
 

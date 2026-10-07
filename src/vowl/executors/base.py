@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
@@ -62,8 +62,6 @@ class RowSource:
         use_try_cast: Whether TRY_CAST rewriting was on.
         adapter: The adapter that executed the check.
         row_query: The filtered row query, exactly as run.
-        fetch: Zero-argument callable returning the failed rows, capped by
-            ``max_failed_rows``.
         cross_source: True when the check ran on a local copy of tables from
             more than one source (Mode 2). Such a check cannot be pushed down
             to a single source.
@@ -75,7 +73,6 @@ class RowSource:
     use_try_cast: bool = True
     adapter: Any = None
     row_query: str | None = None
-    fetch: Callable[[], nw.DataFrame | None] | None = field(default=None, repr=False)
     cross_source: bool = False
 
 
@@ -144,8 +141,14 @@ class CheckResult:
         self.row_source = row_source
 
     @property
-    def failed_rows(self) -> nw.DataFrame:
-        """Rows that failed this check (lazily fetched on first access)."""
+    def rows(self) -> nw.DataFrame:
+        """Rows the check's row query returned, whatever the status (lazily fetched once).
+
+        For a FAILED check these are its failed rows. For a check that PASSED
+        within its threshold they are its tolerated rows. The outputs read
+        them for a passed check only under
+        ``ValidationConfig(attribute_tolerated_rows=True)``.
+        """
         _empty = nw.from_native(pa.table({}), eager_only=True)
         if self._failed_rows is None and self._failed_rows_fetcher is not None:
             # Compare with None, not truthiness: a zero-row frame is falsy but
@@ -157,10 +160,25 @@ class CheckResult:
         return self._failed_rows if self._failed_rows is not None else _empty
 
     @property
+    def rows_truncated(self) -> bool:
+        """Whether ``max_failed_rows`` cut :attr:`rows` short (fetches them first)."""
+        _ = self.rows
+        return self._failed_rows_truncated
+
+    @property
+    def failed_rows(self) -> nw.DataFrame:
+        """Rows that failed this check (lazily fetched on first access).
+
+        Empty for a PASSED check, without running its row query.
+        """
+        if self.status == "PASSED":
+            return nw.from_native(pa.table({}), eager_only=True)
+        return self.rows
+
+    @property
     def failed_rows_truncated(self) -> bool:
         """Whether ``max_failed_rows`` cut :attr:`failed_rows` short (fetches them first)."""
-        _ = self.failed_rows
-        return self._failed_rows_truncated
+        return self.status != "PASSED" and self.rows_truncated
 
     @property
     def failed_rows_count(self) -> int:

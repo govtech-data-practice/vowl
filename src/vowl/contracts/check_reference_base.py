@@ -287,6 +287,7 @@ class CheckReference(ABC):
                 details=check.get("description") or f"Check passed: {operator} {expected_value}",
                 actual_value=actual_value,
                 expected_value=expected_value,
+                failed_rows_fetcher=failed_rows_fetcher,
                 metadata=metadata,
                 execution_time_ms=execution_time_ms,
             )

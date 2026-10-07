@@ -939,9 +939,9 @@ class TestSaveModes:
         assert (tmp_path / "r_orders_join_check_residue.csv").exists()
 
     def test_both_mode_writes_the_residue_of_a_tolerated_check(self, tmp_path, monkeypatch):
-        # A check that passed within its tolerance is in no failed-rows CSV, so
-        # under attribute_tolerated_rows=True its residue is the only file that
-        # holds its rows.
+        # Under attribute_tolerated_rows=True a check that passed within its
+        # tolerance writes its residue, and the failed-rows CSV holds the same
+        # rows, read through the same fetch.
         import test_row_quality as rq
 
         import vowl.contracts.contract as contract_module
@@ -960,10 +960,14 @@ class TestSaveModes:
         assert statuses["threes_subset"] == "PASSED"
 
         result.save(str(tmp_path), prefix="r", output_mode="both")
-        assert not (tmp_path / "r_t.csv").exists()
         residue = self._read_csv(tmp_path / "r_t_threes_subset_residue.csv")
         items = json.loads(residue.column("check_info")[0].as_py())
         assert items == [{"check_name": "threes_subset", "tolerated": True}]
+        # Both files deduplicate identical rows, so they agree.
+        grouped = self._read_csv(tmp_path / "r_t.csv")
+        assert grouped.column("c").to_pylist() == residue.column("c").to_pylist() == [3]
+        assert grouped.column("check_ids").to_pylist() == ["threes_subset"]
+        assert grouped.column("tolerated_check_ids").to_pylist() == ["threes_subset"]
 
     def test_invalid_mode_raises(self, tmp_path):
         with pytest.raises(ValueError, match="Unknown output_mode"):
