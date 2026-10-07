@@ -57,16 +57,16 @@ library you use.
 
 `get_check_results_df()` returns one row per check. The main columns are:
 
-| Column                                       | What it holds                                                       |
-| -------------------------------------------- | ------------------------------------------------------------------- |
-| `check_name`                                 | The check's name                                                    |
-| `schema_name`                                | The schema the check belongs to                                     |
-| `dimension`                                  | The check's dimension, such as `completeness`                       |
-| `status`                                     | `PASSED`, `FAILED` or `ERROR`                                       |
-| `operator`, `expected_value`, `actual_value` | What the check compared, for example `mustBe`, `0` and `3`          |
-| `failed_rows_count`                          | The check's scalar count. For `COUNT(DISTINCT x)` it counts values. |
-| `message`                                    | Why the check ended in `ERROR`. Empty otherwise.                    |
-| `execution_time_ms`                          | How long the check took                                             |
+| Column                                       | What it holds                                                                                                                                  |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check_name`                                 | The check's name                                                                                                                               |
+| `schema_name`                                | The schema the check belongs to                                                                                                                |
+| `dimension`                                  | The check's dimension, such as `completeness`                                                                                                  |
+| `status`                                     | `PASSED`, `FAILED` or `ERROR`                                                                                                                  |
+| `operator`, `expected_value`, `actual_value` | What the check compared, for example `mustBe`, `0` and `3`                                                                                     |
+| `failed_rows_count`                          | The check's scalar count when it failed, `0` when it passed. `actual_value` always holds the scalar. For `COUNT(DISTINCT x)` it counts values. |
+| `message`                                    | Why the check ended in `ERROR`. Empty otherwise.                                                                                               |
+| `execution_time_ms`                          | How long the check took                                                                                                                        |
 
 Pass `include_check_definition=True` to add each check's definition as JSON,
 and `include_contract_definition=True` to add the part of the contract it came
@@ -118,8 +118,8 @@ Both methods take `checks=["check_a", "check_b"]` to return only those checks.
 one row-level check and how many passed them all. A row that fails two checks counts
 once. These are the row counts in the
 [DQ metrics](dq-metrics/understanding-metrics.md). The summary does not show
-them. It shows **Failed Rows (approximate)**, a sum of each check's scalar
-count.
+them. It shows **Failed Rows (approximate)**, a sum of the scalar counts of
+the failed checks. A check that passed within its tolerance adds nothing.
 
 ```python
 result.get_dq_metrics_df()                     # one row per schema

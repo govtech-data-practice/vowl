@@ -295,11 +295,11 @@ flowchart LR
     ar --> u3["Row counts, annotated output,<br/>row count DQ metrics at every level"]
 ```
 
-| Result              | Where you see it                                                                                     |
-| ------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | `actual` in the summary, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")`      |
-| **Failed rows**     | `show_failed_rows()`, `get_output_dfs()`, residues                                                   |
-| **Attributed rows** | `attributed_rows` in `get_dq_metrics_df(by="check")`, and `failed_rows` per schema and per dimension |
+| Result              | Where you see it                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Scalar count**    | `actual` in the summary, `failed_rows_count` (failed checks only), `scalar_count` in `get_dq_metrics_df(by="check")` |
+| **Failed rows**     | `show_failed_rows()`, `get_output_dfs()`, residues                                                                   |
+| **Attributed rows** | `attributed_rows` in `get_dq_metrics_df(by="check")`, and `failed_rows` per schema and per dimension                 |
 
 ### Scalar and row queries {#two-queries-from-one}
 

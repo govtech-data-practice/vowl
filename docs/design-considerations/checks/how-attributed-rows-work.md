@@ -94,11 +94,11 @@ the two bread rows:
 So the check has three numbers. The first two are its query output, and the
 third is worked out from it:
 
-| Number              | What it is                                                       | Shows | Where you see it                                                                                                   |
-| ------------------- | ---------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ |
-| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count`, `scalar_count` in `get_dq_metrics_df(by="check")` and `vowl.check.row.scalar_count` |
-| **Failed rows**     | The rows the row query returned                                  | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                              |
-| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_dq_metrics_df(by="check")`, the annotated output and every row count of the DQ metrics   |
+| Number              | What it is                                                       | Shows | Where you see it                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count` (failed checks only), `scalar_count` in `get_dq_metrics_df(by="check")` and `vowl.check.row.scalar_count` |
+| **Failed rows**     | The rows the row query returned                                  | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                                                   |
+| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_dq_metrics_df(by="check")`, the annotated output and every row count of the DQ metrics                        |
 
 For a plain filter such as `WHERE price <= 0` without `DISTINCT`, all three
 show 3. A join can do the opposite and return one row twice, so the scalar
@@ -123,7 +123,8 @@ row counts and its annotated output treat every such row as bad.
 When each check is only counted on its own, the counts can't be added up,
 because they don't say which rows overlap. The summary shows two such
 numbers. **Failed Rows (approximate)**, under **Overall**, adds up the scalar
-counts of every row-level check of the table. A row that fails two checks
+counts of every failed row-level check of the table. A check that passed
+within its tolerance adds nothing. A row that fails two checks
 counts twice, so it can be higher than the rows that failed. The summary also splits each table's checks into
 two groups:
 
