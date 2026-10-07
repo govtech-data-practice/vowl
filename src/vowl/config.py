@@ -16,8 +16,8 @@ from typing import Literal
 #: - ``"failed_rows"``  -- grouped failed-rows CSVs only. The cheap mode: no
 #:                          table export, no row attribution and no
 #:                          ``dq_metrics.json``.
-#: - ``"both"``         -- failed-rows CSVs, annotated tables and
-#:                          ``dq_metrics.json``.
+#: - ``"both"``         -- everything ``"annotated"`` writes, plus the
+#:                          failed-rows CSVs.
 OutputMode = Literal["failed_rows", "annotated", "both"]
 
 #: Presets controlling the contents of the annotated table's ``check_info``

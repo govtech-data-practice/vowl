@@ -1347,9 +1347,8 @@ class ValidationResult:
         - ``"failed_rows"`` -- the cheap mode. Failing rows only, grouped per
           table with a comma-joined ``check_ids`` column (see
           :meth:`get_consolidated_output_dfs`). No ``dq_metrics.json``.
-        - ``"both"`` -- the annotated tables, the failed-rows CSVs and
-          ``dq_metrics.json``. Residues are not written, since their rows are
-          in the failed-rows CSVs.
+        - ``"both"`` -- everything ``"annotated"`` writes, residues
+          included, plus the failed-rows CSVs.
         """
         mode = output_mode if output_mode is not None else self._config.output_mode
         if mode not in ("failed_rows", "annotated", "both"):
@@ -1380,17 +1379,14 @@ class ValidationResult:
             for schema, df in out["annotated"].items():
                 safe_key = _safe_filename_component(schema.replace(", ", "_").replace(" ", "_"))
                 saved_files.append(target.write_csv(f"{prefix}_{safe_key}_annotated.csv", df.to_arrow()))
-            # In "annotated" mode, residues cover the non-mergeable checks and
-            # the standalone failed-rows CSVs were NOT written, so emit them
-            # here. In "both" mode, those same failed rows are already in the
-            # grouped failed-rows CSVs written above, so skip to avoid emitting
-            # the same rows twice in a different (per-check) shape.
-            if mode == "annotated":
-                for residue_key, df in out["residues"].items():
-                    safe_key = _safe_filename_component(
-                        residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_")
-                    )
-                    saved_files.append(target.write_csv(f"{prefix}_{safe_key}_residue.csv", df.to_arrow()))
+            # Residues are written in "both" too, so "both" is everything
+            # "annotated" writes plus the failed-rows CSVs. The failed-rows
+            # CSVs hold only failed checks, while residues also hold the rows
+            # of checks that passed within tolerance under
+            # attribute_tolerated_rows=True.
+            for residue_key, df in out["residues"].items():
+                safe_key = _safe_filename_component(residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_"))
+                saved_files.append(target.write_csv(f"{prefix}_{safe_key}_residue.csv", df.to_arrow()))
 
         saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str)))
 

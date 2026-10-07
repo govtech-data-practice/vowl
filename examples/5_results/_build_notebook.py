@@ -323,7 +323,7 @@ md(
 |------|----------------|
 | `"failed_rows"` *(cheap)* | One grouped failed-rows CSV per table key, e.g. `<prefix>_<table>.csv`. No `dq_metrics.json`. |
 | `"annotated"` *(default)* | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>_<check>_residue.csv` per non-mergeable check, **plus** `<prefix>_dq_metrics.json` |
-| `"both"` | The failed-rows CSVs, the annotated CSVs and `<prefix>_dq_metrics.json` (residues are already covered by the grouped failed-rows CSVs, so no separate `_residue` files are written) |
+| `"both"` | Everything `"annotated"` writes, residues included, **plus** the failed-rows CSVs |
 
 The `check_info` argument (`"names"` / `"summary"` / `"full"`, described above) sets how much detail the saved `check_info` column carries. To set the `check_info` detail for every `save()`, pass `ValidationConfig(annotated_check_info="summary")` to `validate_data(config=...)`.
 

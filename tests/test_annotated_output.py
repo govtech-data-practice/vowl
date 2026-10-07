@@ -925,6 +925,46 @@ class TestSaveModes:
         assert "r_orders_annotated.csv" in files
         assert "r_orders.csv" in files  # failed-rows CSV
 
+    @pytest.mark.parametrize("mode", ["annotated", "both"])
+    def test_annotated_modes_write_residues(self, tmp_path, mode):
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        residue = _make_check(
+            "join_check",
+            "orders",
+            failed_rows=pa.table({"id": [3], "name": ["c"], "ref_id": [None]}),
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([residue], {"orders": _FakeAdapter(full)})
+        result.save(str(tmp_path), prefix="r", output_mode=mode)
+        assert (tmp_path / "r_orders_join_check_residue.csv").exists()
+
+    def test_both_mode_writes_the_residue_of_a_tolerated_check(self, tmp_path, monkeypatch):
+        # A check that passed within its tolerance is in no failed-rows CSV, so
+        # under attribute_tolerated_rows=True its residue is the only file that
+        # holds its rows.
+        import test_row_quality as rq
+
+        import vowl.contracts.contract as contract_module
+
+        monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+        con = rq._connect("duckdb")
+        con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+        con.raw_sql("INSERT INTO t VALUES (1, 3), (2, 3), (3, 5)")
+        subset = {
+            "name": "threes_subset",
+            "query": "SELECT COUNT(*) FROM (SELECT c FROM t WHERE c = 3) AS s",
+            "mustBeLessThan": 100,
+        }
+        result = rq._validate(con, [rq._schema("t", [subset])], ValidationConfig(attribute_tolerated_rows=True))
+        statuses = {c.check_name: c.status for c in result.check_results}
+        assert statuses["threes_subset"] == "PASSED"
+
+        result.save(str(tmp_path), prefix="r", output_mode="both")
+        assert not (tmp_path / "r_t.csv").exists()
+        residue = self._read_csv(tmp_path / "r_t_threes_subset_residue.csv")
+        items = json.loads(residue.column("check_info")[0].as_py())
+        assert items == [{"check_name": "threes_subset", "tolerated": True}]
+
     def test_invalid_mode_raises(self, tmp_path):
         with pytest.raises(ValueError, match="Unknown output_mode"):
             self._result_with_failures().save(str(tmp_path), output_mode="anotated")

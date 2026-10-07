@@ -187,63 +187,18 @@ line of the summary.
 
 ## Saving results
 
-`save()` writes the result to a folder. It returns the result and prints the
-files it wrote.
+`save()` writes the result to a folder, prints each file it writes and returns
+the result.
 
 ```python
 result.save("dq-results/", prefix="orders")
-result.save("dq-results/", prefix="orders", output_mode="failed_rows")
 ```
 
-`output_mode` picks which row files `save()` writes. The default is
-`"annotated"`.
+File names start with `prefix`, or with `vowl_results` if you leave it out.
+`save()` also takes the `check_info`, `include_check_definition` and
+`include_contract_definition` options of the methods above.
 
-| File                                  | What it holds                                                                                                                           | `"annotated"` | `"failed_rows"` | `"both"` |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | :-----------: | :-------------: | :------: |
-| `orders_check_results.csv`            | The [check results](#check-results)                                                                                                     |      Yes      |       Yes       |   Yes    |
-| `orders_summary.json`                 | The numbers behind the summary                                                                                                          |      Yes      |       Yes       |   Yes    |
-| `orders_<schema>_annotated.csv`       | One annotated table per schema                                                                                                          |      Yes      |                 |   Yes    |
-| `orders_<schema>_<check>_residue.csv` | One file per residue                                                                                                                    |      Yes      |                 |          |
-| `orders_<tables>.csv`                 | Only the failed rows, one row each, with the names of the checks it failed in `check_ids`. See [Failed-rows files](#failed-rows-files). |               |       Yes       |   Yes    |
-| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md)                                                                                             |      Yes      |                 |   Yes    |
-
-Without `prefix`, the files start with `vowl_results`. `"both"` writes no
-residues, since their rows are already in the failed-rows files.
-
-### What each mode costs
-
-| `output_mode`           | Cost                                                                                     |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| `"annotated"` (default) | Attributes failed rows to each table and can download the table. On a large table, slow. |
-| `"failed_rows"`         | Runs no extra queries. Never downloads a table or attributes rows.                       |
-| `"both"`                | As `"annotated"`                                                                         |
-
-The annotated tables and the DQ metrics share one table download and one row
-attribution, so writing both costs no more than writing one. Use
-`"failed_rows"` when you only need the failed rows of a large table.
-
-### Failed-rows files
-
-The `"failed_rows"` files hold the same tables `get_consolidated_output_dfs()`
-returns. vowl groups the failed rows of the checks that read the same tables
-and return the same columns, and writes one file per group:
-
-- `<tables>` is the tables the checks read, joined by `_`. A check that reads
-  `orders` writes `orders_orders.csv`. A check that joins `orders` and
-  `customers` writes `orders_orders_customers.csv`.
-- Checks that read the same tables but return different columns go to
-  separate files, with `_1`, `_2` and so on at the end of the name. In
-  `get_consolidated_output_dfs()` the keys end in `__1`, `__2` instead.
-
-A check that failed because too few rows matched, such as
-`mustBeGreaterThan`, is left out, since the rows it matched are the good
-ones.
-
-`save()` takes the same `check_info`, `include_check_definition` and
-`include_contract_definition` options as the methods above.
-
-`save()` also takes a URI instead of a folder, to write straight to cloud
-storage:
+To write to cloud storage, pass a URI instead of a folder:
 
 ```python
 result.save("s3://my-bucket/dq-results/run-1/")
@@ -257,19 +212,17 @@ result.save("s3://my-bucket/dq-results/run-1/")
 | HDFS             | `hdfs://namenode:8020/dq-results/`                          |
 | A local file URI | `file:///shared/dq-results/`                                |
 
-vowl writes through the filesystems that come with pyarrow, so there is
-nothing extra to install. Credentials come from the usual place for each
-cloud. For S3 that means environment variables such as `AWS_ACCESS_KEY_ID`,
-the `~/.aws` files, or an IAM role. For Google Cloud it means your default
-application credentials.
+vowl writes through the filesystems built into pyarrow, so there is nothing
+extra to install. Credentials come from the usual place for each cloud. For S3,
+that is environment variables such as `AWS_ACCESS_KEY_ID`, the `~/.aws` files
+or an IAM role. For Google Cloud, it is your default application credentials.
 
-To use an S3-compatible store such as MinIO, set the `AWS_ENDPOINT_URL`
-environment variable to its address. [Loading contracts from S3](usage-patterns.md#from-s3)
-reads the same variable.
+For an S3-compatible store such as MinIO, set `AWS_ENDPOINT_URL` to its
+address. [Loading contracts from S3](usage-patterns.md#from-s3) reads the same
+variable.
 
-To pass credentials yourself, build a pyarrow filesystem and pass it as
-`filesystem=`. The folder is then a path inside that filesystem, starting with
-the bucket name:
+To pass credentials yourself, pass a pyarrow filesystem as `filesystem=`. The
+path is then inside that filesystem and starts with the bucket name:
 
 ```python
 import pyarrow.fs as pafs
@@ -287,6 +240,42 @@ result.save("my-bucket/dq-results/run-1/", filesystem=minio)
     Some pyarrow builds, mostly from conda, leave out S3 or Google Cloud
     support. If `save()` says the filesystem is not supported, install pyarrow
     from PyPI with `pip install --force-reinstall pyarrow`.
+
+### Output modes
+
+`output_mode` sets which files `save()` writes:
+
+| File                                  | What it holds                               | Written by                   |
+| ------------------------------------- | ------------------------------------------- | ---------------------------- |
+| `orders_check_results.csv`            | The [check results](#check-results)         | Every mode                   |
+| `orders_summary.json`                 | The numbers behind the summary              | Every mode                   |
+| `orders_<schema>_annotated.csv`       | The annotated table of one schema           | `"annotated"` and `"both"`   |
+| `orders_<schema>_<check>_residue.csv` | The residue of one check                    | `"annotated"` and `"both"`   |
+| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md) | `"annotated"` and `"both"`   |
+| `orders_<tables>.csv`                 | A [failed-rows CSV](#failed-rows-csvs)      | `"failed_rows"` and `"both"` |
+
+`"annotated"` is the default. It and `"both"` attribute failed rows to each
+table, which can download the table and is slow on a large one. The annotated
+tables and the DQ metrics share that work, so writing both costs no more than
+writing one. `"failed_rows"` runs no extra queries. Use it when you only need
+the failed rows.
+
+### Failed-rows CSVs
+
+A failed-rows CSV holds each failed row once, with the checks it failed in
+`check_ids`. vowl writes one CSV for each group of checks that read the same
+tables and return the same columns. These are the tables
+`get_consolidated_output_dfs()` returns.
+
+- `<tables>` is the tables the checks read, joined by `_`. A check on `orders`
+  writes `orders_orders.csv`, and a check that joins `orders` and `customers`
+  writes `orders_orders_customers.csv`.
+- Checks that read the same tables but return different columns get separate
+  CSVs, ending in `_1`, `_2` and so on. The matching
+  `get_consolidated_output_dfs()` keys end in `__1`, `__2`.
+
+A check that fails because too few rows matched, such as `mustBeGreaterThan`,
+is left out. The rows it returns are the ones that passed.
 
 ## DQ metrics and OpenTelemetry
 
