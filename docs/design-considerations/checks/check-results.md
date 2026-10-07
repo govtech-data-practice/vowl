@@ -244,7 +244,7 @@ A passed check still reports its scalar count in
 `vowl.check.row.scalar_count`. Its `vowl.check.row.count` follows the same
 rule as its tolerated rows: `FAILED` is 0 by default, and its attributed rows
 with `attribute_tolerated_rows=True`. By default vowl does not attribute its rows. It runs no extra query for it,
-adds nothing to the row counts and does not flag it in the annotated output.
+adds nothing to the row counts and leaves its rows out of every output.
 Its `reason` is `passed, not attributed`, and it is not counted in
 `checks_not_attributable`.
 
@@ -260,9 +260,21 @@ config = ValidationConfig(attribute_tolerated_rows=True)
 result = validate_data("orders.yaml", df=df, config=config)
 ```
 
-`check_info` in the annotated output then also lists the passed checks a row
-broke. Their items carry `"tolerated": true`, so you can tell them apart from
-failed checks.
+Every output then holds the rows of the passed checks too, and marks them per
+check, so you can tell them apart from failed checks. All of them read the
+check's rows from one fetch, so they agree.
+
+| Output                          | Setting off (default) | `attribute_tolerated_rows=True`                                  |
+| ------------------------------- | --------------------- | ---------------------------------------------------------------- |
+| `get_annotated_output()`        | Failed checks only    | Adds tolerated checks, their `check_info` items `"tolerated": true` |
+| `get_output_dfs()`              | Failed checks only    | Adds tolerated checks, with a `tolerated` column                 |
+| `get_consolidated_output_dfs()` and the `"as_is"` CSVs | Failed checks only | Adds tolerated rows, with a `tolerated_check_ids` column |
+| `show_failed_rows()`            | Failed checks only    | Adds tolerated checks, labelled `(tolerated)`                    |
+| DQ metrics                      | Failed checks only    | A row picked out by any of these checks counts as failing        |
+| OpenTelemetry `failed_rows_sample` | Failed checks only | Failed checks only                                               |
+
+A row picked out only by a tolerated check counts as failing in the DQ
+metrics. That is what the setting asks for.
 
 !!! example "Example: a tolerated check in `check_info`"
 
@@ -274,6 +286,11 @@ failed checks.
     | 3        | milk | `[{"check_name": "price_must_be_positive"}, {"check_name": "quantity_is_filled", "tolerated": true}]` |
 
     `quantity_is_filled` passed, so its item is marked tolerated.
+
+    In the grouped failed-rows view, the same row has `check_ids`
+    `price_must_be_positive, quantity_is_filled` and `tolerated_check_ids`
+    `quantity_is_filled`. In the DQ metrics it fails, because
+    `price_must_be_positive` failed.
 
 A passed check is attributed the same way as a failed one, so it can need the
 table downloaded. The failed checks of that table then take `client_lookup`

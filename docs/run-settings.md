@@ -35,7 +35,7 @@ failed row to its table row, so a row that fails two checks counts once. See
 
 | Setting                                                         | Default | What it does                                                                                                                                                                                                               |
 | --------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="attribute_tolerated_rows"></a>`attribute_tolerated_rows` | `False` | `True` also attributes the tolerated rows of checks that passed, so they count as failed rows and are flagged in the annotated output. See [Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows). |
+| <a id="attribute_tolerated_rows"></a>`attribute_tolerated_rows` | `False` | `True` also attributes the tolerated rows of checks that passed, so they count as failed rows and every output holds them, each marked as tolerated. OpenTelemetry's `failed_rows_sample` still holds failed checks only. See [Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows). |
 
 ## Saving results
 
@@ -44,7 +44,7 @@ the matching argument. An argument you pass always wins.
 
 | Setting                                                 | Default       | What it does                                                                                                                                                                       |
 | ------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="output_mode"></a>`output_mode`                   | `"annotated"` | What `save()` writes. `"failed_rows"` is the cheap mode. `"both"` writes everything. See [Saving results](results.md#saving-results).                                              |
+| <a id="output_mode"></a>`output_mode`                   | `"attributed"` | What `save()` writes. `"as_is"` is the cheap mode and does nothing to the rows. `"both"` writes everything. The old names `"failed_rows"` and `"annotated"` still work with a `FutureWarning`. See [Saving results](results.md#saving-results). |
 | <a id="annotated_check_info"></a>`annotated_check_info` | `"names"`     | How much detail the `check_info` column holds. See [What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds). |
 
 ## Deprecated

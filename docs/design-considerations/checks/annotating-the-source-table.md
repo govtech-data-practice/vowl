@@ -178,6 +178,6 @@ give you the failed rows without it:
 | `result.get_output_dfs()`             | Each check's failed rows as a separate table, under `"<schema>::<check_name>"`. |
 
 `result.save()` saves the annotated tables, residues, `summary.json` and
-`dq_metrics.json` as files. `output_mode="failed_rows"` is the cheap
+`dq_metrics.json` as files. `output_mode="as_is"` is the cheap
 alternative. It saves the rows from `get_consolidated_output_dfs()` and never
 annotates the table. See [Saving results](../../results.md#saving-results).

@@ -266,7 +266,7 @@ md(
 
 `result.save(...)` writes `<prefix>_dq_metrics.json` next to the annotated tables.
 The annotated tables already attribute failed rows, so the file costs nothing more.
-`save(output_mode="failed_rows")` skips it, because that mode never attributes rows.
+`save(output_mode="as_is")` skips it, because that mode never attributes rows.
 Use it when you want the metrics in a data warehouse, a notebook, or
 anywhere without an OpenTelemetry backend. It needs no extra install.
 """

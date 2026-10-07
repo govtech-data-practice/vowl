@@ -317,17 +317,17 @@ md(
 <a id="4-saving"></a>
 ## 4. Saving Outputs to Disk
 
-`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout. Every mode also writes `<prefix>_check_results.csv` and `<prefix>_summary.json`, and the annotated modes also write the run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb) as `<prefix>_dq_metrics.json`:
+`result.save(...)` writes the annotated tables by default. The `output_mode` argument controls the layout. Every mode also writes `<prefix>_check_results.csv` and `<prefix>_summary.json`, and the `"attributed"` and `"both"` modes also write the run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb) as `<prefix>_dq_metrics.json`:
 
 | Mode | Files written |
 |------|----------------|
-| `"failed_rows"` *(cheap)* | One grouped failed-rows CSV per table key, e.g. `<prefix>_<table>.csv`. No `dq_metrics.json`. |
-| `"annotated"` *(default)* | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>_<check>_residue.csv` per non-mergeable check, **plus** `<prefix>_dq_metrics.json` |
-| `"both"` | Everything `"annotated"` writes, residues included, **plus** the failed-rows CSVs |
+| `"as_is"` *(cheap)* | Each check's rows as its query returned them, one grouped failed-rows CSV per table key, e.g. `<prefix>_<table>.csv`. No `dq_metrics.json`. |
+| `"attributed"` *(default)* | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>_<check>_residue.csv` per non-mergeable check, **plus** `<prefix>_dq_metrics.json` |
+| `"both"` | Everything `"attributed"` writes, residues included, **plus** the failed-rows CSVs |
 
 The `check_info` argument (`"names"` / `"summary"` / `"full"`, described above) sets how much detail the saved `check_info` column carries. To set the `check_info` detail for every `save()`, pass `ValidationConfig(annotated_check_info="summary")` to `validate_data(config=...)`.
 
-The annotated modes attribute failed rows to each table and may download it, which can be slow on a large table. The annotated tables and `dq_metrics.json` share that work, so writing both costs no more than writing one. `"failed_rows"` runs no extra queries and never downloads a table, so pick it when you only need the failed rows.
+`"attributed"` and `"both"` attribute failed rows to each table and may download it, which can be slow on a large table. The annotated tables and `dq_metrics.json` share that work, so writing both costs no more than writing one. `"as_is"` runs no extra queries and never downloads a table, so pick it when you only need the failed rows.
 
 Single-table contracts (like the HDB example) have no non-mergeable checks, so they never produce `_residue` files. The multi-source run below does, so let's save both to see the difference. The files land in the `outputs/` folder beside this notebook.
 """
@@ -336,7 +336,7 @@ Single-table contracts (like the HDB example) have no non-mergeable checks, so t
 code(
     """
 # Write the annotated table(s) to disk
-result.save(output_dir="outputs", prefix="vowl_demo_annotated", output_mode="annotated")
+result.save(output_dir="outputs", prefix="vowl_demo_annotated", output_mode="attributed")
 """
 )
 
@@ -344,7 +344,7 @@ md(
     """
 ### Saving a Run That Has Residues
 
-`result` above is single-table, so its `save(output_mode="annotated")` wrote only `*_annotated.csv` files. Saving the multi-source `mt_result` from the residue example instead also writes one `*_residue.csv` per non-mergeable check, keyed `<schema>_<check>` (the `::` in the residue key becomes `_`). Each residue CSV carries that one check's failed rows plus the same `check_info` column as the annotated tables and `tables_in_query`.
+`result` above is single-table, so its `save(output_mode="attributed")` wrote only `*_annotated.csv` files. Saving the multi-source `mt_result` from the residue example instead also writes one `*_residue.csv` per non-mergeable check, keyed `<schema>_<check>` (the `::` in the residue key becomes `_`). Each residue CSV carries that one check's failed rows plus the same `check_info` column as the annotated tables and `tables_in_query`.
 """
 )
 
@@ -352,9 +352,9 @@ code(
     """
 import os
 
-# Save the multi-source run; annotated mode emits residue CSVs for the
+# Save the multi-source run; attributed mode emits residue CSVs for the
 # cross-table checks that can't be merged onto a single table.
-mt_result.save(output_dir="outputs", prefix="vowl_demo_residues", output_mode="annotated")
+mt_result.save(output_dir="outputs", prefix="vowl_demo_residues", output_mode="attributed")
 
 print("\\nFiles written:")
 for fname in sorted(f for f in os.listdir("outputs") if f.startswith("vowl_demo_residues")):
@@ -396,10 +396,10 @@ md(
 ### Recap
 
 - `get_annotated_output()` returns your full table with a `check_info` column, so
-  flagged rows read in context and the clean rows fall out with a single filter.
+  failed rows read in context and the clean rows fall out with a single filter.
 - Checks that can't attach to one table come back as **residues**, one entry per
   non-mergeable check.
-- `result.save(output_mode="annotated")` writes those same shapes to disk as CSV,
+- `result.save(output_mode="attributed")` writes those same shapes to disk as CSV,
   plus a `*_summary.json` that always carries every full check definition and a
   `*_dq_metrics.json` with the run's DQ metrics.
 - The `outputs/` folder holds a saved example of each output for reference.

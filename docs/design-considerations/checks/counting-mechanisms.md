@@ -15,7 +15,7 @@ failed. A check that passed takes no route and runs no extra query, unless
 [`attribute_tolerated_rows`](../../run-settings.md#attribute_tolerated_rows)
 is set. This work runs only when you ask for DQ metrics or annotated output,
 through `get_dq_metrics()`, `get_dq_metrics_df()`, `export_otel()`,
-`get_annotated_output()` or `save()` in its annotated modes.
+`get_annotated_output()` or `save()` in its `"attributed"` and `"both"` modes.
 
 ## Which route a check takes
 

@@ -35,12 +35,12 @@ mean the same as in the [Glossary](glossary.md).
 
 The result has two tiers. The basic tier is cheap. The DQ metrics tier does
 more work. `save()` is in the DQ metrics tier by default. Pass
-`output_mode="failed_rows"` to keep it in the basic tier.
+`output_mode="as_is"` to keep it in the basic tier.
 
 | Tier       | Methods                                                                                                                       | Cost                                                                                                                                                                                    | Counts                                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Basic      | `print_summary()`, `get_check_results_df()`, `result.summary`, `save(output_mode="failed_rows")`                              | Runs the check queries only. Never attributes rows to the table.                                                                                                                        | Each check's scalar `failed_rows_count`. A sum across checks is marked approximate.         |
-| DQ metrics | `get_dq_metrics()`, `get_dq_metrics_df(by=...)`, `export_otel(...)`, `get_annotated_output()`, `save()` (the annotated modes) | [Attributes failed rows to the table](design-considerations/checks/how-attributed-rows-work.md) once and reuses that work. Runs a `COUNT(*)` on each table the first time it is needed. | Rows that failed at least one check, rows that passed, pass rates and an `approximate` flag |
+| Basic      | `print_summary()`, `get_check_results_df()`, `result.summary`, `save(output_mode="as_is")`                                    | Runs the check queries only. Never attributes rows to the table.                                                                                                                        | Each check's scalar `failed_rows_count`. A sum across checks is marked approximate.         |
+| DQ metrics | `get_dq_metrics()`, `get_dq_metrics_df(by=...)`, `export_otel(...)`, `get_annotated_output()`, `save()` (`"attributed"`, `"both"`) | [Attributes failed rows to the table](design-considerations/checks/how-attributed-rows-work.md) once and reuses that work. Runs a `COUNT(*)` on each table the first time it is needed. | Rows that failed at least one check, rows that passed, pass rates and an `approximate` flag |
 
 A sum of scalar counts across checks is approximate. A row that fails two
 checks counts twice, and `DISTINCT` or a join can change a check's count. The
@@ -102,7 +102,9 @@ explains which checks are annotated and which become residues.
 **`get_output_dfs()`** returns each check's failed rows, keyed
 `"<schema>::<check_name>"`. Each DataFrame has a `check_id` column (the check's
 name) and a `tables_in_query` column. Checks that ended in `ERROR` are left
-out. This method does not download your tables, so it is the better choice on
+out, and so are checks that passed, unless
+[`attribute_tolerated_rows=True`](run-settings.md#attribute_tolerated_rows)
+puts the tolerated ones in with a `tolerated` column. This method does not download your tables, so it is the better choice on
 large tables.
 
 ```python
@@ -243,22 +245,33 @@ result.save("my-bucket/dq-results/run-1/", filesystem=minio)
 
 ### Output modes
 
-`output_mode` sets which files `save()` writes:
+`output_mode` sets which files `save()` writes. The modes are named for what
+they do to the rows:
+
+- `"as_is"` is cheap and does nothing to the rows. It writes each check's rows
+  as its query returned them, grouped by table.
+- `"attributed"` attributes the rows onto their table and writes the DQ
+  metrics.
+- `"both"` writes everything the other two write.
 
 | File                                  | What it holds                               | Written by                   |
 | ------------------------------------- | ------------------------------------------- | ---------------------------- |
 | `orders_check_results.csv`            | The [check results](#check-results)         | Every mode                   |
 | `orders_summary.json`                 | The numbers behind the summary              | Every mode                   |
-| `orders_<schema>_annotated.csv`       | The annotated table of one schema           | `"annotated"` and `"both"`   |
-| `orders_<schema>_<check>_residue.csv` | The residue of one check                    | `"annotated"` and `"both"`   |
-| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md) | `"annotated"` and `"both"`   |
-| `orders_<tables>.csv`                 | A [failed-rows CSV](#failed-rows-csvs)      | `"failed_rows"` and `"both"` |
+| `orders_<schema>_annotated.csv`       | The annotated table of one schema           | `"attributed"` and `"both"`  |
+| `orders_<schema>_<check>_residue.csv` | The residue of one check                    | `"attributed"` and `"both"`  |
+| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md) | `"attributed"` and `"both"`  |
+| `orders_<tables>.csv`                 | A [failed-rows CSV](#failed-rows-csvs)      | `"as_is"` and `"both"`       |
 
-`"annotated"` is the default. It and `"both"` attribute failed rows to each
+`"attributed"` is the default. It and `"both"` attribute failed rows to each
 table, which can download the table and is slow on a large one. The annotated
 tables and the DQ metrics share that work, so writing both costs no more than
-writing one. `"failed_rows"` runs no extra queries. Use it when you only need
+writing one. `"as_is"` runs no extra queries. Use it when you only need
 the failed rows.
+
+The old names `"failed_rows"` (now `"as_is"`) and `"annotated"` (now
+`"attributed"`) still work with a `FutureWarning`. They will be removed in
+v0.1.0.
 
 ### Failed-rows CSVs
 
@@ -276,6 +289,13 @@ tables and return the same columns. These are the tables
 
 A check that fails because too few rows matched, such as `mustBeGreaterThan`,
 is left out. The rows it returns are the ones that passed.
+
+With [`attribute_tolerated_rows=True`](run-settings.md#attribute_tolerated_rows)
+the CSVs also hold the rows of checks that passed within their threshold. A
+CSV such a check contributed to gets a `tolerated_check_ids` column next to
+`check_ids`, listing those checks. A row picked out by a failed check A and a
+tolerated check B has `check_ids` `A, B` and `tolerated_check_ids` `B`. See
+[Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows).
 
 ## DQ metrics and OpenTelemetry
 
