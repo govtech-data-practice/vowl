@@ -131,7 +131,7 @@ class CheckSelection:
         tolerated: The check PASSED but may have matched rows (a tolerance).
             Annotated output marks its ``check_info`` items with it.
         in_scope: Whether the check's rows are attributed: it FAILED, or it
-            PASSED under ``attribute_tolerated_rows``.
+            PASSED under ``fetch_tolerated_rows``.
         reason: Why the check is not row-level or not attributed, or empty.
         scalar_count: The number of rows the check's scalar query matched.
         approximate: The check ended in ERROR but would have been row-level, so
@@ -149,7 +149,7 @@ class CheckSelection:
     approximate: bool = False
 
 
-def select_check(check_result: CheckResult, attribute_tolerated_rows: bool = False) -> CheckSelection | None:
+def select_check(check_result: CheckResult, fetch_tolerated_rows: bool = False) -> CheckSelection | None:
     """Apply the step 2 rules to one check, or return None when it has no schema."""
     schema_name = check_result.metadata.get("schema_name")
     if not isinstance(schema_name, str):
@@ -183,7 +183,7 @@ def select_check(check_result: CheckResult, attribute_tolerated_rows: bool = Fal
 
     scalar_count = scalar_row_count(check_result)
     passed = check_result.status == "PASSED"
-    in_scope = not passed or attribute_tolerated_rows
+    in_scope = not passed or fetch_tolerated_rows
     return CheckSelection(
         result=check_result,
         schema_name=schema_name,
@@ -196,9 +196,9 @@ def select_check(check_result: CheckResult, attribute_tolerated_rows: bool = Fal
     )
 
 
-def select(check_results: Iterable[CheckResult], attribute_tolerated_rows: bool = False) -> list[CheckSelection]:
+def select(check_results: Iterable[CheckResult], fetch_tolerated_rows: bool = False) -> list[CheckSelection]:
     """Apply the step 2 rules to every check that is anchored to a schema."""
-    selections = (select_check(check_result, attribute_tolerated_rows) for check_result in check_results)
+    selections = (select_check(check_result, fetch_tolerated_rows) for check_result in check_results)
     return [selection for selection in selections if selection is not None]
 
 

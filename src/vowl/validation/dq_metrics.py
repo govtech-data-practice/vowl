@@ -248,7 +248,7 @@ def check_row_counts(result: ValidationResult) -> dict[int, CheckRows]:
     check, such as an aggregate or a lower bound on a count, gets check counts
     only.
 
-    A passed check is attributed only under ``attribute_tolerated_rows``.
+    A passed check is attributed only under ``fetch_tolerated_rows``.
     Otherwise it adds nothing to the row counts, so its ``attributed_rows`` is
     ``0``, as at the dimension and schema levels.
     """

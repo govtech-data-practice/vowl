@@ -35,7 +35,7 @@ failed row to its table row, so a row that fails two checks counts once. See
 
 | Setting                                                         | Default | What it does                                                                                                                                                                                                               |
 | --------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="attribute_tolerated_rows"></a>`attribute_tolerated_rows` | `False` | `True` also attributes the tolerated rows of checks that passed, so they count as failed rows and every output holds them, each marked as tolerated. OpenTelemetry's `failed_rows_sample` still holds failed checks only. See [Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows). |
+| <a id="fetch_tolerated_rows"></a>`fetch_tolerated_rows` | `False` | `True` also fetches the tolerated rows of checks that passed, an extra query per check. Every output then holds them, each marked as tolerated, and they count as failed rows in the DQ metrics. The check stays `PASSED`. OpenTelemetry's `failed_rows_sample` still holds failed checks only. See [Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows). |
 
 ## Saving results
 

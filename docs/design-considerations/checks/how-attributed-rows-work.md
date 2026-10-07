@@ -335,7 +335,7 @@ From the merged list:
 
 - **`failed_rows`** is the copies of every distinct row that is a failed row
   of a failed check. Passed checks add nothing unless
-  [`attribute_tolerated_rows`](../../run-settings.md#attribute_tolerated_rows)
+  [`fetch_tolerated_rows`](../../run-settings.md#fetch_tolerated_rows)
   is set. See [Tolerated rows](check-results.md#tolerated-rows).
 - **Passed rows** are the total minus `failed_rows`.
 - **Pass rate** is the passed rows divided by the total.

@@ -87,11 +87,14 @@ class ValidationConfig:
             ``get_annotated_output(check_info=...)`` / ``save(check_info=...)``
             override this per call; when their argument is ``None`` this config
             value is used.
-        attribute_tolerated_rows: When ``False`` (default), only the rows of
-            FAILED checks are attributed, and passed checks add nothing to
-            the row counts or the annotated output.  Set to ``True`` to also
-            attribute the rows of row-level checks that PASSED within their
-            tolerance. Every output then holds them: annotated output marks
+        fetch_tolerated_rows: When ``False`` (default), vowl runs no row
+            query for a check that passed, so only the rows of FAILED checks
+            are fetched and attributed. The summary still shows every
+            check's scalar count. Set to ``True`` to also fetch the rows of
+            row-level checks that PASSED within their tolerance. This costs
+            an extra query per such check, and can export its table. The
+            check's status and ``failed_rows_count`` do not change. Every
+            output then holds the rows: annotated output marks
             their ``check_info`` items ``"tolerated": true``,
             ``get_output_dfs()`` adds a ``tolerated`` column, the grouped
             failed-rows view adds ``tolerated_check_ids`` and
@@ -107,7 +110,7 @@ class ValidationConfig:
     use_try_cast: bool = True
     output_mode: OutputMode = "attributed"
     annotated_check_info: CheckInfoPreset = "names"
-    attribute_tolerated_rows: bool = False
+    fetch_tolerated_rows: bool = False
 
     def __post_init__(self) -> None:
         self.output_mode = _normalize_output_mode(self.output_mode, stacklevel=3)

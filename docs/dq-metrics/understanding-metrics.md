@@ -268,12 +268,12 @@ counts only.
 | Check                    | `scalar_count` | `row.count` at check level                                                 |
 | ------------------------ | -------------- | -------------------------------------------------------------------------- |
 | Failed, attributable     | Yes            | Its attributed rows                                                        |
-| Passed                   | Yes            | `FAILED` is 0, or its attributed rows with `attribute_tolerated_rows=True` |
+| Passed                   | Yes            | `FAILED` is 0, or its attributed rows with `fetch_tolerated_rows=True` |
 | Failed, not attributable | Yes            | None                                                                       |
 
 A passed check follows the same rule as [tolerated rows](../design-considerations/checks/check-results.md#tolerated-rows).
 By default it adds no rows, so its `FAILED` is 0. With
-`attribute_tolerated_rows=True`, its attributed rows count at every level.
+`fetch_tolerated_rows=True`, its attributed rows count at every level.
 
 At dimension, schema and run level, only attributed rows are counted. A
 dimension or schema with no attributable row-level check has no row counts.

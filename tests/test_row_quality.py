@@ -171,8 +171,8 @@ def test_counts_match_the_truth_per_schema_and_dimension(backend: str):
     assert (threes["scalar_count"], threes["attributed_rows"], threes["approximate"]) == (1, None, False)
 
 
-def test_attribute_tolerated_rows_counts_passed_checks_as_failed():
-    con, result = _mixed("duckdb", ValidationConfig(attribute_tolerated_rows=True))
+def test_fetch_tolerated_rows_counts_passed_checks_as_failed():
+    con, result = _mixed("duckdb", ValidationConfig(fetch_tolerated_rows=True))
 
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL", "c = 3"]) == 10
@@ -966,14 +966,14 @@ def test_operator_rule(operator, expected, row_level: bool):
     assert identifies_bad_rows(operator, expected) is row_level
 
 
-@pytest.mark.parametrize("attribute_tolerated", [False, True])
-def test_tolerated_rows_in_annotated_output(attribute_tolerated: bool):
-    _, result = _mixed("duckdb", ValidationConfig(attribute_tolerated_rows=attribute_tolerated))
+@pytest.mark.parametrize("fetch_tolerated", [False, True])
+def test_tolerated_rows_in_annotated_output(fetch_tolerated: bool):
+    _, result = _mixed("duckdb", ValidationConfig(fetch_tolerated_rows=fetch_tolerated))
 
     annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
     items = [item for row in annotated if row["check_info"] for item in json.loads(row["check_info"])]
     tolerated = [item for item in items if item["check_name"] == "threes_tolerated"]
-    if attribute_tolerated:
+    if fetch_tolerated:
         assert tolerated == [{"check_name": "threes_tolerated", "tolerated": True}]
     else:
         assert tolerated == []

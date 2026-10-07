@@ -10,7 +10,7 @@
       "use_try_cast": true,
       "output_mode": "attributed",
       "annotated_check_info": "names",
-      "attribute_tolerated_rows": false
+      "fetch_tolerated_rows": false
     },
     "failed_rows_approximate": 14,
     "total_execution_time_ms": 88.48695806227624,

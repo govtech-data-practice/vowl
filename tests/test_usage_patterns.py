@@ -1132,7 +1132,7 @@ class TestValidationResultAPI:
         output_dfs = results.get_output_dfs()
 
         assert isinstance(output_dfs, dict)
-        # Only FAILED checks appear, since attribute_tolerated_rows is off.
+        # Only FAILED checks appear, since fetch_tolerated_rows is off.
         failed = [cr for cr in results.check_results if cr.status == "FAILED"]
         assert len(output_dfs) == len(failed)
         for _check_id, df in output_dfs.items():

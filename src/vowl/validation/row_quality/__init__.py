@@ -21,7 +21,7 @@ reports the same counts of attributed rows, every copy counted. The process is d
    tested source and ``client_lookup`` elsewhere. A check whose rows cannot be
    attributed this run is not attributable: it adds nothing to the row counts,
    which become approximate when it caught rows in scope. A passed check is
-   out of scope unless ``attribute_tolerated_rows`` is set, and adds nothing.
+   out of scope unless ``fetch_tolerated_rows`` is set, and adds nothing.
 
 4. Merge the routes into one entry per attributed row (:mod:`.merge`).
 5. Roll up per schema, dimension and check (:mod:`.rollup`).
@@ -201,7 +201,7 @@ class RowQuality:
     def __init__(self, result: ValidationResult) -> None:
         self._result = result
         self._config = result._config
-        self._selections = select(result.check_results, self._config.attribute_tolerated_rows)
+        self._selections = select(result.check_results, self._config.fetch_tolerated_rows)
         self._report: RowQualityReport | None = None
         self._by_check: dict[int, CheckRowQuality] = {}
         self._fetch_errors: set[int] = set()

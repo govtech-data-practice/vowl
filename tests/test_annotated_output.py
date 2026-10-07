@@ -939,7 +939,7 @@ class TestSaveModes:
         assert (tmp_path / "r_orders_join_check_residue.csv").exists()
 
     def test_both_mode_writes_the_residue_of_a_tolerated_check(self, tmp_path, monkeypatch):
-        # Under attribute_tolerated_rows=True a check that passed within its
+        # Under fetch_tolerated_rows=True a check that passed within its
         # tolerance writes its residue, and the as_is CSV holds the same
         # rows, read through the same fetch.
         import test_row_quality as rq
@@ -955,7 +955,7 @@ class TestSaveModes:
             "query": "SELECT COUNT(*) FROM (SELECT c FROM t WHERE c = 3) AS s",
             "mustBeLessThan": 100,
         }
-        result = rq._validate(con, [rq._schema("t", [subset])], ValidationConfig(attribute_tolerated_rows=True))
+        result = rq._validate(con, [rq._schema("t", [subset])], ValidationConfig(fetch_tolerated_rows=True))
         statuses = {c.check_name: c.status for c in result.check_results}
         assert statuses["threes_subset"] == "PASSED"
 

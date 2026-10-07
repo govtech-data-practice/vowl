@@ -116,7 +116,7 @@ def test_get_output_dfs_still_returns_every_row_query(result):
 
 
 # ---------------------------------------------------------------------------
-# Tolerated rows under attribute_tolerated_rows
+# Tolerated rows under fetch_tolerated_rows
 # ---------------------------------------------------------------------------
 
 
@@ -162,14 +162,14 @@ def _tolerated_contract_data() -> dict:
     }
 
 
-def _tolerated_result(attribute_tolerated_rows: bool):
+def _tolerated_result(fetch_tolerated_rows: bool):
     from vowl.config import ValidationConfig
 
     df = pd.DataFrame({"order_id": [1, 2, 3, 4], "amount": [10.0, -5.0, 20.0, 30.0]})
     return _run_validation(
         contract=Contract(_tolerated_contract_data()),
         df=df,
-        config=ValidationConfig(attribute_tolerated_rows=attribute_tolerated_rows),
+        config=ValidationConfig(fetch_tolerated_rows=fetch_tolerated_rows),
     )
 
 

@@ -236,19 +236,19 @@ A **tolerated row** is a failed row of a row-level check that passed.
     Its scalar count is 1, so it passes, and milk is a tolerated row.
 
     By default the completeness dimension has `failed_rows` 0. With
-    `attribute_tolerated_rows=True`, it has `failed_rows` 1. If milk also
+    `fetch_tolerated_rows=True`, it has `failed_rows` 1. If milk also
     fails a check that failed, such as `price_must_be_positive`, the totals
     for `orders` don't change either way.
 
 A passed check still reports its scalar count in
 `vowl.check.row.scalar_count`. Its `vowl.check.row.count` follows the same
 rule as its tolerated rows: `FAILED` is 0 by default, and its attributed rows
-with `attribute_tolerated_rows=True`. By default vowl does not attribute its rows. It runs no extra query for it,
+with `fetch_tolerated_rows=True`. By default vowl does not attribute its rows. It runs no extra query for it,
 adds nothing to the row counts and leaves its rows out of every output.
 Its `reason` is `passed, not attributed`, and it is not counted in
 `checks_not_attributable`.
 
-[`attribute_tolerated_rows`](../../run-settings.md#attribute_tolerated_rows)
+[`fetch_tolerated_rows`](../../run-settings.md#fetch_tolerated_rows)
 attributes passed checks too, so the row counts hold every row that broke a
 row-level check, whatever the tolerance. You set it per run, not in the
 contract:
@@ -256,7 +256,7 @@ contract:
 ```python
 from vowl import ValidationConfig, validate_data
 
-config = ValidationConfig(attribute_tolerated_rows=True)
+config = ValidationConfig(fetch_tolerated_rows=True)
 result = validate_data("orders.yaml", df=df, config=config)
 ```
 
@@ -264,7 +264,7 @@ Every output then holds the rows of the passed checks too, and marks them per
 check, so you can tell them apart from failed checks. All of them read the
 check's rows from one fetch, so they agree.
 
-| Output                          | Setting off (default) | `attribute_tolerated_rows=True`                                  |
+| Output                          | Setting off (default) | `fetch_tolerated_rows=True`                                  |
 | ------------------------------- | --------------------- | ---------------------------------------------------------------- |
 | `get_annotated_output()`        | Failed checks only    | Adds tolerated checks, their `check_info` items `"tolerated": true` |
 | `get_output_dfs()`              | Failed checks only    | Adds tolerated checks, with a `tolerated` column                 |
@@ -278,7 +278,7 @@ metrics. That is what the setting asks for.
 
 !!! example "Example: a tolerated check in `check_info`"
 
-    With `attribute_tolerated_rows=True`, the milk row of `orders` lists both
+    With `fetch_tolerated_rows=True`, the milk row of `orders` lists both
     checks it broke:
 
     | order_id | item | check_info                                                                                     |

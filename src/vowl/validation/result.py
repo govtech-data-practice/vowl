@@ -216,11 +216,11 @@ class ValidationResult:
     def _tolerated_check_ids(self) -> set[int]:
         """``id()`` of each check whose tolerated rows the outputs report.
 
-        Empty unless ``attribute_tolerated_rows`` is set. A check counts when
+        Empty unless ``fetch_tolerated_rows`` is set. A check counts when
         it PASSED within its threshold but its row query may still return
         rows, by the same rules the row-quality numbers use.
         """
-        if not self._config.attribute_tolerated_rows:
+        if not self._config.fetch_tolerated_rows:
             return set()
         return {
             id(selection.result)
@@ -390,7 +390,7 @@ class ValidationResult:
         operator = check_result.metadata.get("operator", "")
 
         # A check that PASSED within its threshold is listed only under
-        # attribute_tolerated_rows, labelled so it does not read as a failure.
+        # fetch_tolerated_rows, labelled so it does not read as a failure.
         label = " (tolerated)" if check_result.status == "PASSED" else ""
         print(f"\n      [{check_result.check_name}]{label}")
         print(f"        Operator:   {operator}")
@@ -440,7 +440,7 @@ class ValidationResult:
         """Each reported check's rows, keyed by ``schema::check``.
 
         A FAILED check gives its failed rows. Under
-        ``attribute_tolerated_rows=True`` a check that PASSED within its
+        ``fetch_tolerated_rows=True`` a check that PASSED within its
         threshold gives its tolerated rows too, and every frame carries a
         ``tolerated`` column saying which kind it is. Other checks are left
         out.
@@ -448,7 +448,7 @@ class ValidationResult:
         result: dict[str, nw.DataFrame] = {}
         checks_set = set(checks) if checks else None
         tolerated = self._tolerated_check_ids()
-        mark_tolerated = self._config.attribute_tolerated_rows
+        mark_tolerated = self._config.fetch_tolerated_rows
 
         for cr in self.check_results:
             if checks_set and cr.check_name not in checks_set:
@@ -481,7 +481,7 @@ class ValidationResult:
         no extra queries and never attributes rows, so it stays cheap on
         large tables.
 
-        Under ``attribute_tolerated_rows=True`` it also holds the rows of
+        Under ``fetch_tolerated_rows=True`` it also holds the rows of
         checks that PASSED within their threshold. A group they contributed
         to gets a ``tolerated_check_ids`` column listing those checks, next
         to ``check_ids``. A row picked out by a failed check A and a
@@ -696,7 +696,7 @@ class ValidationResult:
         - ``"summary"`` -> ``{check_name, dimension, tags, target}``
         - ``"full"``    -> full ``check_definition`` + ``check_name`` + ``target``
 
-        Under ``attribute_tolerated_rows=True``, the item of a check that
+        Under ``fetch_tolerated_rows=True``, the item of a check that
         passed within its tolerance also carries ``"tolerated": true``. The
         item of a check whose failed rows ``max_failed_rows`` cut short carries
         ``"truncated": true``.
@@ -955,7 +955,7 @@ class ValidationResult:
           file produced in ``output_mode="attributed"`` -- annotated tables and
           residues alike -- is read the same way.
 
-          Under ``attribute_tolerated_rows=True``, rows of checks that
+          Under ``fetch_tolerated_rows=True``, rows of checks that
           passed within their tolerance are flagged too, and their
           ``check_info`` items carry ``"tolerated": true``.
 
@@ -980,7 +980,7 @@ class ValidationResult:
 
         # The checks whose rows are flagged: the row-quality component's
         # failed row-level checks. Inverted and table-level checks are left to
-        # the summary. Passed checks join only under attribute_tolerated_rows.
+        # the summary. Passed checks join only under fetch_tolerated_rows.
         flagged = [
             selection
             for selection in attributed_checks(row_quality.selections)
@@ -1192,7 +1192,7 @@ class ValidationResult:
         caught, which differs when the query does not return each such row
         once, for example under ``DISTINCT``. It is null when the check is not
         attributed. A passed check is not attributed unless
-        ``attribute_tolerated_rows`` is set.
+        ``fetch_tolerated_rows`` is set.
 
         Raises:
             ValueError: If *by* is not one of the values above.

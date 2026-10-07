@@ -59,9 +59,9 @@ def _spy_exports(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 def test_config_defaults_and_serialises():
     config = ValidationConfig()
-    assert config.attribute_tolerated_rows is False
+    assert config.fetch_tolerated_rows is False
     data = config.to_dict()
-    assert data["attribute_tolerated_rows"] is False
+    assert data["fetch_tolerated_rows"] is False
     assert "row_counts" not in data
     assert "enable_additional_schema_statistics" not in data
 

@@ -211,7 +211,7 @@ def _duckdb_table(rq, rows: str):
     return con
 
 
-def test_a_tolerated_check_follows_attribute_tolerated_rows(rq):
+def test_a_tolerated_check_follows_fetch_tolerated_rows(rq):
     con = _duckdb_table(rq, "(1, -1), (2, -2), (3, 3), (4, 4)")
     checks = [rq._schema("t", [rq._check("tolerated", "c < 0", mustBeLessThan=10)])]
     result = rq._validate(con, checks)
@@ -228,7 +228,7 @@ def test_a_tolerated_check_follows_attribute_tolerated_rows(rq):
     }
     assert _row_points(document, "schema", schema_name="t") == {"PASSED": 4, "FAILED": 0, "pass_rate": 1.0}
 
-    tolerated = rq._validate(con, checks, config=rq.ValidationConfig(attribute_tolerated_rows=True))
+    tolerated = rq._validate(con, checks, config=rq.ValidationConfig(fetch_tolerated_rows=True))
     document = tolerated.get_dq_metrics()
     assert _row_points(document, "check", check_name="tolerated") == {"PASSED": 2, "FAILED": 2, "pass_rate": 0.5}
     assert _row_points(document, "schema", schema_name="t") == {"PASSED": 2, "FAILED": 2, "pass_rate": 0.5}

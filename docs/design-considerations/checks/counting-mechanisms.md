@@ -12,7 +12,7 @@ what each way costs. vowl picks a **route** for each check.
 
 By default vowl attributes the failed rows of every row-level check that
 failed. A check that passed takes no route and runs no extra query, unless
-[`attribute_tolerated_rows`](../../run-settings.md#attribute_tolerated_rows)
+[`fetch_tolerated_rows`](../../run-settings.md#fetch_tolerated_rows)
 is set. This work runs only when you ask for DQ metrics or annotated output,
 through `get_dq_metrics()`, `get_dq_metrics_df()`, `export_otel()`,
 `get_annotated_output()` or `save()` in its `"attributed"` and `"both"` modes.
@@ -60,7 +60,7 @@ One more rule applies. When the table is downloaded anyway and the data
 source is not a tested source, the plain filters are attributed in the
 downloaded table too, and take `client_lookup`.
 
-Under `attribute_tolerated_rows=True`, a passed check is routed like a failed
+Under `fetch_tolerated_rows=True`, a passed check is routed like a failed
 one. If it needs the table downloaded, the failed checks of that table can
 move to `client_lookup` too.
 

@@ -147,7 +147,7 @@ class CheckResult:
         For a FAILED check these are its failed rows. For a check that PASSED
         within its threshold they are its tolerated rows. The outputs read
         them for a passed check only under
-        ``ValidationConfig(attribute_tolerated_rows=True)``.
+        ``ValidationConfig(fetch_tolerated_rows=True)``.
         """
         _empty = nw.from_native(pa.table({}), eager_only=True)
         if self._failed_rows is None and self._failed_rows_fetcher is not None:

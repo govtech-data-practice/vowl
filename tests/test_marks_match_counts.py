@@ -41,7 +41,7 @@ def _duplicates():
 
 
 def _tolerated_rows_attributed():
-    return rq._mixed("sqlite", ValidationConfig(attribute_tolerated_rows=True))[1]
+    return rq._mixed("sqlite", ValidationConfig(fetch_tolerated_rows=True))[1]
 
 
 def _pk_subset_check():

@@ -103,7 +103,7 @@ explains which checks are annotated and which become residues.
 `"<schema>::<check_name>"`. Each DataFrame has a `check_id` column (the check's
 name) and a `tables_in_query` column. Checks that ended in `ERROR` are left
 out, and so are checks that passed, unless
-[`attribute_tolerated_rows=True`](run-settings.md#attribute_tolerated_rows)
+[`fetch_tolerated_rows=True`](run-settings.md#fetch_tolerated_rows)
 puts the tolerated ones in with a `tolerated` column. This method does not download your tables, so it is the better choice on
 large tables.
 
@@ -290,7 +290,7 @@ tables and return the same columns. These are the tables
 A check that fails because too few rows matched, such as `mustBeGreaterThan`,
 is left out. The rows it returns are the ones that passed.
 
-With [`attribute_tolerated_rows=True`](run-settings.md#attribute_tolerated_rows)
+With [`fetch_tolerated_rows=True`](run-settings.md#fetch_tolerated_rows)
 the CSVs also hold the rows of checks that passed within their threshold. A
 CSV such a check contributed to gets a `tolerated_check_ids` column next to
 `check_ids`, listing those checks. A row picked out by a failed check A and a

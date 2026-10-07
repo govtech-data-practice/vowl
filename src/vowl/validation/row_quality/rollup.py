@@ -107,7 +107,7 @@ class CheckState:
         dimension: The check's dimension.
         row_level: The check is about bad rows.
         in_scope: The check's rows belong in the row counts: it FAILED, or it
-            PASSED under ``attribute_tolerated_rows``.
+            PASSED under ``fetch_tolerated_rows``.
         collected: The check's rows are in the merged entries.
         attributable: The check's attributed rows are in the row counts.
         approximate: The check makes its buckets approximate.

@@ -134,7 +134,7 @@ output["residues"]    # {"<schema>::<check_name>": failed rows + check_info + ta
 - **Each residue holds one check**: its failed rows, a `check_info` column,
   and a `tables_in_query` column naming the tables the check read.
 - **Tolerated rows** are annotated only under
-  [`attribute_tolerated_rows=True`](../../run-settings.md#attribute_tolerated_rows). Their `check_info` item carries
+  [`fetch_tolerated_rows=True`](../../run-settings.md#fetch_tolerated_rows). Their `check_info` item carries
   `"tolerated": true`. See [Tolerated rows](check-results.md#tolerated-rows).
 - **Checks cut short by `max_failed_rows`** carry `"truncated": true` in
   their `check_info` items, and `get_annotated_output()` warns. See
