@@ -11,14 +11,33 @@ from typing import Literal
 #: Output styles ``save()`` can write. These are mutually exclusive modes,
 #: not independent toggles, which is why this is an enum rather than a boolean:
 #:
-#: - ``"annotated"``    -- full in-scope tables with a ``check_info`` column,
-#:                          residues and ``dq_metrics.json`` (default).
-#: - ``"failed_rows"``  -- grouped failed-rows CSVs only. The cheap mode: no
-#:                          table export, no row attribution and no
-#:                          ``dq_metrics.json``.
-#: - ``"both"``         -- everything ``"annotated"`` writes, plus the
-#:                          failed-rows CSVs.
-OutputMode = Literal["failed_rows", "annotated", "both"]
+#: - ``"as_is"``       -- check results, the summary and each check's rows
+#:                         exactly as its row query returned them, grouped by
+#:                         table. The cheap mode: no table export, no row
+#:                         attribution and no ``dq_metrics.json``.
+#: - ``"attributed"``  -- rows attributed onto their table: the annotated
+#:                         table with a ``check_info`` column, residues and
+#:                         ``dq_metrics.json`` (default).
+#: - ``"both"``        -- everything ``"attributed"`` writes, plus the
+#:                         ``"as_is"`` CSVs.
+OutputMode = Literal["as_is", "attributed", "both"]
+
+#: Old output mode names, mapped to their replacements.
+_DEPRECATED_OUTPUT_MODES = {"failed_rows": "as_is", "annotated": "attributed"}
+
+
+def _normalize_output_mode(mode: str, *, stacklevel: int) -> str:
+    """Return the current name for ``mode``, warning if it is an old one."""
+    new = _DEPRECATED_OUTPUT_MODES.get(mode)
+    if new is None:
+        return mode
+    warnings.warn(
+        f"output_mode={mode!r} is deprecated, use {new!r}. The old name will be removed in v0.1.0.",
+        FutureWarning,
+        stacklevel=stacklevel + 1,
+    )
+    return new
+
 
 #: Presets controlling the contents of the annotated table's ``check_info``
 #: column.  Every preset emits a JSON **array of objects** (uniform type) so
@@ -56,10 +75,12 @@ class ValidationConfig:
             wrapped in TRY_CAST.  This prevents type-mismatch errors
             from aborting a check and surfaces them as failed rows instead.
         output_mode: Selects what ``ValidationResult.save()`` writes.  One of
-            ``"annotated"`` (default), ``"failed_rows"``, or ``"both"``.  See
+            ``"attributed"`` (default), ``"as_is"``, or ``"both"``.  See
             :data:`OutputMode`.  ``save(output_mode=...)`` overrides this per
             call. When its argument is ``None`` this config value is used.
-            ``"failed_rows"`` is the cheap mode for large tables.
+            ``"as_is"`` is the cheap mode for large tables. The old names
+            ``"failed_rows"`` and ``"annotated"`` still work with a
+            ``FutureWarning`` and will be removed in v0.1.0.
         annotated_check_info: Preset controlling the annotated table's
             ``check_info`` column.  One of ``"names"`` (default),
             ``"summary"``, or ``"full"``.  See :data:`CheckInfoPreset`.
@@ -84,11 +105,12 @@ class ValidationConfig:
     enable_additional_schema_statistics: bool | None = None
     max_failed_rows: int = -1
     use_try_cast: bool = True
-    output_mode: OutputMode = "annotated"
+    output_mode: OutputMode = "attributed"
     annotated_check_info: CheckInfoPreset = "names"
     attribute_tolerated_rows: bool = False
 
     def __post_init__(self) -> None:
+        self.output_mode = _normalize_output_mode(self.output_mode, stacklevel=3)
         if self.enable_additional_schema_statistics is not None:
             warnings.warn(
                 "enable_additional_schema_statistics is deprecated and has no effect.",

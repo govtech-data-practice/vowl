@@ -748,7 +748,7 @@ class TestValidationResultAPI:
         original_dir = os.getcwd()
         os.chdir(tmp_path)
         try:
-            # The default output_mode is "annotated", so save() with no
+            # The default output_mode is "attributed", so save() with no
             # explicit mode writes annotated tables and does not warn.
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
@@ -760,14 +760,14 @@ class TestValidationResultAPI:
             assert any(f.startswith("test_readme_results_") and f.endswith("_annotated.csv") for f in files)
 
             # No mode warns.
-            for mode in ("failed_rows", "both", "annotated"):
+            for mode in ("as_is", "both", "attributed"):
                 with warnings.catch_warnings(record=True) as caught:
                     warnings.simplefilter("always")
                     result.save(prefix=f"{mode}_run", output_mode=mode)
                 assert not [w for w in caught if "output_mode" in str(w.message)]
             files = {p.name for p in tmp_path.iterdir()}
             assert "test_readme_results_dq_metrics.json" in files
-            assert "failed_rows_run_dq_metrics.json" not in files
+            assert "as_is_run_dq_metrics.json" not in files
         finally:
             os.chdir(original_dir)
 
@@ -782,7 +782,7 @@ class TestValidationResultAPI:
         monkeypatch.setattr(_output_dir, "_filesystem_from_uri", lambda uri: (fs, uri.split("://", 1)[1]))
         monkeypatch.chdir(tmp_path)
 
-        result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
+        result.save("s3://my-bucket/dq-results/run-1/", output_mode="attributed")
 
         saved = fs.get_file_info(pafs.FileSelector("my-bucket/dq-results/run-1"))
         assert any(info.path.endswith("_summary.json") for info in saved)

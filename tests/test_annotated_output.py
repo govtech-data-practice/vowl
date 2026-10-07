@@ -908,14 +908,14 @@ class TestSaveModes:
         )
         return _make_result([check], {"orders": _FakeAdapter(full)})
 
-    def test_failed_rows_mode_no_annotated(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="failed_rows")
+    def test_as_is_mode_no_annotated(self, tmp_path):
+        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="as_is")
         files = {p.name for p in tmp_path.iterdir()}
         assert not any("_annotated.csv" in f for f in files)
         assert "r_check_results.csv" in files
 
-    def test_annotated_mode_writes_annotated(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="annotated")
+    def test_attributed_mode_writes_annotated(self, tmp_path):
+        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="attributed")
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
 
@@ -923,10 +923,10 @@ class TestSaveModes:
         self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="both")
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
-        assert "r_orders.csv" in files  # failed-rows CSV
+        assert "r_orders.csv" in files  # as_is CSV
 
-    @pytest.mark.parametrize("mode", ["annotated", "both"])
-    def test_annotated_modes_write_residues(self, tmp_path, mode):
+    @pytest.mark.parametrize("mode", ["attributed", "both"])
+    def test_attributed_modes_write_residues(self, tmp_path, mode):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         residue = _make_check(
             "join_check",
@@ -940,7 +940,7 @@ class TestSaveModes:
 
     def test_both_mode_writes_the_residue_of_a_tolerated_check(self, tmp_path, monkeypatch):
         # Under attribute_tolerated_rows=True a check that passed within its
-        # tolerance writes its residue, and the failed-rows CSV holds the same
+        # tolerance writes its residue, and the as_is CSV holds the same
         # rows, read through the same fetch.
         import test_row_quality as rq
 
@@ -979,24 +979,43 @@ class TestSaveModes:
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
-            config=ValidationConfig(output_mode="annotated"),
+            config=ValidationConfig(output_mode="attributed"),
         )
         result.save(str(tmp_path), prefix="r")  # no explicit mode
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
 
-    def test_default_output_mode_is_annotated_and_does_not_warn(self, tmp_path):
-        assert ValidationConfig().output_mode == "annotated"
+    def test_default_output_mode_is_attributed_and_does_not_warn(self, tmp_path):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
+            assert ValidationConfig().output_mode == "attributed"
             self._result_with_failures().save(str(tmp_path), prefix="r")  # no explicit mode
-        assert not [w for w in caught if issubclass(w.category, DeprecationWarning)]
+        assert not [w for w in caught if issubclass(w.category, (DeprecationWarning, FutureWarning))]
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
-        assert "r_orders.csv" not in files  # no legacy failed-rows CSV
+        assert "r_orders.csv" not in files  # no as_is CSV
 
-    @pytest.mark.parametrize("mode", ["failed_rows", "both"])
-    def test_failed_rows_modes_from_config_do_not_warn(self, tmp_path, mode):
+    @pytest.mark.parametrize(("old", "new"), [("failed_rows", "as_is"), ("annotated", "attributed")])
+    def test_old_mode_name_in_config_warns_and_maps(self, old, new):
+        with pytest.warns(FutureWarning, match=rf"output_mode='{old}' is deprecated, use '{new}'.*v0\.1\.0"):
+            config = ValidationConfig(output_mode=old)
+        assert config.output_mode == new
+        assert config.to_dict()["output_mode"] == new
+
+    @pytest.mark.parametrize(
+        ("old", "written"), [("failed_rows", "r_orders.csv"), ("annotated", "r_orders_annotated.csv")]
+    )
+    def test_old_mode_name_in_save_warns_and_maps(self, tmp_path, old, written):
+        with pytest.warns(FutureWarning, match=rf"output_mode='{old}' is deprecated"):
+            self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=old)
+        assert written in {p.name for p in tmp_path.iterdir()}
+
+    def test_invalid_mode_lists_the_new_names(self, tmp_path):
+        with pytest.raises(ValueError, match="Expected one of 'as_is', 'attributed', 'both'"):
+            self._result_with_failures().save(str(tmp_path), output_mode="failed")
+
+    @pytest.mark.parametrize("mode", ["as_is", "both"])
+    def test_as_is_modes_from_config_do_not_warn(self, tmp_path, mode):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check("c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders")
         result = _make_result(
@@ -1006,16 +1025,18 @@ class TestSaveModes:
         )
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", FutureWarning)
             result.save(str(tmp_path), prefix="r")  # mode comes from the config
         assert "r_orders.csv" in {p.name for p in tmp_path.iterdir()}
 
-    @pytest.mark.parametrize("mode", ["failed_rows", "both"])
-    def test_failed_rows_mode_argument_does_not_warn(self, tmp_path, mode):
+    @pytest.mark.parametrize("mode", ["as_is", "both"])
+    def test_as_is_mode_argument_does_not_warn(self, tmp_path, mode):
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", FutureWarning)
             self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=mode)
 
-    @pytest.mark.parametrize(("mode", "written"), [("failed_rows", False), ("annotated", True), ("both", True)])
+    @pytest.mark.parametrize(("mode", "written"), [("as_is", False), ("attributed", True), ("both", True)])
     def test_dq_metrics_json_follows_the_mode(self, tmp_path, mode, written):
         self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=mode)
         assert (tmp_path / "r_dq_metrics.json").exists() is written
@@ -1044,7 +1065,7 @@ class TestSaveModes:
             tables_in_query="orders, customers",
         )
         result = _make_result([mergeable, residue], {"orders": _FakeAdapter(full)})
-        result.save(str(tmp_path), prefix="r", output_mode="annotated", check_info="summary")
+        result.save(str(tmp_path), prefix="r", output_mode="attributed", check_info="summary")
 
         annotated_cols = self._read_csv(tmp_path / "r_orders_annotated.csv").column_names
         assert "check_info" in annotated_cols

@@ -1,9 +1,9 @@
 """Guard test for the two tiers of failed-row counts.
 
 The basic tier (``print_summary``, ``get_check_results_df``, ``summary``,
-``save(output_mode="failed_rows")``) runs only the check SQL and never
+``save(output_mode="as_is")``) runs only the check SQL and never
 attributes rows. The DQ-metrics tier (``get_dq_metrics``, ``get_dq_metrics_df``,
-``export_otel`` and the annotated ``save`` modes, which write
+``export_otel`` and the attributed ``save`` modes, which write
 ``dq_metrics.json``) attributes rows once and reuses the cached report.
 
 Attribution always goes through ``RowQuality._compute``, so counting its calls
@@ -123,7 +123,7 @@ def test_summary_does_not_attribute(result, calls):
 
 
 def test_save_failed_rows_does_not_attribute(result, calls, tmp_path):
-    result.save(str(tmp_path), output_mode="failed_rows")
+    result.save(str(tmp_path), output_mode="as_is")
     _assert_basic(calls)
     assert not (tmp_path / "vowl_results_dq_metrics.json").exists()
 
@@ -148,7 +148,7 @@ def test_dq_metrics_methods_share_one_attribution(result, calls):
     assert calls.compute == 1
 
 
-@pytest.mark.parametrize("mode", ["annotated", "both"])
+@pytest.mark.parametrize("mode", ["attributed", "both"])
 def test_annotated_save_writes_dq_metrics_from_one_attribution(result, calls, tmp_path, mode):
     result.save(str(tmp_path), output_mode=mode)
     assert calls.compute == 1

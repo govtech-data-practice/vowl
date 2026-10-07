@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import narwhals as nw
 import pyarrow as pa
 
-from ..config import CheckInfoPreset, OutputMode, ValidationConfig
+from ..config import CheckInfoPreset, OutputMode, ValidationConfig, _normalize_output_mode
 from ..contracts.contract import Contract
 from ..contracts.models.ODCS_types import DataContract
 from ..executors.base import CheckResult
@@ -477,7 +477,7 @@ class ValidationResult:
         emitting a per-check residue otherwise.  See docs/known-issues.md for
         details.
 
-        This is the view ``save(output_mode="failed_rows")`` writes. It runs
+        This is the view ``save(output_mode="as_is")`` writes. It runs
         no extra queries and never attributes rows, so it stays cheap on
         large tables.
 
@@ -742,7 +742,7 @@ class ValidationResult:
         Residues are per-check, so ``check_info`` is a single-element JSON array
         shaped by *preset* -- the same shape the annotated table uses.  Emitting
         ``check_info`` here (rather than the legacy ``check_ids``) keeps every
-        file produced in ``output_mode="annotated"`` uniform: annotated tables
+        file produced in ``output_mode="attributed"`` uniform: annotated tables
         and residues are read the same way.  ``tables_in_query`` is retained
         because residues are non-mergeable (often cross-table) and the source
         tables are useful context.
@@ -952,7 +952,7 @@ class ValidationResult:
           share a table and column set.  Each residue carries a ``check_info``
           column (a single-element JSON array shaped by the same ``check_info``
           preset as the annotated tables) plus ``tables_in_query``, so every
-          file produced in ``output_mode="annotated"`` -- annotated tables and
+          file produced in ``output_mode="attributed"`` -- annotated tables and
           residues alike -- is read the same way.
 
           Under ``attribute_tolerated_rows=True``, rows of checks that
@@ -1399,12 +1399,14 @@ class ValidationResult:
     ) -> ValidationResult:
         """Write the check-results CSV, the row outputs of ``output_mode`` and the summary JSON.
 
-        The annotated modes also write ``<prefix>_dq_metrics.json`` (see
-        :meth:`get_dq_metrics`). Annotated output and the DQ metrics share one
-        table export and one row attribution, so the file adds no cost.
-        ``"failed_rows"`` is the cheap mode: it runs no extra queries, never
-        exports a table and never attributes rows, so it writes no
-        ``dq_metrics.json``.
+        ``"as_is"`` is cheap and does nothing to the rows. ``"attributed"``
+        attributes the rows onto their table and writes the metrics.
+
+        ``"as_is"`` runs no extra queries, never exports a table and never
+        attributes rows, so it writes no ``dq_metrics.json``. ``"attributed"``
+        and ``"both"`` also write ``<prefix>_dq_metrics.json`` (see
+        :meth:`get_dq_metrics`). The annotated output and the DQ metrics share
+        one table export and one row attribution, so the file adds no cost.
 
         ``output_dir`` is a local folder or a URI such as
         ``s3://bucket/dq-results/run-1/``. URIs (``s3://``, ``gs://``,
@@ -1415,21 +1417,26 @@ class ValidationResult:
         is then a path inside that filesystem.
 
         ``output_mode`` selects the row output shape. When it is ``None`` the
-        config's ``output_mode`` is used, which defaults to ``"annotated"``:
+        config's ``output_mode`` is used, which defaults to ``"attributed"``:
 
-        - ``"annotated"`` -- **default.** Full in-scope tables with failing
-          rows flagged in place via a per-row ``check_info`` column, plus
-          per-check residues for non-mergeable checks, plus
+        - ``"attributed"`` -- **default.** Full in-scope tables with each
+          check's rows marked in place through a per-row ``check_info``
+          column, plus per-check residues for non-mergeable checks, plus
           ``dq_metrics.json``.
-        - ``"failed_rows"`` -- the cheap mode. Failing rows only, grouped per
-          table with a comma-joined ``check_ids`` column (see
-          :meth:`get_consolidated_output_dfs`). No ``dq_metrics.json``.
-        - ``"both"`` -- everything ``"annotated"`` writes, residues
-          included, plus the failed-rows CSVs.
+        - ``"as_is"`` -- the cheap mode. Each check's rows as its row query
+          returned them, grouped per table with a comma-joined ``check_ids``
+          column (see :meth:`get_consolidated_output_dfs`). No
+          ``dq_metrics.json``.
+        - ``"both"`` -- everything ``"attributed"`` writes, residues
+          included, plus the ``"as_is"`` CSVs.
+
+        The old names ``"failed_rows"`` and ``"annotated"`` still work with a
+        ``FutureWarning`` and will be removed in v0.1.0.
         """
         mode = output_mode if output_mode is not None else self._config.output_mode
-        if mode not in ("failed_rows", "annotated", "both"):
-            raise ValueError(f"Unknown output_mode: {mode!r}. Expected one of 'failed_rows', 'annotated', 'both'.")
+        mode = _normalize_output_mode(mode, stacklevel=2)
+        if mode not in ("as_is", "attributed", "both"):
+            raise ValueError(f"Unknown output_mode: {mode!r}. Expected one of 'as_is', 'attributed', 'both'.")
 
         target = OutputDir(output_dir, filesystem)
 
@@ -1446,28 +1453,25 @@ class ValidationResult:
 
         saved_files = [check_csv]
 
-        if mode in ("failed_rows", "both"):
+        if mode in ("as_is", "both"):
             for table_key, df in self._get_consolidated_output_dfs().items():
                 safe_key = _safe_filename_component(table_key.replace(", ", "_").replace(" ", "_"))
                 saved_files.append(target.write_csv(f"{prefix}_{safe_key}.csv", df.to_arrow()))
 
-        if mode in ("annotated", "both"):
+        if mode in ("attributed", "both"):
             out = self.get_annotated_output(check_info=check_info)
             for schema, df in out["annotated"].items():
                 safe_key = _safe_filename_component(schema.replace(", ", "_").replace(" ", "_"))
                 saved_files.append(target.write_csv(f"{prefix}_{safe_key}_annotated.csv", df.to_arrow()))
             # Residues are written in "both" too, so "both" is everything
-            # "annotated" writes plus the failed-rows CSVs. The failed-rows
-            # CSVs hold only failed checks, while residues also hold the rows
-            # of checks that passed within tolerance under
-            # attribute_tolerated_rows=True.
+            # "attributed" writes plus the "as_is" CSVs.
             for residue_key, df in out["residues"].items():
                 safe_key = _safe_filename_component(residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_"))
                 saved_files.append(target.write_csv(f"{prefix}_{safe_key}_residue.csv", df.to_arrow()))
 
         saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str)))
 
-        if mode in ("annotated", "both"):
+        if mode in ("attributed", "both"):
             saved_files.append(
                 target.write_text(f"{prefix}_dq_metrics.json", json.dumps(self.get_dq_metrics(), indent=2, default=str))
             )

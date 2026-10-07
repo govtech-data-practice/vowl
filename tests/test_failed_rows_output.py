@@ -1,4 +1,4 @@
-"""The grouped failed-rows view (``output_mode="failed_rows"``).
+"""The grouped failed-rows view (``output_mode="as_is"``).
 
 A FAILED check whose operator sets no upper limit (``mustBeGreaterThan``,
 ``mustBe: 5``, a table-level ``rowCount``) matched the good rows. Those rows
@@ -102,7 +102,7 @@ def test_consolidated_output_lists_only_bad_rows(result, compute_calls):
 
 
 def test_failed_rows_save_lists_only_bad_rows(result, compute_calls, tmp_path):
-    result.save(str(tmp_path), prefix="fr", output_mode="failed_rows")
+    result.save(str(tmp_path), prefix="fr", output_mode="as_is")
     orders = pd.read_csv(tmp_path / "fr_orders.csv")
     assert orders["order_id"].tolist() == [2]
     assert orders["check_ids"].tolist() == ["negative_amount"]
@@ -209,7 +209,7 @@ def test_flag_off_reports_failed_checks_only_without_fetching_passed_rows(tmp_pa
     assert "tolerated_check_ids" not in consolidated.columns
     assert consolidated["order_id"].to_list() == [2]
 
-    result.save(str(tmp_path), prefix="fr", output_mode="failed_rows")
+    result.save(str(tmp_path), prefix="fr", output_mode="as_is")
     assert "tolerated_check_ids" not in pd.read_csv(tmp_path / "fr_orders.csv").columns
 
     result.show_failed_rows()
@@ -239,7 +239,7 @@ def test_consolidated_output_marks_tolerated_check_ids():
 
 
 def test_failed_rows_save_holds_tolerated_rows_under_the_flag(tmp_path):
-    _tolerated_result(True).save(str(tmp_path), prefix="fr", output_mode="failed_rows")
+    _tolerated_result(True).save(str(tmp_path), prefix="fr", output_mode="as_is")
     orders = pd.read_csv(tmp_path / "fr_orders.csv").fillna("")
     assert sorted(orders["order_id"].tolist()) == [1, 2]
     assert set(orders["tolerated_check_ids"]) == {"tolerates"}

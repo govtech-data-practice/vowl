@@ -1371,7 +1371,7 @@ class TestSaveResultsToCloudStorage:
         """
         Save straight to an ``s3://`` URI, credentials and endpoint from the environment:
 
-        >>> result.save("s3://my-bucket/dq-results/run-1/", output_mode="annotated")
+        >>> result.save("s3://my-bucket/dq-results/run-1/", output_mode="attributed")
         """
         import io
         import json
@@ -1383,7 +1383,7 @@ class TestSaveResultsToCloudStorage:
         monkeypatch.chdir(tmp_path)
         results = validate_data(contract=contract_path, df=small_clean_dataframe)
 
-        results.save(f"s3://{self.BUCKET}/run-1/", prefix="dq", output_mode="annotated")
+        results.save(f"s3://{self.BUCKET}/run-1/", prefix="dq", output_mode="attributed")
 
         assert self._keys(s3_client, "run-1/") == {
             "run-1/dq_check_results.csv",
@@ -1403,7 +1403,7 @@ class TestSaveResultsToCloudStorage:
         Custom endpoint and explicit credentials, as in the MinIO example:
 
         >>> s3 = pafs.S3FileSystem(endpoint_override="http://...", access_key="...", secret_key="...")
-        >>> result.save("my-bucket/dq-results/run-1/", output_mode="annotated", filesystem=s3)
+        >>> result.save("my-bucket/dq-results/run-1/", output_mode="attributed", filesystem=s3)
         """
         import pyarrow.fs as pafs
 
@@ -1417,7 +1417,7 @@ class TestSaveResultsToCloudStorage:
         )
         results = validate_data(contract=contract_path, df=small_clean_dataframe)
 
-        results.save(f"{self.BUCKET}/explicit/", prefix="dq", output_mode="annotated", filesystem=s3)
+        results.save(f"{self.BUCKET}/explicit/", prefix="dq", output_mode="attributed", filesystem=s3)
 
         saved = s3.get_file_info(pafs.FileSelector(f"{self.BUCKET}/explicit"))
         assert {info.base_name for info in saved} == {
