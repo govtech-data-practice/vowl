@@ -1171,9 +1171,9 @@ def test_spark_single_scan_keeps_negative_zero_and_nan_apart(spark_session):
     assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (7, 7, False)
     rows_by_check = _check_rows(result)
     assert rows_by_check["neg_zero"]["route"] == "server_predicate"
-    # The default matches it onto the exported table, so the export must keep NaN.
-    assert rows_by_check["distinct"]["route"] == "client_lookup"
-    assert rows_by_check["distinct"]["failed_rows"] == 2
+    # Spark is a keyed dialect, so the data source looks the rows up and must keep NaN.
+    assert rows_by_check["distinct"]["route"] == "server_lookup"
+    assert rows_by_check["distinct"]["attributed_rows"] == 2
 
 
 def test_spark_utf8_lcase_values_caught_by_different_checks_stay_apart(spark_session):
