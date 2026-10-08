@@ -93,7 +93,7 @@ def test_point_types_follow_additivity(result):
         name = point["name"]
         if name.endswith((".check.count", ".schema.count")):
             assert point["type"] == "counter", name
-        elif name.endswith((".row.count", ".row.scalar_count", ".pass_rate", ".scalar_pass_rate")):
+        elif name.endswith((".row.count", ".row.scalar_count", ".pass_rate", ".scalar_pass_rate", ".approximate")):
             assert point["type"] == "gauge", name
         else:
             assert name.endswith(".duration") and point["type"] == "histogram", name
@@ -109,8 +109,16 @@ def test_run_numbers(result):
     assert rows == {"PASSED": 2, "FAILED": 2}
     (row_rate,) = _points(document, "vowl.run.row.pass_rate")
     assert row_rate["value"] == 0.5
-    # Whether a row number is approximate is on the spans, not the metrics.
     assert row_rate["attributes"] == {}
+    # An exact count still sends its flag, as 0.
+    (approximate,) = _points(document, "vowl.run.row.approximate")
+    assert approximate == {
+        "name": "vowl.run.row.approximate",
+        "type": "gauge",
+        "unit": "1",
+        "value": 0,
+        "attributes": {},
+    }
 
 
 def test_errored_checks_count_against_the_check_pass_rate():
@@ -301,7 +309,7 @@ def test_spans_name_the_checks_not_attributable(rq):
     result = rq._not_attributable_pair()
 
     document = result.get_dq_metrics()
-    # The metrics carry no trust attributes at any level.
+    # The flag is its own gauge, never an attribute, so it splits no series.
     for point in document["points"]:
         assert not any(key.startswith("vowl.row_quality.") for key in point["attributes"])
     assert _row_points(document, "check", "scalar_count", check_name="id_in_u")["FAILED"] == 2
@@ -329,6 +337,42 @@ def test_spans_name_the_checks_not_attributable(rq):
     for name in flagged:
         assert checks[name]["vowl.row_quality.reason"] == rows[name]["reason"]
         assert "vowl.row_quality.attributed_rows" not in checks[name]
+
+
+def _flags(document: dict, level: str, *keys: str) -> dict:
+    return {
+        tuple(p["attributes"][key] for key in keys): p["value"]
+        for p in _points(document, f"vowl.{level}.row.approximate")
+    }
+
+
+def test_the_approximate_gauges_match_the_df_and_the_spans(rq):
+    result = rq._not_attributable_pair()
+    document = result.get_dq_metrics()
+
+    schemas = result.get_dq_metrics_df(by="schema").to_pandas()
+    with_rows = schemas[schemas["failed_rows"].notna()]
+    expected = {(row.schema_name,): int(row.approximate) for row in with_rows.itertuples()}
+    assert _flags(document, "schema", "schema_name") == expected
+    assert 1 in expected.values()
+
+    dimensions = result.get_dq_metrics_df(by="dimension").to_pandas()
+    with_rows = dimensions[dimensions["failed_rows"].notna()]
+    expected = {(row.schema_name, row.dimension): int(row.approximate) for row in with_rows.itertuples()}
+    assert _flags(document, "dimension", "schema_name", "dimension") == expected
+
+    (run,) = _points(document, "vowl.run.row.approximate")
+    assert run["value"] == 1
+
+    # The check gauge names the checks the spans flag, including the ones
+    # that are not attributable and so have no row.count.
+    flags = _flags(document, "check", "check_name")
+    rows = rq._check_rows(result)
+    assert {name for (name,), value in flags.items() if value} == {
+        name for name, row in rows.items() if row["approximate"] and (name,) in flags
+    }
+    assert flags[("id_in_u",)] == 1
+    assert _row_points(document, "check", check_name="id_in_u") == {}
 
 
 def test_the_schema_rows_name_the_checks_not_attributable(rq):

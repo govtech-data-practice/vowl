@@ -13,10 +13,13 @@ Every metric is named ``<prefix>.<level>.<unit>.<measure>``:
 - ``measure`` is ``count`` or ``pass_rate``. Timings are ``duration``. The
   check level also has ``scalar_count`` and ``scalar_pass_rate``, from the
   check's scalar count rather than its attributed rows.
+- ``row.approximate`` is a 0/1 flag next to the row counts: ``1`` when they
+  could be off. It is its own metric rather than an attribute, so a flag that
+  flips between runs never splits the row count series.
 
 Check and schema counts add up across levels and across runs, so they are
 counters. Row counts do not (a row can fail several checks, and a re-run checks
-the same rows again), so they are gauges, like every pass rate.
+the same rows again), so they are gauges, like every pass rate and flag.
 
 Nothing here imports ``opentelemetry``.
 """
@@ -273,14 +276,14 @@ def check_row_counts(result: ValidationResult) -> dict[int, CheckRows]:
 
 
 def attributed_pass_rate(rows: CheckRows) -> float | None:
-    """Passed rows over the table's rows from the attributed rows, clamped at 0."""
+    """Passed rows over the table's rows from the attributed rows, from 0 to 1."""
     if rows.attributed_rows is None:
         return None
     return max(rows.total_rows - rows.attributed_rows, 0) / rows.total_rows
 
 
 def scalar_pass_rate(rows: CheckRows) -> float:
-    """Passed rows over the table's rows from the scalar count. Not clamped, so it can be negative."""
+    """Passed rows over the table's rows from the scalar count. Negative when the count exceeds the table."""
     return (rows.total_rows - rows.scalar_count) / rows.total_rows
 
 
@@ -364,6 +367,10 @@ class _Points:
         self.add(suffix, GAUGE, "{row}", passed, {**attrs, "status": "PASSED"})
         self.add(suffix, GAUGE, "{row}", failed, {**attrs, "status": "FAILED"})
 
+    def approximate(self, suffix: str, approximate: bool, attrs: dict[str, Any]) -> None:
+        """A 0/1 gauge. ``0`` is sent too, so an exact count reads as exact, not unknown."""
+        self.add(suffix, GAUGE, "1", int(approximate), attrs)
+
     def pass_rate(self, suffix: str, rate: float | None, attrs: dict[str, Any]) -> None:
         if rate is not None:
             self.add(suffix, GAUGE, "1", rate, attrs)
@@ -398,9 +405,9 @@ def _check_level(points: _Points, result: ValidationResult) -> None:
     for cr in result.check_results:
         points.add("check.duration", HISTOGRAM, "ms", float(cr.execution_time_ms or 0.0), check_level_attributes(cr))
 
-    # row.count holds the attributed rows, like the higher levels, and is
-    # clamped. row.scalar_count holds the scalar count and is not, so an
-    # overcount stays visible.
+    # row.count holds the attributed rows, like the higher levels, so it never
+    # exceeds the table. row.scalar_count holds the scalar count, which can, and
+    # is reported as is so an overcount stays visible.
     row_counts = check_row_counts(result)
     rated = [(cr, row_counts[id(cr)]) for cr in result.check_results if id(cr) in row_counts]
     attributed = [(cr, rows) for cr, rows in rated if rows.attributed_rows is not None]
@@ -414,6 +421,15 @@ def _check_level(points: _Points, result: ValidationResult) -> None:
         )
     for cr, rows in rated:
         points.pass_rate("check.row.scalar_pass_rate", scalar_pass_rate(rows), check_level_attributes(cr))
+
+    # Whether the check made its schema's row counts approximate, the same flag
+    # as on its vowl.check span. Sent for every check with a scalar count, since
+    # a not-attributable check, the usual cause, has no row.count.
+    check_rows = result._row_quality().check_rows()
+    for cr, _ in rated:
+        entry = check_rows.get(id(cr))
+        if entry is not None:
+            points.approximate("check.row.approximate", entry.approximate, check_level_attributes(cr))
 
 
 def _dimension_level(points: _Points, result: ValidationResult) -> None:
@@ -445,6 +461,9 @@ def _dimension_level(points: _Points, result: ValidationResult) -> None:
     for item in rows:
         attrs = {"schema_name": item.schema_name, "dimension": item.dimension}
         points.pass_rate("dimension.row.pass_rate", item.pass_rate, attrs)
+    for item in rows:
+        attrs = {"schema_name": item.schema_name, "dimension": item.dimension}
+        points.approximate("dimension.row.approximate", item.approximate, attrs)
 
 
 def _schema_level(points: _Points, result: ValidationResult, counts: dict[str, dict[str, int]]) -> None:
@@ -466,6 +485,8 @@ def _schema_level(points: _Points, result: ValidationResult, counts: dict[str, d
     for item in rows:
         attrs = {"schema_name": item.schema_name}
         points.pass_rate("schema.row.pass_rate", item.pass_rate, attrs)
+    for item in rows:
+        points.approximate("schema.row.approximate", item.approximate, {"schema_name": item.schema_name})
 
 
 def _run_level(points: _Points, result: ValidationResult, counts: dict[str, dict[str, int]]) -> None:
@@ -481,9 +502,10 @@ def _run_level(points: _Points, result: ValidationResult, counts: dict[str, dict
 
     run_rows = run_row_counts(result)
     if run_rows is not None:
-        total, failed, _, _ = run_rows
+        total, failed, approximate, _ = run_rows
         points.row_counts("run.row.count", total, failed, {})
         points.pass_rate("run.row.pass_rate", max(total - failed, 0) / total if total else None, {})
+        points.approximate("run.row.approximate", approximate, {})
 
     points.add("run.duration", HISTOGRAM, "ms", run_duration_ms(result), {})
 

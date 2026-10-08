@@ -129,10 +129,10 @@ def check_row_attributes(result: ValidationResult, namespace: str = "vowl") -> d
 
     - ``row.count.passed``, ``row.count.failed`` and ``row.pass_rate`` mirror
       ``vowl.check.row.count`` and ``vowl.check.row.pass_rate``: the attributed
-      rows, clamped. A check that is not attributable gets none.
+      rows, never more than the table. A check that is not attributable gets none.
     - ``row.scalar_count.passed``, ``row.scalar_count.failed`` and
       ``row.scalar_pass_rate`` mirror ``vowl.check.row.scalar_count`` and
-      ``vowl.check.row.scalar_pass_rate``: the scalar count, not clamped, so
+      ``vowl.check.row.scalar_pass_rate``: the scalar count, as reported, so
       they can be negative.
 
     A check the metrics give no row counts (one the row-quality statistics do
@@ -143,7 +143,8 @@ def check_row_attributes(result: ValidationResult, namespace: str = "vowl") -> d
     The same checks also get how they took part in the row counts:
     ``vowl.row_quality.approximate``, plus ``.route``, ``.reason`` and
     ``.attributed_rows`` when set. They say which check made a schema's row
-    numbers approximate, which the metrics do not.
+    numbers approximate, like the ``vowl.check.row.approximate`` gauge, and
+    ``.reason`` says why.
     """
     check_rows = result._row_quality().check_rows()
     prefix = f"{namespace}.row_quality"
