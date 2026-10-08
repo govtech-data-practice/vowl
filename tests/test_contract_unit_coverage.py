@@ -956,3 +956,31 @@ def test_resolve_reference_external_fragment(monkeypatch: pytest.MonkeyPatch):
     assert resolved.external is True
     assert resolved.schema_name == "customers"
     assert resolved.columns == ["id"]
+
+
+def _sql_check(name: str) -> dict:
+    return {"type": "sql", "name": name, "query": "SELECT COUNT(*) FROM users", "mustBe": 0}
+
+
+def test_duplicate_check_names_on_one_column_raise(tmp_path: Path):
+    data = minimal_contract_data()
+    data["schema"][0]["properties"][0]["quality"] = [_sql_check("c"), _sql_check("c")]
+    with pytest.raises(ValueError, match=r"on 'users\.id' are both named 'c'.*Rename one"):
+        Contract(data)
+    with pytest.raises(ValueError, match=r"users\.id"):
+        Contract.load(str(write_contract(tmp_path, data)))
+
+
+def test_duplicate_schema_level_check_names_raise():
+    data = minimal_contract_data()
+    data["schema"][0]["quality"] = [_sql_check("c"), _sql_check("c")]
+    with pytest.raises(ValueError, match=r"on 'users' are both named 'c'"):
+        Contract(data)
+
+
+def test_one_check_name_on_different_columns_or_levels_is_allowed():
+    data = minimal_contract_data()
+    data["schema"][0]["quality"] = [_sql_check("c")]
+    for prop in data["schema"][0]["properties"]:
+        prop["quality"] = [_sql_check("c")]
+    Contract(data)

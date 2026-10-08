@@ -297,8 +297,9 @@ on the whole schema, such as a row count, has no column part:
 `orders_checks/orders__row_count.csv`. So two checks with the same name on
 different columns write different files. Two checks on one column that clean to
 the same name, compared without case, such as `amount > 0` and `amount_0`, make
-`save()` raise a `ValueError` before it writes anything. So do two checks with
-the same name on one column. Rename one of them. Residue files are named the
+`save()` raise a `ValueError` before it writes anything. Rename one of them.
+Two checks with the same name on one column, or both on the schema, are
+rejected when the contract loads. Residue files are named the
 same way.
 
 A check with no rows writes no file.

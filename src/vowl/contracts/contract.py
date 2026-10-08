@@ -156,6 +156,36 @@ _SHORTHAND_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*(?:\.[A-Za-z_][A-Za-z0
 _EXTERNAL_REF_RE = re.compile(r"^((?:https?://)?[A-Za-z0-9._\-/]+\.ya?ml)#(.+)$")
 
 
+def _reject_duplicate_check_names(contract_data: dict[str, Any]) -> None:
+    """Raise when two quality checks in one ``quality`` list share a name.
+
+    Results are keyed and saved by schema, column and check name, so two checks
+    with one name on the same column, or both on the schema, would overwrite
+    each other. The same name on different columns is fine.
+
+    Raises:
+        ValueError: Naming the schema, the column if any, and the check.
+    """
+    for schema_obj in contract_data.get("schema") or []:
+        schema_name = schema_obj.get("name")
+        lists = [(schema_name, schema_obj.get("quality"))]
+        lists += [
+            (f"{schema_name}.{prop.get('name')}", prop.get("quality")) for prop in schema_obj.get("properties") or []
+        ]
+        for label, quality in lists:
+            seen: set[str] = set()
+            for check in quality or []:
+                name = check.get("name")
+                if name is None:
+                    continue
+                if name in seen:
+                    raise ValueError(
+                        f"Two quality checks on '{label}' are both named '{name}'. "
+                        "Check names must be unique per column, and per schema for schema-level checks. Rename one."
+                    )
+                seen.add(name)
+
+
 @dataclass(frozen=True)
 class ResolvedRef:
     """A resolved foreign-key reference endpoint.
@@ -207,6 +237,7 @@ class Contract:
                 f"Contract does not specify an apiVersion. Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
         validate_contract(contract_data, api_version)
+        _reject_duplicate_check_names(contract_data)
 
     @property
     def origin(self) -> str | None:
