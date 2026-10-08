@@ -268,7 +268,7 @@ check's rows from one fetch, so they agree.
 | ------------------------------- | --------------------- | ---------------------------------------------------------------- |
 | `get_annotated_output()`        | Failed checks only    | Adds tolerated checks, their `check_info` items `"tolerated": true` |
 | `get_output_dfs()`              | Failed checks only    | Adds tolerated checks, with a `tolerated` column                 |
-| `get_consolidated_output_dfs()` and the `"as_is"` CSVs | Failed checks only | Adds tolerated rows, with a `tolerated_check_ids` column |
+| `get_consolidated_output_dfs()` and the grouped failed-rows CSVs | Failed checks only | Adds tolerated rows, with a `tolerated_check_ids` column |
 | `show_failed_rows()`            | Failed checks only    | Adds tolerated checks, labelled `(tolerated)`                    |
 | DQ metrics                      | Failed checks only    | A row picked out by any of these checks counts as failing        |
 | OpenTelemetry `failed_rows_sample` | Failed checks only | Failed checks only                                               |

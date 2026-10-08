@@ -488,8 +488,8 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                             | `self` (chainable)              |
 | **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                             | `self` (chainable)              |
 | **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves the results to disk. `"attributed"` (default) writes annotated tables and `dq_metrics.json`, `"as_is"` is the cheap mode, `"both"` writes both. `check_info` shapes the `check_info` column | `self` (chainable)              |
-| **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                               | Dict[str, DataFrame]            |
+| **`save(output_dir=".", prefix="vowl_results", outputs=None, check_info=None)`**     | Saves the results to disk. `outputs` lists the files to write. The default writes everything but `"all_query_outputs"`. `check_info` shapes the `check_info` column | `self` (chainable)              |
+| **`get_output_dfs(checks=None, scope="failed")`**                                    | Returns per-check failed rows as `{check_id: DataFrame}`. `scope="all"` returns the rows of every row-level check, with a `status` column | Dict[str, DataFrame]            |
 | **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                 | Dict[str, Dict[str, DataFrame]] |
 | **`get_dq_metrics_df(by="schema")`**                                                 | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                   | DataFrame                       |
 | **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                     | dict                            |
@@ -621,36 +621,45 @@ Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed 
 
 > For the full eligibility rules and worked examples of each non-mergeable category, see [Where each failed check ends up](docs/design-considerations/checks/annotating-the-source-table.md#where-each-failed-check-ends-up). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
 
-`save()` writes annotated output by default. The `output_mode` argument picks the layout:
+`save()` always writes `<prefix>_check_results.csv` and `<prefix>_summary.json`. The `outputs` argument lists the other files to write:
+
+| Output                         | Files                                                            |
+| ------------------------------ | ---------------------------------------------------------------- |
+| `"failed_query_outputs"`       | `<prefix>_checks/<schema>__<check>.csv`, one per failed check    |
+| `"all_query_outputs"`          | The same folder, one per row-level check whatever its status     |
+| `"consolidated_query_outputs"` | `<prefix>_<tables>.csv`, the failed rows grouped per table set   |
+| `"annotated_table"`            | `<prefix>_<schema>_annotated.csv` and the residue files          |
+| `"dq_metrics"`                 | `<prefix>_dq_metrics.json`                                       |
 
 ```python
-# Save annotated tables (full tables with check_info annotating failures).
-# This is the default, the same as result.save().
-result.save(output_mode="attributed")
+# Every output but "all_query_outputs". This is the default.
+result.save()
 
 # Shape the check_info column: "names" (default), "summary", or "full"
-result.save(output_mode="attributed", check_info="summary")
+result.save(outputs=["annotated_table"], check_info="summary")
 
-# Save both failed-rows CSVs and annotated tables
-result.save(output_mode="both")
+# Only the grouped failed-rows CSVs
+result.save(outputs=["consolidated_query_outputs"])
 ```
 
-> **Cost:** `"attributed"` and `"both"` attribute failed rows to each table and may download it, which can be slow on a large table. They also write `<prefix>_dq_metrics.json` at no extra cost. `output_mode="as_is"` runs no extra queries and does nothing to the rows. It writes one CSV per table with only the failed rows, and no `dq_metrics.json`.
+> **Cost:** `"annotated_table"` and `"dq_metrics"` attribute failed rows to each table and may download it, which can be slow on a large table. They share that work, so writing both costs no more than writing one. The other outputs do nothing to the rows. `"all_query_outputs"` runs the row query of each check that passed.
 
-You can also set the output mode globally via `ValidationConfig` (see [Run Settings](docs/run-settings.md#saving-results)):
+`output_mode` is deprecated. It still works with a `FutureWarning` and will be removed in v0.1.0. See [Deprecated output_mode](docs/results.md#deprecated-output_mode).
+
+You can also set the outputs globally via `ValidationConfig` (see [Run Settings](docs/run-settings.md#saving-results)):
 
 ```python
 from vowl import ValidationConfig, validate_data
 
-config = ValidationConfig(output_mode="attributed", annotated_check_info="summary")
+config = ValidationConfig(outputs=["annotated_table", "dq_metrics"], annotated_check_info="summary")
 result = validate_data("contract.yaml", df=df, config=config)
-result.save()  # uses the configured output_mode and check_info
+result.save()  # uses the configured outputs and check_info
 ```
 
 `save()` can also write straight to cloud storage. Pass a URI instead of a folder:
 
 ```python
-result.save("s3://my-bucket/dq-results/run-1/", output_mode="attributed")
+result.save("s3://my-bucket/dq-results/run-1/")
 ```
 
 It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-to-cloud-storage).

@@ -17,7 +17,7 @@ for them, not during the run. You can get them in two ways:
   tool, such as Grafana or Datadog, for dashboards and alerts.
 - [Exporting to dq_metrics.json](json-export.md) writes them to a file next to
   the rest of the run's output, for a data warehouse or a notebook.
-  `save()` writes the file, unless `output_mode="as_is"`.
+  `save()` writes the file unless you leave `"dq_metrics"` out of `outputs`.
 
 Both come from the same calculation. The names, attributes and values are
 the same in both, so a number on a dashboard always matches the number in

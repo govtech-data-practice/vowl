@@ -266,7 +266,7 @@ md(
 
 `result.save(...)` writes `<prefix>_dq_metrics.json` next to the annotated tables.
 The annotated tables already attribute failed rows, so the file costs nothing more.
-`save(output_mode="as_is")` skips it, because that mode never attributes rows.
+Leave `"dq_metrics"` out of `save(outputs=[...])` to skip it.
 Use it when you want the metrics in a data warehouse, a notebook, or
 anywhere without an OpenTelemetry backend. It needs no extra install.
 """
@@ -557,7 +557,7 @@ under it:
 ```python
 output_dir = f"s3://my-bucket/dq-results/{result.run_id}/"
 
-result.save(output_dir)  # check results, annotated tables, summary.json and dq_metrics.json
+result.save(output_dir)  # check results, summary.json, failed rows, annotated tables and dq_metrics.json
 result.export_otel(
     custom_attributes={"vowl.artifact.uri": output_dir},  # alerts link straight to the files
 )

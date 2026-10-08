@@ -35,12 +35,13 @@ mean the same as in the [Glossary](glossary.md).
 
 The result has two tiers. The basic tier is cheap. The DQ metrics tier does
 more work. `save()` is in the DQ metrics tier by default. Pass
-`output_mode="as_is"` to keep it in the basic tier.
+`outputs=["consolidated_query_outputs"]` or `outputs=["failed_query_outputs"]`
+to keep it in the basic tier.
 
 | Tier       | Methods                                                                                                                       | Cost                                                                                                                                                                                    | Counts                                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Basic      | `print_summary()`, `get_check_results_df()`, `result.summary`, `save(output_mode="as_is")`                                    | Runs the check queries only. Never attributes rows to the table.                                                                                                                        | Each check's scalar `failed_rows_count`. A sum across checks is marked approximate.         |
-| DQ metrics | `get_dq_metrics()`, `get_dq_metrics_df(by=...)`, `export_otel(...)`, `get_annotated_output()`, `save()` (`"attributed"`, `"both"`) | [Attributes failed rows to the table](design-considerations/checks/how-attributed-rows-work.md) once and reuses that work. Runs a `COUNT(*)` on each table the first time it is needed. | Rows that failed at least one check, rows that passed, pass rates and an `approximate` flag |
+| Basic      | `print_summary()`, `get_check_results_df()`, `result.summary`, `get_output_dfs()`, `save()` without `annotated_table` or `dq_metrics` | Runs the check queries only. Never attributes rows to the table.                                                                                                                        | Each check's scalar `failed_rows_count`. A sum across checks is marked approximate.         |
+| DQ metrics | `get_dq_metrics()`, `get_dq_metrics_df(by=...)`, `export_otel(...)`, `get_annotated_output()`, `save()` with `annotated_table` or `dq_metrics` | [Attributes failed rows to the table](design-considerations/checks/how-attributed-rows-work.md) once and reuses that work. Runs a `COUNT(*)` on each table the first time it is needed. | Rows that failed at least one check, rows that passed, pass rates and an `approximate` flag |
 
 A sum of scalar counts across checks is approximate. A row that fails two
 checks counts twice, and `DISTINCT` or a join can change a check's count. The
@@ -104,13 +105,19 @@ explains which checks are annotated and which become residues.
 name) and a `tables_in_query` column. Checks that ended in `ERROR` are left
 out, and so are checks that passed, unless
 [`fetch_tolerated_rows=True`](run-settings.md#fetch_tolerated_rows)
-puts the tolerated ones in with a `tolerated` column. This method does not download your tables, so it is the better choice on
-large tables.
+puts the tolerated ones in with a `tolerated` column. A failed check whose
+operator sets no upper limit, such as `mustBeGreaterThan`, is left out too,
+because the rows it returns are the ones that passed. This method does not
+download your tables, so it is the better choice on large tables.
 
 ```python
 failed = result.get_output_dfs()
 failed["orders::price_must_be_positive"]
 ```
+
+`get_output_dfs(scope="all")` returns the rows of every row-level check that
+did not error, whatever its status, with a `status` column. It runs the row
+query of each check that passed, and it ignores `fetch_tolerated_rows`.
 
 Both methods take `checks=["check_a", "check_b"]` to return only those checks.
 
@@ -197,7 +204,8 @@ result.save("dq-results/", prefix="orders")
 ```
 
 File names start with `prefix`, or with `vowl_results` if you leave it out.
-`save()` also takes the `check_info`, `include_check_definition` and
+`outputs` picks the files to write. See [Outputs](#outputs). `save()` also
+takes the `check_info`, `include_check_definition` and
 `include_contract_definition` options of the methods above.
 
 To write to cloud storage, pass a URI instead of a folder:
@@ -243,49 +251,95 @@ result.save("my-bucket/dq-results/run-1/", filesystem=minio)
     support. If `save()` says the filesystem is not supported, install pyarrow
     from PyPI with `pip install --force-reinstall pyarrow`.
 
-### Output modes
+### Outputs
 
-`output_mode` sets which files `save()` writes. The modes are named for what
-they do to the rows:
+`outputs` is a list of the files `save()` writes. `<prefix>_check_results.csv`
+and `<prefix>_summary.json` are always written.
 
-- `"as_is"` is cheap and does nothing to the rows. It writes each check's rows
-  as its query returned them, grouped by table.
-- `"attributed"` attributes the rows onto their table and writes the DQ
-  metrics.
-- `"both"` writes everything the other two write.
+| Output                         | Files                                                                                  | Default |
+| ------------------------------ | -------------------------------------------------------------------------------------- | ------- |
+| (always)                       | `orders_check_results.csv` with the [check results](#check-results), `orders_summary.json` with the numbers behind the summary | Yes |
+| `"failed_query_outputs"`       | `orders_checks/<schema>__<check>.csv`, the rows of one failed check                    | Yes     |
+| `"all_query_outputs"`          | `orders_checks/<schema>__<check>.csv`, the rows of every row-level check, with `status` | No      |
+| `"consolidated_query_outputs"` | `orders_<tables>.csv`, a [failed-rows CSV](#failed-rows-csvs)                          | Yes     |
+| `"annotated_table"`            | `orders_<schema>_annotated.csv`, the annotated table of one schema, and `orders_<schema>__<check>_residue.csv`, the residue of one check | Yes |
+| `"dq_metrics"`                 | `orders_dq_metrics.json`, the [DQ metrics](dq-metrics/json-export.md)                  | Yes     |
 
-| File                                  | What it holds                               | Written by                   |
-| ------------------------------------- | ------------------------------------------- | ---------------------------- |
-| `orders_check_results.csv`            | The [check results](#check-results)         | Every mode                   |
-| `orders_summary.json`                 | The numbers behind the summary              | Every mode                   |
-| `orders_<schema>_annotated.csv`       | The annotated table of one schema           | `"attributed"` and `"both"`  |
-| `orders_<schema>_<check>_residue.csv` | The residue of one check                    | `"attributed"` and `"both"`  |
-| `orders_dq_metrics.json`              | The [DQ metrics](dq-metrics/json-export.md) | `"attributed"` and `"both"`  |
-| `orders_<tables>.csv`                 | A [failed-rows CSV](#failed-rows-csvs)      | `"as_is"` and `"both"`       |
+```python
+result.save("dq-results/", prefix="orders")  # every output but "all_query_outputs"
+result.save("dq-results/", prefix="orders", outputs=["consolidated_query_outputs"])
+result.save("dq-results/", prefix="orders", outputs=[])  # the summary only
+```
 
-`"attributed"` is the default. It and `"both"` attribute failed rows to each
-table, which can download the table and is slow on a large one. The annotated
-tables and the DQ metrics share that work, so writing both costs no more than
-writing one. `"as_is"` runs no extra queries. Use it when you only need
-the failed rows.
+`"annotated_table"` and `"dq_metrics"` attribute failed rows to each table,
+which can download the table and is slow on a large one. They share that work,
+so writing both costs no more than writing one. The other outputs run no extra
+queries, except `"all_query_outputs"`, which runs the row query of each check
+that passed. You can't pick both `"failed_query_outputs"` and
+`"all_query_outputs"`, as they write the same folder. You can set the outputs
+for every run with [`ValidationConfig(outputs=...)`](run-settings.md#outputs).
+`check_info` warns when `"annotated_table"` is not in the list, as only the
+annotated tables have a `check_info` column.
 
-The old names `"failed_rows"` (now `"as_is"`) and `"annotated"` (now
-`"attributed"`) still work with a `FutureWarning`. They will be removed in
-v0.1.0.
+### Per-check files
+
+A per-check file holds the rows one check's query returned, with its own
+columns plus `check_id` and `tables_in_query`. `"failed_query_outputs"` writes
+the rows `get_output_dfs()` returns and `"all_query_outputs"` writes the rows
+`get_output_dfs(scope="all")` returns.
+
+The file name is the schema and the check name, each cleaned for use in a file
+name and joined by `__`. A check `amount > 0` on schema `orders` writes
+`orders_checks/orders__amount_0.csv`. Two checks that clean to the same name,
+compared without case, such as `amount > 0` and `amount_0`, make `save()` raise
+a `ValueError` before it writes anything. So do two checks with the same name
+in one schema. Rename one of them. Residue files are named the same way.
+
+A check with no rows writes no file.
+
+### The saved_outputs list
+
+`orders_summary.json` has a `saved_outputs` key that lists the files of each
+output. A check with no rows is listed with `"rows": 0` and no `"file"`.
+
+```json
+"saved_outputs": {
+  "failed_query_outputs": [
+    {"schema": "orders", "check": "amount > 0", "rows": 3, "file": "orders_checks/orders__amount_0.csv"},
+    {"schema": "orders", "check": "id_unique", "rows": 0}
+  ],
+  "consolidated_query_outputs": [
+    {"tables": "orders", "rows": 3, "file": "orders_orders.csv"}
+  ],
+  "dq_metrics": [{"file": "orders_dq_metrics.json"}]
+}
+```
+
+### Deprecated output_mode
+
+`output_mode` still works with a `FutureWarning` and writes the files it wrote
+in v0.0.6. It will be removed in v0.1.0. Passing it with `outputs` raises a
+`ValueError`.
+
+| `output_mode`   | Use instead                                                            |
+| --------------- | ---------------------------------------------------------------------- |
+| `"failed_rows"` | `outputs=["consolidated_query_outputs"]`                               |
+| `"annotated"`   | `outputs=["annotated_table", "dq_metrics"]`                            |
+| `"both"`        | `outputs=["consolidated_query_outputs", "annotated_table", "dq_metrics"]` |
 
 ### Failed-rows CSVs
 
 A failed-rows CSV holds each failed row once, with the checks it failed in
-`check_ids`. vowl writes one CSV for each group of checks that read the same
-tables and return the same columns. These are the tables
-`get_consolidated_output_dfs()` returns.
+`check_ids`. vowl writes one CSV for each set of tables the checks read. These
+are the tables `get_consolidated_output_dfs()` returns.
 
 - `<tables>` is the tables the checks read, joined by `_`. A check on `orders`
   writes `orders_orders.csv`, and a check that joins `orders` and `customers`
   writes `orders_orders_customers.csv`.
-- Checks that read the same tables but return different columns get separate
-  CSVs, ending in `_1`, `_2` and so on. The matching
-  `get_consolidated_output_dfs()` keys end in `__1`, `__2`.
+- Checks that read the same tables but return different columns share one CSV.
+  A check that did not return a column has nulls in it, so its row does not
+  merge with the full row of the same record from another check. Use the
+  [per-check files](#per-check-files) to see each check's own columns.
 
 A check that fails because too few rows matched, such as `mustBeGreaterThan`,
 is left out. The rows it returns are the ones that passed.

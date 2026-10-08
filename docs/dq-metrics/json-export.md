@@ -7,8 +7,8 @@ description: How vowl writes a run's DQ metrics to dq_metrics.json, and how to l
 `result.save(...)` writes the run's [DQ metrics](understanding-metrics.md) to
 `<prefix>_dq_metrics.json`, next to the annotated tables, the check results and
 `summary.json`. The annotated tables already attribute failed rows, so the
-file costs nothing more. `save(output_mode="as_is")` does not write it,
-because that mode never attributes rows. See
+file costs nothing more. Leave `"dq_metrics"` out of `save(outputs=[...])` to
+skip it. See
 [Two tiers of results](../results.md#two-tiers-of-results). The
 file holds the same readings that
 [Exporting to OpenTelemetry](otel-export.md) sends, with the same names,

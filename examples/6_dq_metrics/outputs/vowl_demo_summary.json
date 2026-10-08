@@ -8,12 +8,17 @@
       "max_rows_for_statistics": -1,
       "max_failed_rows": -1,
       "use_try_cast": true,
-      "output_mode": "attributed",
+      "outputs": [
+        "failed_query_outputs",
+        "consolidated_query_outputs",
+        "annotated_table",
+        "dq_metrics"
+      ],
       "annotated_check_info": "names",
       "fetch_tolerated_rows": false
     },
     "failed_rows_approximate": 14,
-    "total_execution_time_ms": 87.41624909453094,
+    "total_execution_time_ms": 92.89650106802583,
     "success_rate": 77.77777777777779,
     "connection_results": {
       "hdb_resale_prices": {
@@ -29,7 +34,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.3873749459162354,
+      "execution_time_ms": 6.818167050369084,
       "check_path": "$.schema[0].properties[0].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -65,7 +70,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.499292027205229,
+      "execution_time_ms": 7.86000001244247,
       "check_path": "$.schema[0].properties[0].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -101,7 +106,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.149542052298784,
+      "execution_time_ms": 6.778042064979672,
       "check_path": "$.schema[0].properties[1].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -136,7 +141,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.223583011887968,
+      "execution_time_ms": 6.580624962225556,
       "check_path": "$.schema[0].properties[1].enum",
       "check_ref_type": "EnumCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -193,7 +198,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.551458103582263,
+      "execution_time_ms": 6.299625034444034,
       "check_path": "$.schema[0].properties[2].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -228,7 +233,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.431957961060107,
+      "execution_time_ms": 4.761582938954234,
       "check_path": "$.schema[0].properties[3].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -263,7 +268,7 @@
       "expected_value": 0,
       "actual_value": 2,
       "failed_rows_count": 2,
-      "execution_time_ms": 19.567791023291647,
+      "execution_time_ms": 20.438750041648746,
       "check_path": "$.schema[0].properties[0].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -301,7 +306,7 @@
       "expected_value": 0,
       "actual_value": 12,
       "failed_rows_count": 12,
-      "execution_time_ms": 16.052208025939763,
+      "execution_time_ms": 16.664499999023974,
       "check_path": "$.schema[0].properties[2].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -336,7 +341,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 15.553041943348944,
+      "execution_time_ms": 16.695208963938057,
       "check_path": "$.schema[0].properties[3].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -372,5 +377,40 @@
     "status": null,
     "id": "c11443ee-542f-4442-b28d-2d224342be37",
     "description": null
+  },
+  "saved_outputs": {
+    "failed_query_outputs": [
+      {
+        "schema": "hdb_resale_prices",
+        "check": "Month",
+        "rows": 2,
+        "file": "vowl_demo_checks/hdb_resale_prices__Month.csv"
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "check": "floor_area_must_be_less_than_200",
+        "rows": 12,
+        "file": "vowl_demo_checks/hdb_resale_prices__floor_area_must_be_less_than_200.csv"
+      }
+    ],
+    "consolidated_query_outputs": [
+      {
+        "tables": "hdb_resale_prices",
+        "rows": 14,
+        "file": "vowl_demo_hdb_resale_prices.csv"
+      }
+    ],
+    "annotated_table": [
+      {
+        "schema": "hdb_resale_prices",
+        "rows": 201879,
+        "file": "vowl_demo_hdb_resale_prices_annotated.csv"
+      }
+    ],
+    "dq_metrics": [
+      {
+        "file": "vowl_demo_dq_metrics.json"
+      }
+    ]
   }
 }

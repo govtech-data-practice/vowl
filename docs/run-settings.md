@@ -44,7 +44,7 @@ the matching argument. An argument you pass always wins.
 
 | Setting                                                 | Default       | What it does                                                                                                                                                                       |
 | ------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="output_mode"></a>`output_mode`                   | `"attributed"` | What `save()` writes. `"as_is"` is the cheap mode and does nothing to the rows. `"both"` writes everything. The old names `"failed_rows"` and `"annotated"` still work with a `FutureWarning`. See [Saving results](results.md#saving-results). |
+| <a id="outputs"></a>`outputs`                           | every output but `"all_query_outputs"` | The list of files `save()` writes. See [Outputs](results.md#outputs). |
 | <a id="annotated_check_info"></a>`annotated_check_info` | `"names"`     | How much detail the `check_info` column holds. See [What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds). |
 
 ## Deprecated
@@ -55,3 +55,7 @@ These emit a `DeprecationWarning` and have no effect.
 | ------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------ |
 | <a id="enable_additional_schema_statistics"></a>`enable_additional_schema_statistics` | not set       | Nothing. Row counts are computed only when you ask for DQ metrics. |
 | <a id="max_rows_for_statistics"></a>`max_rows_for_statistics`                         | `-1` (no cap) | Nothing. vowl no longer caps the table size.                       |
+
+<a id="output_mode"></a>`output_mode` still works with a `FutureWarning` and
+maps to the outputs it wrote in v0.0.6. Use `outputs` instead. See
+[Deprecated output_mode](results.md#deprecated-output_mode).
