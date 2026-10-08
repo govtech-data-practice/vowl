@@ -92,17 +92,48 @@ def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
     return cleaned
 
 
-def _check_file_stem(schema: str, check: str) -> str:
-    """The file name stem of one check's file, ``<schema>__<check>``.
+def _check_column(cr: CheckResult) -> str:
+    """The column a check is on, or ``""`` for a schema-level check.
 
-    Each part is cleaned on its own. A cleaned part never holds ``__``, so the
-    join can't be read two ways, and the name can be worked out from the
-    contract alone.
+    Read from the ``target`` metadata, which is ``<schema>.<column>`` for a
+    column-level check and ``<schema>`` for a schema-level one.
     """
-    check_part = _safe_filename_component(check)
+    target = cr.metadata.get("target") or ""
+    schema = cr.metadata.get("schema_name") or ""
     if not schema:
-        return check_part
-    return f"{_safe_filename_component(schema)}__{check_part}"
+        return target
+    return target[len(schema) + 1 :] if target.startswith(f"{schema}.") else ""
+
+
+def _check_label(cr: CheckResult) -> str:
+    """Where a check runs, ``<schema>.<column>`` or ``<schema>``, for messages and keys."""
+    schema = cr.metadata.get("schema_name") or ""
+    column = _check_column(cr)
+    return f"{schema}.{column}" if schema and column else schema or column
+
+
+def _check_file_stem(cr: CheckResult) -> str:
+    """The file name stem of one check's file.
+
+    ``<schema>__<column>__<check>`` for a column-level check and
+    ``<schema>__<check>`` for a schema-level one. Each part is cleaned on its
+    own. A cleaned part never holds ``__``, so the join can't be read two
+    ways, and the name can be worked out from the contract alone.
+    """
+    parts = (cr.metadata.get("schema_name") or "", _check_column(cr))
+    return "__".join(
+        [_safe_filename_component(part) for part in parts if part] + [_safe_filename_component(cr.check_name)]
+    )
+
+
+def _check_entry(cr: CheckResult) -> dict[str, Any]:
+    """Who a ``saved_outputs`` entry is about: schema, column (when there is one) and check."""
+    entry: dict[str, Any] = {"schema": cr.metadata.get("schema_name") or ""}
+    column = _check_column(cr)
+    if column:
+        entry["column"] = column
+    entry["check"] = cr.check_name
+    return entry
 
 
 def _check_unique_file_stems(checks: Iterable[CheckResult], what: str) -> None:
@@ -113,16 +144,22 @@ def _check_unique_file_stems(checks: Iterable[CheckResult], what: str) -> None:
     """
     seen: dict[str, CheckResult] = {}
     for cr in checks:
-        schema = cr.metadata.get("schema_name") or ""
-        stem = _check_file_stem(schema, cr.check_name)
+        stem = _check_file_stem(cr)
         other = seen.setdefault(stem.casefold(), cr)
         if other is cr:
             continue
-        where = f" in schema {schema!r}" if schema else ""
-        if other.check_name == cr.check_name:
-            problem = f"Two checks{where} are both named {cr.check_name!r}"
+        label, other_label = _check_label(cr), _check_label(other)
+        if label == other_label:
+            on = f" on {label!r}" if label else ""
+            if other.check_name == cr.check_name:
+                problem = f"Two checks{on} are both named {cr.check_name!r}"
+            else:
+                problem = f"Checks {other.check_name!r} and {cr.check_name!r}{on} both clean to the file name {stem!r}"
         else:
-            problem = f"Checks {other.check_name!r} and {cr.check_name!r}{where} both clean to the file name {stem!r}"
+            problem = (
+                f"Checks {other.check_name!r} on {other_label!r} and {cr.check_name!r} on {label!r} "
+                f"both clean to the file name {stem!r}"
+            )
         raise ValueError(f"{problem}, so their {what} would overwrite each other. Rename one of them.")
 
 
@@ -478,11 +515,14 @@ class ValidationResult:
         return nw.from_native(arrow_df, eager_only=True)
 
     def _output_key(self, cr: CheckResult) -> str:
-        schema = cr.metadata.get("schema_name", "")
-        return f"{schema}::{cr.check_name}" if schema else cr.check_name
+        label = _check_label(cr)
+        return f"{label}::{cr.check_name}" if label else cr.check_name
 
     def get_output_dfs(self, checks: Sequence[str] | None = None, scope: str = "failed") -> dict[str, nw.DataFrame]:
-        """Each check's rows, keyed by ``schema::check``.
+        """Each check's rows, keyed by ``<schema>.<column>::<check>``.
+
+        A schema-level check has no column, so its key is
+        ``<schema>::<check>``.
 
         ``scope="failed"`` (default) gives the rows of each FAILED check.
         Under ``fetch_tolerated_rows=True`` a check that PASSED within its
@@ -498,8 +538,9 @@ class ValidationResult:
         checks with no upper limit. This is what
         ``save(outputs=["all_query_outputs"])`` writes.
 
-        Two checks with the same name in one schema share a key, so only
-        the later one is returned, with a ``UserWarning``.
+        Two checks with the same name on one column, or at the schema level
+        of one schema, share a key, so only the later one is returned, with
+        a ``UserWarning``.
         """
         result: dict[str, nw.DataFrame] = {}
         for cr, df in self._per_check_outputs(checks, scope):
@@ -1022,7 +1063,8 @@ class ValidationResult:
           query projects only the anchor schema's columns is *mergeable* and
           annotates onto that schema's table instead (see
           :meth:`_is_mergeable_for_full_table`).  Keyed by
-          ``"<schema>::<check_name>"``.
+          ``"<schema>.<column>::<check_name>"``, or
+          ``"<schema>::<check_name>"`` for a schema-level check.
           Empty dict when there are none.  A check with *no* rows to flag -- a
           scalar aggregation (``AVG``/``SUM``/``MIN``/``MAX``),
           an errored check, or an inverted check whose matched rows are the
@@ -1037,8 +1079,9 @@ class ValidationResult:
           preset as the annotated tables) plus ``tables_in_query``, so every
           file ``save(outputs=["annotated_table"])`` writes -- annotated
           tables and residues alike -- is read the same way. Two checks with
-          the same name in one schema share a key, so only the later residue
-          is returned, with a ``UserWarning``.
+          the same name on one column, or at the schema level of one schema,
+          share a key, so only the later residue is returned, with a
+          ``UserWarning``.
 
           Under ``fetch_tolerated_rows=True``, rows of checks that
           passed within their tolerance are flagged too, and their
@@ -1513,7 +1556,7 @@ class ValidationResult:
         to every output except ``"all_query_outputs"``:
 
         - ``"failed_query_outputs"`` -- one CSV per FAILED check,
-          ``<prefix>_checks/<schema>__<check>.csv``, with ``check_id``,
+          ``<prefix>_checks/<schema>__<column>__<check>.csv``, with ``check_id``,
           ``tables_in_query`` and ``tolerated`` columns (see
           :meth:`get_output_dfs`). Under ``fetch_tolerated_rows=True`` the
           checks that passed within their threshold get a file too. Checks
@@ -1528,7 +1571,7 @@ class ValidationResult:
           Runs no extra queries and never exports a table.
         - ``"annotated_table"`` -- each in-scope table with a ``check_info``
           column, ``<prefix>_<schema>_annotated.csv``, plus one
-          ``<prefix>_<schema>__<check>_residue.csv`` per check that cannot be
+          ``<prefix>_<schema>__<column>__<check>_residue.csv`` per check that cannot be
           marked on its table (see :meth:`get_annotated_output`). Exports
           the tables and attributes the rows.
         - ``"dq_metrics"`` -- ``<prefix>_dq_metrics.json`` (see
@@ -1539,11 +1582,12 @@ class ValidationResult:
         lists the files each output wrote under ``saved_outputs``. A check
         with no rows writes no file and is listed with ``"rows": 0``.
 
-        Per-check and residue file names come from the schema and check
-        names, each cleaned on its own and joined with ``__``. Two checks
-        whose names clean to the same file name, compared without case, or
-        two checks with the same name in one schema, raise ``ValueError``
-        before anything is written.
+        Per-check and residue file names come from the schema, column and
+        check names, each cleaned on its own and joined with ``__``. A
+        schema-level check has no column part. Two checks whose names clean
+        to the same file name, compared without case, or two checks with the
+        same name on one column, raise ``ValueError`` before anything is
+        written.
 
         ``check_info`` shapes the annotated ``check_info`` column. Passing it
         without ``"annotated_table"`` warns.
@@ -1602,13 +1646,9 @@ class ValidationResult:
             checks_folder = f"{prefix}_checks"
             checks_dir = target.subdir(checks_folder) if any(len(df) > 0 for _cr, df in per_check) else None
             for cr, df in per_check:
-                entry: dict[str, Any] = {
-                    "schema": cr.metadata.get("schema_name") or "",
-                    "check": cr.check_name,
-                    "rows": len(df),
-                }
+                entry = {**_check_entry(cr), "rows": len(df)}
                 if checks_dir is not None and len(df) > 0:
-                    name = f"{_check_file_stem(entry['schema'], cr.check_name)}.csv"
+                    name = f"{_check_file_stem(cr)}.csv"
                     saved_files.append(checks_dir.write_csv(name, df.to_arrow()))
                     entry["file"] = f"{checks_folder}/{name}"
                 listed.append(entry)
@@ -1627,10 +1667,9 @@ class ValidationResult:
                 saved_files.append(target.write_csv(name, df.to_arrow()))
                 listed.append({"schema": schema, "rows": len(df), "file": name})
             for cr, df in residues:
-                schema = cr.metadata.get("schema_name") or ""
-                name = f"{prefix}_{_check_file_stem(schema, cr.check_name)}_residue.csv"
+                name = f"{prefix}_{_check_file_stem(cr)}_residue.csv"
                 saved_files.append(target.write_csv(name, df.to_arrow()))
-                listed.append({"schema": schema, "check": cr.check_name, "rows": len(df), "file": name})
+                listed.append({**_check_entry(cr), "rows": len(df), "file": name})
 
         if "dq_metrics" in chosen:
             name = f"{prefix}_dq_metrics.json"

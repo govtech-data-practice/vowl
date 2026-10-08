@@ -110,13 +110,13 @@ def test_failed_rows_save_lists_only_bad_rows(result, compute_calls, tmp_path):
 
 
 def test_get_output_dfs_leaves_out_checks_without_an_upper_limit(result):
-    assert "orders::enough_positive" not in result.get_output_dfs()
+    assert "orders.amount::enough_positive" not in result.get_output_dfs()
 
 
 def test_get_output_dfs_all_scope_returns_every_row_query(result):
     # scope="all" returns what each row query matched, with the check's status.
     out = result.get_output_dfs(scope="all")
-    enough = out["orders::enough_positive"]
+    enough = out["orders.amount::enough_positive"]
     assert len(enough) == 3
     assert set(enough["status"].to_list()) == {"FAILED"}
     assert "tolerated" not in enough.columns
@@ -131,8 +131,8 @@ def test_all_scope_ignores_fetch_tolerated_rows():
     for flag in (False, True):
         out = _tolerated_result(flag).get_output_dfs(scope="all")
         assert {k: v["status"].to_list() for k, v in out.items() if len(v)} == {
-            "orders::fails": ["FAILED"],
-            "orders::tolerates": ["PASSED", "PASSED"],
+            "orders.amount::fails": ["FAILED"],
+            "orders.amount::tolerates": ["PASSED", "PASSED"],
         }
         assert all("tolerated" not in v.columns for v in out.values())
 
@@ -224,8 +224,8 @@ def test_flag_off_reports_failed_checks_only_without_fetching_passed_rows(tmp_pa
     calls = _count_passed_fetches(result)
 
     out = result.get_output_dfs()
-    assert list(out) == ["orders::fails"]
-    assert "tolerated" not in out["orders::fails"].columns
+    assert list(out) == ["orders.amount::fails"]
+    assert "tolerated" not in out["orders.amount::fails"].columns
 
     consolidated = result.get_consolidated_output_dfs()["orders"]
     assert "tolerated_check_ids" not in consolidated.columns
@@ -243,9 +243,9 @@ def test_get_output_dfs_reports_tolerated_rows_under_the_flag():
     result = _tolerated_result(True)
     out = result.get_output_dfs()
     # clean matched nothing, so it is not tolerated and is left out.
-    assert list(out) == ["orders::fails", "orders::tolerates"]
-    assert out["orders::fails"]["tolerated"].to_list() == [False]
-    tolerated = out["orders::tolerates"]
+    assert list(out) == ["orders.amount::fails", "orders.amount::tolerates"]
+    assert out["orders.amount::fails"]["tolerated"].to_list() == [False]
+    tolerated = out["orders.amount::tolerates"]
     assert sorted(tolerated["order_id"].to_list()) == [1, 2]
     assert tolerated["tolerated"].to_list() == [True, True]
 

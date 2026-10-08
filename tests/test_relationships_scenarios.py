@@ -193,7 +193,7 @@ class TestForeignKeyAnnotatedMerge:
         assert_no_check_errors(results)
 
         outputs = results.get_output_dfs()
-        key = f"orders::{self.FK_NAME}"
+        key = f"orders.customer_id::{self.FK_NAME}"
         assert key in outputs, f"missing {key!r} in {list(outputs)}"
 
         failed = outputs[key].to_arrow().to_pylist()

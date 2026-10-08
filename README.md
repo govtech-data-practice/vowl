@@ -520,7 +520,7 @@ See [Counting Mechanisms](docs/design-considerations/checks/counting-mechanisms.
 It returns a nested dict with two reserved keys:
 
 - **`"annotated"`**: a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`**: failed rows for checks that _cannot_ be merged onto a single table (column-subset checks and cross-table checks whose failed rows carry columns from more than the anchor table). Checks that return one number, such as an average, a sum, a minimum or a maximum, produce none. Most single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query`, so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its row query to project only that schema's columns: see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
+- **`"residues"`**: failed rows for checks that _cannot_ be merged onto a single table (column-subset checks and cross-table checks whose failed rows carry columns from more than the anchor table). Checks that return one number, such as an average, a sum, a minimum or a maximum, produce none. Most single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"`, or `"<schema>::<check_name>"` for a schema-level check) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query`, so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its row query to project only that schema's columns: see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -583,7 +583,7 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-Column-subset checks and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. Checks that return one number, such as an average, a sum, a minimum or a maximum, have no failed rows and appear only in the summary. (A cross-table check whose row query projects only its home schema's columns _is_ merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
+Column-subset checks and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. Checks that return one number, such as an average, a sum, a minimum or a maximum, have no failed rows and appear only in the summary. (A cross-table check whose row query projects only its home schema's columns _is_ merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a schema-level check), each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
@@ -625,7 +625,7 @@ Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed 
 
 | Output                         | Files                                                            |
 | ------------------------------ | ---------------------------------------------------------------- |
-| `"failed_query_outputs"`       | `<prefix>_checks/<schema>__<check>.csv`, one per failed check    |
+| `"failed_query_outputs"`       | `<prefix>_checks/<schema>__<column>__<check>.csv`, one per failed check |
 | `"all_query_outputs"`          | The same folder, one per row-level check whatever its status     |
 | `"consolidated_query_outputs"` | `<prefix>_<tables>.csv`, the failed rows grouped per table set   |
 | `"annotated_table"`            | `<prefix>_<schema>_annotated.csv` and the residue files          |

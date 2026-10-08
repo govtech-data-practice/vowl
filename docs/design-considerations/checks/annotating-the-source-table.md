@@ -112,7 +112,7 @@ checks are never merged.
 ```python
 output = result.get_annotated_output()
 output["annotated"]   # {"<schema>": your table + check_info}
-output["residues"]    # {"<schema>::<check_name>": failed rows + check_info + tables_in_query}
+output["residues"]    # {"<schema>.<column>::<check_name>": failed rows + check_info + tables_in_query}
 ```
 
 <!-- prettier-ignore-start -->
@@ -175,7 +175,7 @@ give you the failed rows without it:
 | Method                                | What you get                                                                    |
 | ------------------------------------- | ------------------------------------------------------------------------------- |
 | `result.show_failed_rows(max_rows=5)` | Prints a few failed rows for each failed check. `max_rows=-1` prints them all.  |
-| `result.get_output_dfs()`             | Each check's failed rows as a separate table, under `"<schema>::<check_name>"`. |
+| `result.get_output_dfs()`             | Each check's failed rows as a separate table, under `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a schema-level check). |
 
 `result.save()` saves the annotated tables, residues, `summary.json` and
 `dq_metrics.json` as files, along with each failed check's rows and the rows

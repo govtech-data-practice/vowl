@@ -244,6 +244,50 @@ def test_duplicate_check_names_raise_in_save_and_warn_in_get_output_dfs(tmp_path
     assert out["orders::c"]["id"].to_list() == [3]  # the later check wins
 
 
+def test_column_level_checks_name_their_column(tmp_path):
+    result = _result(_check("not null", target="orders.amount"))
+    assert list(result.get_output_dfs()) == ["orders.amount::not null"]
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert _saved_outputs(tmp_path)["failed_query_outputs"] == [
+        {
+            "schema": "orders",
+            "column": "amount",
+            "check": "not null",
+            "rows": 1,
+            "file": "r_checks/orders__amount__not_null.csv",
+        }
+    ]
+
+
+def test_same_check_name_on_two_columns_gives_two_files_and_keys(tmp_path):
+    start = _check("Date With Timezone", target="orders.start_dt")
+    end = _check("Date With Timezone", target="orders.end_dt", failed_rows=pa.table({"id": [3], "name": ["c"]}))
+    result = _result(start, end)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = result.get_output_dfs()
+    assert list(out) == ["orders.end_dt::Date With Timezone", "orders.start_dt::Date With Timezone"]
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {
+        "orders__start_dt__Date_With_Timezone.csv",
+        "orders__end_dt__Date_With_Timezone.csv",
+    }
+
+
+def test_same_check_name_on_one_column_raises(tmp_path):
+    result = _result(_check("c", target="orders.amount"), _check("c", target="orders.amount"))
+    with pytest.raises(ValueError, match="on 'orders.amount' are both named 'c'.*Rename one"):
+        result.save(str(tmp_path), prefix="r")
+    with pytest.warns(UserWarning, match=r"orders\.amount::c.*Rename one"):
+        result.get_output_dfs()
+
+
+def test_column_and_schema_level_checks_with_one_name_do_not_clash(tmp_path):
+    result = _result(_check("c"), _check("c", target="orders.amount"))
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__c.csv", "orders__amount__c.csv"}
+
+
 # --------------------------------------------------------------------------- #
 # Residues and grouped CSVs
 # --------------------------------------------------------------------------- #
@@ -267,6 +311,17 @@ def test_residue_files_use_the_double_underscore_join(tmp_path):
         "rows": 1,
         "file": "r_orders__join_check_residue.csv",
     }
+
+
+def test_column_level_residue_files_name_their_column(tmp_path):
+    check = _check(
+        "join check",
+        failed_rows=pa.table({"id": [3], "name": ["c"], "ref_id": [None]}),
+        tables_in_query="orders, customers",
+        target="orders.ref_id",
+    )
+    _result(check).save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+    assert (tmp_path / "r_orders__ref_id__join_check_residue.csv").exists()
 
 
 def test_residue_names_that_clash_raise(tmp_path):

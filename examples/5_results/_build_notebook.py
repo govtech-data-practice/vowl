@@ -243,7 +243,7 @@ md(
 
 The HDB examples above are single-table, so `residues` is empty. Residues appear when a check can't be attached to one table: **aggregation** checks, **column-subset** checks, and **cross-table** checks whose failed rows carry columns from more than the anchor table.
 
-Residues are **per-check**: `get_annotated_output()` returns one entry for each non-mergeable check, keyed `"<schema>::<check_name>"`. They are never grouped together, so a row that fails two such checks appears once under each check's entry. Each entry carries the failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array, shaped by the `check_info` preset) and `tables_in_query`, so everything `get_annotated_output()` returns is read the same way.
+Residues are **per-check**: `get_annotated_output()` returns one entry for each non-mergeable check, keyed `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a check on the whole schema). They are never grouped together, so a row that fails two such checks appears once under each check's entry. Each entry carries the failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array, shaped by the `check_info` preset) and `tables_in_query`, so everything `get_annotated_output()` returns is read the same way.
 
 > **A cross-table check can *merge* instead of becoming a residue.** If you shape its row query to project only the anchor table's columns (e.g. `SELECT payroll.*` inside a subquery), the orphan rows match that schema and land directly in its `check_info` column, with no residue. The Employee contract below carries both shapes: `orphan_payroll_rows_merge_onto_payroll` (subquery-projected, merges onto `demo_employee_payroll`) and `employee_id_exists_in_master_list` / `phone_number_exists_in_master_list` (bare JOINs, stay residues). See [Known Issues: Annotated Output](../../docs/known-issues.md#annotated-output-not-all-checks-can-be-merged) for the rules.
 
@@ -268,7 +268,7 @@ mt_output = mt_result.get_annotated_output()
 
 code(
     """
-# Each residue is the failed rows for ONE non-mergeable check, keyed "<schema>::<check>"
+# Each residue is the failed rows for ONE non-mergeable check, keyed "<schema>.<column>::<check>"
 print("Annotated schemas:", list(mt_output["annotated"].keys()))
 print("Residue keys:     ", list(mt_output["residues"].keys()))
 
@@ -321,10 +321,10 @@ md(
 
 | Output | Files written | Default |
 |--------|---------------|---------|
-| `"failed_query_outputs"` | One `<prefix>_checks/<schema>__<check>.csv` per failed check, with that check's own columns | ✓ |
+| `"failed_query_outputs"` | One `<prefix>_checks/<schema>__<column>__<check>.csv` per failed check, with that check's own columns | ✓ |
 | `"all_query_outputs"` | The same folder, one file per row-level check whatever its status, with a `status` column. Can't be combined with `"failed_query_outputs"`. | |
 | `"consolidated_query_outputs"` | One grouped failed-rows CSV per set of tables, e.g. `<prefix>_<table>.csv` | ✓ |
-| `"annotated_table"` | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>__<check>_residue.csv` per non-mergeable check | ✓ |
+| `"annotated_table"` | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>__<column>__<check>_residue.csv` per non-mergeable check | ✓ |
 | `"dq_metrics"` | The run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb) as `<prefix>_dq_metrics.json` | ✓ |
 
 `<prefix>_summary.json` lists every file under `saved_outputs`, with its row count. A check with no rows writes no file and is listed with `"rows": 0`.
@@ -348,7 +348,7 @@ md(
     """
 ### Saving a Run That Has Residues
 
-`result` above is single-table, so its save wrote only `*_annotated.csv` files. Saving the multi-source `mt_result` from the residue example instead also writes one `*_residue.csv` per non-mergeable check, named `<schema>__<check>` (the schema and the check name are cleaned on their own and joined with `__`). Each residue CSV carries that one check's failed rows plus the same `check_info` column as the annotated tables and `tables_in_query`.
+`result` above is single-table, so its save wrote only `*_annotated.csv` files. Saving the multi-source `mt_result` from the residue example instead also writes one `*_residue.csv` per non-mergeable check, named `<schema>__<column>__<check>` (the schema, the column and the check name are cleaned on their own and joined with `__`, and a check on the whole schema has no column part). Each residue CSV carries that one check's failed rows plus the same `check_info` column as the annotated tables and `tables_in_query`.
 """
 )
 

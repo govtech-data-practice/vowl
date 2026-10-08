@@ -91,7 +91,7 @@ a residue instead.
 ```python
 output = result.get_annotated_output()
 output["annotated"]["orders"]                   # the orders table, with check_info
-output["residues"]                              # {"<schema>::<check_name>": failed rows}
+output["residues"]                              # {"<schema>.<column>::<check_name>": failed rows}
 ```
 
 Pass `check_info="summary"` or `"full"` for more detail in `check_info`.
@@ -101,6 +101,8 @@ describes each option, and
 explains which checks are annotated and which become residues.
 
 **`get_output_dfs()`** returns each check's failed rows, keyed
+`"<schema>.<column>::<check_name>"`, the check's `target` in
+`check_results.csv`. A check on the whole schema, with no column, is keyed
 `"<schema>::<check_name>"`. Each DataFrame has a `check_id` column (the check's
 name) and a `tables_in_query` column. Checks that ended in `ERROR` are left
 out, and so are checks that passed, unless
@@ -112,7 +114,7 @@ download your tables, so it is the better choice on large tables.
 
 ```python
 failed = result.get_output_dfs()
-failed["orders::price_must_be_positive"]
+failed["orders.price::price_must_be_positive"]
 ```
 
 `get_output_dfs(scope="all")` returns the rows of every row-level check that
@@ -259,10 +261,10 @@ and `<prefix>_summary.json` are always written.
 | Output                         | Files                                                                                  | Default |
 | ------------------------------ | -------------------------------------------------------------------------------------- | ------- |
 | (always)                       | `orders_check_results.csv` with the [check results](#check-results), `orders_summary.json` with the numbers behind the summary | Yes |
-| `"failed_query_outputs"`       | `orders_checks/<schema>__<check>.csv`, the rows of one failed check                    | Yes     |
-| `"all_query_outputs"`          | `orders_checks/<schema>__<check>.csv`, the rows of every row-level check, with `status` | No      |
+| `"failed_query_outputs"`       | `orders_checks/<schema>__<column>__<check>.csv`, the rows of one failed check          | Yes     |
+| `"all_query_outputs"`          | `orders_checks/<schema>__<column>__<check>.csv`, the rows of every row-level check, with `status` | No |
 | `"consolidated_query_outputs"` | `orders_<tables>.csv`, a [failed-rows CSV](#failed-rows-csvs)                          | Yes     |
-| `"annotated_table"`            | `orders_<schema>_annotated.csv`, the annotated table of one schema, and `orders_<schema>__<check>_residue.csv`, the residue of one check | Yes |
+| `"annotated_table"`            | `orders_<schema>_annotated.csv`, the annotated table of one schema, and `orders_<schema>__<column>__<check>_residue.csv`, the residue of one check | Yes |
 | `"dq_metrics"`                 | `orders_dq_metrics.json`, the [DQ metrics](dq-metrics/json-export.md)                  | Yes     |
 
 ```python
@@ -288,25 +290,31 @@ columns plus `check_id` and `tables_in_query`. `"failed_query_outputs"` writes
 the rows `get_output_dfs()` returns and `"all_query_outputs"` writes the rows
 `get_output_dfs(scope="all")` returns.
 
-The file name is the schema and the check name, each cleaned for use in a file
-name and joined by `__`. A check `amount > 0` on schema `orders` writes
-`orders_checks/orders__amount_0.csv`. Two checks that clean to the same name,
-compared without case, such as `amount > 0` and `amount_0`, make `save()` raise
-a `ValueError` before it writes anything. So do two checks with the same name
-in one schema. Rename one of them. Residue files are named the same way.
+The file name is the schema, the column and the check name, each cleaned for
+use in a file name and joined by `__`. A check `amount > 0` on column `amount`
+of schema `orders` writes `orders_checks/orders__amount__amount_0.csv`. A check
+on the whole schema, such as a row count, has no column part:
+`orders_checks/orders__row_count.csv`. So two checks with the same name on
+different columns write different files. Two checks on one column that clean to
+the same name, compared without case, such as `amount > 0` and `amount_0`, make
+`save()` raise a `ValueError` before it writes anything. So do two checks with
+the same name on one column. Rename one of them. Residue files are named the
+same way.
 
 A check with no rows writes no file.
 
 ### The saved_outputs list
 
 `orders_summary.json` has a `saved_outputs` key that lists the files of each
-output. A check with no rows is listed with `"rows": 0` and no `"file"`.
+output. A check with no rows is listed with `"rows": 0` and no `"file"`. A
+check on the whole schema has no `"column"`.
 
 ```json
 "saved_outputs": {
   "failed_query_outputs": [
-    {"schema": "orders", "check": "amount > 0", "rows": 3, "file": "orders_checks/orders__amount_0.csv"},
-    {"schema": "orders", "check": "id_unique", "rows": 0}
+    {"schema": "orders", "column": "amount", "check": "amount > 0", "rows": 3,
+     "file": "orders_checks/orders__amount__amount_0.csv"},
+    {"schema": "orders", "column": "id", "check": "id_unique", "rows": 0}
   ],
   "consolidated_query_outputs": [
     {"tables": "orders", "rows": 3, "file": "orders_orders.csv"}

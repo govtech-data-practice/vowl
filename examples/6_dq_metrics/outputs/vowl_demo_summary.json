@@ -18,7 +18,7 @@
       "fetch_tolerated_rows": false
     },
     "failed_rows_approximate": 14,
-    "total_execution_time_ms": 92.89650106802583,
+    "total_execution_time_ms": 100.22812581155449,
     "success_rate": 77.77777777777779,
     "connection_results": {
       "hdb_resale_prices": {
@@ -34,7 +34,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.818167050369084,
+      "execution_time_ms": 7.410624995827675,
       "check_path": "$.schema[0].properties[0].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -70,7 +70,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.86000001244247,
+      "execution_time_ms": 9.149666992016137,
       "check_path": "$.schema[0].properties[0].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -106,7 +106,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.778042064979672,
+      "execution_time_ms": 7.24649999756366,
       "check_path": "$.schema[0].properties[1].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -141,7 +141,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.580624962225556,
+      "execution_time_ms": 7.031374960206449,
       "check_path": "$.schema[0].properties[1].enum",
       "check_ref_type": "EnumCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -198,7 +198,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.299625034444034,
+      "execution_time_ms": 6.436916999518871,
       "check_path": "$.schema[0].properties[2].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -233,7 +233,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.761582938954234,
+      "execution_time_ms": 5.256499978713691,
       "check_path": "$.schema[0].properties[3].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -268,7 +268,7 @@
       "expected_value": 0,
       "actual_value": 2,
       "failed_rows_count": 2,
-      "execution_time_ms": 20.438750041648746,
+      "execution_time_ms": 22.1517919562757,
       "check_path": "$.schema[0].properties[0].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -306,7 +306,7 @@
       "expected_value": 0,
       "actual_value": 12,
       "failed_rows_count": 12,
-      "execution_time_ms": 16.664499999023974,
+      "execution_time_ms": 18.071832950226963,
       "check_path": "$.schema[0].properties[2].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -341,7 +341,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 16.695208963938057,
+      "execution_time_ms": 17.472916981205344,
       "check_path": "$.schema[0].properties[3].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "hdb_resale_prices",
@@ -382,15 +382,17 @@
     "failed_query_outputs": [
       {
         "schema": "hdb_resale_prices",
+        "column": "month",
         "check": "Month",
         "rows": 2,
-        "file": "vowl_demo_checks/hdb_resale_prices__Month.csv"
+        "file": "vowl_demo_checks/hdb_resale_prices__month__Month.csv"
       },
       {
         "schema": "hdb_resale_prices",
+        "column": "floor_area_sqm",
         "check": "floor_area_must_be_less_than_200",
         "rows": 12,
-        "file": "vowl_demo_checks/hdb_resale_prices__floor_area_must_be_less_than_200.csv"
+        "file": "vowl_demo_checks/hdb_resale_prices__floor_area_sqm__floor_area_must_be_less_than_200.csv"
       }
     ],
     "consolidated_query_outputs": [
