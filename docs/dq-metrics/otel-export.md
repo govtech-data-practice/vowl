@@ -333,10 +333,10 @@ metrics. A check that returns one number, such as an average, or that could
 not run has none, because a `0` would wrongly report that every row passed.
 See [Check Results](../design-considerations/checks/check-results.md).
 
-The row metrics do not say whether a row count is approximate. The check spans
-do. When the `vowl.validate` span has `vowl.row_quality.approximate=true`, the
-check spans with `vowl.row_quality.approximate=true` are the checks that made
-it so, and `vowl.row_quality.reason` says why.
+A check span's `vowl.row_quality.approximate` is the same flag as the
+`vowl.check.row.approximate` gauge: `true` when this check made its schema's
+row counts approximate. The span adds `vowl.row_quality.reason`, which says
+why. See [Approximate row counts](understanding-metrics.md#approximate-row-counts).
 
 Each check span lasts as long as its check. vowl does not record when each
 check started, so the spans are placed one after another from the start of the
@@ -497,18 +497,32 @@ passed write nothing. The first line of each record is its body.
 
 ## Capturing failed rows
 
-By default, `export_otel` sends **counts only**, and no data values leave the
-process. There are three ways to get from an alert to the rows behind it:
+By default, `export_otel` sends **counts only**, such as `row.count.failed`
+on each check's span and log record, and no data values leave the process.
+There are two ways to get from an alert to the failed rows themselves:
 
-1. **`row.count.failed`** is on the span and log record of each check that
-   gets row counts. That is every
-   [row-level check](../design-considerations/checks/check-results.md#counted-checks).
-   It holds the check's scalar count and no data values.
-2. **A small sample** with `max_failed_rows_sample`. Set it above 0 and each
-   failed check copies up to that many failed rows into its span (as
-   `vowl.failed_row` events) and its log record (as `vowl.failed_rows_sample`).
-   The run's `max_failed_rows` setting also caps the sample.
-3. **A link to the saved output**, with `custom_attributes`. See
+1. **A few of the failed rows**, with `max_failed_rows_sample`, an argument to
+   `export_otel(...)`. Set it above 0 and each failed check copies up to that
+   many failed rows into its span (as `vowl.failed_row` events) and its log
+   record (as `vowl.failed_rows_sample`). The sample can't be bigger than the
+   rows the run downloaded, so
+   [`max_failed_rows`](../run-settings.md#max_failed_rows) in the
+   `ValidationConfig` you passed to `validate_data` also caps it.
+
+    ```python
+    config = ValidationConfig(max_failed_rows=100)  # rows downloaded per check
+    result = validate_data("contract.yaml", df=df, config=config)
+
+    result.export_otel(
+        endpoint="http://localhost:4317",
+        max_failed_rows_sample=5,  # rows sent per check
+    )
+    ```
+
+2. **A link to the saved failed rows**, with `custom_attributes`. Save the
+   results with `result.save(...)`, then pass their location as a custom
+   attribute so the alert points to the saved files. These hold every failed
+   row the run downloaded, up to `max_failed_rows`. See
    [Custom attributes](#custom-attributes).
 
 !!! warning "Sampled rows contain real data"

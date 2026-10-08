@@ -5,16 +5,14 @@ description: How vowl writes a run's DQ metrics to dq_metrics.json, and how to l
 # Exporting to dq_metrics.json
 
 `result.save(...)` writes the run's [DQ metrics](understanding-metrics.md) to
-`<prefix>_dq_metrics.json`, next to the annotated tables, the check results and
-`summary.json`. The annotated tables already attribute failed rows, so the
-file costs nothing more. Leave `"dq_metrics"` out of `save(outputs=[...])` to
-skip it. See
-[Two tiers of results](../results.md#two-tiers-of-results). The
-file holds the same readings that
-[Exporting to OpenTelemetry](otel-export.md) sends, with the same names,
-attributes and values. Use it when you want the metrics in a data warehouse,
-a notebook, or anywhere without an OpenTelemetry backend. It needs no extra
-install.
+`<prefix>_dq_metrics.json`. Use this file when you want the metrics somewhere
+without an OpenTelemetry backend, such as a data warehouse or a notebook.
+
+- **Same data as OpenTelemetry.** The file holds the readings that
+  [Exporting to OpenTelemetry](otel-export.md) sends, with the same names,
+  attributes and values.
+- **Written by default.** It sits next to the other `save()` outputs: the
+  annotated tables, the check results and `summary.json`.
 
 ```python
 from vowl import validate_data
@@ -110,20 +108,24 @@ from each. Counts have one point per status, zeros included, so
 | `vowl.check.row.pass_rate`        | gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
 | `vowl.check.row.scalar_count`     | gauge     | `{row}`    |     14 | `5` for `email_required_check`, `status="FAILED"` |
 | `vowl.check.row.scalar_pass_rate` | gauge     | `1`        |      7 | `0.95` for `email_required_check`                 |
+| `vowl.check.row.approximate`      | gauge     | `1`        |      7 | `0` for `email_required_check`                    |
 | `vowl.check.duration`             | histogram | `ms`       |      7 | `11.6` for `email_required_check`                 |
 | `vowl.dimension.check.count`      | counter   | `{check}`  |     15 | `1` for `orders` completeness, `status="FAILED"`  |
 | `vowl.dimension.check.pass_rate`  | gauge     | `1`        |      5 | `0.5` for `orders` completeness                   |
 | `vowl.dimension.row.count`        | gauge     | `{row}`    |     10 | `5` for `orders` completeness, `status="FAILED"`  |
 | `vowl.dimension.row.pass_rate`    | gauge     | `1`        |      5 | `0.95` for `orders` completeness                  |
+| `vowl.dimension.row.approximate`  | gauge     | `1`        |      5 | `0` for `orders` completeness                     |
 | `vowl.schema.check.count`         | counter   | `{check}`  |      6 | `2` for `orders`, `status="FAILED"`               |
 | `vowl.schema.check.pass_rate`     | gauge     | `1`        |      2 | `0.6` for `orders`                                |
 | `vowl.schema.row.count`           | gauge     | `{row}`    |      4 | `7` for `orders`, `status="FAILED"`               |
 | `vowl.schema.row.pass_rate`       | gauge     | `1`        |      2 | `0.93` for `orders`                               |
+| `vowl.schema.row.approximate`     | gauge     | `1`        |      2 | `0` for `orders`                                  |
 | `vowl.run.schema.count`           | counter   | `{schema}` |      3 | `2` with `status="FAILED"`                        |
 | `vowl.run.check.count`            | counter   | `{check}`  |      3 | `3` with `status="FAILED"`                        |
 | `vowl.run.check.pass_rate`        | gauge     | `1`        |      1 | `0.571`, which is 4 of 7 checks                   |
 | `vowl.run.row.count`              | gauge     | `{row}`    |      2 | `9` with `status="FAILED"`                        |
 | `vowl.run.row.pass_rate`          | gauge     | `1`        |      1 | `0.925`, which is 111 of 120 rows                 |
+| `vowl.run.row.approximate`        | gauge     | `1`        |      1 | `0`, so every row count of the run is exact       |
 | `vowl.run.duration`               | histogram | `ms`       |      1 | `400.1`                                           |
 
 A few things to notice:
@@ -133,8 +135,8 @@ A few things to notice:
 - 7 rows of `orders` failed at schema level, not 5 + 3 = 8, because one row
   failed both checks. See [How rows are counted](understanding-metrics.md#how-failed-rows-are-counted).
 - The run level adds up the schemas: 7 + 2 = 9 rows failed.
-- The points do not say whether a row count is approximate. Use
-  `get_dq_metrics_df()` or the [traces](otel-export.md#traces) for that.
+- Each `row.approximate` point is `0`, so every row count is exact. See
+  [Approximate row counts](understanding-metrics.md#approximate-row-counts).
 
 ### Reading it with pandas
 

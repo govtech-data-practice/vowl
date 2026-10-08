@@ -488,7 +488,7 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                             | `self` (chainable)              |
 | **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                             | `self` (chainable)              |
 | **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", outputs=None, check_info=None)`**     | Saves the results to disk. `outputs` lists the files to write. The default writes everything but `"all_query_outputs"`. `check_info` shapes the `check_info` column | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", outputs=None, check_info=None)`**     | Saves the results to disk. `outputs` lists the files to write. The default writes everything but `"failed_query_outputs"`, whose files `"all_query_outputs"` already writes. `check_info` shapes the `check_info` column | `self` (chainable)              |
 | **`get_output_dfs(checks=None, scope="failed")`**                                    | Returns per-check failed rows as `{check_id: DataFrame}`. `scope="all"` returns the rows of every row-level check, with a `status` column | Dict[str, DataFrame]            |
 | **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                 | Dict[str, Dict[str, DataFrame]] |
 | **`get_dq_metrics_df(by="schema")`**                                                 | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                   | DataFrame                       |
@@ -641,7 +641,7 @@ Residue `'demo_employee_payroll::phone_numbers_missing_from_master_list'`: 2 fai
 | `"dq_metrics"`                 | `<prefix>_dq_metrics.json`                                       |
 
 ```python
-# Every output but "all_query_outputs". This is the default.
+# Every output but "failed_query_outputs". This is the default.
 result.save()
 
 # Shape the check_info column: "names" (default), "summary", or "full"
@@ -653,7 +653,7 @@ result.save(outputs=["consolidated_query_outputs"])
 
 > **Cost:** `"annotated_table"` and `"dq_metrics"` attribute failed rows to each table and may download it, which can be slow on a large table. They share that work, so writing both costs no more than writing one. The other outputs do nothing to the rows. `"all_query_outputs"` runs the row query of each check that passed.
 
-`output_mode` is deprecated. It still works with a `FutureWarning` and will be removed in v0.1.0. See [Deprecated output_mode](docs/results.md#deprecated-output_mode).
+`output_mode` is deprecated. It still works with a `FutureWarning` and will be removed in a future release. See [Deprecated output_mode](docs/results.md#deprecated-output_mode).
 
 You can also set the outputs globally via `ValidationConfig` (see [Run Settings](docs/run-settings.md#saving-results)):
 

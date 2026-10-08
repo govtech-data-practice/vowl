@@ -336,12 +336,12 @@ md(
 <a id="4-saving"></a>
 ## 4. Saving Outputs to Disk
 
-`result.save(...)` always writes `<prefix>_check_results.csv` and `<prefix>_summary.json`. The `outputs` argument lists the other files to write. By default it writes every output except `"all_query_outputs"`:
+`result.save(...)` always writes `<prefix>_check_results.csv` and `<prefix>_summary.json`. The `outputs` argument lists the other files to write. By default it writes every output except `"failed_query_outputs"`, whose files `"all_query_outputs"` already writes:
 
 | Output | Files written | Default |
 |--------|---------------|---------|
-| `"failed_query_outputs"` | One `<prefix>_checks/<schema>__<column>__<check>.csv` per failed check, with that check's own columns | ✓ |
-| `"all_query_outputs"` | The same folder, one file per row-level check whatever its status, with a `status` column. Can't be combined with `"failed_query_outputs"`. | |
+| `"failed_query_outputs"` | One `<prefix>_checks/<schema>__<column>__<check>.csv` per failed check, with that check's own columns | |
+| `"all_query_outputs"` | The same folder, one file per row-level check whatever its status, with a `status` column. Can't be combined with `"failed_query_outputs"`. | ✓ |
 | `"consolidated_query_outputs"` | One grouped failed-rows CSV per set of tables, e.g. `<prefix>_<table>.csv` | ✓ |
 | `"annotated_table"` | One `<prefix>_<schema>_annotated.csv` per schema (full table + `check_info`), **plus** one `<prefix>_<schema>__<column>__<check>_residue.csv` per non-mergeable check | ✓ |
 | `"dq_metrics"` | The run's [DQ metrics](../6_dq_metrics/dq_metrics.ipynb) as `<prefix>_dq_metrics.json` | ✓ |

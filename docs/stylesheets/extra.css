@@ -1,0 +1,27 @@
+/* Group header rows inside a table, such as the cost groups on the results page. */
+.md-typeset table:not([class]) tr.table-group th {
+  background-color: color-mix(in srgb, var(--md-primary-fg-color) 12%, transparent);
+  border-top: 0.15rem solid var(--md-primary-fg-color);
+  border-left: 0.25rem solid var(--md-primary-fg-color);
+  color: var(--md-default-fg-color);
+  font-weight: 700;
+  text-align: left;
+}
+
+.md-typeset table:not([class]) tr.table-group small {
+  display: block;
+  margin-top: 0.15em;
+  color: var(--md-default-fg-color--light);
+  font-weight: 400;
+}
+
+/* No hover tint on the group rows, so they read as dividers. */
+.md-typeset table:not([class]) tbody tr.table-group:hover {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* The first row of each group keeps the method names readable. */
+.md-typeset table:not([class]) tr.table-group + tr td {
+  border-top: none;
+}

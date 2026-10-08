@@ -298,16 +298,17 @@ can also happen when the data source attributes the rows.
 These checks are not attributable on this run only. Their failed rows are still
 annotated where vowl can download the table, so they are not residues. A
 check that is never attributable is a different case. See
-[Attributed rows](check-results.md#from-query-output-to-row-counts).
+[When a check is not attributable](how-attributed-rows-work.md#when-a-check-is-not-attributable).
 
 ## The approximate flag {#exact-numbers}
 
 Every number has an `approximate` flag. It is `True` when the number could be off.
 The summary then shows **(approx.)** after it, with the number of checks not
 attributable when there are any, and the OTEL `vowl.validate` span sets
-`vowl.row_quality.approximate`. To find the check that caused it, look at the
-`approximate` and `reason` columns of `get_dq_metrics_df(by="check")`, or the
-same attributes on its `vowl.check` span. The DQ metrics do not carry the flag.
+`vowl.row_quality.approximate`. The DQ metrics carry it as the
+`row.approximate` gauge at each level. To find the check that caused it, look at
+`vowl.check.row.approximate`, the `approximate` and `reason` columns of
+`get_dq_metrics_df(by="check")`, or the same attributes on its `vowl.check` span.
 
 A number is approximate when:
 

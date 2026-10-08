@@ -8,19 +8,19 @@ description: >-
 
 # How Attributed Rows Work
 
-This page explains how vowl turns failed rows into
-[attributed rows](check-results.md#from-query-output-to-row-counts), and
-attributed rows into the row counts.
+[Attributed rows](check-results.md#from-query-output-to-row-counts) showed
+that the scalar counts of the `orders` table add up to 6, though only 3 rows
+failed. This page explains how vowl gets to 3: how it attributes each failed
+row to a row of the table, when it can't, and how the attributed rows add up
+to the row counts.
 
 ## Why the row counts are hard to get {#why-counting-failed-rows-is-hard}
 
 Adding up each check's failed rows seems enough, but three things get in the
 way:
 
-- **One row can fail several checks.** In the `orders` table, the milk row
-  fails two checks. The table has 5 rows, so no more than 5 rows can fail.
-  vowl counts each row once within each grain: the dimension, the schema and
-  the run.
+- **One row can fail several checks.** vowl counts each row once within
+  each grain: the dimension, the schema and the run.
 - **Some checks return rows that can't be traced back to the source table.**
   A `DISTINCT` drops copies, a join can repeat rows, and a check may return
   only some columns. Such rows can't be counted as they are.
@@ -31,8 +31,9 @@ way:
 
 ## Grains of row counts {#grains-of-failed-row-counts}
 
-vowl gives row counts at four grains. This page uses an `orders` table with
-three row-level checks. A ✗ marks a failed row of the check:
+vowl gives row counts at four grains. This page uses the same `orders` table
+as [Attributed rows](check-results.md#from-query-output-to-row-counts). A ✗
+marks a failed row of the check:
 
 | Row | order_id | item  | price | quantity | `price_must_be_positive` | `quantity_is_filled` | `order_id_is_unique` |
 | --- | -------- | ----- | ----- | -------- | ------------------------ | -------------------- | -------------------- |
@@ -53,18 +54,18 @@ not row-level, so it has no row counts at any grain.
 | **Schema**    | The rows of the table that failed any row-level check | 3 of 5                                                                        | `get_dq_metrics_df()`                                                                                                                                                                         |
 | **Run**       | The schema numbers added up                           | 3 of 5                                                                        | the run-level [DQ metrics](../../dq-metrics/understanding-metrics.md)                                                                                                                         |
 
-The check numbers add up to 3 + 1 + 2 = 6, but only 3 rows failed. Each of
-them failed two checks:
-
-| Row       | Failed                                         |
-| --------- | ---------------------------------------------- |
-| 2 (bread) | `price_must_be_positive`, `order_id_is_unique` |
-| 3 (milk)  | `price_must_be_positive`, `quantity_is_filled` |
-| 5 (bread) | `price_must_be_positive`, `order_id_is_unique` |
-
-So above the check grain, each row counts once. `get_dq_metrics_df()` and the
+The check numbers add up to 3 + 1 + 2 = 6, but rows 2, 3 and 5 each failed
+two checks, so only 3 rows failed. Above the check grain, each row counts
+once. `get_dq_metrics_df()` and the
 [DQ metrics](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted)
 all show these same numbers.
+
+Each grain uses one number:
+
+| Grain                     | Uses                                                                |
+| ------------------------- | ------------------------------------------------------------------- |
+| Check                     | Attributed rows. The scalar count is in `scalar_count`              |
+| Dimension, schema and run | Attributed rows only. Checks that are not attributable are left out |
 
 ## Counts are exact only when attributed to the source table
 
@@ -91,14 +92,15 @@ the two bread rows:
 | 3   | milk  | 0.00  | ✗            | ✗                     |
 | 5   | bread | -2.00 | ✗            | dropped               |
 
-So the check has three numbers. The first two are its query output, and the
-third is worked out from it:
+So the [three results of the check](check-results.md#failed-row-results)
+disagree. The first two are its query output, and the third is worked out
+from it:
 
-| Number              | What it is                                                       | Shows | Where you see it                                                                                                                        |
-| ------------------- | ---------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     | `actual`, `failed_rows_count` (failed checks only), `scalar_count` in `get_dq_metrics_df(by="check")` and `vowl.check.row.scalar_count` |
-| **Failed rows**     | The rows the row query returned                                  | 2     | `show_failed_rows()`, `get_output_dfs()` and residues                                                                                   |
-| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     | `attributed_rows` in `get_dq_metrics_df(by="check")`, the annotated output and every row count of the DQ metrics                        |
+| Result              | What it is                                                       | Shows |
+| ------------------- | ---------------------------------------------------------------- | ----- |
+| **Scalar count**    | The number the scalar query returned. It decides pass or fail.   | 2     |
+| **Failed rows**     | The rows the row query returned                                  | 2     |
+| **Attributed rows** | The rows of the table they are attributed to, every copy counted | 3     |
 
 For a plain filter such as `WHERE price <= 0` without `DISTINCT`, all three
 show 3. A join can do the opposite and return one row twice, so the scalar
@@ -201,17 +203,8 @@ SELECT line_id, price FROM orders WHERE price < 0
   check is attributable, and the bread rows still count once each.
 
 A check whose failed rows lack the match key columns is never attributable.
-It stays row-level but is not attributable. It adds nothing to the row counts.
-When it has failed rows, the row counts are marked not exact. Its failed rows
-become a [residue](annotating-the-source-table.md#residues). See
-[Attributed rows](check-results.md#from-query-output-to-row-counts).
-The `reason` column of `get_dq_metrics_df(by="check")` says why:
-
-| `reason`                                                     | Meaning                                                                                                                                                              |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `failed rows do not have the table's columns or primary key` | The failed rows lack some columns. Or they hold the primary key, but the data source can't count for vowl (the second condition in [The match key](#the-match-key)). |
-| `primary key has duplicate values`                           | A primary key value appears twice in the table.                                                                                                                      |
-| `primary key uniqueness could not be checked`                | The data source could not say whether a key value repeats.                                                                                                           |
+See [When a check is not attributable](#when-a-check-is-not-attributable) for
+what happens to it.
 
 #### When two values count as the same {#how-values-are-compared}
 
@@ -241,10 +234,47 @@ up in the table, or vowl downloads the table and looks them up on your
 machine. A plain filter, which only keeps or drops rows, needs neither.
 
 So vowl attributes the rows in the cheapest way it can, lets you turn
-attribution off, and marks every number that could be off. A row-level check
-it can't attribute is left out of the row counts and flagged in
-`checks_not_attributable`. See
+attribution off, and marks every number that could be off. See
 [Counting Mechanisms](counting-mechanisms.md).
+
+### When a check is not attributable
+
+A row-level check vowl can't attribute is left out of the row counts. The
+`reason` column of `get_dq_metrics_df(by="check")` says why. Some reasons
+hold for every run, and others only for this one:
+
+| `reason`                                                     | Kind           | Meaning                                                                                                                                                              |
+| ------------------------------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `failed rows do not have the table's columns or primary key` | Never          | The failed rows lack some columns. Or they hold the primary key, but the data source can't count for vowl (the second condition in [The match key](#the-match-key)). |
+| `primary key has duplicate values`                           | Never          | A primary key value appears twice in the table.                                                                                                                      |
+| `primary key uniqueness could not be checked`                | Never          | The data source could not say whether a key value repeats.                                                                                                           |
+| `truncated by max_failed_rows`                               | This run       | [`max_failed_rows`](capping-failed-rows.md) cut the failed rows short.                                                                                               |
+| `the table could not be exported`                            | This run       | vowl needed to download the table and could not.                                                                                                                     |
+| `the failed rows could not be fetched`                       | This run       | vowl could not download the failed rows.                                                                                                                             |
+| `the failed rows could not be turned into match keys`        | This run       | The table's values could not be turned into match keys.                                                                                                              |
+| `its row query failed in the data source`                    | This run       | The row query raised an error inside the attribution query.                                                                                                          |
+
+See [When something goes wrong](counting-mechanisms.md#fallbacks) for the
+reasons that hold only for this run.
+
+A check that is not attributable has a `reason`, an empty `route` and no
+`attributed_rows`:
+
+- **Row counts.** It adds nothing to them. If it may have failed rows, the
+  row counts of its dimension, its schema and the run are marked not
+  [exact](counting-mechanisms.md#exact-numbers). When every row-level check
+  of a dimension or schema is not attributable, its numbers show N/A.
+- **DQ metrics.** It has no check-level `row.count`. Its scalar count is
+  still in `vowl.check.row.scalar_count`. See
+  [How rows are counted](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted).
+- **Annotated output.** A check that is never attributable has its failed
+  rows put in a [residue](annotating-the-source-table.md#residues). A check
+  that is not attributable this run is annotated as usual, unless the table
+  could not be downloaded, in which case its failed rows become a residue.
+
+`checks_not_attributable` counts the checks left out. It is a column of
+`get_dq_metrics_df()` and the `vowl.row_quality.checks_not_attributable`
+attribute of the OTEL root span. The summary does not show it.
 
 ## How the numbers are put together
 

@@ -28,11 +28,11 @@ These change what each check returns.
 ## Row attribution
 
 These change how vowl attributes failed rows to the rows of each table. They
-apply only to the [DQ metrics tier](results.md#two-tiers-of-results):
+apply only to [row attribution](results.md#what-each-method-costs):
 `get_dq_metrics`, `get_dq_metrics_df`, `export_otel` and the annotated modes of
 `save()`. They change the row counts there, `failed_rows`, `passed_rows` and
 `pass_rate` per table, dimension and check. They do not change each check's
-scalar `failed_rows_count`, its status, or anything in the basic tier. See
+scalar `failed_rows_count`, its status, or any method that does not attribute rows. See
 [How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md).
 
 | Setting                                                         | Default | What it does                                                                                                                                                                                                               |
@@ -46,7 +46,7 @@ the matching argument. An argument you pass always wins.
 
 | Setting                                                 | Default       | What it does                                                                                                                                                                       |
 | ------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="outputs"></a>`outputs`                           | every output but `"all_query_outputs"` | The list of files `save()` writes. See [Outputs](results.md#outputs). |
+| <a id="outputs"></a>`outputs`                           | every output but `"failed_query_outputs"` | The list of files `save()` writes. See [Outputs](results.md#outputs). |
 | <a id="annotated_check_info"></a>`annotated_check_info` | `"names"`     | How much detail the `check_info` column holds. See [What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds). |
 
 ## Deprecated

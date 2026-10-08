@@ -450,38 +450,12 @@ flowchart LR
     a -->|"No, not this run"| skip["Left out and flagged"]
 ```
 
-| Kind of not attributable      | `reason`                                                                                                                                                                                                    | Annotated output                                                                             |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **Never attributable**        | `failed rows do not have the table's columns or primary key`, `primary key has duplicate values`, `primary key uniqueness could not be checked`                                                             | The failed rows become a residue                                                             |
-| **Not attributable this run** | `truncated by max_failed_rows`, `the table could not be exported`, `the failed rows could not be fetched`, `the failed rows could not be turned into match keys`, `its row query failed in the data source` | Annotated as usual. When the table could not be downloaded, the failed rows become a residue |
+| Outcome                       | Example                                                  | Row counts                     | Annotated output                 |
+| ----------------------------- | -------------------------------------------------------- | ------------------------------ | -------------------------------- |
+| **Attributed**                | `WHERE price <= 0`                                       | Counted, each row once         | Each row marked with its checks  |
+| **Never attributable**        | The failed rows lack some columns of the table           | Left out, marked not exact     | The failed rows become a residue |
+| **Not attributable this run** | The failed rows were cut off by `max_failed_rows`        | Left out, marked not exact     | Annotated as usual               |
 
-See [The match key](how-attributed-rows-work.md#the-match-key) and
-[When something goes wrong](counting-mechanisms.md#fallbacks) for each
-reason.
-
-A check that is not attributable has a `reason`, an empty `route` and no
-`attributed_rows`. If it may have failed rows, the row counts
-of its dimension, its schema and the run are marked not
-[exact](counting-mechanisms.md#exact-numbers). When every row-level check of a
-dimension or schema is not attributable, its numbers show N/A.
-
-Each grain of the [DQ metrics](../../dq-metrics/understanding-metrics.md)
-uses one number:
-
-| Grain                     | Uses                                                                |
-| ------------------------- | ------------------------------------------------------------------- |
-| Check                     | Attributed rows. The scalar count is in `scalar_count`              |
-| Dimension, schema and run | Attributed rows only. Checks that are not attributable are left out |
-
-A check that is not attributable has no check-level `row.count`. Its scalar
-count is still in `vowl.check.row.scalar_count`.
-
-!!! warning "Breaking change"
-
-    Check-level `row.count` and `row.pass_rate` used to use the scalar count.
-    They now use attributed rows, like the other grains. See
-    [How rows are counted](../../dq-metrics/understanding-metrics.md#how-failed-rows-are-counted).
-
-`checks_not_attributable` counts the checks left out. It is a column of
-`get_dq_metrics_df()`, the `vowl.row_quality.checks_not_attributable`
-attribute of the OTEL root span. The summary does not show it.
+[How Attributed Rows Work](how-attributed-rows-work.md) explains how vowl
+attributes the rows, every `reason` a check can be left out for, and how the
+attributed rows add up to the numbers at each grain.

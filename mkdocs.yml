@@ -42,6 +42,9 @@ theme:
     - search.suggest
     - toc.follow
 
+extra_css:
+  - stylesheets/extra.css
+
 nav:
   - Home: index.md
   - Get Started: getting-started.md

@@ -1279,13 +1279,16 @@ Details that the sections above leave open:
   key the statistics chose. That is the full columns, or the declared primary
   key when the key was found unique.
 - **OTEL.** The row gauges carry no trust attributes. A changing attribute
-  would start a new series each time it flips, and a gauge cannot say which
-  check made a number approximate. The `vowl.validate` span carries
+  would start a new series each time it flips. The flag is a separate 0/1
+  gauge instead, `vowl.<level>.row.approximate`, sent next to each level's
+  row counts with the attributes of its `row.pass_rate`, and as `0` when
+  exact. At check level it is sent for every check with a scalar count and
+  means the check made its schema approximate, the same as the span
+  attribute, so it names the check. The `vowl.validate` span carries
   `vowl.row_quality.approximate` and `vowl.row_quality.checks_not_attributable`,
   and each `vowl.check` span and log record that gets row counts carries the
   check's `vowl.row_quality.approximate`, `route`, `reason` and
-  `attributed_rows`. A separate 0/1 gauge can be added later if users ask to
-  alert on it. A gauge is left out when its number is
+  `attributed_rows`. A gauge is left out when its number is
   missing. The row counts need a total and a failed count, and the rate also
   needs a non-empty table.
 - **`print_summary`** adds `(approx.)` to a Passed Rows figure that is not
