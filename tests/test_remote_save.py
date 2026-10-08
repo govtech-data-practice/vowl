@@ -80,7 +80,7 @@ def mock_s3(monkeypatch):
 def test_save_to_s3_uri_writes_into_the_remote_filesystem(result, mock_s3, tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
 
-    result.save("s3://bucket/run1/", prefix="dq", output_mode="attributed")
+    result.save("s3://bucket/run1/", prefix="dq", outputs=["annotated_table", "dq_metrics"])
 
     assert mock_s3.seen == ["s3://bucket/run1/"]
     assert _files(mock_s3.fs, "bucket") == {
@@ -90,6 +90,9 @@ def test_save_to_s3_uri_writes_into_the_remote_filesystem(result, mock_s3, tmp_p
         "bucket/run1/dq_dq_metrics.json",
     }
     summary = json.loads(_read_text(mock_s3.fs, "bucket/run1/dq_summary.json"))
+    assert summary.pop("saved_outputs")["annotated_table"] == [
+        {"schema": "orders", "rows": 3, "file": "dq_orders_annotated.csv"}
+    ]
     assert summary == json.loads(json.dumps(result.summary, default=str))
     annotated = pa_csv.read_csv(pa.py_buffer(_read_text(mock_s3.fs, "bucket/run1/dq_orders_annotated.csv").encode()))
     assert annotated.num_rows == 3
@@ -127,7 +130,7 @@ def test_save_dq_metrics_with_explicit_filesystem(result):
 def test_save_with_explicit_filesystem_and_plain_path(result):
     fs = _MockFileSystem()
 
-    result.save("bucket/run2", prefix="dq", output_mode="attributed", filesystem=fs)
+    result.save("bucket/run2", prefix="dq", outputs=["annotated_table", "dq_metrics"], filesystem=fs)
 
     assert "bucket/run2/dq_summary.json" in _files(fs, "bucket")
 
@@ -139,20 +142,20 @@ def test_save_with_explicit_filesystem_strips_the_uri_scheme(result, monkeypatch
     monkeypatch.setattr(_output_dir, "_filesystem_from_uri", fail)
     fs = _MockFileSystem()
 
-    result.save("s3://bucket/run3", prefix="dq", output_mode="attributed", filesystem=fs)
+    result.save("s3://bucket/run3", prefix="dq", outputs=["annotated_table", "dq_metrics"], filesystem=fs)
 
     assert "bucket/run3/dq_check_results.csv" in _files(fs, "bucket")
 
 
 def test_save_to_file_uri_writes_local_files(result, tmp_path):
-    result.save(f"file://{tmp_path}/out", prefix="dq", output_mode="attributed")
+    result.save(f"file://{tmp_path}/out", prefix="dq", outputs=["annotated_table", "dq_metrics"])
 
     assert (tmp_path / "out" / "dq_summary.json").exists()
     assert (tmp_path / "out" / "dq_orders_annotated.csv").exists()
 
 
 def test_save_to_local_path_is_unchanged(result, tmp_path, capsys):
-    result.save(str(tmp_path / "local"), prefix="dq", output_mode="attributed")
+    result.save(str(tmp_path / "local"), prefix="dq", outputs=["annotated_table", "dq_metrics"])
 
     assert (tmp_path / "local" / "dq_check_results.csv").exists()
     assert str(tmp_path / "local" / "dq_summary.json") in capsys.readouterr().out
@@ -160,7 +163,7 @@ def test_save_to_local_path_is_unchanged(result, tmp_path, capsys):
 
 def test_unknown_scheme_raises_a_clear_error(result):
     with pytest.raises(ValueError, match=r"Can't save to 'nope://x'.*pass filesystem="):
-        result.save("nope://x", output_mode="attributed")
+        result.save("nope://x", outputs=["annotated_table", "dq_metrics"])
 
 
 # --------------------------------------------------------------------------- #
@@ -222,7 +225,9 @@ class _SpyHandler(pa_fs.FileSystemHandler):
 def test_create_dir_is_skipped_only_for_object_stores(result, type_name, expect_create_dir):
     handler = _SpyHandler(type_name)
 
-    result.save("bucket/run4", prefix="dq", output_mode="attributed", filesystem=pa_fs.PyFileSystem(handler))
+    result.save(
+        "bucket/run4", prefix="dq", outputs=["annotated_table", "dq_metrics"], filesystem=pa_fs.PyFileSystem(handler)
+    )
 
     assert bool(handler.created) is expect_create_dir
     assert "bucket/run4/dq_summary.json" in _files(handler.inner, "bucket")

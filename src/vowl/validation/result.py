@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import narwhals as nw
 import pyarrow as pa
 
-from ..config import CheckInfoPreset, OutputMode, ValidationConfig, _normalize_output_mode
+from ..config import CheckInfoPreset, SaveOutput, ValidationConfig, _resolve_outputs
 from ..contracts.contract import Contract
 from ..contracts.models.ODCS_types import DataContract
 from ..executors.base import CheckResult
@@ -50,10 +50,13 @@ from .row_quality import (
     attributed_checks,
 )
 from .row_quality.match_key import METADATA_COLUMNS, has_match_key
-from .row_quality.selection import REASON_OPERATOR, resolve_check_dimension
+from .row_quality.selection import REASON_OPERATOR, resolve_check_dimension, select_check
 
 # Columns get_output_dfs adds to each check's rows.
-_OUTPUT_METADATA_COLUMNS = ("check_id", "tables_in_query", "tolerated")
+_OUTPUT_METADATA_COLUMNS = ("check_id", "tables_in_query", "tolerated", "status")
+
+#: Accepted values of ``get_output_dfs(scope=...)``.
+_OUTPUT_SCOPES = ("failed", "all")
 
 if TYPE_CHECKING:
     from ..adapters.multi_source_adapter import MultiSourceAdapter
@@ -87,6 +90,40 @@ def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
     if not cleaned:
         return fallback
     return cleaned
+
+
+def _check_file_stem(schema: str, check: str) -> str:
+    """The file name stem of one check's file, ``<schema>__<check>``.
+
+    Each part is cleaned on its own. A cleaned part never holds ``__``, so the
+    join can't be read two ways, and the name can be worked out from the
+    contract alone.
+    """
+    check_part = _safe_filename_component(check)
+    if not schema:
+        return check_part
+    return f"{_safe_filename_component(schema)}__{check_part}"
+
+
+def _check_unique_file_stems(checks: Iterable[CheckResult], what: str) -> None:
+    """Raise ``ValueError`` when two checks would write the same file.
+
+    Names are compared with ``casefold()`` so that names differing only in
+    case, which clash on case-insensitive file systems, are caught too.
+    """
+    seen: dict[str, CheckResult] = {}
+    for cr in checks:
+        schema = cr.metadata.get("schema_name") or ""
+        stem = _check_file_stem(schema, cr.check_name)
+        other = seen.setdefault(stem.casefold(), cr)
+        if other is cr:
+            continue
+        where = f" in schema {schema!r}" if schema else ""
+        if other.check_name == cr.check_name:
+            problem = f"Two checks{where} are both named {cr.check_name!r}"
+        else:
+            problem = f"Checks {other.check_name!r} and {cr.check_name!r}{where} both clean to the file name {stem!r}"
+        raise ValueError(f"{problem}, so their {what} would overwrite each other. Rename one of them.")
 
 
 #: Accepted values of ``get_dq_metrics_df(by=...)``.
@@ -415,13 +452,19 @@ class ValidationResult:
 
     @staticmethod
     def _append_output_metadata(
-        df: nw.DataFrame, check_name: str, tables_str: str, tolerated: bool | None = None
+        df: nw.DataFrame,
+        check_name: str,
+        tables_str: str,
+        tolerated: bool | None = None,
+        status: str | None = None,
     ) -> nw.DataFrame:
-        """Add ``check_id`` and ``tables_in_query``, and ``tolerated`` unless it is ``None``."""
+        """Add ``check_id`` and ``tables_in_query``, and ``tolerated`` and ``status`` unless they are ``None``."""
         if len(df) > 0:
             columns = [nw.lit(check_name).alias("check_id"), nw.lit(tables_str).alias("tables_in_query")]
             if tolerated is not None:
                 columns.append(nw.lit(tolerated).alias("tolerated"))
+            if status is not None:
+                columns.append(nw.lit(status).alias("status"))
             return df.with_columns(*columns)
 
         arrow_df = df.to_arrow()
@@ -430,28 +473,77 @@ class ValidationResult:
         )
         if tolerated is not None:
             arrow_df = arrow_df.append_column("tolerated", pa.array([], type=pa.bool_()))
+        if status is not None:
+            arrow_df = arrow_df.append_column("status", pa.array([], type=pa.utf8()))
         return nw.from_native(arrow_df, eager_only=True)
 
     def _output_key(self, cr: CheckResult) -> str:
         schema = cr.metadata.get("schema_name", "")
         return f"{schema}::{cr.check_name}" if schema else cr.check_name
 
-    def get_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
-        """Each reported check's rows, keyed by ``schema::check``.
+    def get_output_dfs(self, checks: Sequence[str] | None = None, scope: str = "failed") -> dict[str, nw.DataFrame]:
+        """Each check's rows, keyed by ``schema::check``.
 
-        A FAILED check gives its failed rows. Under
-        ``fetch_tolerated_rows=True`` a check that PASSED within its
+        ``scope="failed"`` (default) gives the rows of each FAILED check.
+        Under ``fetch_tolerated_rows=True`` a check that PASSED within its
         threshold gives its tolerated rows too, and every frame carries a
-        ``tolerated`` column saying which kind it is. Other checks are left
-        out.
+        ``tolerated`` column saying which kind it is. A FAILED check whose
+        operator sets no upper limit (``mustBeGreaterThan``, ``mustBe: 5``)
+        is left out, because its row query returns the good rows. This is
+        what ``save(outputs=["failed_query_outputs"])`` writes.
+
+        ``scope="all"`` gives what the row query of every row-level check
+        returned, whatever its status, with a ``status`` column. It runs one
+        row query per check, ignores ``fetch_tolerated_rows`` and includes
+        checks with no upper limit. This is what
+        ``save(outputs=["all_query_outputs"])`` writes.
+
+        Two checks with the same name in one schema share a key, so only
+        the later one is returned, with a ``UserWarning``.
         """
         result: dict[str, nw.DataFrame] = {}
+        for cr, df in self._per_check_outputs(checks, scope):
+            key = self._output_key(cr)
+            if key in result:
+                warnings.warn(
+                    f"Two checks share the key {key!r}, so get_output_dfs() returns only the later one. "
+                    "Rename one of them.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            result[key] = df
+        return dict(sorted(result.items()))
+
+    def _per_check_outputs(self, checks: Sequence[str] | None, scope: str) -> list[tuple[CheckResult, nw.DataFrame]]:
+        """The frames of :meth:`get_output_dfs`, one per check in run order, duplicates kept."""
+        if scope not in _OUTPUT_SCOPES:
+            raise ValueError(f"Unknown scope: {scope!r}. Expected one of {list(_OUTPUT_SCOPES)}.")
         checks_set = set(checks) if checks else None
+        outputs: list[tuple[CheckResult, nw.DataFrame]] = []
+
+        if scope == "all":
+            for cr in self.check_results:
+                if checks_set and cr.check_name not in checks_set:
+                    continue
+                selection = select_check(cr)
+                if selection is None or not (selection.row_level or selection.reason == REASON_OPERATOR):
+                    continue
+                tables = get_tables_in_query(cr)
+                tables_str = ", ".join(sorted(tables)) if tables else ""
+                outputs.append((cr, self._append_output_metadata(cr.rows, cr.check_name, tables_str, status=cr.status)))
+            return outputs
+
         tolerated = self._tolerated_check_ids()
         mark_tolerated = self._config.fetch_tolerated_rows
-
+        # A FAILED check whose operator sets no upper limit matched the good
+        # rows, so they are left out, as in annotated output.
+        inverted = {
+            id(selection.result) for selection in self._row_quality().selections if selection.reason == REASON_OPERATOR
+        }
         for cr in self.check_results:
             if checks_set and cr.check_name not in checks_set:
+                continue
+            if id(cr) in inverted:
                 continue
             rows = self._reported_rows(cr, tolerated)
             if rows is None:
@@ -459,15 +551,26 @@ class ValidationResult:
 
             tables = get_tables_in_query(cr)
             tables_str = ", ".join(sorted(tables)) if tables else ""
-            result[self._output_key(cr)] = self._append_output_metadata(
-                rows, cr.check_name, tables_str, (id(cr) in tolerated) if mark_tolerated else None
+            outputs.append(
+                (
+                    cr,
+                    self._append_output_metadata(
+                        rows, cr.check_name, tables_str, (id(cr) in tolerated) if mark_tolerated else None
+                    ),
+                )
             )
-
-        return dict(sorted(result.items()))
+        return outputs
 
     def get_consolidated_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
-        """Group failed rows by (tables_in_query, column_set), deduplicating
-        identical rows and combining their check IDs.
+        """Group failed rows by ``tables_in_query``, deduplicating identical
+        rows and combining their check IDs.
+
+        There is one frame per table set. Checks that return different
+        columns are stacked with nulls in the columns a check did not
+        return. Such a row does not merge with a full row of the same
+        record, so it appears once per shape. For each check's exact rows
+        and columns, use :meth:`get_output_dfs` or the per-check files of
+        ``save(outputs=["failed_query_outputs"])``.
 
         Cross-table checks are grouped here by their ``tables_in_query`` and
         appear under a composite table key (e.g. ``"table_a, table_b"``),
@@ -477,9 +580,9 @@ class ValidationResult:
         emitting a per-check residue otherwise.  See docs/known-issues.md for
         details.
 
-        This is the view ``save(output_mode="as_is")`` writes. It runs
-        no extra queries and never attributes rows, so it stays cheap on
-        large tables.
+        This is the view ``save(outputs=["consolidated_query_outputs"])``
+        writes. It runs no extra queries and never attributes rows, so it
+        stays cheap on large tables.
 
         Under ``fetch_tolerated_rows=True`` it also holds the rows of
         checks that PASSED within their threshold. A group they contributed
@@ -492,41 +595,21 @@ class ValidationResult:
 
     def _get_consolidated_output_dfs(self, checks: Sequence[str] | None = None) -> dict[str, nw.DataFrame]:
         """Implementation of the grouped failed-rows view."""
-        per_check = self.get_output_dfs(checks=checks)
-        # A FAILED check whose operator sets no upper limit matched the good
-        # rows, so they are left out, as in annotated output.
-        inverted_keys = {
-            self._output_key(selection.result)
-            for selection in self._row_quality().selections
-            if selection.reason == REASON_OPERATOR
-        }
-        per_check = {k: v for k, v in per_check.items() if len(v) > 0 and k not in inverted_keys}
+        per_check = [df for _cr, df in self._per_check_outputs(checks, "failed") if len(df) > 0]
         if not per_check:
             return {}
 
-        groups: dict[tuple, list[nw.DataFrame]] = {}
-        for df in per_check.values():
-            tables_key = df["tables_in_query"][0] if len(df) > 0 else ""
-            cols_key = frozenset(c for c in df.columns if c not in _OUTPUT_METADATA_COLUMNS)
-            group_key = (tables_key, cols_key)
-            groups.setdefault(group_key, []).append(df)
-
-        raw_results: dict[str, list[nw.DataFrame]] = {}
-        for (tables_key, _cols_key), dfs in groups.items():
-            arrow_tables = [df.to_arrow() for df in dfs]
-            combined = pa.concat_tables(arrow_tables, promote_options="default")
-            grouped = self._consolidate_grouped_output(nw.from_native(combined, eager_only=True))
-            key = tables_key or "unknown"
-            raw_results.setdefault(key, []).append(grouped)
+        groups: dict[str, list[nw.DataFrame]] = {}
+        for df in per_check:
+            groups.setdefault(df["tables_in_query"][0], []).append(df)
 
         result: dict[str, nw.DataFrame] = {}
-        for key, dfs_list in sorted(raw_results.items()):
-            if len(dfs_list) == 1:
-                result[key] = dfs_list[0]
-            else:
-                for idx, df in enumerate(dfs_list, start=1):
-                    result[f"{key}__{idx}"] = df
-
+        for tables_key, dfs in sorted(groups.items()):
+            # Columns a check did not return come out as null.
+            combined = pa.concat_tables([df.to_arrow() for df in dfs], promote_options="default")
+            result[tables_key or "unknown"] = self._consolidate_grouped_output(
+                nw.from_native(combined, eager_only=True)
+            )
         return result
 
     @staticmethod
@@ -742,7 +825,7 @@ class ValidationResult:
         Residues are per-check, so ``check_info`` is a single-element JSON array
         shaped by *preset* -- the same shape the annotated table uses.  Emitting
         ``check_info`` here (rather than the legacy ``check_ids``) keeps every
-        file produced in ``output_mode="attributed"`` uniform: annotated tables
+        file produced by ``save(outputs=["annotated_table"])`` uniform: annotated tables
         and residues are read the same way.  ``tables_in_query`` is retained
         because residues are non-mergeable (often cross-table) and the source
         tables are useful context.
@@ -952,14 +1035,16 @@ class ValidationResult:
           share a table and column set.  Each residue carries a ``check_info``
           column (a single-element JSON array shaped by the same ``check_info``
           preset as the annotated tables) plus ``tables_in_query``, so every
-          file produced in ``output_mode="attributed"`` -- annotated tables and
-          residues alike -- is read the same way.
+          file ``save(outputs=["annotated_table"])`` writes -- annotated
+          tables and residues alike -- is read the same way. Two checks with
+          the same name in one schema share a key, so only the later residue
+          is returned, with a ``UserWarning``.
 
           Under ``fetch_tolerated_rows=True``, rows of checks that
           passed within their tolerance are flagged too, and their
           ``check_info`` items carry ``"tolerated": true``.
 
-          (The ``failed_rows``/``both`` CSVs come from the grouped
+          (The ``consolidated_query_outputs`` CSVs come from the grouped
           :meth:`get_consolidated_output_dfs`, which keeps its comma-joined
           ``check_ids`` column. Only annotated output uses ``check_info``.)
 
@@ -974,6 +1059,24 @@ class ValidationResult:
           ``UserWarning`` says so, and the check's ``check_info`` items carry
           ``"truncated": true``. Set ``max_failed_rows=-1`` to flag every row.
         """
+        annotated, residue_list = self._annotated_output(checks, check_info)
+        residues: dict[str, nw.DataFrame] = {}
+        for cr, df in residue_list:
+            key = self._output_key(cr)
+            if key in residues:
+                warnings.warn(
+                    f"Two checks share the key {key!r}, so get_annotated_output() returns only the "
+                    "later residue. Rename one of them.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            residues[key] = df
+        return {"annotated": annotated, "residues": residues}
+
+    def _annotated_output(
+        self, checks: Sequence[str] | None, check_info: CheckInfoPreset | None
+    ) -> tuple[dict[str, nw.DataFrame], list[tuple[CheckResult, nw.DataFrame]]]:
+        """The annotated tables, and the residues one per check in run order, duplicates kept."""
         preset = check_info if check_info is not None else self._config.annotated_check_info
         checks_set = set(checks) if checks else None
         row_quality = self._row_quality()
@@ -1099,7 +1202,7 @@ class ValidationResult:
             and id(cr) not in inverted_ids
             and (not checks_set or cr.check_name in checks_set)
         ]
-        residues: dict[str, nw.DataFrame] = {}
+        residues: list[tuple[CheckResult, nw.DataFrame]] = []
         for cr, tolerated, truncated, rows in candidates:
             if self._output_key(cr) in merged_check_keys:
                 continue  # already annotated onto a full table -> not a residue
@@ -1108,11 +1211,16 @@ class ValidationResult:
 
             tables = get_tables_in_query(cr)
             tables_str = ", ".join(sorted(tables)) if tables else ""
-            residues[self._output_key(cr)] = self._build_residue_with_check_info(
-                cr, rows, preset, tables_str, tolerated=tolerated, truncated=truncated
+            residues.append(
+                (
+                    cr,
+                    self._build_residue_with_check_info(
+                        cr, rows, preset, tables_str, tolerated=tolerated, truncated=truncated
+                    ),
+                )
             )
 
-        return {"annotated": annotated, "residues": residues}
+        return annotated, residues
 
     @staticmethod
     def _strip_metadata_cols(df: nw.DataFrame) -> nw.DataFrame:
@@ -1391,22 +1499,54 @@ class ValidationResult:
         output_dir: str = ".",
         prefix: str = "vowl_results",
         *,
+        outputs: Sequence[SaveOutput] | None = None,
         include_check_definition: bool = False,
         include_contract_definition: bool = False,
-        output_mode: OutputMode | None = None,
         check_info: CheckInfoPreset | None = None,
         filesystem: Any | None = None,
+        output_mode: str | None = None,
     ) -> ValidationResult:
-        """Write the check-results CSV, the row outputs of ``output_mode`` and the summary JSON.
+        """Write ``<prefix>_check_results.csv``, ``<prefix>_summary.json`` and the chosen outputs.
 
-        ``"as_is"`` is cheap and does nothing to the rows. ``"attributed"``
-        attributes the rows onto their table and writes the metrics.
+        The two summary files are always written. ``outputs`` picks the rest.
+        When it is ``None`` the config's ``outputs`` is used, which defaults
+        to every output except ``"all_query_outputs"``:
 
-        ``"as_is"`` runs no extra queries, never exports a table and never
-        attributes rows, so it writes no ``dq_metrics.json``. ``"attributed"``
-        and ``"both"`` also write ``<prefix>_dq_metrics.json`` (see
-        :meth:`get_dq_metrics`). The annotated output and the DQ metrics share
-        one table export and one row attribution, so the file adds no cost.
+        - ``"failed_query_outputs"`` -- one CSV per FAILED check,
+          ``<prefix>_checks/<schema>__<check>.csv``, with ``check_id``,
+          ``tables_in_query`` and ``tolerated`` columns (see
+          :meth:`get_output_dfs`). Under ``fetch_tolerated_rows=True`` the
+          checks that passed within their threshold get a file too. Checks
+          whose operator sets no upper limit are left out.
+        - ``"all_query_outputs"`` -- the same files for every row-level check,
+          whatever its status, with a ``status`` column
+          (``get_output_dfs(scope="all")``). It runs one row query per check.
+          It cannot be combined with ``"failed_query_outputs"``.
+        - ``"consolidated_query_outputs"`` -- the failed rows grouped per
+          table set, ``<prefix>_<tables>.csv``, with a comma-joined
+          ``check_ids`` column (see :meth:`get_consolidated_output_dfs`).
+          Runs no extra queries and never exports a table.
+        - ``"annotated_table"`` -- each in-scope table with a ``check_info``
+          column, ``<prefix>_<schema>_annotated.csv``, plus one
+          ``<prefix>_<schema>__<check>_residue.csv`` per check that cannot be
+          marked on its table (see :meth:`get_annotated_output`). Exports
+          the tables and attributes the rows.
+        - ``"dq_metrics"`` -- ``<prefix>_dq_metrics.json`` (see
+          :meth:`get_dq_metrics`). It shares the table export and the row
+          attribution with ``"annotated_table"``.
+
+        ``outputs=[]`` writes only the two summary files. ``summary.json``
+        lists the files each output wrote under ``saved_outputs``. A check
+        with no rows writes no file and is listed with ``"rows": 0``.
+
+        Per-check and residue file names come from the schema and check
+        names, each cleaned on its own and joined with ``__``. Two checks
+        whose names clean to the same file name, compared without case, or
+        two checks with the same name in one schema, raise ``ValueError``
+        before anything is written.
+
+        ``check_info`` shapes the annotated ``check_info`` column. Passing it
+        without ``"annotated_table"`` warns.
 
         ``output_dir`` is a local folder or a URI such as
         ``s3://bucket/dq-results/run-1/``. URIs (``s3://``, ``gs://``,
@@ -1416,65 +1556,89 @@ class ValidationResult:
         for example an S3-compatible store with a custom endpoint. ``output_dir``
         is then a path inside that filesystem.
 
-        ``output_mode`` selects the row output shape. When it is ``None`` the
-        config's ``output_mode`` is used, which defaults to ``"attributed"``:
-
-        - ``"attributed"`` -- **default.** Full in-scope tables with each
-          check's rows marked in place through a per-row ``check_info``
-          column, plus per-check residues for non-mergeable checks, plus
-          ``dq_metrics.json``.
-        - ``"as_is"`` -- the cheap mode. Each check's rows as its row query
-          returned them, grouped per table with a comma-joined ``check_ids``
-          column (see :meth:`get_consolidated_output_dfs`). No
-          ``dq_metrics.json``.
-        - ``"both"`` -- everything ``"attributed"`` writes, residues
-          included, plus the ``"as_is"`` CSVs.
-
-        The old names ``"failed_rows"`` and ``"annotated"`` still work with a
-        ``FutureWarning`` and will be removed in v0.1.0.
+        ``output_mode`` is deprecated. Its v0.0.6 names still work with a
+        ``FutureWarning``, mapped to outputs: ``"failed_rows"`` to
+        ``["consolidated_query_outputs"]``, ``"annotated"`` to
+        ``["annotated_table", "dq_metrics"]`` and ``"both"`` to all three.
+        It will be removed in v0.1.0.
         """
-        mode = output_mode if output_mode is not None else self._config.output_mode
-        mode = _normalize_output_mode(mode, stacklevel=2)
-        if mode not in ("as_is", "attributed", "both"):
-            raise ValueError(f"Unknown output_mode: {mode!r}. Expected one of 'as_is', 'attributed', 'both'.")
+        chosen = set(_resolve_outputs(outputs, output_mode, stacklevel=2, default=self._config.outputs))
+        if check_info is not None and "annotated_table" not in chosen:
+            warnings.warn(
+                "check_info only shapes the annotated_table output, which this save() does not write.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        # Work out every row output before writing, so a file name clash
+        # raises before any file exists.
+        query_scope = "all" if "all_query_outputs" in chosen else "failed" if "failed_query_outputs" in chosen else None
+        per_check = self._per_check_outputs(None, query_scope) if query_scope else []
+        _check_unique_file_stems((cr for cr, _df in per_check), "per-check files")
+        annotated: dict[str, nw.DataFrame] = {}
+        residues: list[tuple[CheckResult, nw.DataFrame]] = []
+        if "annotated_table" in chosen:
+            annotated, residues = self._annotated_output(None, check_info)
+            _check_unique_file_stems((cr for cr, _df in residues), "residue files")
 
         target = OutputDir(output_dir, filesystem)
 
         # Sanitize the caller-supplied prefix so it cannot traverse directories.
         prefix = _safe_filename_component(prefix, fallback="vowl_results")
 
-        check_csv = target.write_csv(
-            f"{prefix}_check_results.csv",
-            self.get_check_results_df(
-                include_check_definition=include_check_definition,
-                include_contract_definition=include_contract_definition,
-            ).to_arrow(),
-        )
-
-        saved_files = [check_csv]
-
-        if mode in ("as_is", "both"):
-            for table_key, df in self._get_consolidated_output_dfs().items():
-                safe_key = _safe_filename_component(table_key.replace(", ", "_").replace(" ", "_"))
-                saved_files.append(target.write_csv(f"{prefix}_{safe_key}.csv", df.to_arrow()))
-
-        if mode in ("attributed", "both"):
-            out = self.get_annotated_output(check_info=check_info)
-            for schema, df in out["annotated"].items():
-                safe_key = _safe_filename_component(schema.replace(", ", "_").replace(" ", "_"))
-                saved_files.append(target.write_csv(f"{prefix}_{safe_key}_annotated.csv", df.to_arrow()))
-            # Residues are written in "both" too, so "both" is everything
-            # "attributed" writes plus the "as_is" CSVs.
-            for residue_key, df in out["residues"].items():
-                safe_key = _safe_filename_component(residue_key.replace("::", "_").replace(", ", "_").replace(" ", "_"))
-                saved_files.append(target.write_csv(f"{prefix}_{safe_key}_residue.csv", df.to_arrow()))
-
-        saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(self.summary, indent=2, default=str)))
-
-        if mode in ("attributed", "both"):
-            saved_files.append(
-                target.write_text(f"{prefix}_dq_metrics.json", json.dumps(self.get_dq_metrics(), indent=2, default=str))
+        saved_files = [
+            target.write_csv(
+                f"{prefix}_check_results.csv",
+                self.get_check_results_df(
+                    include_check_definition=include_check_definition,
+                    include_contract_definition=include_contract_definition,
+                ).to_arrow(),
             )
+        ]
+        saved_outputs: dict[str, list[dict[str, Any]]] = {}
+
+        if query_scope:
+            listed = saved_outputs.setdefault(f"{query_scope}_query_outputs", [])
+            checks_folder = f"{prefix}_checks"
+            checks_dir = target.subdir(checks_folder) if any(len(df) > 0 for _cr, df in per_check) else None
+            for cr, df in per_check:
+                entry: dict[str, Any] = {
+                    "schema": cr.metadata.get("schema_name") or "",
+                    "check": cr.check_name,
+                    "rows": len(df),
+                }
+                if checks_dir is not None and len(df) > 0:
+                    name = f"{_check_file_stem(entry['schema'], cr.check_name)}.csv"
+                    saved_files.append(checks_dir.write_csv(name, df.to_arrow()))
+                    entry["file"] = f"{checks_folder}/{name}"
+                listed.append(entry)
+
+        if "consolidated_query_outputs" in chosen:
+            listed = saved_outputs.setdefault("consolidated_query_outputs", [])
+            for table_key, df in self._get_consolidated_output_dfs().items():
+                name = f"{prefix}_{_safe_filename_component(table_key.replace(', ', '_').replace(' ', '_'))}.csv"
+                saved_files.append(target.write_csv(name, df.to_arrow()))
+                listed.append({"tables": table_key, "rows": len(df), "file": name})
+
+        if "annotated_table" in chosen:
+            listed = saved_outputs.setdefault("annotated_table", [])
+            for schema, df in annotated.items():
+                name = f"{prefix}_{_safe_filename_component(schema)}_annotated.csv"
+                saved_files.append(target.write_csv(name, df.to_arrow()))
+                listed.append({"schema": schema, "rows": len(df), "file": name})
+            for cr, df in residues:
+                schema = cr.metadata.get("schema_name") or ""
+                name = f"{prefix}_{_check_file_stem(schema, cr.check_name)}_residue.csv"
+                saved_files.append(target.write_csv(name, df.to_arrow()))
+                listed.append({"schema": schema, "check": cr.check_name, "rows": len(df), "file": name})
+
+        if "dq_metrics" in chosen:
+            name = f"{prefix}_dq_metrics.json"
+            saved_files.append(target.write_text(name, json.dumps(self.get_dq_metrics(), indent=2, default=str)))
+            saved_outputs["dq_metrics"] = [{"file": name}]
+
+        summary = {**self.summary, "saved_outputs": saved_outputs}
+        saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(summary, indent=2, default=str)))
 
         print("\nResults saved:")
         for fp in saved_files:

@@ -1,6 +1,6 @@
 """Tests for annotated output (full in-scope table with failed rows marked).
 
-Covers ``ValidationResult.get_annotated_output`` and the ``output_mode`` wiring
+Covers ``ValidationResult.get_annotated_output`` and the ``save(outputs=...)`` wiring
 on ``save()`` / ``ValidationConfig`` introduced in the full-table-output plan.
 """
 
@@ -893,11 +893,11 @@ class TestCheckInfoPresets:
 
 
 # ---------------------------------------------------------------------------
-# save() output modes
+# save() outputs
 # ---------------------------------------------------------------------------
 
 
-class TestSaveModes:
+class TestSaveOutputs:
     def _result_with_failures(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
@@ -908,25 +908,27 @@ class TestSaveModes:
         )
         return _make_result([check], {"orders": _FakeAdapter(full)})
 
-    def test_as_is_mode_no_annotated(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="as_is")
+    def test_without_annotated_table_no_annotated(self, tmp_path):
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs"])
         files = {p.name for p in tmp_path.iterdir()}
         assert not any("_annotated.csv" in f for f in files)
         assert "r_check_results.csv" in files
 
-    def test_attributed_mode_writes_annotated(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="attributed")
+    def test_annotated_table_writes_annotated(self, tmp_path):
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=["annotated_table"])
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
+        assert "r_orders.csv" not in files
 
-    def test_both_mode_writes_both(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="both")
+    def test_annotated_and_consolidated_together(self, tmp_path):
+        self._result_with_failures().save(
+            str(tmp_path), prefix="r", outputs=["annotated_table", "consolidated_query_outputs"]
+        )
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
-        assert "r_orders.csv" in files  # as_is CSV
+        assert "r_orders.csv" in files  # grouped CSV
 
-    @pytest.mark.parametrize("mode", ["attributed", "both"])
-    def test_attributed_modes_write_residues(self, tmp_path, mode):
+    def test_annotated_table_writes_residues(self, tmp_path):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         residue = _make_check(
             "join_check",
@@ -935,12 +937,12 @@ class TestSaveModes:
             tables_in_query="orders, customers",
         )
         result = _make_result([residue], {"orders": _FakeAdapter(full)})
-        result.save(str(tmp_path), prefix="r", output_mode=mode)
-        assert (tmp_path / "r_orders_join_check_residue.csv").exists()
+        result.save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+        assert (tmp_path / "r_orders__join_check_residue.csv").exists()
 
-    def test_both_mode_writes_the_residue_of_a_tolerated_check(self, tmp_path, monkeypatch):
+    def test_residue_of_a_tolerated_check_matches_the_grouped_csv(self, tmp_path, monkeypatch):
         # Under fetch_tolerated_rows=True a check that passed within its
-        # tolerance writes its residue, and the as_is CSV holds the same
+        # tolerance writes its residue, and the grouped CSV holds the same
         # rows, read through the same fetch.
         import test_row_quality as rq
 
@@ -959,8 +961,8 @@ class TestSaveModes:
         statuses = {c.check_name: c.status for c in result.check_results}
         assert statuses["threes_subset"] == "PASSED"
 
-        result.save(str(tmp_path), prefix="r", output_mode="both")
-        residue = self._read_csv(tmp_path / "r_t_threes_subset_residue.csv")
+        result.save(str(tmp_path), prefix="r")
+        residue = self._read_csv(tmp_path / "r_t__threes_subset_residue.csv")
         items = json.loads(residue.column("check_info")[0].as_py())
         assert items == [{"check_name": "threes_subset", "tolerated": True}]
         # Both files deduplicate identical rows, so they agree.
@@ -969,76 +971,37 @@ class TestSaveModes:
         assert grouped.column("check_ids").to_pylist() == ["threes_subset"]
         assert grouped.column("tolerated_check_ids").to_pylist() == ["threes_subset"]
 
-    def test_invalid_mode_raises(self, tmp_path):
-        with pytest.raises(ValueError, match="Unknown output_mode"):
-            self._result_with_failures().save(str(tmp_path), output_mode="anotated")
-
-    def test_defaults_to_config_output_mode(self, tmp_path):
+    def test_defaults_to_config_outputs(self, tmp_path):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check("c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}))
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
-            config=ValidationConfig(output_mode="attributed"),
+            config=ValidationConfig(outputs=["annotated_table"]),
         )
-        result.save(str(tmp_path), prefix="r")  # no explicit mode
+        result.save(str(tmp_path), prefix="r")  # no explicit outputs
         files = {p.name for p in tmp_path.iterdir()}
-        assert "r_orders_annotated.csv" in files
+        assert files == {"r_check_results.csv", "r_summary.json", "r_orders_annotated.csv"}
 
-    def test_default_output_mode_is_attributed_and_does_not_warn(self, tmp_path):
+    def test_default_writes_every_output_but_all_query_outputs_and_does_not_warn(self, tmp_path):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            assert ValidationConfig().output_mode == "attributed"
-            self._result_with_failures().save(str(tmp_path), prefix="r")  # no explicit mode
-        assert not [w for w in caught if issubclass(w.category, (DeprecationWarning, FutureWarning))]
+            self._result_with_failures().save(str(tmp_path), prefix="r")
+        assert not caught
         files = {p.name for p in tmp_path.iterdir()}
-        assert "r_orders_annotated.csv" in files
-        assert "r_orders.csv" not in files  # no as_is CSV
+        assert files == {
+            "r_check_results.csv",
+            "r_summary.json",
+            "r_checks",
+            "r_orders.csv",
+            "r_orders_annotated.csv",
+            "r_dq_metrics.json",
+        }
+        assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__c.csv"}
 
-    @pytest.mark.parametrize(("old", "new"), [("failed_rows", "as_is"), ("annotated", "attributed")])
-    def test_old_mode_name_in_config_warns_and_maps(self, old, new):
-        with pytest.warns(FutureWarning, match=rf"output_mode='{old}' is deprecated, use '{new}'.*v0\.1\.0"):
-            config = ValidationConfig(output_mode=old)
-        assert config.output_mode == new
-        assert config.to_dict()["output_mode"] == new
-
-    @pytest.mark.parametrize(
-        ("old", "written"), [("failed_rows", "r_orders.csv"), ("annotated", "r_orders_annotated.csv")]
-    )
-    def test_old_mode_name_in_save_warns_and_maps(self, tmp_path, old, written):
-        with pytest.warns(FutureWarning, match=rf"output_mode='{old}' is deprecated"):
-            self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=old)
-        assert written in {p.name for p in tmp_path.iterdir()}
-
-    def test_invalid_mode_lists_the_new_names(self, tmp_path):
-        with pytest.raises(ValueError, match="Expected one of 'as_is', 'attributed', 'both'"):
-            self._result_with_failures().save(str(tmp_path), output_mode="failed")
-
-    @pytest.mark.parametrize("mode", ["as_is", "both"])
-    def test_as_is_modes_from_config_do_not_warn(self, tmp_path, mode):
-        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
-        check = _make_check("c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}), tables_in_query="orders")
-        result = _make_result(
-            [check],
-            {"orders": _FakeAdapter(full)},
-            config=ValidationConfig(output_mode=mode),
-        )
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            warnings.simplefilter("error", FutureWarning)
-            result.save(str(tmp_path), prefix="r")  # mode comes from the config
-        assert "r_orders.csv" in {p.name for p in tmp_path.iterdir()}
-
-    @pytest.mark.parametrize("mode", ["as_is", "both"])
-    def test_as_is_mode_argument_does_not_warn(self, tmp_path, mode):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            warnings.simplefilter("error", FutureWarning)
-            self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=mode)
-
-    @pytest.mark.parametrize(("mode", "written"), [("as_is", False), ("attributed", True), ("both", True)])
-    def test_dq_metrics_json_follows_the_mode(self, tmp_path, mode, written):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode=mode)
+    @pytest.mark.parametrize(("outputs", "written"), [(["consolidated_query_outputs"], False), (["dq_metrics"], True)])
+    def test_dq_metrics_json_follows_outputs(self, tmp_path, outputs, written):
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=outputs)
         assert (tmp_path / "r_dq_metrics.json").exists() is written
 
     @staticmethod
@@ -1065,7 +1028,7 @@ class TestSaveModes:
             tables_in_query="orders, customers",
         )
         result = _make_result([mergeable, residue], {"orders": _FakeAdapter(full)})
-        result.save(str(tmp_path), prefix="r", output_mode="attributed", check_info="summary")
+        result.save(str(tmp_path), prefix="r", outputs=["annotated_table"], check_info="summary")
 
         annotated_cols = self._read_csv(tmp_path / "r_orders_annotated.csv").column_names
         assert "check_info" in annotated_cols
@@ -1074,9 +1037,9 @@ class TestSaveModes:
         # Residue CSV is per-check (keyed "<schema>::<check>") and carries the
         # same check_info column (a single-element JSON array) plus
         # tables_in_query. The mergeable check is NOT written as a residue.
-        residue_csv = tmp_path / "r_orders_join_check_residue.csv"
+        residue_csv = tmp_path / "r_orders__join_check_residue.csv"
         assert residue_csv.exists()
-        assert not (tmp_path / "r_orders_row_check_residue.csv").exists()
+        assert not (tmp_path / "r_orders__row_check_residue.csv").exists()
         residue_table = self._read_csv(residue_csv)
         residue_cols = residue_table.column_names
         assert "check_info" in residue_cols
@@ -1088,8 +1051,8 @@ class TestSaveModes:
         assert [item["check_name"] for item in parsed] == ["join_check"]
 
     def test_failed_rows_csv_unchanged_legacy_check_ids(self, tmp_path):
-        # failed_rows / both modes: standalone CSVs still emit legacy check_ids.
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="both")
+        # The grouped CSVs still emit legacy check_ids.
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs"])
         orders_cols = self._read_csv(tmp_path / "r_orders.csv").column_names
         assert "check_ids" in orders_cols
         assert "check_info" not in orders_cols

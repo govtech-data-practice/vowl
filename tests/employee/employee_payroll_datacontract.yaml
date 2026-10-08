@@ -112,7 +112,7 @@ schema:
           - '2024-12-24T03:12:23+00:00'
         quality:
           - type: sql
-            name: Date With Timezone
+            name: Start Date With Timezone
             description: >-
               If not in UTC +8 | YYYY-MM-DD[T]hh:mm+hh:mm e.g.
               2015-01-01T12:00+02:00 for UTC +2
@@ -137,7 +137,7 @@ schema:
           - '2025-12-24T03:12:23+00:00'
         quality:
           - type: sql
-            name: Date With Timezone
+            name: End Date With Timezone
             description: >-
               If not in UTC +8 | YYYY-MM-DD[T]hh:mm+hh:mm e.g.
               2015-01-01T12:00+02:00 for UTC +2

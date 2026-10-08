@@ -1,4 +1,4 @@
-"""The grouped failed-rows view (``output_mode="as_is"``).
+"""The failed-rows views: ``get_output_dfs()`` and the grouped CSVs.
 
 A FAILED check whose operator sets no upper limit (``mustBeGreaterThan``,
 ``mustBe: 5``, a table-level ``rowCount``) matched the good rows. Those rows
@@ -102,17 +102,39 @@ def test_consolidated_output_lists_only_bad_rows(result, compute_calls):
 
 
 def test_failed_rows_save_lists_only_bad_rows(result, compute_calls, tmp_path):
-    result.save(str(tmp_path), prefix="fr", output_mode="as_is")
+    result.save(str(tmp_path), prefix="fr", outputs=["consolidated_query_outputs"])
     orders = pd.read_csv(tmp_path / "fr_orders.csv")
     assert orders["order_id"].tolist() == [2]
     assert orders["check_ids"].tolist() == ["negative_amount"]
     assert compute_calls == []
 
 
-def test_get_output_dfs_still_returns_every_row_query(result):
-    # The raw per-check view is unchanged: it returns what each row query matched.
-    out = result.get_output_dfs()
-    assert len(out["orders::enough_positive"]) == 3
+def test_get_output_dfs_leaves_out_checks_without_an_upper_limit(result):
+    assert "orders::enough_positive" not in result.get_output_dfs()
+
+
+def test_get_output_dfs_all_scope_returns_every_row_query(result):
+    # scope="all" returns what each row query matched, with the check's status.
+    out = result.get_output_dfs(scope="all")
+    enough = out["orders::enough_positive"]
+    assert len(enough) == 3
+    assert set(enough["status"].to_list()) == {"FAILED"}
+    assert "tolerated" not in enough.columns
+
+
+def test_get_output_dfs_rejects_an_unknown_scope(result):
+    with pytest.raises(ValueError, match="scope"):
+        result.get_output_dfs(scope="passed")
+
+
+def test_all_scope_ignores_fetch_tolerated_rows():
+    for flag in (False, True):
+        out = _tolerated_result(flag).get_output_dfs(scope="all")
+        assert {k: v["status"].to_list() for k, v in out.items() if len(v)} == {
+            "orders::fails": ["FAILED"],
+            "orders::tolerates": ["PASSED", "PASSED"],
+        }
+        assert all("tolerated" not in v.columns for v in out.values())
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +231,7 @@ def test_flag_off_reports_failed_checks_only_without_fetching_passed_rows(tmp_pa
     assert "tolerated_check_ids" not in consolidated.columns
     assert consolidated["order_id"].to_list() == [2]
 
-    result.save(str(tmp_path), prefix="fr", output_mode="as_is")
+    result.save(str(tmp_path), prefix="fr", outputs=["consolidated_query_outputs"])
     assert "tolerated_check_ids" not in pd.read_csv(tmp_path / "fr_orders.csv").columns
 
     result.show_failed_rows()
@@ -239,7 +261,7 @@ def test_consolidated_output_marks_tolerated_check_ids():
 
 
 def test_failed_rows_save_holds_tolerated_rows_under_the_flag(tmp_path):
-    _tolerated_result(True).save(str(tmp_path), prefix="fr", output_mode="as_is")
+    _tolerated_result(True).save(str(tmp_path), prefix="fr", outputs=["consolidated_query_outputs"])
     orders = pd.read_csv(tmp_path / "fr_orders.csv").fillna("")
     assert sorted(orders["order_id"].tolist()) == [1, 2]
     assert set(orders["tolerated_check_ids"]) == {"tolerates"}
@@ -257,6 +279,6 @@ def test_every_output_reads_one_fetch_of_a_tolerated_check(tmp_path):
     result = _tolerated_result(True)
     calls = _count_passed_fetches(result)
     result.get_output_dfs()
-    result.save(str(tmp_path), prefix="b", output_mode="both")
+    result.save(str(tmp_path), prefix="b")
     result.get_dq_metrics()
     assert calls.count("tolerates") == 1

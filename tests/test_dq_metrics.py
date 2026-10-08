@@ -164,7 +164,7 @@ def test_save_writes_the_dq_metrics_document(result, tmp_path):
 
 
 def test_failed_rows_save_writes_no_dq_metrics(result, tmp_path):
-    result.save(str(tmp_path), prefix="dq", output_mode="as_is")
+    result.save(str(tmp_path), prefix="dq", outputs=["consolidated_query_outputs"])
     assert not (tmp_path / "dq_dq_metrics.json").exists()
 
 

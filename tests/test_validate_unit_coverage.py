@@ -856,7 +856,7 @@ def test_validation_result_consolidation_adds_suffix_for_same_table_different_co
     )
 
     consolidated = result._get_consolidated_output_dfs()
-    assert list(consolidated) == ["users__1", "users__2"]
+    assert list(consolidated) == ["users"]
 
 
 def test_validation_result_get_check_results_df():
@@ -987,7 +987,7 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
 def test_validation_result_save_and_save_dataframe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     result = _sample_validation_result()
 
-    result.save(output_dir=str(tmp_path), prefix="artifact", output_mode="as_is")
+    result.save(output_dir=str(tmp_path), prefix="artifact", outputs=["consolidated_query_outputs"])
 
     assert (tmp_path / "artifact_check_results.csv").exists()
     assert (tmp_path / "artifact_users.csv").exists()

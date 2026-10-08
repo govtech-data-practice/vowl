@@ -70,6 +70,18 @@ class OutputDir:
         if not _is_object_store(self._fs):
             self._fs.create_dir(self._base, recursive=True)
 
+    def subdir(self, name: str) -> OutputDir:
+        """The folder *name* inside this one, on the same filesystem, created if needed."""
+        if self._fs is None:
+            return OutputDir(str(self._local / name))
+        sub = OutputDir.__new__(OutputDir)
+        sub._location = f"{self._location.rstrip('/')}/{name}"
+        sub._fs = self._fs
+        sub._base = self._remote_path(name)
+        if not _is_object_store(self._fs):
+            self._fs.create_dir(sub._base, recursive=True)
+        return sub
+
     def display(self, name: str) -> str:
         """The path shown to the user for the file *name*."""
         if self._fs is None:
