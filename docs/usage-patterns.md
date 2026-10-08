@@ -456,5 +456,5 @@ result = validate_data("s3://my-bucket/contracts/my_contract.yaml", df=df)
     `AWS_ENDPOINT_URL` to its address.
 
 To save results, including to
-[cloud storage](results.md#saving-to-cloud-storage), see
+[cloud storage](results.md#saving-results), see
 [The Results Object](results.md).

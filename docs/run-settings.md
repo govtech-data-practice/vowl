@@ -25,13 +25,15 @@ These change what each check returns.
 | <a id="use_try_cast"></a>`use_try_cast`       | `True`        | Turns `CAST` into `TRY_CAST` in check queries. A value that cannot be converted then becomes a failed row instead of making the check end in `ERROR`.                                                                                                                              |
 | <a id="max_failed_rows"></a>`max_failed_rows` | `-1` (no cap) | The most failed rows vowl downloads for each check. Use it on very large tables. A capped check can make the row counts approximate, and its rows past the cap look clean in the annotated output. See [Capping Failed Rows](design-considerations/checks/capping-failed-rows.md). |
 
-## Row counts
+## Row attribution
 
-These change the row counts: `failed_rows`, `passed_rows` and `pass_rate` per
-table, dimension and check. They apply to the DQ metrics: `get_dq_metrics`,
-`get_dq_metrics_df`, `export_otel` and the annotated modes of `save()`. vowl attributes each
-failed row to its table row, so a row that fails two checks counts once. See
-[Counting Mechanisms](design-considerations/checks/counting-mechanisms.md).
+These change how vowl attributes failed rows to the rows of each table. They
+apply only to the [DQ metrics tier](results.md#two-tiers-of-results):
+`get_dq_metrics`, `get_dq_metrics_df`, `export_otel` and the annotated modes of
+`save()`. They change the row counts there, `failed_rows`, `passed_rows` and
+`pass_rate` per table, dimension and check. They do not change each check's
+scalar `failed_rows_count`, its status, or anything in the basic tier. See
+[How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md).
 
 | Setting                                                         | Default | What it does                                                                                                                                                                                                               |
 | --------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

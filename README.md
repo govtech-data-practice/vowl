@@ -671,7 +671,7 @@ result.save()  # uses the configured outputs and check_info
 result.save("s3://my-bucket/dq-results/run-1/")
 ```
 
-It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-to-cloud-storage).
+It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-results).
 
 ## Architecture
 
