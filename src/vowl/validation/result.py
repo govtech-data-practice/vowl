@@ -112,18 +112,61 @@ def _check_label(cr: CheckResult) -> str:
     return f"{schema}.{column}" if schema and column else schema or column
 
 
+# Comparison operators spelled out in file names, longest first, so that
+# "amount > 0" and "amount < 0" do not both clean to "amount_0".
+_OPERATOR_WORDS = (
+    (">=", "_gte_"),
+    ("<=", "_lte_"),
+    ("!=", "_ne_"),
+    ("<>", "_ne_"),
+    ("==", "_eq_"),
+    (">", "_gt_"),
+    ("<", "_lt_"),
+    ("=", "_eq_"),
+)
+
+
+def _file_name_part(value: str) -> str:
+    """Clean one part of a check's file name, spelling out comparison operators."""
+    for operator, word in _OPERATOR_WORDS:
+        value = value.replace(operator, word)
+    return _safe_filename_component(value)
+
+
 def _check_file_stem(cr: CheckResult) -> str:
-    """The file name stem of one check's file.
+    """The file name stem of one check's file, before clashes are numbered.
 
     ``<schema>__<column>__<check>`` for a column-level check and
     ``<schema>__<check>`` for a schema-level one. Each part is cleaned on its
     own. A cleaned part never holds ``__``, so the join can't be read two
-    ways, and the name can be worked out from the contract alone.
+    ways.
     """
-    parts = (cr.metadata.get("schema_name") or "", _check_column(cr))
-    return "__".join(
-        [_safe_filename_component(part) for part in parts if part] + [_safe_filename_component(cr.check_name)]
-    )
+    parts = (cr.metadata.get("schema_name") or "", _check_column(cr), cr.check_name)
+    return "__".join(_file_name_part(part) for part in parts if part)
+
+
+def _check_file_stems(checks: Sequence[CheckResult]) -> dict[int, str]:
+    """The file name stem of each check, keyed by ``id()``.
+
+    Stems are compared with ``casefold()``, because names that differ only in
+    case are one file on a case-insensitive file system. A stem already taken
+    gets ``_2``, ``_3`` and so on, in run order, skipping any stem another
+    check has. Every check gets a stem, whatever its status, so the name
+    depends on the contract alone.
+    """
+    base = [_check_file_stem(cr) for cr in checks]
+    reserved = {stem.casefold() for stem in base}
+    used: set[str] = set()
+    stems: dict[int, str] = {}
+    for cr, stem in zip(checks, base, strict=True):
+        if stem.casefold() in used:
+            n = 2
+            while f"{stem}_{n}".casefold() in used | reserved:
+                n += 1
+            stem = f"{stem}_{n}"
+        used.add(stem.casefold())
+        stems[id(cr)] = stem
+    return stems
 
 
 def _check_entry(cr: CheckResult) -> dict[str, Any]:
@@ -134,33 +177,6 @@ def _check_entry(cr: CheckResult) -> dict[str, Any]:
         entry["column"] = column
     entry["check"] = cr.check_name
     return entry
-
-
-def _check_unique_file_stems(checks: Iterable[CheckResult], what: str) -> None:
-    """Raise ``ValueError`` when two checks would write the same file.
-
-    Names are compared with ``casefold()`` so that names differing only in
-    case, which clash on case-insensitive file systems, are caught too.
-    """
-    seen: dict[str, CheckResult] = {}
-    for cr in checks:
-        stem = _check_file_stem(cr)
-        other = seen.setdefault(stem.casefold(), cr)
-        if other is cr:
-            continue
-        label, other_label = _check_label(cr), _check_label(other)
-        if label == other_label:
-            on = f" on {label!r}" if label else ""
-            if other.check_name == cr.check_name:
-                problem = f"Two checks{on} are both named {cr.check_name!r}"
-            else:
-                problem = f"Checks {other.check_name!r} and {cr.check_name!r}{on} both clean to the file name {stem!r}"
-        else:
-            problem = (
-                f"Checks {other.check_name!r} on {other_label!r} and {cr.check_name!r} on {label!r} "
-                f"both clean to the file name {stem!r}"
-            )
-        raise ValueError(f"{problem}, so their {what} would overwrite each other. Rename one of them.")
 
 
 #: Accepted values of ``get_dq_metrics_df(by=...)``.
@@ -1553,7 +1569,8 @@ class ValidationResult:
 
         The two summary files are always written. ``outputs`` picks the rest.
         When it is ``None`` the config's ``outputs`` is used, which defaults
-        to every output except ``"all_query_outputs"``:
+        to every output except ``"failed_query_outputs"``, whose files
+        ``"all_query_outputs"`` already writes:
 
         - ``"failed_query_outputs"`` -- one CSV per FAILED check,
           ``<prefix>_checks/<schema>__<column>__<check>.csv``, with ``check_id``,
@@ -1604,7 +1621,7 @@ class ValidationResult:
         ``FutureWarning``, mapped to outputs: ``"failed_rows"`` to
         ``["consolidated_query_outputs"]``, ``"annotated"`` to
         ``["annotated_table", "dq_metrics"]`` and ``"both"`` to all three.
-        It will be removed in v0.1.0.
+        It will be removed in a future release.
         """
         chosen = set(_resolve_outputs(outputs, output_mode, stacklevel=2, default=self._config.outputs))
         if check_info is not None and "annotated_table" not in chosen:
@@ -1614,16 +1631,13 @@ class ValidationResult:
                 stacklevel=2,
             )
 
-        # Work out every row output before writing, so a file name clash
-        # raises before any file exists.
         query_scope = "all" if "all_query_outputs" in chosen else "failed" if "failed_query_outputs" in chosen else None
         per_check = self._per_check_outputs(None, query_scope) if query_scope else []
-        _check_unique_file_stems((cr for cr, _df in per_check), "per-check files")
         annotated: dict[str, nw.DataFrame] = {}
         residues: list[tuple[CheckResult, nw.DataFrame]] = []
         if "annotated_table" in chosen:
             annotated, residues = self._annotated_output(None, check_info)
-            _check_unique_file_stems((cr for cr, _df in residues), "residue files")
+        file_stems = _check_file_stems(self.check_results)
 
         target = OutputDir(output_dir, filesystem)
 
@@ -1648,7 +1662,7 @@ class ValidationResult:
             for cr, df in per_check:
                 entry = {**_check_entry(cr), "rows": len(df)}
                 if checks_dir is not None and len(df) > 0:
-                    name = f"{_check_file_stem(cr)}.csv"
+                    name = f"{file_stems[id(cr)]}.csv"
                     saved_files.append(checks_dir.write_csv(name, df.to_arrow()))
                     entry["file"] = f"{checks_folder}/{name}"
                 listed.append(entry)
@@ -1667,7 +1681,7 @@ class ValidationResult:
                 saved_files.append(target.write_csv(name, df.to_arrow()))
                 listed.append({"schema": schema, "rows": len(df), "file": name})
             for cr, df in residues:
-                name = f"{prefix}_{_check_file_stem(cr)}_residue.csv"
+                name = f"{prefix}_{file_stems[id(cr)]}_residue.csv"
                 saved_files.append(target.write_csv(name, df.to_arrow()))
                 listed.append({**_check_entry(cr), "rows": len(df), "file": name})
 

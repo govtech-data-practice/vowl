@@ -41,10 +41,11 @@ SAVE_OUTPUTS: tuple[str, ...] = (
     "dq_metrics",
 )
 
-#: What ``save()`` writes when no outputs are given: everything except
-#: ``"all_query_outputs"``.
+#: What ``save()`` writes when no outputs are given: everything, with
+#: ``"all_query_outputs"`` in place of ``"failed_query_outputs"`` as the two
+#: write the same folder.
 DEFAULT_SAVE_OUTPUTS: tuple[str, ...] = (
-    "failed_query_outputs",
+    "all_query_outputs",
     "consolidated_query_outputs",
     "annotated_table",
     "dq_metrics",
@@ -82,7 +83,7 @@ def _resolve_outputs(
         mapped = _DEPRECATED_OUTPUT_MODES[output_mode]
         warnings.warn(
             f"output_mode={output_mode!r} is deprecated, use outputs={list(mapped)!r}. "
-            "output_mode will be removed in v0.1.0.",
+            "output_mode will be removed in a future release.",
             FutureWarning,
             stacklevel=stacklevel + 1,
         )
@@ -141,14 +142,15 @@ class ValidationConfig:
         outputs: The outputs ``ValidationResult.save()`` writes, as a list
             of :data:`SaveOutput` names. ``None`` (default) means
             :data:`DEFAULT_SAVE_OUTPUTS`, every output except
-            ``"all_query_outputs"``. ``save(outputs=...)`` overrides this per
+            ``"failed_query_outputs"``, whose files ``"all_query_outputs"``
+            already writes. ``save(outputs=...)`` overrides this per
             call. ``check_results.csv`` and ``summary.json`` are always
             written.
         output_mode: **Deprecated**, use ``outputs``. The v0.0.6 names map
             to outputs with a ``FutureWarning``: ``"failed_rows"`` to
             ``["consolidated_query_outputs"]``, ``"annotated"`` to
             ``["annotated_table", "dq_metrics"]`` and ``"both"`` to all
-            three. It will be removed in v0.1.0.
+            three. It will be removed in a future release.
         annotated_check_info: Preset controlling the annotated table's
             ``check_info`` column.  One of ``"names"`` (default),
             ``"summary"``, or ``"full"``.  See :data:`CheckInfoPreset`.

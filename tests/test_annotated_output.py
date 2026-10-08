@@ -983,7 +983,7 @@ class TestSaveOutputs:
         files = {p.name for p in tmp_path.iterdir()}
         assert files == {"r_check_results.csv", "r_summary.json", "r_orders_annotated.csv"}
 
-    def test_default_writes_every_output_but_all_query_outputs_and_does_not_warn(self, tmp_path):
+    def test_default_writes_every_output_but_failed_query_outputs_and_does_not_warn(self, tmp_path):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             self._result_with_failures().save(str(tmp_path), prefix="r")

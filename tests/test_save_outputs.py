@@ -38,8 +38,8 @@ def _saved_outputs(root, prefix="r"):
 # --------------------------------------------------------------------------- #
 
 
-def test_default_is_every_output_but_all_query_outputs():
-    assert set(SAVE_OUTPUTS) - set(DEFAULT_SAVE_OUTPUTS) == {"all_query_outputs"}
+def test_default_is_every_output_but_failed_query_outputs():
+    assert set(SAVE_OUTPUTS) - set(DEFAULT_SAVE_OUTPUTS) == {"failed_query_outputs"}
     assert ValidationConfig().outputs == list(DEFAULT_SAVE_OUTPUTS)
 
 
@@ -146,7 +146,7 @@ def test_check_info_and_definitions_with_annotated_table_do_not_warn(tmp_path):
     ],
 )
 def test_output_mode_maps_to_outputs_with_a_warning(tmp_path, mode, outputs):
-    with pytest.warns(FutureWarning, match=rf"output_mode='{mode}' is deprecated, use outputs=.*v0\.1\.0"):
+    with pytest.warns(FutureWarning, match=rf"output_mode='{mode}' is deprecated, use outputs=.*a future release"):
         _result(_check("c")).save(str(tmp_path), prefix="r", output_mode=mode)
     assert list(_saved_outputs(tmp_path)) == outputs
     with pytest.warns(FutureWarning, match=rf"output_mode='{mode}' is deprecated"):
@@ -219,26 +219,61 @@ def test_double_underscore_join_keeps_schema_and_check_apart(tmp_path):
 
 def test_check_names_are_cleaned_on_their_own(tmp_path):
     _result(_check("amount > 0")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
-    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__amount_0.csv"}
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__amount_gt_0.csv"}
 
 
-@pytest.mark.parametrize(("first", "second"), [("amount > 0", "amount_0"), ("Amount", "amount")])
-def test_names_that_clean_to_the_same_file_raise_before_writing(tmp_path, first, second):
-    result = _result(_check(first), _check(second))
-    with pytest.raises(ValueError, match=rf"'{first}' and '{second}'.*Rename one"):
-        result.save(str(tmp_path), prefix="r")
-    assert not list(tmp_path.iterdir())
+@pytest.mark.parametrize(
+    ("name", "stem"),
+    [("a >= 0", "a_gte_0"), ("a<=0", "a_lte_0"), ("a != 0", "a_ne_0"), ("a <> 0", "a_ne_0"), ("a = 0", "a_eq_0")],
+)
+def test_comparison_operators_are_spelled_out(tmp_path, name, stem):
+    _result(_check(name)).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {f"orders__{stem}.csv"}
 
 
-def test_clashing_names_are_fine_when_no_per_check_output_is_written(tmp_path):
-    _result(_check("amount > 0"), _check("amount_0")).save(str(tmp_path), outputs=["consolidated_query_outputs"])
+def test_operator_words_keep_lossy_names_apart(tmp_path):
+    _result(_check("amount > 0"), _check("amount_0")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__amount_gt_0.csv", "orders__amount_0.csv"}
 
 
-def test_duplicate_check_names_raise_in_save_and_warn_in_get_output_dfs(tmp_path):
+@pytest.mark.parametrize(
+    ("first", "second", "files"),
+    [
+        ("Amount", "amount", ["orders__Amount.csv", "orders__amount_2.csv"]),
+        ("amount gt 0", "amount > 0", ["orders__amount_gt_0.csv", "orders__amount_gt_0_2.csv"]),
+    ],
+)
+def test_names_that_clean_to_the_same_file_are_numbered_in_order(tmp_path, first, second, files):
+    _result(_check(first), _check(second)).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    entries = _saved_outputs(tmp_path)["failed_query_outputs"]
+    assert [(e["check"], e["file"]) for e in entries] == [
+        (first, f"r_checks/{files[0]}"),
+        (second, f"r_checks/{files[1]}"),
+    ]
+
+
+def test_numbering_skips_a_name_another_check_has(tmp_path):
+    checks = [_check("x"), _check("X"), _check("x_2")]
+    _result(*checks).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert [e["file"] for e in _saved_outputs(tmp_path)["failed_query_outputs"]] == [
+        "r_checks/orders__x.csv",
+        "r_checks/orders__X_3.csv",
+        "r_checks/orders__x_2.csv",
+    ]
+
+
+def test_numbering_counts_checks_with_no_file(tmp_path):
+    # The passed check writes nothing, but still holds the first name, so the
+    # file name of a check does not change with the status of another.
+    passed = _check("Amount", status="PASSED")
+    _result(passed, _check("amount")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__amount_2.csv"}
+
+
+def test_duplicate_check_names_are_numbered_in_save_and_warn_in_get_output_dfs(tmp_path):
     result = _result(_check("c"), _check("c", failed_rows=pa.table({"id": [3], "name": ["c"]})))
-    with pytest.raises(ValueError, match="both named 'c'.*Rename one"):
-        result.save(str(tmp_path), prefix="r")
-    assert not list(tmp_path.iterdir())
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__c.csv", "orders__c_2.csv"}
     with pytest.warns(UserWarning, match=r"orders::c.*Rename one"):
         out = result.get_output_dfs()
     assert out["orders::c"]["id"].to_list() == [3]  # the later check wins
@@ -274,10 +309,8 @@ def test_same_check_name_on_two_columns_gives_two_files_and_keys(tmp_path):
     }
 
 
-def test_same_check_name_on_one_column_raises(tmp_path):
+def test_same_check_name_on_one_column_warns_in_get_output_dfs(tmp_path):
     result = _result(_check("c", target="orders.amount"), _check("c", target="orders.amount"))
-    with pytest.raises(ValueError, match="on 'orders.amount' are both named 'c'.*Rename one"):
-        result.save(str(tmp_path), prefix="r")
     with pytest.warns(UserWarning, match=r"orders\.amount::c.*Rename one"):
         result.get_output_dfs()
 
@@ -324,11 +357,11 @@ def test_column_level_residue_files_name_their_column(tmp_path):
     assert (tmp_path / "r_orders__ref_id__join_check_residue.csv").exists()
 
 
-def test_residue_names_that_clash_raise(tmp_path):
+def test_residue_names_that_clash_are_numbered(tmp_path):
     result = _result(_residue_check("join check"), _residue_check("Join_Check"))
-    with pytest.raises(ValueError, match="residue files"):
-        result.save(str(tmp_path), prefix="r", outputs=["annotated_table"])
-    assert not list(tmp_path.iterdir())
+    result.save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+    assert (tmp_path / "r_orders__join_check_residue.csv").exists()
+    assert (tmp_path / "r_orders__Join_Check_2_residue.csv").exists()
 
 
 def test_mixed_column_sets_give_one_grouped_file_with_nulls(tmp_path):
