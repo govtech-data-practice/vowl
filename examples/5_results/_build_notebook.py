@@ -241,11 +241,11 @@ md(
 <a id="residual-rows"></a>
 ## 3. Residual (Non-Mergeable) Rows
 
-The HDB examples above are single-table, so `residues` is empty. Residues appear when a check can't be attached to one table: **aggregation** checks, **column-subset** checks, and **cross-table** checks whose failed rows carry columns from more than the anchor table.
+The HDB examples above are single-table, so `residues` is empty. A check becomes a residue when its failed rows can't be matched to rows of one table: they lack the table's declared primary key or, when the table declares none, they don't have exactly the table's columns. Typical cases are **column-subset** checks (for example a check that returns only distinct values) and, on a table without a primary key, **cross-table** checks whose failed rows carry columns from both tables.
 
 Residues are **per-check**: `get_annotated_output()` returns one entry for each non-mergeable check, keyed `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a check on the whole schema). They are never grouped together, so a row that fails two such checks appears once under each check's entry. Each entry carries the failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array, shaped by the `check_info` preset) and `tables_in_query`, so everything `get_annotated_output()` returns is read the same way.
 
-> **A cross-table check can *merge* instead of becoming a residue.** If you shape its row query to project only the anchor table's columns (e.g. `SELECT payroll.*` inside a subquery), the orphan rows match that schema and land directly in its `check_info` column, with no residue. The Employee contract below carries both shapes: `orphan_payroll_rows_merge_onto_payroll` (subquery-projected, merges onto `demo_employee_payroll`) and `employee_id_exists_in_master_list` / `phone_number_exists_in_master_list` (bare JOINs, stay residues). See [Known Issues: Annotated Output](../../docs/known-issues.md#annotated-output-not-all-checks-can-be-merged) for the rules.
+> **Cross-table checks usually merge.** The Employee contract below declares `employee_id` and `payroll_id` as the payroll table's primary key, so any check whose failed rows carry those columns lands in the payroll table's `check_info` column. That covers the bare-JOIN checks `employee_id_exists_in_master_list` and `phone_number_exists_in_master_list` as well as the subquery-shaped `orphan_payroll_rows_merge_onto_payroll`. To show a real residue, we add one check that returns only the distinct phone numbers missing from the master list. Its rows hold no primary key, so vowl can't tell which payroll rows they came from. See [Known Issues: Annotated Output](../../docs/known-issues.md#annotated-output-not-all-checks-can-be-merged) for the rules.
 
 Below is a quick multi-source run on the Employee dataset, whose contract has cross-table checks. (Multi-source validation is covered in the [Multiple Sources notebook](../2_multiple_sources/multiple_sources.ipynb); we borrow it here just to produce residues.)
 """
@@ -261,7 +261,28 @@ con = ibis.duckdb.connect()
 con.create_table("demo_employee_payroll", pd.read_csv(EMPLOYEE_PAYROLL_CSV))
 con.create_table("demo_employee_list", pd.read_csv(EMPLOYEE_LIST_CSV))
 
-mt_result = validate_data(contract=str(EMPLOYEE_CONTRACT), adapter=IbisAdapter(con))
+import yaml
+from vowl.contracts import Contract
+
+# Add one check whose failed rows are distinct phone numbers, without the payroll primary key
+contract_data = yaml.safe_load(EMPLOYEE_CONTRACT.read_text())
+payroll_schema = next(s for s in contract_data["schema"] if s["name"] == "demo_employee_payroll")
+payroll_schema["quality"].append({
+    "name": "phone_numbers_missing_from_master_list",
+    "type": "sql",
+    "dimension": "consistency",
+    "query": (
+        "SELECT COUNT(*) FROM ("
+        " SELECT DISTINCT payroll.phone_number"
+        " FROM demo_employee_payroll payroll"
+        " LEFT JOIN demo_employee_list ref ON payroll.phone_number = ref.phone_number"
+        " WHERE payroll.phone_number IS NOT NULL AND ref.phone_number IS NULL"
+        ") AS missing_numbers"
+    ),
+    "mustBe": 0,
+})
+
+mt_result = validate_data(contract=Contract(contract_data), adapter=IbisAdapter(con))
 mt_output = mt_result.get_annotated_output()
 """
 )
@@ -275,18 +296,17 @@ print("Residue keys:     ", list(mt_output["residues"].keys()))
 for key, residue in mt_output["residues"].items():
     residue_df = residue.to_pandas()
     print(f"\\nResidue '{key}': {len(residue_df)} failed row(s)")
-    display(residue_df[["employee_id", "payroll_id", "month",
-                        "check_info", "tables_in_query"]])
+    display(residue_df)
 """
 )
 
 md(
     """
-### The Other Side: a Cross-Table Check That *Merges*
+### The Other Side: Cross-Table Checks That *Merge*
 
-Whether a cross-table check merges is decided entirely by **the columns its failed rows come back with**: they have to match the anchor table's columns exactly. The two checks above join `payroll` against a reference table with a bare `SELECT *`, so their failed rows carry columns from *both* tables and can't land on any single table, so they become a residue.
+Whether a check merges is decided by **the columns its failed rows come back with**. When the table declares a unique primary key, the rows only need to hold the key columns. When it declares none, they need exactly the table's columns.
 
-The *same* referential question **merges** when you wrap it so the inner query projects only the payroll columns (`SELECT payroll.* ...`). The contract's `orphan_payroll_rows_merge_onto_payroll` check does exactly that, so its failed rows come back with exactly the payroll columns and are annotated **directly onto the payroll table's `check_info` column** (notice it's absent from the residue keys above).
+The payroll table declares a primary key, so all three referential checks merge, whatever their shape: the bare JOINs return the columns of both tables, payroll's key among them, and `orphan_payroll_rows_merge_onto_payroll` wraps the join so the inner query projects only the payroll columns (`SELECT payroll.* ...`). On a table without a primary key only that subquery shape would merge, and the bare JOINs would become residues. Writing cross-table checks the subquery way keeps them mergeable either way.
 
 > For the full mechanics (how vowl derives the scalar and row queries, and why the `COUNT(*)` -> `SELECT *` rewrite only touches the outer projection), see [Known Issues: Cross-table checks, mergeable when the failed rows match the home schema](../../docs/known-issues.md#1-cross-table-checks-mergeable-when-the-failed-rows-match-the-home-schema).
 """
@@ -294,19 +314,18 @@ The *same* referential question **merges** when you wrap it so the inner query p
 
 code(
     """
-# The subquery-projected cross-table check lands on the payroll annotated table,
-# not in residues. Find the payroll rows it flagged.
+# The referential checks land on the payroll annotated table, not in residues.
 payroll_annotated = mt_output["annotated"]["demo_employee_payroll"].to_pandas()
 
-MERGED_CHECK = "orphan_payroll_rows_merge_onto_payroll"
-flagged = payroll_annotated[
-    payroll_annotated["check_info"].fillna("").str.contains(MERGED_CHECK)
-]
+for check in ["employee_id_exists_in_master_list",
+              "phone_number_exists_in_master_list",
+              "orphan_payroll_rows_merge_onto_payroll"]:
+    rows = payroll_annotated[payroll_annotated["check_info"].fillna("").str.contains(check)]
+    print(f"{check}: {len(rows)} payroll row(s) annotated, "
+          f"in residues? {any(check in k for k in mt_output['residues'])}")
 
-print(f"'{MERGED_CHECK}' in residues? "
-      f"{any(MERGED_CHECK in k for k in mt_output['residues'])}")
-print(f"Payroll rows it annotated: {len(flagged)}\\n")
-display(flagged[["employee_id", "month", "check_info"]])
+annotated_rows = payroll_annotated[payroll_annotated["check_info"].fillna("").str.contains("master_list|orphan")]
+display(annotated_rows[["employee_id", "month", "check_info"]])
 """
 )
 
@@ -356,8 +375,8 @@ code(
     """
 import os
 
-# Save the multi-source run. The annotated output writes residue CSVs for the
-# cross-table checks that can't be merged onto a single table.
+# Save the multi-source run. The annotated output writes a residue CSV for the
+# check that can't be merged onto a single table.
 mt_result.save(output_dir="outputs", prefix="vowl_demo_residues", outputs=["annotated_table", "dq_metrics"])
 
 print("\\nFiles written:")

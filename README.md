@@ -520,7 +520,7 @@ See [Counting Mechanisms](docs/design-considerations/checks/counting-mechanisms.
 It returns a nested dict with two reserved keys:
 
 - **`"annotated"`**: a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`**: failed rows for checks that _cannot_ be merged onto a single table (column-subset checks and cross-table checks whose failed rows carry columns from more than the anchor table). Checks that return one number, such as an average, a sum, a minimum or a maximum, produce none. Most single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"`, or `"<schema>::<check_name>"` for a schema-level check) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query`, so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its row query to project only that schema's columns: see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
+- **`"residues"`**: failed rows for checks that _cannot_ be merged onto a single table (checks whose failed rows lack the table's primary key or, when it declares none, don't have exactly its columns, such as column-subset checks). Checks that return one number, such as an average, a sum, a minimum or a maximum, produce none. Most single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"`, or `"<schema>::<check_name>"` for a schema-level check) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query`, so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its row query to project only that schema's columns: see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -583,12 +583,27 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-Column-subset checks and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. Checks that return one number, such as an average, a sum, a minimum or a maximum, have no failed rows and appear only in the summary. (A cross-table check whose row query projects only its home schema's columns _is_ merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a schema-level check), each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
+A check whose failed rows can't be matched to rows of one table becomes a residue: its rows lack the table's declared primary key or, when the table declares none, don't have exactly the table's columns. Column-subset checks, such as one that returns only distinct values, are the usual case. A cross-table check merges when its failed rows carry the table's primary key, or when its row query projects only its home schema's columns. See [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check). Checks that return one number, such as an average, a sum, a minimum or a maximum, have no failed rows and appear only in the summary. Residues are **per-check**, one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a schema-level check). Each carries its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
 <details>
-<summary><strong>Output</strong> — residues from a cross-table (multi-source) contract (click to expand)</summary>
+<summary><strong>Output</strong> — a residue from a cross-table (multi-source) contract (click to expand)</summary>
+
+The payroll table declares a primary key, so its bare-JOIN referential checks merge onto it. This check returns only the distinct phone numbers missing from the master list, which hold no key:
+
+```yaml
+- name: phone_numbers_missing_from_master_list
+  type: sql
+  query: >-
+    SELECT COUNT(*) FROM (
+      SELECT DISTINCT payroll.phone_number
+      FROM demo_employee_payroll payroll
+      LEFT JOIN demo_employee_list ref ON payroll.phone_number = ref.phone_number
+      WHERE payroll.phone_number IS NOT NULL AND ref.phone_number IS NULL
+    ) AS missing_numbers
+  mustBe: 0
+```
 
 ```python
 output = result.get_annotated_output()
@@ -597,25 +612,19 @@ print("Residue keys:", list(output["residues"].keys()))
 for key, residue in output["residues"].items():
     df = residue.to_pandas()
     print(f"\nResidue '{key}': {len(df)} failed row(s)")
-    print(df[["employee_id", "payroll_id", "month", "check_info", "tables_in_query"]])
+    print(df)
 ```
 
-Residue keys: `['demo_employee_payroll::employee_id_exists_in_master_list', 'demo_employee_payroll::phone_number_exists_in_master_list']`
+Residue keys: `['demo_employee_payroll::phone_numbers_missing_from_master_list']`
 
-Each non-mergeable check gets its own entry — they are never grouped together, so a row that failed two cross-table checks appears once under each check's residue:
+Each non-mergeable check gets its own entry. They are never grouped together, so a row that failed two such checks appears once under each check's residue:
 
-Residue `'demo_employee_payroll::employee_id_exists_in_master_list'`: 1 failed row(s)
+Residue `'demo_employee_payroll::phone_numbers_missing_from_master_list'`: 2 failed row(s)
 
-|     | employee_id | payroll_id                           | month   | check_info                                              | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | ------------------------------------------------------- | ----------------------------------------- |
-| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "employee_id_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
-
-Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed row(s)
-
-|     | employee_id | payroll_id                           | month   | check_info                                               | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | -------------------------------------------------------- | ----------------------------------------- |
-| 0   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
-| 1   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
+|     | phone_number | check_info                                                   | tables_in_query                           |
+| --- | ------------ | ------------------------------------------------------------ | ----------------------------------------- |
+| 0   | 6581234567   | `[{"check_name": "phone_numbers_missing_from_master_list"}]` | demo_employee_list, demo_employee_payroll |
+| 1   | 6594327654   | `[{"check_name": "phone_numbers_missing_from_master_list"}]` | demo_employee_list, demo_employee_payroll |
 
 </details>
 

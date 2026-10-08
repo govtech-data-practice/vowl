@@ -172,24 +172,28 @@ Two more things to know:
 ## Annotating the failed rows of a cross-table check
 
 A cross-table check annotates rows on the [annotated table](../checks/annotating-the-source-table.md)
-like any other check, as long as its failed rows hold only the columns of the
-schema the check belongs to. vowl goes by the columns, not by what the query
-means.
+like any other check, as long as its failed rows hold the
+[match key](../checks/how-attributed-rows-work.md#the-match-key) of the
+schema the check belongs to. When that table declares a unique primary key,
+the rows only need the key columns. When it declares none, they need exactly
+the table's columns. vowl goes by the columns, not by what the query means.
 
 The [row query](../checks/check-results.md#two-queries-from-one)
 swaps the outer `SELECT COUNT(*)` for `SELECT *`, so the outer `FROM` decides
 which columns the failed rows have. For "every payroll row has an employee in
 the master list":
 
-| How the query is written                               | Columns of the failed rows               | Annotated on payroll?       |
-| ------------------------------------------------------ | ---------------------------------------- | --------------------------- |
-| Plain `SELECT COUNT(*) FROM payroll LEFT JOIN ref ...` | Both tables' columns (`ref.*` all empty) | No, the columns don't match |
-| A subquery with `SELECT payroll.*`                     | Payroll columns only                     | Yes                         |
-| `WHERE NOT EXISTS (SELECT 1 FROM ref ...)`             | Payroll columns only                     | Yes                         |
+| How the query is written                               | Columns of the failed rows               | Annotated on payroll?                         |
+| ------------------------------------------------------ | ---------------------------------------- | --------------------------------------------- |
+| Plain `SELECT COUNT(*) FROM payroll LEFT JOIN ref ...` | Both tables' columns (`ref.*` all empty) | Only if payroll declares a primary key        |
+| A subquery with `SELECT payroll.*`                     | Payroll columns only                     | Yes                                           |
+| `WHERE NOT EXISTS (SELECT 1 FROM ref ...)`             | Payroll columns only                     | Yes                                           |
+| A subquery with `SELECT DISTINCT payroll.phone_number` | One column, no key                       | No, it becomes a residue                      |
 
-This check annotates rows. The subquery returns only payroll columns, so each
-failed row can be attributed to a row of `demo_employee_payroll`. `payroll.*` picks which
-table's columns to return, and keeps their names as they are:
+This check annotates rows whether or not the table has a primary key. The
+subquery returns only payroll columns, so each failed row can be attributed
+to a row of `demo_employee_payroll`. `payroll.*` picks which table's columns
+to return, and keeps their names as they are:
 
 ```yaml
 quality:
@@ -219,8 +223,11 @@ WHERE NOT EXISTS (
 )
 ```
 
-This one becomes a residue. A plain join returns the columns of both tables,
-so its failed rows can't be attributed to either table:
+A plain join returns the columns of both tables. The `demo_employee_payroll`
+example declares `employee_id` and `payroll_id` as its primary key, so its
+failed rows still hold the key and annotate payroll rows. On a table without
+a primary key the same check becomes a residue, because its rows have more
+columns than the table:
 
 ```yaml
 quality:
@@ -233,10 +240,12 @@ quality:
     mustBe: 0
 ```
 
-Its failed rows are kept under
+Its failed rows are then kept under
 `"demo_employee_payroll::employee_id_exists_in_master_list"`. The check is
 still row-level, but it is not attributable, so it adds nothing to the row counts
-of `demo_employee_payroll` and is counted in `checks_not_attributable`.
+of `demo_employee_payroll` and is counted in `checks_not_attributable`. A
+check that returns only some columns without the key, such as
+`SELECT DISTINCT payroll.phone_number`, is a residue either way.
 
 The foreign-key checks vowl generates from `relationships` are already
 written the first way, so they annotate rows on the referencing table. A check is
