@@ -1,6 +1,7 @@
 import contextvars
 import ipaddress
 import os
+import posixpath
 import re
 import socket
 import warnings
@@ -661,14 +662,20 @@ class Contract:
             return self._external_cache[file_ref]
 
         parsed = urlparse(file_ref)
-        if parsed.scheme in ("http", "https"):
-            location = file_ref  # absolute URL — fetched via the SSRF-guarded path
+        if parsed.scheme in ("http", "https", "s3"):
+            location = file_ref  # absolute URL or s3 URI, used as is
         elif self._origin is None:
             raise ValueError(
                 f"cannot resolve external reference '{file_ref}': contract has no origin (loaded from in-memory data)"
             )
-        elif self._origin.startswith(("http://", "https://", "s3://")):
+        elif self._origin.startswith(("http://", "https://")):
             location = urljoin(self._origin, file_ref)
+        elif self._origin.startswith("s3://"):
+            # urljoin does not know the s3 scheme and would return file_ref
+            # unchanged, so join the sibling key with posixpath instead.
+            origin = urlparse(self._origin)
+            key = posixpath.normpath(posixpath.join(posixpath.dirname(origin.path) or "/", file_ref))
+            location = f"s3://{origin.netloc}/{key.lstrip('/')}"
         else:
             location = os.path.normpath(os.path.join(os.path.dirname(self._origin), file_ref))
 

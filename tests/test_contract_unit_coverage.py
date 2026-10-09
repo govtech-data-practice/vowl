@@ -932,6 +932,31 @@ def test_load_external_resolves_relative_to_http_origin(monkeypatch: pytest.Monk
     assert captured == ["https://example.com/contracts/other.yaml"]
 
 
+@pytest.mark.parametrize(
+    ("origin", "file_ref", "expected"),
+    [
+        ("s3://bucket/dir/orders.yaml", "customers.yaml", "s3://bucket/dir/customers.yaml"),
+        ("s3://bucket/a/dir/orders.yaml", "../shared/customers.yaml", "s3://bucket/a/shared/customers.yaml"),
+        ("s3://bucket/orders.yaml", "customers.yaml", "s3://bucket/customers.yaml"),
+        ("s3://bucket/dir/orders.yaml", "s3://other/customers.yaml", "s3://other/customers.yaml"),
+    ],
+)
+def test_load_external_resolves_relative_to_s3_origin(
+    monkeypatch: pytest.MonkeyPatch, origin: str, file_ref: str, expected: str
+):
+    # urljoin does not know s3, so a sibling ref used to come back as a bare local path.
+    contract = _fk_resolver_contract(monkeypatch, origin=origin)
+    captured: list[str] = []
+
+    def fake_load(location: str) -> Contract:
+        captured.append(location)
+        return _fk_resolver_contract(monkeypatch)
+
+    monkeypatch.setattr(Contract, "load", staticmethod(fake_load))
+    contract._load_external(file_ref)
+    assert captured == [expected]
+
+
 def test_load_external_caches_per_reference(monkeypatch: pytest.MonkeyPatch):
     contract = _fk_resolver_contract(monkeypatch, origin="/data/main.yaml")
     calls: list[str] = []
