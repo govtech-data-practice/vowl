@@ -683,3 +683,56 @@ def test_to_table_expression_rejects_non_table_results(monkeypatch: pytest.Monke
         to_table_expression("users")
 
     assert exc_info.value.violation_type == "invalid_identifier"
+
+
+@pytest.mark.parametrize(
+    ("query", "dialect", "expected"),
+    [
+        # Dialects with LIMIT keep the query text and get a literal LIMIT.
+        ("SELECT * FROM users ORDER BY id", "duckdb", "SELECT * FROM users ORDER BY id LIMIT 3"),
+        ("SELECT * FROM users ORDER BY id", "postgres", "SELECT * FROM users ORDER BY id LIMIT 3"),
+        # T-SQL and Oracle have no LIMIT, so sqlglot renders TOP or FETCH FIRST.
+        ("SELECT * FROM users ORDER BY id", "tsql", "SELECT TOP 3 * FROM users ORDER BY id"),
+        ("SELECT * FROM users ORDER BY id", "oracle", "SELECT * FROM users ORDER BY id FETCH FIRST 3 ROWS ONLY"),
+        (
+            "WITH u AS (SELECT * FROM users) SELECT * FROM u",
+            "tsql",
+            "WITH u AS (SELECT * FROM users) SELECT TOP 3 * FROM u",
+        ),
+        (
+            "WITH u AS (SELECT * FROM users) SELECT * FROM u",
+            "oracle",
+            "WITH u AS (SELECT * FROM users) SELECT * FROM u FETCH FIRST 3 ROWS ONLY",
+        ),
+        (
+            "SELECT id FROM a UNION SELECT id FROM b",
+            "tsql",
+            "SELECT TOP 3 * FROM (SELECT id FROM a UNION SELECT id FROM b) AS _l_0",
+        ),
+        (
+            "SELECT id FROM a UNION SELECT id FROM b",
+            "oracle",
+            "SELECT id FROM a UNION SELECT id FROM b FETCH FIRST 3 ROWS ONLY",
+        ),
+        # An ordered UNION cannot be wrapped in a T-SQL derived table, so the
+        # cap goes after the trailing ORDER BY.
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id",
+            "tsql",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 0 ROWS FETCH NEXT 3 ROWS ONLY",
+        ),
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id",
+            "oracle",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 0 ROWS FETCH NEXT 3 ROWS ONLY",
+        ),
+        # An existing OFFSET and FETCH is an outer limit too.
+        (
+            "SELECT * FROM users ORDER BY id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY",
+            "tsql",
+            "SELECT * FROM users ORDER BY id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY",
+        ),
+    ],
+)
+def test_with_row_cap_uses_each_dialects_row_limit_syntax(query: str, dialect: str, expected: str):
+    assert IbisSQLExecutor._with_row_cap(query, 3, dialect) == expected

@@ -46,6 +46,11 @@ class CappedFetch:
         return frame.head(cap) if self.truncated else frame
 
 
+def _uses_fetch_for_limit(dialect: str) -> bool:
+    """Return True when ``dialect`` has no LIMIT clause and caps rows with TOP or FETCH."""
+    return sqlglot.Dialect.get_or_raise(dialect).generator().LIMIT_FETCH == "FETCH"
+
+
 @dataclass
 class RowSource:
     """How a SQL check's rows were produced, kept for the row-quality component.
@@ -307,14 +312,31 @@ class SQLExecutor(BaseExecutor):
         string literal, subquery or CTE that merely mentions LIMIT (for example
         a ``credit_limit`` column) no longer disables the cap.  Unparseable
         queries fall back to a whole-word match.
+
+        Dialects without a LIMIT clause (T-SQL and Oracle, which sqlglot marks
+        with ``LIMIT_FETCH = "FETCH"``) get the cap rendered by sqlglot as TOP
+        or FETCH FIRST.  Every other dialect keeps the literal append so its
+        query text is not re-rendered.
         """
         if max_rows < 0:
             return query
         try:
-            has_limit = sqlglot.parse_one(query, dialect=dialect).args.get("limit") is not None
+            parsed = sqlglot.parse_one(query, dialect=dialect)
         except sqlglot.errors.SqlglotError:
             has_limit = re.search(r"\bLIMIT\b", query, re.IGNORECASE) is not None
-        return query if has_limit else f"{query} LIMIT {max_rows}"
+            return query if has_limit else f"{query} LIMIT {max_rows}"
+        if parsed.args.get("limit") is not None:
+            return query
+        if not _uses_fetch_for_limit(dialect) or not isinstance(parsed, sqlglot.exp.Query):
+            return f"{query} LIMIT {max_rows}"
+        if isinstance(parsed, sqlglot.exp.SetOperation) and (
+            parsed.args.get("order") or parsed.expression.args.get("order")
+        ):
+            # sqlglot would wrap an ordered UNION in a subquery, and T-SQL
+            # rejects ORDER BY inside a derived table.  OFFSET and FETCH after
+            # the trailing ORDER BY work in both T-SQL and Oracle.
+            return f"{query} OFFSET 0 ROWS FETCH NEXT {max_rows} ROWS ONLY"
+        return parsed.limit(max_rows).sql(dialect=dialect)
 
     def __init__(
         self,
