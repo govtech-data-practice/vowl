@@ -1062,3 +1062,151 @@ def test_rule_with_query_and_no_type_still_defaults_to_sql(monkeypatch: pytest.M
     data["schema"][0]["quality"] = [{"name": "q", "query": "SELECT COUNT(*) FROM users", "mustBe": 3}]
     refs = Contract(data).get_check_references_by_schema()["users"]
     assert any(isinstance(ref, SQLTableCheckReference) for ref in refs)
+
+
+@pytest.mark.parametrize(
+    ("rule", "expected"),
+    [
+        ({"rule": "x"}, "library"),
+        ({"metric": "nullValues"}, "library"),
+        ({"type": "sql", "rule": "x"}, "sql"),
+        ({"query": "SELECT 1"}, "sql"),
+        ({}, "sql"),
+    ],
+)
+def test_quality_check_type_defaults(rule: dict, expected: str):
+    from vowl.contracts.contract import _quality_check_type
+
+    assert _quality_check_type(rule) == expected
+
+
+def _v302_rule_contract(rule: dict) -> dict:
+    return {
+        "apiVersion": "v3.0.2",
+        "kind": "DataContract",
+        "version": "1.0.0",
+        "id": "v302-rule",
+        "status": "active",
+        "schema": [
+            {
+                "name": "users",
+                "quality": [{"name": "table_rule", **rule}],
+                "properties": [
+                    {"name": "id", "logicalType": "integer", "quality": [{"name": "column_rule", **rule}]},
+                ],
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [{"rule": "nullCheck", "mustBe": 0}, {"type": "library", "rule": "nullCheck", "mustBe": 0}],
+    ids=["untyped", "typed_library"],
+)
+def test_v302_rule_ends_in_error_naming_the_rule(rule: dict):
+    # An untyped v3.0.2 rule used to become a SQL check with no query and crash the run
+    import conftest as test_conftest
+
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(Contract(_v302_rule_contract(rule)), df=pd.DataFrame({"id": [1, 2]}))
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    for name in ("table_rule", "column_rule"):
+        assert by_name[name].status == "ERROR"
+        assert "`rule: 'nullCheck'` is not supported" in by_name[name].details
+        assert "metric" in by_name[name].details
+    assert by_name["id_column_exists_check"].status == "PASSED"
+
+
+# ---------------------------------------------------------------------------
+# SQL checks whose query can't be parsed
+# ---------------------------------------------------------------------------
+
+
+def _bad_sql_contract(query: str) -> dict:
+    data = _untyped_quality_contract()
+    data["schema"][0]["quality"] = [
+        {"name": "bad_sql", "type": "sql", "query": query, "mustBe": 0},
+        {"name": "good_sql", "type": "sql", "query": "SELECT COUNT(*) FROM users", "mustBe": 3},
+    ]
+    data["schema"][0]["properties"][0]["quality"] = []
+    return data
+
+
+def test_sql_check_with_syntax_error_ends_in_error_and_the_run_completes():
+    # Building the ERROR result parsed the query again and raised out of validate_data
+    import conftest as test_conftest
+
+    df = pd.DataFrame({"email": ["a@x.io", None, "c@x.io"], "id": [1, 2, 3]})
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(Contract(_bad_sql_contract("SELEC nonsense FROM")), df=df)
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    assert by_name["bad_sql"].status == "ERROR"
+    assert by_name["bad_sql"].details.startswith("Error executing check:")
+    assert by_name["bad_sql"].metadata["check_path"] == "$.schema[0].quality[0]"
+    assert by_name["good_sql"].status == "PASSED"
+    assert result.get_dq_metrics() is not None
+
+
+def test_sql_check_with_no_query_ends_in_error(monkeypatch: pytest.MonkeyPatch):
+    import conftest as test_conftest
+
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    data = _bad_sql_contract("")
+    del data["schema"][0]["quality"][0]["query"]
+    df = pd.DataFrame({"email": ["a@x.io", None, "c@x.io"], "id": [1, 2, 3]})
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(Contract(data), df=df)
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    assert by_name["bad_sql"].status == "ERROR"
+    assert by_name["bad_sql"].details == "No query specified for SQL check"
+    assert by_name["good_sql"].status == "PASSED"
+
+
+def test_cross_table_sql_check_with_syntax_error_ends_in_error():
+    import conftest as test_conftest
+    import ibis
+
+    from vowl.adapters import IbisAdapter
+
+    orders = ibis.duckdb.connect()
+    orders.create_table("orders", pd.DataFrame({"cid": [1, 2]}))
+    customers = ibis.duckdb.connect()
+    customers.create_table("customers", pd.DataFrame({"cid": [1]}))
+    data = {
+        "apiVersion": get_latest_version(),
+        "kind": "DataContract",
+        "version": "1.0.0",
+        "id": "bad-join",
+        "status": "active",
+        "schema": [
+            {
+                "name": "orders",
+                "properties": [{"name": "cid", "logicalType": "integer"}],
+                "quality": [
+                    {
+                        "name": "bad_join",
+                        "type": "sql",
+                        "query": "SELEC COUNT(*) FROM orders JOIN customers ON orders.cid = customers.cid",
+                        "mustBe": 0,
+                    },
+                    {
+                        "name": "good_join",
+                        "type": "sql",
+                        "query": "SELECT COUNT(*) FROM orders LEFT JOIN customers ON orders.cid = customers.cid "
+                        "WHERE customers.cid IS NULL",
+                        "mustBe": 1,
+                    },
+                ],
+            },
+            {"name": "customers", "properties": [{"name": "cid", "logicalType": "integer"}]},
+        ],
+    }
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(
+        Contract(data), adapters={"orders": IbisAdapter(orders), "customers": IbisAdapter(customers)}
+    )
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    assert by_name["bad_join"].status == "ERROR"
+    assert by_name["bad_join"].details.startswith("Error executing check:")
+    assert by_name["good_join"].status == "PASSED"

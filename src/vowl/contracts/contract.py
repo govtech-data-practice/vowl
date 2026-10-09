@@ -190,13 +190,25 @@ def _reject_duplicate_check_names(contract_data: dict[str, Any]) -> None:
 def _quality_check_type(rule: dict[str, Any]) -> str:
     """Return a quality rule's ``type``, defaulting the way ODCS does where it matters.
 
-    ODCS defaults ``type`` to ``library``, so a rule with a ``metric`` and no
-    ``type`` is a library check. A rule without either keeps the older ``sql``
-    default, so untyped ``query`` rules still run as SQL.
+    ODCS defaults ``type`` to ``library``, so a rule with a ``metric``, or the
+    ODCS v3.0.2 ``rule`` field, and no ``type`` is a library check. A rule
+    without either keeps the older ``sql`` default, so untyped ``query`` rules
+    still run as SQL.
     """
     if "type" in rule:
         return rule["type"]
-    return "library" if "metric" in rule else "sql"
+    return "library" if ("metric" in rule or "rule" in rule) else "sql"
+
+
+def _unsupported_library_message(rule: dict[str, Any], level: str, supported: Any) -> str:
+    """Explain why a library rule has no check, naming a v3.0.2 ``rule`` when that is the cause."""
+    metric = rule.get("metric")
+    if metric is None and "rule" in rule:
+        return (
+            f"ODCS v3.0.2 `rule: '{rule['rule']}'` is not supported. Use `metric:` (ODCS v3.1+). "
+            f"Supported {level}-level metrics: {', '.join(sorted(supported))}"
+        )
+    return f"Unsupported library metric '{metric}' at {level} level. Supported {level}-level metrics: {', '.join(sorted(supported))}"
 
 
 @dataclass(frozen=True)
@@ -942,8 +954,7 @@ class Contract:
                             UnsupportedTableCheckReference(
                                 self,
                                 check_path,
-                                f"Unsupported library metric '{metric}' at schema level. "
-                                f"Supported schema-level metrics: {', '.join(sorted(LIBRARY_TABLE_METRICS))}",
+                                _unsupported_library_message(table_quality[qual_idx], "schema", LIBRARY_TABLE_METRICS),
                             )
                         )
                     else:
@@ -979,8 +990,9 @@ class Contract:
                                 UnsupportedColumnCheckReference(
                                     self,
                                     check_path,
-                                    f"Unsupported library metric '{metric}' at property level. "
-                                    f"Supported property-level metrics: {', '.join(sorted(LIBRARY_COLUMN_METRICS))}",
+                                    _unsupported_library_message(
+                                        prop_quality[qual_idx], "property", LIBRARY_COLUMN_METRICS
+                                    ),
                                 )
                             )
                         else:

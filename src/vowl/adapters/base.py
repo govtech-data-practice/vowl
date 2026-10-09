@@ -198,6 +198,7 @@ class BaseAdapter(ABC):  # noqa: B024
 
         # Process each engine
         for engine, type_refs in refs_by_type.items():
+            executor = None
             try:
                 executor = self._get_executor(engine)
                 results = executor.run_batch_checks(type_refs)
@@ -217,8 +218,34 @@ class BaseAdapter(ABC):  # noqa: B024
                         for ref in type_refs
                     ]
                 )
+            except Exception:
+                if executor is None:
+                    raise
+                # One check broke the whole batch. Run each alone so the
+                # others keep their results and only the broken one errors.
+                all_results.extend(self._run_checks_one_by_one(executor, type_refs))
 
         return all_results
+
+    @staticmethod
+    def _run_checks_one_by_one(executor: BaseExecutor, check_refs: list[CheckReference]) -> list[CheckResult]:
+        """Run each check alone, turning a check that raises into an ERROR result."""
+        from vowl.executors.base import CheckResult
+
+        results: list[CheckResult] = []
+        for ref in check_refs:
+            try:
+                results.extend(executor.run_batch_checks([ref]))
+            except Exception as e:
+                results.append(
+                    CheckResult(
+                        check_name=ref.get_check_name(),
+                        status="ERROR",
+                        details=f"Error executing check: {e}",
+                        execution_time_ms=0,
+                    )
+                )
+        return results
 
     def run_arrow_query(self, sql: str) -> pa.Table:
         """Run a read-only query and return its rows as a PyArrow table.

@@ -240,3 +240,33 @@ def test_gx_executor_init_is_reachable_via_concrete_subclass():
     executor = StubGXExecutor(adapter)
 
     assert executor.adapter is adapter
+
+
+def test_run_checks_keeps_other_results_when_a_batch_raises():
+    from vowl.adapters.base import BaseAdapter
+    from vowl.executors.base import CheckResult
+
+    class Ref:
+        def __init__(self, name: str):
+            self.name = name
+
+        def get_check_name(self) -> str:
+            return self.name
+
+        def get_execution_engine(self) -> str:
+            return "sql"
+
+    class Executor:
+        def run_batch_checks(self, refs):
+            if any(ref.name == "broken" for ref in refs):
+                raise RuntimeError("boom")
+            return [CheckResult(check_name=ref.name, status="PASSED", details="") for ref in refs]
+
+    class Adapter(BaseAdapter):
+        def _get_executor(self, engine):
+            return Executor()
+
+    results = Adapter().run_checks([Ref("ok"), Ref("broken"), Ref("also_ok")])
+
+    assert [(r.check_name, r.status) for r in results] == [("ok", "PASSED"), ("broken", "ERROR"), ("also_ok", "PASSED")]
+    assert results[1].details == "Error executing check: boom"

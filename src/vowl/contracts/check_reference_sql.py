@@ -87,7 +87,11 @@ class SQLCheckReference(CheckReference, ABC):
     @cached_property
     def aggregation_type(self) -> str:
         """Normalized aggregation type detected from the canonical query."""
-        query = self.get_query(self._INTERNAL_DIALECT, None, use_try_cast=False)
+        try:
+            query = self.get_query(self._INTERNAL_DIALECT, None, use_try_cast=False)
+        except Exception:
+            # A query that can't be parsed has no known aggregation
+            return "custom"
         if not query:
             return "custom"
         return self.detect_aggregation_type(query, self._INTERNAL_DIALECT)
@@ -262,12 +266,18 @@ class SQLCheckReference(CheckReference, ABC):
         """Build an ERROR result with SQL metadata."""
         from vowl.executors.base import CheckResult
 
-        metadata = self._build_full_metadata(
-            dialect,
-            filter_conditions,
-            use_try_cast,
-            **extra_metadata,
-        )
+        try:
+            metadata = self._build_full_metadata(
+                dialect,
+                filter_conditions,
+                use_try_cast,
+                **extra_metadata,
+            )
+        except Exception:
+            # The query itself may be what failed, for example a syntax error.
+            # The base metadata doesn't parse it, so the ERROR result is kept.
+            metadata = dict(CheckReference.get_result_metadata(self))
+            metadata.update(extra_metadata)
         return CheckResult(
             check_name=self.get_check_name(),
             status="ERROR",
@@ -308,6 +318,8 @@ class SQLTableCheckReference(TableCheckMixin, SQLCheckReference):
     ) -> str:
         check = self.get_check()
         query = check.get("query") or ""
+        if not query.strip():
+            return ""
         query = self.transpile(query, self._INTERNAL_DIALECT, dialect)
         if filter_conditions:
             query = self.apply_filters(query, dialect, filter_conditions)
@@ -327,6 +339,8 @@ class SQLColumnCheckReference(ColumnCheckMixin, SQLCheckReference):
     ) -> str:
         check = self.get_check()
         query = check.get("query") or ""
+        if not query.strip():
+            return ""
         query = self.transpile(query, self._INTERNAL_DIALECT, dialect)
         if filter_conditions:
             query = self.apply_filters(query, dialect, filter_conditions)
