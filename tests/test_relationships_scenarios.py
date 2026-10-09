@@ -193,7 +193,7 @@ class TestForeignKeyAnnotatedMerge:
         assert_no_check_errors(results)
 
         outputs = results.get_output_dfs()
-        key = f"orders::{self.FK_NAME}"
+        key = f"orders.customer_id::{self.FK_NAME}"
         assert key in outputs, f"missing {key!r} in {list(outputs)}"
 
         failed = outputs[key].to_arrow().to_pylist()
@@ -297,6 +297,15 @@ class TestCompositeForeignKeyFqn:
         assert row["failed_rows_count"] == 1
         assert row["schema_name"] == "order_items"
         assert _tables_in_query(row["tables_in_query"]) == {"order_items", "products"}
+
+        # products declares one composite key (category, sku). Valid data passes
+        # it, and no per-column primary key checks are generated.
+        pk = _fk_row(results, "products_category_sku_primary_key_check")
+        assert pk["status"] == "PASSED"
+        assert pk["check_path"] == "$.schema[0].primaryKey"
+        check_names = set(results.get_check_results_df().to_arrow().column("check_name").to_pylist())
+        assert "category_primary_key_check" not in check_names
+        assert "sku_primary_key_check" not in check_names
 
 
 # ============================================================================

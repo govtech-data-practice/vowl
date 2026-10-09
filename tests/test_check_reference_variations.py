@@ -14,6 +14,7 @@ import pytest
 
 from vowl.contracts.check_reference import (
     ArrayItemsCheckReference,
+    CompositePrimaryKeyCheckReference,
     CustomColumnCheckReference,
     CustomTableCheckReference,
     DeclaredColumnExistsCheckReference,
@@ -612,7 +613,7 @@ class TestPercentMetricsValidSql:
 #
 # These count *participating rows* (not duplicate groups), so their scalar
 # query stays a single top-level COUNT(*) (aggregation_type == "count") and the
-# auto-derived failed-rows query is ``SELECT * FROM table WHERE <pred>`` --
+# auto-derived row query is ``SELECT * FROM table WHERE <pred>`` --
 # full rows, identical columns to the source table, hence mergeable into the
 # annotated output rather than forced into residues.
 # ===================================================================
@@ -634,7 +635,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         assert failed.upper().startswith("SELECT *")
 
     def test_primary_key_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
@@ -645,7 +646,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         assert failed.upper().startswith("SELECT *")
         # PK violations = NULL keys OR duplicate-group members.
         assert "IS NULL" in failed.upper()
@@ -664,7 +665,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        assert ref.get_failed_rows_query("duckdb").upper().startswith("SELECT *")
+        assert ref.get_row_query("duckdb").upper().startswith("SELECT *")
 
     def test_duplicate_values_table_is_row_level_count(self, monkeypatch: pytest.MonkeyPatch):
         ref = self._ref(
@@ -685,7 +686,7 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.aggregation_type == "count"
         assert ref.supports_row_level_output is True
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         assert failed.upper().startswith("SELECT *")
         # Multi-column duplicates use a correlated EXISTS (portable to SQL Server).
         assert "EXISTS" in failed.upper()
@@ -705,27 +706,25 @@ class TestDuplicateUniquePkMergeable:
         )
         assert ref.supports_row_level_output is False
 
-    def test_row_count_is_not_row_level(self, monkeypatch: pytest.MonkeyPatch):
-        """rowCount is a whole-table aggregate: no failure predicate, so it is
-        not mergeable into the annotated table and contributes no failing rows."""
+    def test_row_count_is_row_level_like_its_sql(self, monkeypatch: pytest.MonkeyPatch):
+        """rowCount runs SELECT COUNT(*) FROM t, so it is row-level like that SQL check."""
         ref = self._ref(
             monkeypatch,
             RowCountCheckReference,
             properties=[{"name": "col_a", "logicalType": "string"}],
             table_quality=[{"type": "library", "metric": "rowCount", "mustBeGreaterThan": 0}],
         )
-        assert ref.supports_row_level_output is False
-        # A failing rowCount reports zero failing rows (count is table size, not violations).
-        assert ref.compute_failed_rows_count(1000) == 0
+        assert ref.supports_row_level_output is True
+        assert ref.compute_failed_rows_count(1000) == 1000
 
 
 # ===================================================================
-# Group D3 — cross-table checks whose failed-rows query projects only the
+# Group D3 — cross-table checks whose row query projects only the
 # anchor table's columns are annotated-mergeable.
 #
 # The COUNT(*) -> SELECT * rewrite only touches the OUTER select list, so a
 # subquery-wrapped ``SELECT payroll.*`` still governs the projection: the
-# failed-rows query returns payroll-only columns, matching the anchor schema.
+# row query returns payroll-only columns, matching the anchor schema.
 # A bare JOIN's ``SELECT *`` returns both tables' columns and stays a residue.
 # ===================================================================
 
@@ -768,7 +767,7 @@ class TestCrossTableFailedRowsProjection:
 
     def test_subquery_wrapped_count_rewrites_to_select_star_over_subquery(self, monkeypatch: pytest.MonkeyPatch):
         ref = self._ref(monkeypatch, self._SUBQUERY_WRAPPED)
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         upper = failed.upper()
         # Outer COUNT(*) becomes SELECT *, but the inner projection is untouched.
         assert upper.startswith("SELECT *")
@@ -776,7 +775,7 @@ class TestCrossTableFailedRowsProjection:
         assert "FROM (" in upper
 
     def test_subquery_wrapped_failed_rows_yield_anchor_only_columns(self, monkeypatch: pytest.MonkeyPatch):
-        # Execute the rewritten failed-rows query against a real DuckDB and
+        # Execute the rewritten row query against a real DuckDB and
         # assert the resulting columns are exactly the payroll table's columns.
         import ibis
 
@@ -788,7 +787,7 @@ class TestCrossTableFailedRowsProjection:
         )
         con.create_table("demo_employee_list", pa.table({"employee_id": ["e1", "e2"]}))
 
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         rows = con.sql(failed_sql).to_pyarrow()
         # Orphan row e3 only; columns match the payroll (anchor) table exactly.
         assert set(rows.column_names) == {"employee_id", "amount"}
@@ -800,7 +799,7 @@ class TestCrossTableFailedRowsProjection:
         # The rewritten query is a top-level SELECT * over the JOIN (no subquery
         # projection to constrain it), so both tables' columns are returned.
         ref = self._ref(monkeypatch, self._BARE_JOIN)
-        failed = ref.get_failed_rows_query("duckdb")
+        failed = ref.get_row_query("duckdb")
         upper = failed.upper()
         assert upper.startswith("SELECT *")
         # No wrapping subquery projection: the JOIN is at the top level.
@@ -1031,13 +1030,13 @@ class TestEnumCheck:
             "orders",
             pa.table({"status": ["active", "inactive", "archived", "deleted", None]}),
         )
-        # Count query: "archived" and "deleted" are out of set; NULL not counted.
+        # Scalar query: "archived" and "deleted" are out of set; NULL not counted.
         count = con.sql(ref.get_query("duckdb")).to_pyarrow().to_pylist()
         assert count == [{"count_star()": 2}]
 
-        # Failed-rows query (COUNT(*) -> SELECT *) returns exactly the violators.
+        # Row query (COUNT(*) -> SELECT *) returns exactly the violators.
         assert ref.supports_row_level_output is True
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         assert failed_sql.upper().startswith("SELECT *")
         rows = con.sql(failed_sql).to_pyarrow().to_pylist()
         assert sorted(r["status"] for r in rows) == ["archived", "deleted"]
@@ -1103,11 +1102,13 @@ class TestArrayChecks:
     # ---- cardinality: AST / SQL shape -----------------------------------
 
     def test_min_items_uses_array_size(self, monkeypatch: pytest.MonkeyPatch):
-        import sqlglot
         from sqlglot import exp
 
         ref = self._cardinality_ref(monkeypatch, "minItems", 2)
-        parsed = sqlglot.parse_one(ref._build_ast().sql("postgres"), read="postgres")
+        # Inspect the AST, not a Postgres round trip. Importing ibis's Postgres
+        # backend makes sqlglot render ArraySize as CARDINALITY, which parses
+        # back as an anonymous function.
+        parsed = ref._build_ast()
         assert len(list(parsed.find_all(exp.ArraySize))) == 1
         check = ref.get_check()
         assert check["name"] == "tags_logical_type_options_minItems_check"
@@ -1115,11 +1116,10 @@ class TestArrayChecks:
         assert check["mustBe"] == 0
 
     def test_unique_items_uses_array_distinct(self, monkeypatch: pytest.MonkeyPatch):
-        import sqlglot
         from sqlglot import exp
 
         ref = self._cardinality_ref(monkeypatch, "uniqueItems", True)
-        parsed = sqlglot.parse_one(ref._build_ast().sql("postgres"), read="postgres")
+        parsed = ref._build_ast()
         assert len(list(parsed.find_all(exp.ArrayDistinct))) == 1
 
     def test_unique_items_false_degrades_to_unsupported(self, monkeypatch: pytest.MonkeyPatch):
@@ -1159,7 +1159,7 @@ class TestArrayChecks:
         ref = self._cardinality_ref(monkeypatch, "minItems", 2)
         con = self._list_table([["a", "b"], ["x"], None])
         assert ref.supports_row_level_output is True
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         assert failed_sql.upper().startswith("SELECT *")
         rows = con.sql(failed_sql).to_pyarrow().to_pylist()
         assert [r["tags"] for r in rows] == [["x"]]
@@ -1583,7 +1583,7 @@ class TestForeignKeyCheck:
 
         # Failed-rows projection returns only the offending from-table row.
         assert ref.supports_row_level_output is True
-        failed_sql = ref.get_failed_rows_query("duckdb")
+        failed_sql = ref.get_row_query("duckdb")
         assert failed_sql.upper().startswith("SELECT *")
         rows = con.sql(failed_sql).to_pyarrow().to_pylist()
         assert [r["customer_id"] for r in rows] == [99]
@@ -1785,3 +1785,157 @@ class TestForeignKeyCheck:
         ref = _fk_refs(contract, "orders")[0]
         # The generated anti-join query passes the security validator.
         validate_query_security(ref.get_query("duckdb"), "duckdb")
+
+
+# ===================================================================
+# Composite primary keys
+# ===================================================================
+
+
+class TestCompositePrimaryKeyCheck:
+    _SQL = (
+        'SELECT COUNT(*) FROM "regions" WHERE "country" IS NULL OR "zone" IS NULL OR ("country", "zone") IN '
+        '(SELECT "country", "zone" FROM "regions" WHERE NOT "country" IS NULL AND NOT "zone" IS NULL '
+        'GROUP BY "country", "zone" HAVING COUNT(*) > 1)'
+    )
+
+    def _refs(self, monkeypatch: pytest.MonkeyPatch, properties: list[dict]) -> list[CheckReference]:
+        contract = _make_contract(monkeypatch, schema_name="regions", properties=properties)
+        return contract.get_check_references_by_schema()["regions"]
+
+    def test_composite_key_yields_one_table_check(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 1},
+                {"name": "zone", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 2},
+            ],
+        )
+        assert not any(isinstance(r, PrimaryKeyCheckReference) for r in refs)
+        composite = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        assert len(composite) == 1
+        ref = composite[0]
+        assert ref.path == "$.schema[0].primaryKey"
+        assert ref.get_schema_name() == "regions"
+        check = ref.get_check()
+        assert check["name"] == "regions_country_zone_primary_key_check"
+        assert check["description"] == "Primary key (country, zone) must be unique and not null"
+        assert check["dimension"] == "consistency"
+        assert check["mustBe"] == 0
+        assert ref.get_query("postgres") == self._SQL
+        assert ref.supports_row_level_output is True
+        assert ref.get_row_query("postgres") == self._SQL.replace("SELECT COUNT(*)", "SELECT *", 1)
+
+    def test_order_follows_primary_key_position(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "zone", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 2},
+                {"name": "other", "logicalType": "string"},
+                {"name": "country", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 1},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        assert ref.get_columns() == ["country", "zone"]
+        assert ref.get_check()["name"] == "regions_country_zone_primary_key_check"
+        assert ref.get_query("postgres") == self._SQL
+
+    def test_unique_columns_keep_their_own_check(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True, "unique": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        assert [r.get_column_name() for r in refs if isinstance(r, UniqueCheckReference)] == ["country"]
+        assert sum(isinstance(r, CompositePrimaryKeyCheckReference) for r in refs) == 1
+
+    def test_single_column_key_is_unchanged(self, monkeypatch: pytest.MonkeyPatch):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True, "primaryKeyPosition": 1},
+                {"name": "zone", "logicalType": "string"},
+            ],
+        )
+        assert not any(isinstance(r, CompositePrimaryKeyCheckReference) for r in refs)
+        (ref,) = [r for r in refs if isinstance(r, PrimaryKeyCheckReference)]
+        assert ref.path == "$.schema[0].properties[0].primaryKey"
+        assert ref.get_check()["name"] == "country_primary_key_check"
+
+    def test_counts_nulls_and_duplicate_tuples(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        con = ibis.duckdb.connect()
+        # Valid composite data: each column repeats but no (country, zone) pair does.
+        con.create_table("regions", pa.table({"country": ["SG", "SG", "MY"], "zone": ["A", "B", "A"]}))
+        assert _scalar(con, ref.get_query("duckdb")) == 0
+        con.create_table(
+            "regions",
+            pa.table({"country": ["SG", "SG", "SG", None], "zone": ["A", "B", "A", "C"]}),
+            overwrite=True,
+        )
+        assert _scalar(con, ref.get_query("duckdb")) == 3
+
+    @pytest.mark.parametrize(
+        ("dialect", "open_quote", "close_quote"),
+        [("tsql", "[", "]"), ("bigquery", "`", "`"), ("trino", '"', '"')],
+    )
+    def test_row_value_in_is_rewritten_as_exists(
+        self, monkeypatch: pytest.MonkeyPatch, dialect: str, open_quote: str, close_quote: str
+    ):
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        expected = (
+            'SELECT COUNT(*) FROM "regions" WHERE "country" IS NULL OR "zone" IS NULL OR EXISTS(SELECT 1 FROM '
+            '(SELECT "country", "zone" FROM "regions" WHERE NOT "country" IS NULL AND NOT "zone" IS NULL '
+            'GROUP BY "country", "zone" HAVING COUNT(*) > 1) AS "_vowl_pk_dup" '
+            'WHERE "_vowl_pk_dup"."country" = "regions"."country" AND "_vowl_pk_dup"."zone" = "regions"."zone")'
+        )
+        expected = (
+            expected.replace(' "', f" {open_quote}").replace('("', f"({open_quote}").replace('."', f".{open_quote}")
+        )
+        expected = (
+            expected.replace('" ', f"{close_quote} ").replace('")', f"{close_quote})").replace('".', f"{close_quote}.")
+        )
+        expected = expected.replace('",', f"{close_quote},")
+        assert ref.get_query(dialect) == expected
+        # The single-column check has no row value, so it keeps its IN.
+        single = self._refs(monkeypatch, [{"name": "country", "logicalType": "string", "primaryKey": True}])
+        (pk,) = [r for r in single if isinstance(r, PrimaryKeyCheckReference)]
+        assert " IN (SELECT" in pk.get_query(dialect)
+
+    def test_row_value_in_rewrite_matches_in_semantics(self, monkeypatch: pytest.MonkeyPatch):
+        import ibis
+        import sqlglot
+
+        refs = self._refs(
+            monkeypatch,
+            [
+                {"name": "country", "logicalType": "string", "primaryKey": True},
+                {"name": "zone", "logicalType": "string", "primaryKey": True},
+            ],
+        )
+        (ref,) = [r for r in refs if isinstance(r, CompositePrimaryKeyCheckReference)]
+        con = ibis.duckdb.connect()
+        con.create_table(
+            "regions",
+            pa.table({"country": ["SG", "SG", "SG", None], "zone": ["A", "B", "A", "C"]}),
+        )
+        rewritten = sqlglot.transpile(ref.get_query("trino"), read="trino", write="duckdb")[0]
+        assert _scalar(con, rewritten) == _scalar(con, ref.get_query("duckdb")) == 3

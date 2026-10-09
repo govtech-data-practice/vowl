@@ -32,7 +32,11 @@ dependencies = [
     "pyarrow>=14.0.0",
     "pyyaml>=5.4.0",
     "requests>=2.32.5",
-    "sqlglot[c]>=28.6.0",
+    # Capped below 30.18: sqlglot 30.18.0 renamed `Drop(this=...)` to
+    # `Drop(tables=...)`, so ibis (11.x and 12.0.0) emits a nameless
+    # `DROP VIEW/TABLE IF EXISTS` from DuckDB create_table(<pyarrow Table>).
+    # Lift once ibis ships ibis-project/ibis#12104, and raise the ibis floor to it.
+    "sqlglot[c]>=28.6.0,<30.18",
 ]
 
 [project.optional-dependencies]
@@ -53,10 +57,19 @@ spark-classic = [
     "pyspark>=3.0.0",
 ]
 
-# Everything (base + spark + aws)
+# OpenTelemetry export of validation results (metrics, traces, logs). Optional;
+# `import vowl` never imports opentelemetry. See design/otel-export.md.
+otel = [
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp>=1.27.0",
+]
+
+# Everything (base + spark + aws + otel)
 all = [
     "boto3>=1.42.38",
     "ibis-framework[pyspark]>=11.0.0",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
     "pyspark[connect]>=3.4.0",
 ]
 
@@ -89,6 +102,8 @@ dev = [
     "ibis-framework[mssql,mysql,oracle,postgres]>=11.0.0",
     "ipykernel>=7.1.0",
     "matplotlib>=3.10.9",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
     "polars>=1.39.2",
     # pyspark[connect] pulls grpcio so the Spark Connect detection tests
     # (tests/test_spark_connect_detection.py) run locally under `dev` instead of

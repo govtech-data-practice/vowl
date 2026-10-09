@@ -65,7 +65,6 @@ class FakeMultiAdapter:
         self.use_try_cast = None
         self.test_connections_called_with = None
         self.run_checks_called_with = None
-        self.total_rows_called_with = None
 
     def test_connections(self, check_refs_by_schema):
         self.test_connections_called_with = check_refs_by_schema
@@ -75,9 +74,20 @@ class FakeMultiAdapter:
         self.run_checks_called_with = check_refs_by_schema
         return [CheckResult("check_1", "PASSED", "ok", failed_rows_count=0)]
 
-    def get_total_rows_by_schema(self, max_rows_for_statistics):
-        self.total_rows_called_with = max_rows_for_statistics
-        return {"users": 10}
+
+class FakeAdapters(SimpleNamespace):
+    """A multi-adapter stand-in that resolves adapters by schema name."""
+
+    def __init__(self, adapters: dict):
+        super().__init__(adapters=adapters)
+
+    def get_adapter(self, schema_name: str):
+        return self.adapters.get(schema_name)
+
+
+def _totals_only(total_rows: int) -> SimpleNamespace:
+    """An adapter that can count its table but not export it."""
+    return SimpleNamespace(get_total_rows=lambda schema_name, max_rows=-1: total_rows)
 
 
 class FakeExportAdapter:
@@ -89,6 +99,12 @@ class FakeExportAdapter:
 
 
 class FakeFailingExportAdapter:
+    def __init__(self, total_rows: int | None = None):
+        self._total_rows = total_rows
+
+    def get_total_rows(self, schema_name: str, max_rows: int = -1) -> int | None:
+        return self._total_rows
+
     def export_table_as_arrow(self, schema_name: str) -> pa.Table:
         raise RuntimeError(f"failed to export {schema_name}")
 
@@ -166,7 +182,6 @@ def _sample_validation_result() -> ValidationResult:
             "passed": 1,
             "failed": 2,
             "errors": 1,
-            "total_rows_by_schema": {"users": 10},
             "config": {"max_rows_for_statistics": 5},
             "failed_rows": 2,
             "total_execution_time_ms": 7.5,
@@ -178,10 +193,11 @@ def _sample_validation_result() -> ValidationResult:
     }
     contract = SimpleNamespace(
         get_api_version=lambda: "v3.1.0",
+        get_version=lambda: "1.0.0",
         get_metadata=lambda: {"id": "contract-id"},
         contract_data={"kind": "DataContract"},
     )
-    multi_adapter = SimpleNamespace(adapters={"users": SimpleNamespace()})
+    multi_adapter = FakeAdapters({"users": _totals_only(10)})
     return ValidationResult(summary, [failed_a, failed_b, passed, error], contract, multi_adapter, ["users"])
 
 
@@ -199,7 +215,6 @@ def test_validation_result_contract_id_falls_back_to_unknown():
             "passed": 0,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -222,7 +237,6 @@ def test_validation_result_contract_data_property_returns_underlying_contract_da
             "passed": 0,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -250,12 +264,13 @@ def test_validation_result_print_summary_show_methods_and_chaining(capsys: pytes
     assert "Data Quality Validation Results" in output
     assert "OVERALL DATA QUALITY" in output
     assert "Overall:" in output
-    assert "Checks Pass Rate:       1 / 4 (25.0%)" in output
+    assert "Checks Pass Rate:          1 / 4 (25.0%)" in output
     assert "Single Table:" in output
     assert "Multi Table:" in output
-    assert "ERRORED Checks:         1" in output
-    assert "Unique Passed Rows:     9 / 10 (90.0%)" in output
-    assert "Non-unique Failed Rows: 0" in output
+    assert "ERRORED Checks:            1" in output
+    # The basic tier sums each row-level check's failed rows without attributing.
+    assert "Failed Rows (approximate): 2" in output
+    assert "Non-unique Failed Rows:    0" in output
     assert "VALIDATION CHECKS" not in output
     assert "CHECK RESULTS" in output
     assert "Total Execution:       7.50 ms" in output
@@ -288,7 +303,6 @@ def test_validation_result_show_methods_when_nothing_failed(capsys: pytest.Captu
             "passed": 1,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.1,
@@ -322,7 +336,6 @@ def test_validation_result_show_failed_rows_supports_full_mode(capsys: pytest.Ca
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 3},
             "config": {},
             "failed_rows": 3,
             "total_execution_time_ms": 0.1,
@@ -388,9 +401,9 @@ def test_validation_result_output_and_consolidation_helpers():
     result = _sample_validation_result()
 
     output_dfs = result.get_output_dfs(checks=["rule_a", "rule_c"])
-    assert list(output_dfs) == ["users::rule_a", "users::rule_c"]
-    assert output_dfs["users::rule_a"].to_pandas()["check_id"].tolist() == ["rule_a"]
-    assert output_dfs["users::rule_c"].to_pandas().empty
+    # rule_c passed, so it has no rows to report.
+    assert list(output_dfs) == ["users.value::rule_a"]
+    assert output_dfs["users.value::rule_a"].to_pandas()["check_id"].tolist() == ["rule_a"]
 
     consolidated = result.get_consolidated_output_dfs(checks=["rule_a", "rule_b"])
     assert list(consolidated) == ["users"]
@@ -399,19 +412,17 @@ def test_validation_result_output_and_consolidation_helpers():
     assert consolidated_df["tables_in_query"].tolist() == ["users"]
 
 
-def test_validation_result_row_quality_summary_uses_deduplicated_failed_rows():
+def test_validation_result_row_quality_merges_rows_caught_by_several_checks():
     result = _sample_validation_result()
 
-    row_quality_by_schema = result._get_row_quality_summary_by_schema()
+    users = result._row_quality_report().schema("users")
 
-    assert row_quality_by_schema == {
-        "users": {
-            "total_rows": 10,
-            "records_with_issues": 1,
-            "clean_records": 9,
-            "data_quality": 90.0,
-        }
-    }
+    # rule_a and rule_b caught the same row, but the table cannot be exported,
+    # so neither is attributable. rule_c passed, so it is not attributed, and
+    # the numbers are N/A. rule_d ended in ERROR, so it is not row-level.
+    assert (users.total_rows, users.failed_rows, users.passed_rows, users.pass_rate) == (10, None, None, None)
+    assert (users.checks_row_level, users.checks_not_row_level, users.checks_not_attributable) == (3, 1, 2)
+    assert users.approximate is True
 
 
 def test_validation_result_row_quality_excludes_cross_table_failures():
@@ -421,7 +432,6 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
             "passed": 0,
             "failed": 2,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10, "orders": 5},
             "config": {},
             "failed_rows": 4,
             "total_execution_time_ms": 1.0,
@@ -458,20 +468,20 @@ def test_validation_result_row_quality_excludes_cross_table_failures():
             ),
         ],
         contract,
-        SimpleNamespace(adapters={"users": FakeExportAdapter(["id"]), "orders": FakeExportAdapter(["order_id"])}),
+        FakeAdapters({"users": _totals_only(10), "orders": _totals_only(5)}),
         ["users", "orders"],
     )
 
-    row_quality_by_schema = result._get_row_quality_summary_by_schema()
+    report = result._row_quality_report()
 
-    assert row_quality_by_schema == {
-        "users": {
-            "total_rows": 10,
-            "records_with_issues": 1,
-            "clean_records": 9,
-            "data_quality": 90.0,
-        }
-    }
+    # cross_rule is not row-level (supports_row_level_output defaults to False).
+    # users_rule is row-level, but the fake adapter cannot export users, so it is not attributable.
+    users = report.schema("users")
+    assert (users.total_rows, users.failed_rows, users.passed_rows) == (10, None, None)
+    assert (users.checks_row_level, users.checks_not_attributable) == (1, 1)
+    # orders has no row-level checks, so it has no row numbers.
+    orders = report.schema("orders")
+    assert (orders.total_rows, orders.failed_rows, orders.pass_rate) == (5, None, None)
 
 
 def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails():
@@ -481,7 +491,6 @@ def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"employees": 2, "payroll": 2},
             "config": {},
             "failed_rows": 2,
             "total_execution_time_ms": 1.0,
@@ -517,25 +526,22 @@ def test_validation_result_row_quality_uses_failed_row_columns_when_export_fails
             )
         ],
         contract,
-        SimpleNamespace(
-            adapters={
+        FakeAdapters(
+            {
                 "employees": SimpleNamespace(),
-                "payroll": FakeFailingExportAdapter(),
+                "payroll": FakeFailingExportAdapter(total_rows=2),
             }
         ),
         ["employees", "payroll"],
     )
 
-    row_quality_by_schema = result._get_row_quality_summary_by_schema()
+    payroll = result._row_quality_report().schema("payroll")
 
-    assert row_quality_by_schema == {
-        "payroll": {
-            "total_rows": 2,
-            "records_with_issues": 2,
-            "clean_records": 0,
-            "data_quality": 0.0,
-        }
-    }
+    # The export fails, so the check is not attributable. It is the only row-level
+    # check, so the schema has no row numbers.
+    assert (payroll.total_rows, payroll.failed_rows, payroll.passed_rows) == (2, None, None)
+    assert payroll.pass_rate is None
+    assert (payroll.checks_not_attributable, payroll.approximate) == (1, True)
 
 
 def test_validation_result_summary_does_not_use_adapter_export_for_schema_columns(capsys: pytest.CaptureFixture[str]):
@@ -546,7 +552,6 @@ def test_validation_result_summary_does_not_use_adapter_export_for_schema_column
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 2},
             "config": {},
             "failed_rows": 1,
             "total_execution_time_ms": 1.0,
@@ -654,7 +659,6 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
             "passed": 1,
             "failed": 3,
             "errors": 1,
-            "total_rows_by_schema": {"payroll": 2, "employee_list": 2},
             "config": {},
             "failed_rows": 6,
             "total_execution_time_ms": 2.0,
@@ -687,16 +691,19 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
     assert "Overall:" in output
     assert "Single Table:" in output
     assert "Multi Table:" in output
-    assert "Checks Pass Rate:       0 / 2 (0.0%)" in output
-    assert "Checks Pass Rate:       1 / 2 (50.0%)" in output
-    assert "Checks Pass Rate:       0 / 1 (0.0%)" in output
-    assert "Checks Pass Rate:       1 / 1 (100.0%)" in output
-    assert "Checks Pass Rate:       0 / 3 (0.0%)" in output
-    assert output.count("ERRORED Checks:         0") >= 4
-    assert "ERRORED Checks:         1" in output
-    assert "Unique Passed Rows:     0 / 2 (0.0%)" in output
-    assert "Non-unique Failed Rows: 2" in output
-    assert "Non-unique Failed Rows: 0" in output
+    assert "Checks Pass Rate:          0 / 2 (0.0%)" in output
+    assert "Checks Pass Rate:          1 / 2 (50.0%)" in output
+    assert "Checks Pass Rate:          0 / 1 (0.0%)" in output
+    assert "Checks Pass Rate:          1 / 1 (100.0%)" in output
+    assert "Checks Pass Rate:          0 / 3 (0.0%)" in output
+    assert output.count("ERRORED Checks:            0") >= 4
+    assert "ERRORED Checks:            1" in output
+    # Each table sums the failed rows of its own row-level checks, including the
+    # cross-table ones, so a row caught twice counts twice.
+    assert "Failed Rows (approximate): 4" in output
+    assert "Failed Rows (approximate): 2" in output
+    assert "Non-unique Failed Rows:    2" in output
+    assert "Non-unique Failed Rows:    0" in output
     assert "CHECK RESULTS" in output
     assert "payroll" in output
     assert "employee_list" in output
@@ -706,7 +713,7 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
     assert "cross_rule" in output
 
 
-def test_validation_result_print_summary_omits_row_quality_when_only_cross_table_failures(
+def test_validation_result_print_summary_leaves_out_a_cross_table_failure_it_cannot_attribute(
     capsys: pytest.CaptureFixture[str],
 ):
     summary = {
@@ -715,7 +722,6 @@ def test_validation_result_print_summary_omits_row_quality_when_only_cross_table
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10, "orders": 5},
             "config": {},
             "failed_rows": 2,
             "total_execution_time_ms": 1.0,
@@ -754,12 +760,13 @@ def test_validation_result_print_summary_omits_row_quality_when_only_cross_table
     assert "orders:" in output
     assert "Overall:" in output
     assert "Single Table:" in output
-    assert "Checks Pass Rate:       0 / 0 (N/A)" in output
-    assert "ERRORED Checks:         0" in output
-    assert "Unique Passed Rows:     10 / 10 (100.0%)" in output
-    assert "Unique Passed Rows:     5 / 5 (100.0%)" in output
+    assert "Checks Pass Rate:          0 / 0 (N/A)" in output
+    assert "ERRORED Checks:            0" in output
+    # users sums its one cross-table check, and orders has no row-level check.
+    assert "Failed Rows (approximate): 2" in output
+    assert "Failed Rows (approximate): N/A" in output
     assert "Multi Table:" in output
-    assert output.count("Non-unique Failed Rows: 2") == 1
+    assert output.count("Non-unique Failed Rows:    2") == 1
     assert "CHECK RESULTS" in output
     assert "users" in output
     assert "Target" in output
@@ -774,7 +781,6 @@ def test_validation_result_consolidation_handles_no_failed_rows_and_no_data_colu
             "passed": 1,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -812,7 +818,6 @@ def test_validation_result_consolidation_adds_suffix_for_same_table_different_co
             "passed": 0,
             "failed": 2,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10},
             "config": {},
             "failed_rows": 2,
             "total_execution_time_ms": 0.0,
@@ -851,7 +856,7 @@ def test_validation_result_consolidation_adds_suffix_for_same_table_different_co
     )
 
     consolidated = result._get_consolidated_output_dfs()
-    assert list(consolidated) == ["users__1", "users__2"]
+    assert list(consolidated) == ["users"]
 
 
 def test_validation_result_get_check_results_df():
@@ -886,7 +891,6 @@ def test_validation_result_get_check_results_df_contract_definition_json():
             "passed": 1,
             "failed": 0,
             "errors": 0,
-            "total_rows_by_schema": {},
             "config": {},
             "failed_rows": 0,
             "total_execution_time_ms": 0.0,
@@ -945,7 +949,6 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
             "passed": 0,
             "failed": 1,
             "errors": 0,
-            "total_rows_by_schema": {"users": 10},
             "config": {},
             "failed_rows": 1,
             "total_execution_time_ms": 0.0,
@@ -980,10 +983,11 @@ def test_validation_result_get_output_dfs_normalizes_string_tables_in_query():
     assert output_dfs["users::rule_a"].to_pandas()["tables_in_query"].tolist() == ["orders, users"]
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 def test_validation_result_save_and_save_dataframe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     result = _sample_validation_result()
 
-    result.save(output_dir=str(tmp_path), prefix="artifact")
+    result.save(output_dir=str(tmp_path), prefix="artifact", outputs=["consolidated_query_outputs"])
 
     assert (tmp_path / "artifact_check_results.csv").exists()
     assert (tmp_path / "artifact_users.csv").exists()
@@ -1003,6 +1007,7 @@ def test_validation_result_save_and_save_dataframe(tmp_path: Path, capsys: pytes
     assert "Saved to:" in capsys.readouterr().out
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 def test_validation_result_save_dataframe_supports_arrow_tables_and_native_to_arrow(tmp_path: Path):
     arrow_table = pa.table({"id": [1]})
     ValidationResult.save_dataframe(arrow_table, str(tmp_path / "arrow.csv"), "csv")
@@ -1017,12 +1022,20 @@ def test_validation_result_save_dataframe_supports_arrow_tables_and_native_to_ar
     assert (tmp_path / "native.csv").exists()
 
 
+@pytest.mark.filterwarnings("ignore:ValidationResult.save_dataframe:DeprecationWarning")
 def test_validation_result_save_dataframe_wraps_plain_native_dataframes(tmp_path: Path):
     plain_df = pd.DataFrame({"id": [3], "value": ["plain"]})
 
     ValidationResult.save_dataframe(plain_df, str(tmp_path / "plain.csv"), "csv")
 
     assert (tmp_path / "plain.csv").exists()
+
+
+def test_validation_result_save_dataframe_is_deprecated(tmp_path: Path):
+    with pytest.warns(DeprecationWarning, match=r"save_dataframe\(\) is deprecated"):
+        ValidationResult.save_dataframe(_nw_df({"id": [1]}), str(tmp_path / "out.csv"), "csv")
+
+    assert (tmp_path / "out.csv").exists()
 
 
 def test_validation_result_display_full_report_returns_self(capsys: pytest.CaptureFixture[str]):
@@ -1112,9 +1125,8 @@ def test_validation_runner_resolve_adapters_keeps_existing_ibis_adapter(monkeypa
 def test_validation_runner_run_propagates_config_and_builds_result(monkeypatch: pytest.MonkeyPatch):
     contract = _make_contract(monkeypatch, ["users"])
     fake_multi = FakeMultiAdapter({"users": SimpleNamespace(max_failed_rows=None, use_try_cast=None)})
-    config = ValidationConfig(
-        max_failed_rows=7, use_try_cast=False, enable_additional_schema_statistics=True, max_rows_for_statistics=12
-    )
+    with pytest.warns(DeprecationWarning, match="max_rows_for_statistics"):
+        config = ValidationConfig(max_failed_rows=7, use_try_cast=False, max_rows_for_statistics=12)
     runner = ValidationRunner(contract=contract, adapters={"users": object()}, config=config)
 
     monkeypatch.setattr(runner, "_resolve_adapters", lambda: fake_multi)
@@ -1129,8 +1141,7 @@ def test_validation_runner_run_propagates_config_and_builds_result(monkeypatch: 
     assert fake_multi.adapters["users"].use_try_cast is False
     assert fake_multi.test_connections_called_with == {"users": ["check-ref"]}
     assert fake_multi.run_checks_called_with == {"users": ["check-ref"]}
-    assert fake_multi.total_rows_called_with == 12
-    assert result.summary["validation_summary"]["total_rows_by_schema"] == {"users": 10}
+    assert "total_rows_by_schema" not in result.summary["validation_summary"]
 
 
 def test_validation_runner_build_summary_aggregates_counts(monkeypatch: pytest.MonkeyPatch):
@@ -1144,12 +1155,12 @@ def test_validation_runner_build_summary_aggregates_counts(monkeypatch: pytest.M
         CheckResult("err", "ERROR", "boom", failed_rows_count=0, execution_time_ms=4.0),
     ]
 
-    summary = runner._build_summary(check_results, {"users": 10}, {"users": {"status": "ok"}})
+    summary = runner._build_summary(check_results, {"users": {"status": "ok"}})
 
     assert summary["validation_summary"]["passed"] == 1
     assert summary["validation_summary"]["failed"] == 1
     assert summary["validation_summary"]["errors"] == 1
-    assert summary["validation_summary"]["failed_rows"] == 3
+    assert summary["validation_summary"]["failed_rows_approximate"] == 3
     assert summary["validation_summary"]["total_execution_time_ms"] == 7.0
 
 

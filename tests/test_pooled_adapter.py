@@ -306,7 +306,7 @@ class TestDelegation:
         with pytest.raises(AttributeError, match="has no get_sql_dialect"):
             pooled.get_sql_dialect()
 
-    def test_is_compatible_with_delegates(self):
+    def test_is_compatible_with_non_pool_adapter_is_false(self):
         pooled = PooledAdapter(factory=CountingAdapter, max_concurrency=2)
         other = CountingAdapter()
 

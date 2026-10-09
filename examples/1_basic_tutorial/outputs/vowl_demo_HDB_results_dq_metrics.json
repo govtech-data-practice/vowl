@@ -1,0 +1,1613 @@
+{
+  "schema_version": 1,
+  "run": {
+    "vowl.version": "0.0.7.dev3",
+    "vowl.run.id": "b576b283-5e08-4219-90b6-e95a056d0675",
+    "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+    "vowl.contract.name": "HDB Resale Flat Prices",
+    "vowl.contract.version": "1.0.0",
+    "vowl.contract.api_version": "v3.2.0"
+  },
+  "run_started_at": "2026-10-08T15:48:01.157909+00:00",
+  "run_finished_at": "2026-10-08T15:48:01.492305+00:00",
+  "points": [
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 5.186332971788943,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 10.252999956719577,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.282834008336067,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 8.875250001437962,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 4.509374964982271,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 6.874083075672388,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 19.73095803987235,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 15.824540983885527,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 15.884540975093842,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201877,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201867,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 12,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9999900930755552,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.999940558453331,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201877,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201867,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 12,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201879,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9999900930755552,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.999940558453331,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.scalar_pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 1.0,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "month_logical_type_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "flat_type_enum_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_sqm_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_column_exists_check",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "Month",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "floor_area_must_be_less_than_200",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.check.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "check_name": "resale_price_must_not_exceed_2m",
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "engine": "sql"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 6,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 1,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.8571428571428571,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.dimension.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.5,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201877,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 2,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201867,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 12,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9999900930755552,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.999940558453331,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "conformity"
+      }
+    },
+    {
+      "name": "vowl.dimension.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "dimension": "consistency"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 7,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 2,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.schema.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.schema.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.7777777777777778,
+      "attributes": {
+        "schema_name": "hdb_resale_prices"
+      }
+    },
+    {
+      "name": "vowl.schema.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201865,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.schema.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 14,
+      "attributes": {
+        "schema_name": "hdb_resale_prices",
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.schema.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9999306515288862,
+      "attributes": {
+        "schema_name": "hdb_resale_prices"
+      }
+    },
+    {
+      "name": "vowl.schema.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {
+        "schema_name": "hdb_resale_prices"
+      }
+    },
+    {
+      "name": "vowl.run.schema.count",
+      "type": "counter",
+      "unit": "{schema}",
+      "value": 0,
+      "attributes": {
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.run.schema.count",
+      "type": "counter",
+      "unit": "{schema}",
+      "value": 1,
+      "attributes": {
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.run.schema.count",
+      "type": "counter",
+      "unit": "{schema}",
+      "value": 0,
+      "attributes": {
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.run.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 7,
+      "attributes": {
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.run.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 2,
+      "attributes": {
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.run.check.count",
+      "type": "counter",
+      "unit": "{check}",
+      "value": 0,
+      "attributes": {
+        "status": "ERROR"
+      }
+    },
+    {
+      "name": "vowl.run.check.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.7777777777777778,
+      "attributes": {}
+    },
+    {
+      "name": "vowl.run.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 201865,
+      "attributes": {
+        "status": "PASSED"
+      }
+    },
+    {
+      "name": "vowl.run.row.count",
+      "type": "gauge",
+      "unit": "{row}",
+      "value": 14,
+      "attributes": {
+        "status": "FAILED"
+      }
+    },
+    {
+      "name": "vowl.run.row.pass_rate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0.9999306515288862,
+      "attributes": {}
+    },
+    {
+      "name": "vowl.run.row.approximate",
+      "type": "gauge",
+      "unit": "1",
+      "value": 0,
+      "attributes": {}
+    },
+    {
+      "name": "vowl.run.duration",
+      "type": "histogram",
+      "unit": "ms",
+      "value": 334.396,
+      "attributes": {}
+    }
+  ]
+}

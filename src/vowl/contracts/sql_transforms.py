@@ -152,6 +152,61 @@ def oracle_quote_column_identifiers(ast: exp.Expression) -> exp.Expression:
 
 
 # ---------------------------------------------------------------------------
+# Row-value IN rewrite
+# ---------------------------------------------------------------------------
+
+_TUPLE_IN_ALIAS = "_vowl_pk_dup"
+
+
+def tuple_in_subquery_to_exists(ast: exp.Expression) -> exp.Expression:
+    """Rewrite ``(a, b) IN (SELECT x, y ...)`` as an ``EXISTS`` over a derived table.
+
+    SQL Server, BigQuery and Trino reject a row value on the left of ``IN``
+    with a subquery. The rewrite keeps the subquery uncorrelated inside a
+    derived table and correlates only the equality chain::
+
+        EXISTS (SELECT 1 FROM (<subquery>) AS _vowl_pk_dup
+                WHERE _vowl_pk_dup.x = t.a AND _vowl_pk_dup.y = t.b)
+
+    The columns are qualified with the enclosing SELECT's table, so the
+    rewrite applies only when that SELECT reads a single table without joins.
+    NULL keys never match either way, so the result is the same.
+    """
+
+    def _transform(node: exp.Expression) -> exp.Expression:
+        if not isinstance(node, exp.In) or not isinstance(node.this, exp.Tuple):
+            return node
+        query = node.args.get("query")
+        if query is None:
+            return node
+        inner = query.this if isinstance(query, exp.Subquery) else query
+        if not isinstance(inner, exp.Select):
+            return node
+        keys = node.this.expressions
+        outputs = [projection.alias_or_name for projection in inner.expressions]
+        if len(keys) != len(outputs) or not all(outputs) or not all(isinstance(k, exp.Column) for k in keys):
+            return node
+        outer = node.parent_select
+        from_clause = outer.args.get("from_") or outer.args.get("from") if outer is not None else None
+        if outer is None or from_clause is None or outer.args.get("joins"):
+            return node
+        source = from_clause.this
+        if not isinstance(source, exp.Table):
+            return node
+        qualifier = source.alias_or_name
+        condition: exp.Expression | None = None
+        for key, output in zip(keys, outputs, strict=True):
+            eq = exp.column(output, table=_TUPLE_IN_ALIAS, quoted=True).eq(
+                exp.column(key.name, table=qualifier, quoted=True)
+            )
+            condition = eq if condition is None else exp.And(this=condition, expression=eq)
+        derived = inner.copy().subquery(exp.to_identifier(_TUPLE_IN_ALIAS, quoted=True))
+        return exp.Exists(this=sqlglot.select(exp.Literal.number(1)).from_(derived).where(condition))
+
+    return ast.transform(_transform)
+
+
+# ---------------------------------------------------------------------------
 # Dialect AST transform registry
 # ---------------------------------------------------------------------------
 
@@ -174,6 +229,9 @@ _DIALECT_AST_TRANSFORMS: dict[str, list] = {
         oracle_quote_underscore_aliases,
         oracle_quote_column_identifiers,
     ],
+    "tsql": [tuple_in_subquery_to_exists],
+    "bigquery": [tuple_in_subquery_to_exists],
+    "trino": [tuple_in_subquery_to_exists],
 }
 
 
@@ -304,6 +362,33 @@ def apply_try_cast(query: str, dialect: str) -> tuple[str, bool]:
 # ---------------------------------------------------------------------------
 
 
+def matching_filter_conditions(
+    table_name: str,
+    filter_conditions: dict[str, FilterConditionType] | None,
+) -> list[Any]:
+    """Return the filter conditions that apply to one table.
+
+    A key matches when it equals the table name or matches it as a glob
+    pattern. Keys are visited in dict order and a list value contributes
+    each of its conditions.
+
+    Args:
+        table_name: The unqualified table name.
+        filter_conditions: Filter conditions keyed by table name or pattern.
+
+    Returns:
+        The matching conditions, empty if none match.
+    """
+    matching: list[Any] = []
+    for pattern, conditions in (filter_conditions or {}).items():
+        if pattern == table_name or fnmatch.fnmatch(table_name, pattern):
+            if isinstance(conditions, list):
+                matching.extend(conditions)
+            else:
+                matching.append(conditions)
+    return matching
+
+
 def apply_filters(
     query: str,
     dialect: str,
@@ -336,13 +421,7 @@ def apply_filters(
         if tbl_name in table_filter_ast:
             continue
 
-        matching_conditions: list[Any] = []
-        for pattern, conditions in filter_conditions.items():
-            if pattern == tbl_name or fnmatch.fnmatch(tbl_name, pattern):
-                if isinstance(conditions, list):
-                    matching_conditions.extend(conditions)
-                else:
-                    matching_conditions.append(conditions)
+        matching_conditions = matching_filter_conditions(tbl_name, filter_conditions)
 
         if not matching_conditions:
             table_filter_ast[tbl_name] = None
@@ -451,6 +530,7 @@ __all__ = [
     "infer_type_from_literal",
     "wrap_count_subquery",
     "make_safe_cast",
+    "matching_filter_conditions",
     "oracle_fix_cast_types",
     "oracle_quote_column_identifiers",
     "oracle_quote_underscore_aliases",

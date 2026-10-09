@@ -42,14 +42,35 @@ theme:
     - search.suggest
     - toc.follow
 
+extra_css:
+  - stylesheets/extra.css
+
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - Data Contracts: contracts.md
-  - Usage Patterns: usage-patterns.md
-  - Architecture: architecture.md
-  - Design Considerations: design-considerations.md
-  - Known Issues: known-issues.md
+  - Get Started: getting-started.md
+  - Guides:
+      - Data Quality with Data Contracts: contracts.md
+      - Connecting to Your Data: usage-patterns.md
+      - The Results Object: results.md
+      - Run Settings: run-settings.md
+      - DQ Metrics:
+          - Understanding DQ Metrics: dq-metrics/understanding-metrics.md
+          - Exporting to OpenTelemetry: dq-metrics/otel-export.md
+          - Exporting to dq_metrics.json: dq-metrics/json-export.md
+  - Design Considerations:
+      - How vowl Works: architecture.md
+      - Checks:
+          - Check Results: design-considerations/checks/check-results.md
+          - Attributed Rows:
+              - How Attributed Rows Work: design-considerations/checks/how-attributed-rows-work.md
+              - Counting Mechanisms: design-considerations/checks/counting-mechanisms.md
+          - Annotating the Source Table: design-considerations/checks/annotating-the-source-table.md
+          - Capping Failed Rows: design-considerations/checks/capping-failed-rows.md
+      - Cross-Server and Cross-Table Checks:
+          - How Cross-Server and Cross-Table Checks Work: design-considerations/cross-table/how-it-works.md
+          - Using Relationship References: design-considerations/cross-table/relationship-references.md
+      - Known Issues & Caveats: known-issues.md
+  - Glossary: glossary.md
   - Roadmap: roadmap.md
 
 markdown_extensions:
@@ -66,7 +87,11 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
 

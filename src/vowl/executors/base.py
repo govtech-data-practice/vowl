@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 import pyarrow as pa
+import sqlglot
 
 from vowl.executors.security import (
     validate_query_security,
@@ -14,6 +17,68 @@ from vowl.executors.security import (
 if TYPE_CHECKING:
     from vowl.adapters.base import BaseAdapter
     from vowl.contracts.check_reference import CheckReference
+
+
+class CappedFetch:
+    """Fetch a check's failed rows, at most ``max_failed_rows`` of them.
+
+    It asks the data source for one row more than the cap, so it knows for
+    certain whether rows were cut off. It then keeps only the first ``cap``
+    rows and sets :attr:`truncated`.
+
+    Args:
+        run: Runs the row query with a row limit (``-1`` for none) and
+            returns the rows, or None.
+        max_rows: Returns the cap when called. It is read at fetch time,
+            because the runner sets it on the adapter after the checks are
+            built.
+    """
+
+    def __init__(self, run: Callable[[int], nw.DataFrame | None], max_rows: Callable[[], int]) -> None:
+        self._run = run
+        self._max_rows = max_rows
+        self.truncated = False
+
+    def __call__(self) -> nw.DataFrame | None:
+        cap = self._max_rows()
+        frame = self._run(cap + 1 if cap >= 0 else cap)
+        self.truncated = cap >= 0 and frame is not None and len(frame) > cap
+        return frame.head(cap) if self.truncated else frame
+
+
+def _uses_fetch_for_limit(dialect: str) -> bool:
+    """Return True when ``dialect`` has no LIMIT clause and caps rows with TOP or FETCH."""
+    return sqlglot.Dialect.get_or_raise(dialect).generator().LIMIT_FETCH == "FETCH"
+
+
+@dataclass
+class RowSource:
+    """How a SQL check's rows were produced, kept for the row-quality component.
+
+    The executor attaches one to every PASSED or FAILED SQL result, so the
+    row-quality component can rebuild the check's row query in the
+    same dialect, with the same filters, against the same adapter. It is
+    runtime state only and never appears in ``metadata`` or saved output.
+
+    Attributes:
+        check_ref: The check reference that produced the result.
+        dialect: The dialect the check ran in.
+        filter_conditions: The filters applied when the check ran.
+        use_try_cast: Whether TRY_CAST rewriting was on.
+        adapter: The adapter that executed the check.
+        row_query: The filtered row query, exactly as run.
+        cross_source: True when the check ran on a local copy of tables from
+            more than one source (Mode 2). Such a check cannot be pushed down
+            to a single source.
+    """
+
+    check_ref: Any
+    dialect: str
+    filter_conditions: Any = None
+    use_try_cast: bool = True
+    adapter: Any = None
+    row_query: str | None = None
+    cross_source: bool = False
 
 
 class CheckResult:
@@ -39,6 +104,7 @@ class CheckResult:
         supports_row_level_output: bool = False,
         metadata: dict[str, Any] | None = None,
         execution_time_ms: float = 0.0,
+        row_source: RowSource | None = None,
     ):
         """
         Initialize a check result.
@@ -62,6 +128,8 @@ class CheckResult:
                 row-level failures in summaries and output DataFrames.
             metadata: Additional metadata about the validation check.
             execution_time_ms: Time taken to execute the check in milliseconds.
+            row_source: How the check's rows were produced. Set by the SQL
+                executors and read by the row-quality component.
         """
         self.check_name = check_name
         self.status = status
@@ -70,19 +138,52 @@ class CheckResult:
         self.expected_value = expected_value
         self._failed_rows: nw.DataFrame | None = failed_rows
         self._failed_rows_fetcher = failed_rows_fetcher
+        self._failed_rows_truncated = False
         self._failed_rows_count = failed_rows_count
         self._supports_row_level_output = supports_row_level_output
         self.metadata = metadata or {}
         self.execution_time_ms = execution_time_ms
+        self.row_source = row_source
+
+    @property
+    def rows(self) -> nw.DataFrame:
+        """Rows the check's row query returned, whatever the status (lazily fetched once).
+
+        For a FAILED check these are its failed rows. For a check that PASSED
+        within its threshold they are its tolerated rows. The outputs read
+        them for a passed check only under
+        ``ValidationConfig(fetch_tolerated_rows=True)``.
+        """
+        _empty = nw.from_native(pa.table({}), eager_only=True)
+        if self._failed_rows is None and self._failed_rows_fetcher is not None:
+            # Compare with None, not truthiness: a zero-row frame is falsy but
+            # still carries the column names that decide mergeability.
+            fetched = self._failed_rows_fetcher()
+            self._failed_rows = fetched if fetched is not None else _empty
+            self._failed_rows_truncated = bool(getattr(self._failed_rows_fetcher, "truncated", False))
+            self._failed_rows_fetcher = None  # release closure references
+        return self._failed_rows if self._failed_rows is not None else _empty
+
+    @property
+    def rows_truncated(self) -> bool:
+        """Whether ``max_failed_rows`` cut :attr:`rows` short (fetches them first)."""
+        _ = self.rows
+        return self._failed_rows_truncated
 
     @property
     def failed_rows(self) -> nw.DataFrame:
-        """Rows that failed this check (lazily fetched on first access)."""
-        _empty = nw.from_native(pa.table({}), eager_only=True)
-        if self._failed_rows is None and self._failed_rows_fetcher is not None:
-            self._failed_rows = self._failed_rows_fetcher() or _empty
-            self._failed_rows_fetcher = None  # release closure references
-        return self._failed_rows if self._failed_rows is not None else _empty
+        """Rows that failed this check (lazily fetched on first access).
+
+        Empty for a PASSED check, without running its row query.
+        """
+        if self.status == "PASSED":
+            return nw.from_native(pa.table({}), eager_only=True)
+        return self.rows
+
+    @property
+    def failed_rows_truncated(self) -> bool:
+        """Whether ``max_failed_rows`` cut :attr:`failed_rows` short (fetches them first)."""
+        return self.status != "PASSED" and self.rows_truncated
 
     @property
     def failed_rows_count(self) -> int:
@@ -202,6 +303,40 @@ class SQLExecutor(BaseExecutor):
                 renamed_columns.append(name)
 
         return table.rename_columns(renamed_columns)
+
+    @staticmethod
+    def _with_row_cap(query: str, max_rows: int, dialect: str) -> str:
+        """Append ``LIMIT max_rows`` unless the outer query already limits its rows.
+
+        The outer LIMIT, TOP or FETCH is detected with sqlglot, so a column,
+        string literal, subquery or CTE that merely mentions LIMIT (for example
+        a ``credit_limit`` column) no longer disables the cap.  Unparseable
+        queries fall back to a whole-word match.
+
+        Dialects without a LIMIT clause (T-SQL and Oracle, which sqlglot marks
+        with ``LIMIT_FETCH = "FETCH"``) get the cap rendered by sqlglot as TOP
+        or FETCH FIRST.  Every other dialect keeps the literal append so its
+        query text is not re-rendered.
+        """
+        if max_rows < 0:
+            return query
+        try:
+            parsed = sqlglot.parse_one(query, dialect=dialect)
+        except sqlglot.errors.SqlglotError:
+            has_limit = re.search(r"\bLIMIT\b", query, re.IGNORECASE) is not None
+            return query if has_limit else f"{query} LIMIT {max_rows}"
+        if parsed.args.get("limit") is not None:
+            return query
+        if not _uses_fetch_for_limit(dialect) or not isinstance(parsed, sqlglot.exp.Query):
+            return f"{query} LIMIT {max_rows}"
+        if isinstance(parsed, sqlglot.exp.SetOperation) and (
+            parsed.args.get("order") or parsed.expression.args.get("order")
+        ):
+            # sqlglot would wrap an ordered UNION in a subquery, and T-SQL
+            # rejects ORDER BY inside a derived table.  OFFSET and FETCH after
+            # the trailing ORDER BY work in both T-SQL and Oracle.
+            return f"{query} OFFSET 0 ROWS FETCH NEXT {max_rows} ROWS ONLY"
+        return parsed.limit(max_rows).sql(dialect=dialect)
 
     def __init__(
         self,

@@ -1,34 +1,41 @@
 ---
-description: vowl's modular architecture — adapters, executors, and the Ibis universal query layer for server-side SQL validation.
+description: How vowl works inside. Adapters connect to your data, executors run the checks, and Ibis lets the SQL run inside your database.
 ---
 
-# Architecture
+# How vowl Works
 
-vowl has a modular architecture built around **Ibis** as the universal query layer.
+vowl is built from a few parts. [Ibis](https://github.com/ibis-project/ibis)
+lets the same SQL run on 20+ databases, so most checks run inside your
+database.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              validate_data()                                │
-│                           (Main Entry Point)                                │
 └─────────────────────────────────────────────────────────────────────────────┘
                                      │
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           DataSourceMapper                                  │
-│              (Auto-detects input type → creates adapter)                    │
+│         Turns df=, connection_str= or spark_session= into an adapter        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MultiSourceAdapter                                 │
+│   Built by vowl for every run. Holds one adapter per schema and decides     │
+│   where each check runs.                                                    │
 └─────────────────────────────────────────────────────────────────────────────┘
                                      │
           ┌──────────────────────────┼──────────────────────────┐
           ▼                          ▼                          ▼
 ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-│   IbisAdapter    │      │ MultiSourceAdapter│      │  Custom Adapter  │
+│   IbisAdapter    │      │  PooledAdapter   │      │  Custom Adapter  │
 │                  │      │                  │      │                  │
-│ • pandas/Polars  │      │ • Cross-database │      │ • Extend         │
-│ • PySpark        │      │   validation     │      │   BaseAdapter    │
-│ • PostgreSQL     │      │ • Data federation│      │                  │
-│ • Snowflake      │      │                  │      │                  │
-│ • BigQuery       │      │                  │      │                  │
-│ • 20+ backends   │      │                  │      │                  │
+│ • DataFrames, in │      │ • Several        │      │ • Extend         │
+│   local DuckDB   │      │   IbisAdapters   │      │   BaseAdapter    │
+│ • PySpark        │      │   from a factory │      │                  │
+│ • PostgreSQL     │      │ • Runs checks    │      │                  │
+│ • 20+ backends   │      │   side by side   │      │                  │
 └──────────────────┘      └──────────────────┘      └──────────────────┘
           │                          │                          │
           └──────────────────────────┼──────────────────────────┘
@@ -36,34 +43,35 @@ vowl has a modular architecture built around **Ibis** as the universal query lay
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Executors                                      │
 │                                                                             │
-│  ┌─────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐     │
-│  │  IbisSQLExecutor│  │MultiSourceSQLExecutor│  │  Custom Executor   │     │
-│  │                 │  │                     │  │                     │     │
-│  │ Runs SQL checks │  │ Mode 1: delegate to │  │ Extend BaseExecutor │     │
-│  │ via Ibis        │  │ backend (same conn) │  │ or SQLExecutor      │     │
-│  │ (server-side)   │  │ Mode 2: materialise │  │                     │     │
-│  │                 │  │ to DuckDB via Arrow │  │                     │     │
-│  └─────────────────┘  └─────────────────────┘  └─────────────────────┘     │
+│  ┌─────────────────┐  ┌──────────────────────┐  ┌─────────────────────┐     │
+│  │ IbisSQLExecutor │  │MultiSourceSQLExecutor│  │  Custom Executor    │     │
+│  │                 │  │                      │  │                     │     │
+│  │ Runs a SQL      │  │ Cross-table checks:  │  │ Extend BaseExecutor │     │
+│  │ check inside    │  │ in the database when │  │ or SQLExecutor      │     │
+│  │ the database    │  │ it can, otherwise on │  │                     │     │
+│  │                 │  │ copies in DuckDB     │  │                     │     │
+│  └─────────────────┘  └──────────────────────┘  └─────────────────────┘     │
 └─────────────────────────────────────────────────────────────────────────────┘
                                      │
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           ValidationResult                                  │
 │                                                                             │
-│  • Per-check failed rows with check_id & tables_in_query columns            │
-│  • Detailed check results and metrics                                       │
-│  • Export to CSV/JSON                                                       │
+│  • Check results, row counts and failed rows                                │
+│  • Annotated tables and residues                                            │
+│  • Files, DQ metrics and OpenTelemetry export                               │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Key Components
 
-| Component                  | Description                                                                                                                                                                                                                                                 |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **DataSourceMapper**       | Auto-detects a single input source (DataFrame, Spark object, Ibis backend, or connection string) and creates the appropriate adapter                                                                                                                        |
-| **IbisAdapter**            | Universal adapter supporting 20+ backends via Ibis (pandas, Polars, PySpark, PostgreSQL, Snowflake, BigQuery, etc.)                                                                                                                                         |
-| **MultiSourceAdapter**     | Routes checks across multiple data sources, separating single-table checks (delegated to per-schema adapters) from multi-table checks (sent to `MultiSourceSQLExecutor`)                                                                                    |
-| **IbisSQLExecutor**        | Executes SQL-based quality checks through the Ibis query layer (server-side)                                                                                                                                                                                |
-| **MultiSourceSQLExecutor** | Executes cross-source SQL with two modes: **direct delegation** when all tables share the same compatible backend, or **DuckDB materialisation** when backends differ. Tables are exported as Arrow and loaded into a local DuckDB for cross-database joins |
-| **Contract**               | Parses ODCS YAML contracts into executable validation rules                                                                                                                                                                                                 |
-| **ValidationResult**       | Rich result object with enhanced DataFrames, metrics, and export capabilities                                                                                                                                                                               |
+| Component                  | What it does                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DataSourceMapper**       | Looks at what you passed (a DataFrame, a Spark object, an Ibis connection or a connection string) and creates the right adapter                                                                                                                                                                                                                |
+| **MultiSourceAdapter**     | vowl builds one for every run from `adapter=` or `adapters={...}`, so you usually don't create it, but you can pass one through `adapters=`. It sends single-table checks to each schema's adapter, and cross-table checks to `MultiSourceSQLExecutor`                                                                                         |
+| **IbisAdapter**            | Connects to any of the 20+ Ibis backends (PySpark, PostgreSQL, Snowflake, BigQuery and more). A pandas or Polars DataFrame goes through Narwhals into an in-memory Ibis DuckDB                                                                                                                                                                 |
+| **PooledAdapter**          | Opens several adapters from a factory function you give it, and runs up to `max_concurrency` checks at once. See [Concurrent checks](usage-patterns.md#concurrent-checks-pooledadapter)                                                                                                                                                        |
+| **IbisSQLExecutor**        | Runs a SQL check inside the database through Ibis                                                                                                                                                                                                                                                                                              |
+| **MultiSourceSQLExecutor** | Runs a cross-table check. When every table it reads is on one connection, the check runs in that database. If those tables have different filter conditions, the adapter also needs `with_filter_conditions`. Otherwise vowl copies each table into memory (as an Arrow table), loads it into DuckDB on your machine, and runs the check there |
+| **Contract**               | Reads an ODCS YAML contract and turns it into checks                                                                                                                                                                                                                                                                                           |
+| **ValidationResult**       | Holds the outcome of the run. See [The Results Object](results.md)                                                                                                                                                                                                                                                                             |

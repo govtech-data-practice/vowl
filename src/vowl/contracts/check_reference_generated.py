@@ -1214,6 +1214,79 @@ class PrimaryKeyCheckReference(GeneratedColumnCheckReference):
         }
 
 
+class CompositePrimaryKeyCheckReference(GeneratedTableCheckReference):
+    """Auto-generated check for a primary key made of two or more columns.
+
+    ODCS marks each key column with ``primaryKey: true`` and orders them by
+    ``primaryKeyPosition``. Together the columns form one key, so the check
+    counts rows with a NULL in any key column plus every row whose key tuple
+    belongs to a duplicate group. Like the single-column check, it counts
+    participating rows over the base table, so the failed rows derive as
+    ``SELECT * FROM table WHERE <pred>``.
+    """
+
+    def __init__(self, contract: Contract, schema_index: int, columns: list[str]):
+        super().__init__(contract, f"$.schema[{schema_index}].primaryKey")
+        if len(columns) < 2:
+            raise ValueError("a composite primary key needs at least two columns")
+        if len(set(columns)) != len(columns):
+            raise ValueError(f"composite primary key repeats a column: {', '.join(columns)}")
+        schema_name = self.get_schema_name()
+        if not schema_name:
+            raise ValueError(f"cannot resolve schema name for primary key at {self._path}")
+        self._schema_name: str = schema_name
+        self._columns = list(columns)
+
+    def get_check(self) -> DataQuality:
+        if self._generated_check is None:
+            self._generated_check = self._generate_check()
+        return self._generated_check
+
+    def get_columns(self) -> list[str]:
+        return list(self._columns)
+
+    def _build_ast(self) -> exp.Expression:
+        if self._cached_ast is not None:
+            return self._cached_ast
+
+        table = exp.Table(this=exp.to_identifier(self._schema_name, quoted=True))
+
+        def col(name: str) -> exp.Column:
+            return exp.Column(this=exp.to_identifier(name, quoted=True))
+
+        any_null: exp.Expression | None = None
+        all_present: exp.Expression | None = None
+        for name in self._columns:
+            is_null = col(name).is_(exp.Null())
+            any_null = is_null if any_null is None else exp.Or(this=any_null, expression=is_null)
+            present = col(name).is_(exp.Null()).not_()
+            all_present = present if all_present is None else exp.And(this=all_present, expression=present)
+
+        dup_subquery = (
+            sqlglot.select(*(col(name) for name in self._columns))
+            .from_(table)
+            .where(all_present)
+            .group_by(*(col(name) for name in self._columns))
+            .having(exp.Count(this=exp.Star()) > exp.Literal.number(1))
+        )
+        key = exp.Tuple(expressions=[col(name) for name in self._columns])
+        pred = exp.Or(this=any_null, expression=exp.In(this=key, query=dup_subquery.subquery()))
+
+        self._cached_ast = sqlglot.select(exp.Count(this=exp.Star())).from_(table).where(pred)
+        return self._cached_ast
+
+    def _generate_check(self) -> DataQuality:
+        ast = self._build_ast()
+        return {
+            "name": f"{self._schema_name}_{'_'.join(self._columns)}_primary_key_check",
+            "type": "sql",
+            "dimension": "consistency",
+            "description": f"Primary key ({', '.join(self._columns)}) must be unique and not null",
+            "query": ast.sql(dialect=self._INTERNAL_DIALECT),
+            "mustBe": 0,
+        }
+
+
 class _ForeignKeyMixin:
     """Shared referential-integrity (foreign-key) AST + check generation.
 
@@ -1388,6 +1461,7 @@ class SchemaForeignKeyCheckReference(_ForeignKeyMixin, GeneratedTableCheckRefere
 
 __all__ = [
     "ArrayItemsCheckReference",
+    "CompositePrimaryKeyCheckReference",
     "DeclaredColumnExistsCheckReference",
     "EnumCheckReference",
     "GeneratedColumnCheckReference",

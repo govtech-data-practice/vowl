@@ -112,6 +112,12 @@ class BaseAdapter(ABC):  # noqa: B024
         from both can be executed directly on one of them without
         materializing data.  The default implementation returns ``False``;
         subclasses should override with backend-specific logic.
+
+        Filter conditions should not affect the answer. When compatible
+        adapters apply different filters to a join, the multi-source
+        executor runs it on a copy from the adapter's
+        ``with_filter_conditions(filters)`` method, if it has one, and
+        otherwise copies the tables to a local DuckDB.
         """
         return False
 
@@ -192,6 +198,7 @@ class BaseAdapter(ABC):  # noqa: B024
 
         # Process each engine
         for engine, type_refs in refs_by_type.items():
+            executor = None
             try:
                 executor = self._get_executor(engine)
                 results = executor.run_batch_checks(type_refs)
@@ -211,5 +218,51 @@ class BaseAdapter(ABC):  # noqa: B024
                         for ref in type_refs
                     ]
                 )
+            except Exception:
+                if executor is None:
+                    raise
+                # One check broke the whole batch. Run each alone so the
+                # others keep their results and only the broken one errors.
+                all_results.extend(self._run_checks_one_by_one(executor, type_refs))
 
         return all_results
+
+    @staticmethod
+    def _run_checks_one_by_one(executor: BaseExecutor, check_refs: list[CheckReference]) -> list[CheckResult]:
+        """Run each check alone, turning a check that raises into an ERROR result."""
+        from vowl.executors.base import CheckResult
+
+        results: list[CheckResult] = []
+        for ref in check_refs:
+            try:
+                results.extend(executor.run_batch_checks([ref]))
+            except Exception as e:
+                results.append(
+                    CheckResult(
+                        check_name=ref.get_check_name(),
+                        status="ERROR",
+                        details=f"Error executing check: {e}",
+                        execution_time_ms=0,
+                    )
+                )
+        return results
+
+    def run_arrow_query(self, sql: str) -> pa.Table:
+        """Run a read-only query and return its rows as a PyArrow table.
+
+        The row-quality component uses this to count failed rows inside the
+        data source. Adapters that do not implement it get row counts by
+        matching each check's failed rows onto the exported table instead.
+
+        Raises:
+            NotImplementedError: If the adapter does not support it.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not implement run_arrow_query.")
+
+    def get_column_types(self, schema_name: str) -> dict:
+        """Return the column names and data types of a table.
+
+        Raises:
+            NotImplementedError: If the adapter does not support it.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not implement get_column_types.")

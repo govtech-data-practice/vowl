@@ -1,0 +1,4 @@
+month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_id,tables_in_query
+2019-05,HOUGANG,5 ROOM,408,HOUGANG AVE 10,04 TO 06,121.0,Improved,1986,66 years 0 months,545000.0,remaining_lease_logical_type_options_pattern_check,hdb_resale_prices
+2019-05,SEMBAWANG,2 ROOM,593B,MONTREAL LINK,04 TO 06,47.0,Model A,2015,95 years 0 months,210000.0,remaining_lease_logical_type_options_pattern_check,hdb_resale_prices
+2019-07,SENGKANG,4 ROOM,434A,FERNVALE RD,01 TO 03,94.0,Premium Apartment,2013,93 years 0 months,360000.0,remaining_lease_logical_type_options_pattern_check,hdb_resale_prices

@@ -226,8 +226,9 @@ class MultiSourceAdapter(BaseAdapter):
                         warnings.warn(
                             f"Schema '{schema_name}' references table '{table}' "
                             f"which is not a defined schema and is not accessible: {table_error}. "
-                            f"Note: cross-source queries only work for tables defined as "
-                            f"schemas in the contract.",
+                            f"Tables that are not defined as schemas are read through the "
+                            f"adapter of the schema whose check references them. Declare "
+                            f"'{table}' as a schema to give it its own adapter.",
                             UserWarning,
                             stacklevel=2,
                         )
@@ -235,7 +236,8 @@ class MultiSourceAdapter(BaseAdapter):
                         warnings.warn(
                             f"Schema '{schema_name}' references table '{table}' "
                             f"which is not a defined schema but is accessible via "
-                            f"this adapter's connection.",
+                            f"this adapter's connection. Checks under '{schema_name}' "
+                            f"read it through this adapter.",
                             UserWarning,
                             stacklevel=2,
                         )
@@ -251,8 +253,12 @@ class MultiSourceAdapter(BaseAdapter):
         """
         Run checks, routing each to the appropriate adapter based on schema.
 
-        Single-table checks are routed to the corresponding adapter.
+        Single-table checks are routed to the corresponding adapter. Schemas
+        served by one ``PooledAdapter`` send their checks through it in one
+        call, so they share its workers. Results keep the schema order.
         Multi-table checks (joins) are handled by MultiSourceSQLExecutor.
+        In both cases a table that is not a defined schema is read through
+        the adapter of the schema the check sits under.
 
         Args:
             check_refs_by_schema: Dict mapping schema names to their CheckReference objects.
@@ -260,23 +266,26 @@ class MultiSourceAdapter(BaseAdapter):
         Returns:
             Combined list of CheckResult objects from all schemas.
         """
+        from ..contracts.check_reference_unsupported import UnsupportedCheckReference
         from ..executors.base import CheckResult
+        from .pooled_adapter import PooledAdapter
 
-        all_results: list[CheckResult] = []
         multi_table_refs: list[CheckReference] = []
+        # Per schema, in order: results known up front, then the schema's
+        # single-table checks and the results they get
+        sections: list[tuple[str, list[CheckResult], list[CheckReference]]] = []
 
         for schema_name, check_refs in check_refs_by_schema.items():
             if not check_refs:
                 continue
 
             # Separate single-table and multi-table checks
+            early_results: list[CheckResult] = []
             single_table_refs: list[CheckReference] = []
 
             for check_ref in check_refs:
-                from ..contracts.check_reference_unsupported import UnsupportedCheckReference
-
                 if isinstance(check_ref, UnsupportedCheckReference):
-                    all_results.append(
+                    early_results.append(
                         CheckResult(
                             check_name=check_ref.get_check_name(),
                             status="ERROR",
@@ -291,26 +300,45 @@ class MultiSourceAdapter(BaseAdapter):
                 else:
                     single_table_refs.append(check_ref)
 
-            # Process single-table checks with the schema's adapter
-            if single_table_refs:
-                adapter = self._adapters.get(schema_name)
+            sections.append((schema_name, early_results, single_table_refs))
 
-                if adapter is None:
-                    # Return error results for this schema's checks
-                    all_results.extend(
-                        [
-                            CheckResult(
-                                check_name=check_ref.get_check_name(),
-                                status="ERROR",
-                                details=f"No adapter configured for schema '{schema_name}'",
-                                execution_time_ms=0,
-                            )
-                            for check_ref in single_table_refs
-                        ]
+        # Run single-table checks with each schema's adapter. Schemas that
+        # share one pool go through it together, so their checks run side by
+        # side. Other adapters run one schema at a time, because copies of a
+        # plain adapter share a single connection.
+        single_results: dict[str, list[CheckResult]] = {}
+        pool_groups: dict[int, list[str]] = {}
+        for schema_name, _, single_table_refs in sections:
+            if not single_table_refs:
+                continue
+            adapter = self._adapters.get(schema_name)
+
+            if adapter is None:
+                # Return error results for this schema's checks
+                single_results[schema_name] = [
+                    CheckResult(
+                        check_name=check_ref.get_check_name(),
+                        status="ERROR",
+                        details=f"No adapter configured for schema '{schema_name}'",
+                        execution_time_ms=0,
                     )
-                else:
-                    results = adapter.run_checks(single_table_refs)
-                    all_results.extend(results)
+                    for check_ref in single_table_refs
+                ]
+            elif isinstance(adapter, PooledAdapter):
+                pool_groups.setdefault(id(adapter._pool), []).append(schema_name)
+            else:
+                single_results[schema_name] = adapter.run_checks(single_table_refs)
+
+        refs_by_schema = {schema_name: refs for schema_name, _, refs in sections}
+        for schema_names in pool_groups.values():
+            pooled = self._adapters[schema_names[0]]
+            batches = pooled._run_check_batches([refs_by_schema[name] for name in schema_names])
+            single_results.update(zip(schema_names, batches, strict=True))
+
+        all_results: list[CheckResult] = []
+        for schema_name, early_results, _ in sections:
+            all_results.extend(early_results)
+            all_results.extend(single_results.get(schema_name, []))
 
         # Process multi-table checks with MultiSourceSQLExecutor
         if multi_table_refs:

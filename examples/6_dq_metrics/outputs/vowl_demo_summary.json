@@ -1,0 +1,460 @@
+{
+  "validation_summary": {
+    "total_checks": 9,
+    "passed": 7,
+    "failed": 2,
+    "errors": 0,
+    "config": {
+      "max_rows_for_statistics": -1,
+      "max_failed_rows": -1,
+      "use_try_cast": true,
+      "outputs": [
+        "all_query_outputs",
+        "consolidated_query_outputs",
+        "annotated_table",
+        "dq_metrics"
+      ],
+      "annotated_check_info": "names",
+      "fetch_tolerated_rows": false
+    },
+    "failed_rows_approximate": 14,
+    "total_execution_time_ms": 94.12608272396028,
+    "success_rate": 77.77777777777779,
+    "connection_results": {
+      "hdb_resale_prices": {
+        "hdb_resale_prices": "success"
+      }
+    }
+  },
+  "check_results": [
+    {
+      "name": "month_column_exists_check",
+      "status": "PASSED",
+      "details": "Column 'month' must exist in 'hdb_resale_prices'",
+      "expected_value": 0,
+      "actual_value": 0,
+      "failed_rows_count": 0,
+      "execution_time_ms": 7.350708008743823,
+      "check_path": "$.schema[0].properties[0].name",
+      "check_ref_type": "DeclaredColumnExistsCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": true,
+      "engine": "sql",
+      "check_definition": {
+        "name": "month_column_exists_check",
+        "type": "sql",
+        "dimension": "conformity",
+        "description": "Column 'month' must exist in 'hdb_resale_prices'",
+        "query": "SELECT COUNT(*) FROM (SELECT \"month\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "month"
+      },
+      "target": "hdb_resale_prices.month",
+      "logical_type": "string",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM (SELECT \"month\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists"
+    },
+    {
+      "name": "month_logical_type_check",
+      "status": "PASSED",
+      "details": "Values in 'month' must be valid string",
+      "expected_value": 0,
+      "actual_value": 0,
+      "failed_rows_count": 0,
+      "execution_time_ms": 8.318374981172383,
+      "check_path": "$.schema[0].properties[0].logicalType",
+      "check_ref_type": "LogicalTypeCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": true,
+      "engine": "sql",
+      "check_definition": {
+        "name": "month_logical_type_check",
+        "type": "sql",
+        "dimension": "conformity",
+        "description": "Values in 'month' must be valid string",
+        "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"month\" IS NULL AND CAST(\"month\" AS VARCHAR) IS NULL",
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "string"
+      },
+      "target": "hdb_resale_prices.month",
+      "logical_type": "string",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"month\" IS NULL AND TRY_CAST(\"month\" AS TEXT) IS NULL"
+    },
+    {
+      "name": "flat_type_column_exists_check",
+      "status": "PASSED",
+      "details": "Column 'flat_type' must exist in 'hdb_resale_prices'",
+      "expected_value": 0,
+      "actual_value": 0,
+      "failed_rows_count": 0,
+      "execution_time_ms": 6.493291934020817,
+      "check_path": "$.schema[0].properties[1].name",
+      "check_ref_type": "DeclaredColumnExistsCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": true,
+      "engine": "sql",
+      "check_definition": {
+        "name": "flat_type_column_exists_check",
+        "type": "sql",
+        "dimension": "conformity",
+        "description": "Column 'flat_type' must exist in 'hdb_resale_prices'",
+        "query": "SELECT COUNT(*) FROM (SELECT \"flat_type\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "flat_type"
+      },
+      "target": "hdb_resale_prices.flat_type",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM (SELECT \"flat_type\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists"
+    },
+    {
+      "name": "flat_type_enum_check",
+      "status": "PASSED",
+      "details": "Column 'flat_type' must be one of the allowed enum values",
+      "expected_value": 0,
+      "actual_value": 0,
+      "failed_rows_count": 0,
+      "execution_time_ms": 6.507832906208932,
+      "check_path": "$.schema[0].properties[1].enum",
+      "check_ref_type": "EnumCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": true,
+      "engine": "sql",
+      "check_definition": {
+        "name": "flat_type_enum_check",
+        "type": "sql",
+        "dimension": "conformity",
+        "description": "Column 'flat_type' must be one of the allowed enum values",
+        "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"flat_type\" IS NULL AND NOT \"flat_type\" IN ('1 ROOM', '2 ROOM', '3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE', 'MULTI-GENERATION')",
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": [
+          {
+            "value": "1 ROOM"
+          },
+          {
+            "value": "2 ROOM"
+          },
+          {
+            "value": "3 ROOM"
+          },
+          {
+            "value": "4 ROOM"
+          },
+          {
+            "value": "5 ROOM"
+          },
+          {
+            "value": "EXECUTIVE"
+          },
+          {
+            "value": "MULTI-GENERATION"
+          }
+        ]
+      },
+      "target": "hdb_resale_prices.flat_type",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"flat_type\" IS NULL AND NOT \"flat_type\" IN ('1 ROOM', '2 ROOM', '3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE', 'MULTI-GENERATION')"
+    },
+    {
+      "name": "floor_area_sqm_column_exists_check",
+      "status": "PASSED",
+      "details": "Column 'floor_area_sqm' must exist in 'hdb_resale_prices'",
+      "expected_value": 0,
+      "actual_value": 0,
+      "failed_rows_count": 0,
+      "execution_time_ms": 5.77583396807313,
+      "check_path": "$.schema[0].properties[2].name",
+      "check_ref_type": "DeclaredColumnExistsCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": true,
+      "engine": "sql",
+      "check_definition": {
+        "name": "floor_area_sqm_column_exists_check",
+        "type": "sql",
+        "dimension": "conformity",
+        "description": "Column 'floor_area_sqm' must exist in 'hdb_resale_prices'",
+        "query": "SELECT COUNT(*) FROM (SELECT \"floor_area_sqm\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "floor_area_sqm"
+      },
+      "target": "hdb_resale_prices.floor_area_sqm",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM (SELECT \"floor_area_sqm\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists"
+    },
+    {
+      "name": "resale_price_column_exists_check",
+      "status": "PASSED",
+      "details": "Column 'resale_price' must exist in 'hdb_resale_prices'",
+      "expected_value": 0,
+      "actual_value": 0,
+      "failed_rows_count": 0,
+      "execution_time_ms": 4.465125035494566,
+      "check_path": "$.schema[0].properties[3].name",
+      "check_ref_type": "DeclaredColumnExistsCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": true,
+      "engine": "sql",
+      "check_definition": {
+        "name": "resale_price_column_exists_check",
+        "type": "sql",
+        "dimension": "conformity",
+        "description": "Column 'resale_price' must exist in 'hdb_resale_prices'",
+        "query": "SELECT COUNT(*) FROM (SELECT \"resale_price\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+        "mustBe": 0,
+        "tags": [
+          "vowl_generated_check"
+        ]
+      },
+      "contract_definition": {
+        "value": "resale_price"
+      },
+      "target": "hdb_resale_prices.resale_price",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM (SELECT \"resale_price\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists"
+    },
+    {
+      "name": "Month",
+      "status": "FAILED",
+      "details": "Based on ISO 8601 | YYYY-MM",
+      "expected_value": 0,
+      "actual_value": 2,
+      "failed_rows_count": 2,
+      "execution_time_ms": 20.82170790527016,
+      "check_path": "$.schema[0].properties[0].quality[0]",
+      "check_ref_type": "SQLColumnCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": false,
+      "engine": "sql",
+      "check_definition": {
+        "type": "sql",
+        "name": "Month",
+        "description": "Based on ISO 8601 | YYYY-MM",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM \"hdb_resale_prices\"\nWHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';",
+        "dimension": "conformity"
+      },
+      "contract_definition": {
+        "type": "sql",
+        "name": "Month",
+        "description": "Based on ISO 8601 | YYYY-MM",
+        "mustBe": 0,
+        "query": "SELECT COUNT(*)\nFROM \"hdb_resale_prices\"\nWHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';",
+        "dimension": "conformity"
+      },
+      "target": "hdb_resale_prices.month",
+      "logical_type": "string",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT REGEXP_MATCHES(TRY_CAST(month AS TEXT), '^[0-9]{4}-(0[1-9]|1[0-2])$')"
+    },
+    {
+      "name": "floor_area_must_be_less_than_200",
+      "status": "FAILED",
+      "details": "Check failed: expected mustBe 0, got 12",
+      "expected_value": 0,
+      "actual_value": 12,
+      "failed_rows_count": 12,
+      "execution_time_ms": 17.490249942056835,
+      "check_path": "$.schema[0].properties[2].quality[0]",
+      "check_ref_type": "SQLColumnCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": false,
+      "engine": "sql",
+      "check_definition": {
+        "name": "floor_area_must_be_less_than_200",
+        "type": "sql",
+        "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE floor_area_sqm >= 200",
+        "mustBe": 0,
+        "dimension": "consistency"
+      },
+      "contract_definition": {
+        "name": "floor_area_must_be_less_than_200",
+        "type": "sql",
+        "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE floor_area_sqm >= 200",
+        "mustBe": 0,
+        "dimension": "consistency"
+      },
+      "target": "hdb_resale_prices.floor_area_sqm",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE TRY_CAST(floor_area_sqm AS BIGINT) >= 200"
+    },
+    {
+      "name": "resale_price_must_not_exceed_2m",
+      "status": "PASSED",
+      "details": "Check passed: mustBe 0",
+      "expected_value": 0,
+      "actual_value": 0,
+      "failed_rows_count": 0,
+      "execution_time_ms": 16.902958042919636,
+      "check_path": "$.schema[0].properties[3].quality[0]",
+      "check_ref_type": "SQLColumnCheckReference",
+      "schema_name": "hdb_resale_prices",
+      "operator": "mustBe",
+      "is_generated": false,
+      "engine": "sql",
+      "check_definition": {
+        "name": "resale_price_must_not_exceed_2m",
+        "type": "sql",
+        "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE resale_price > 2000000",
+        "mustBe": 0,
+        "dimension": "consistency"
+      },
+      "contract_definition": {
+        "name": "resale_price_must_not_exceed_2m",
+        "type": "sql",
+        "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE resale_price > 2000000",
+        "mustBe": 0,
+        "dimension": "consistency"
+      },
+      "target": "hdb_resale_prices.resale_price",
+      "aggregation_type": "count",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "rendered_implementation": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE TRY_CAST(resale_price AS BIGINT) > 2000000"
+    }
+  ],
+  "contract_metadata": {
+    "kind": "DataContract",
+    "apiVersion": "v3.2.0",
+    "version": "1.0.0",
+    "status": null,
+    "id": "c11443ee-542f-4442-b28d-2d224342be37",
+    "description": null
+  },
+  "saved_outputs": {
+    "all_query_outputs": [
+      {
+        "schema": "hdb_resale_prices",
+        "column": "month",
+        "check": "month_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "month",
+        "check": "month_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "flat_type",
+        "check": "flat_type_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "flat_type",
+        "check": "flat_type_enum_check",
+        "rows": 0
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "floor_area_sqm",
+        "check": "floor_area_sqm_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "resale_price",
+        "check": "resale_price_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "month",
+        "check": "Month",
+        "rows": 2,
+        "file": "vowl_demo_checks/hdb_resale_prices__month__Month.csv"
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "floor_area_sqm",
+        "check": "floor_area_must_be_less_than_200",
+        "rows": 12,
+        "file": "vowl_demo_checks/hdb_resale_prices__floor_area_sqm__floor_area_must_be_less_than_200.csv"
+      },
+      {
+        "schema": "hdb_resale_prices",
+        "column": "resale_price",
+        "check": "resale_price_must_not_exceed_2m",
+        "rows": 0
+      }
+    ],
+    "consolidated_query_outputs": [
+      {
+        "tables": "hdb_resale_prices",
+        "rows": 14,
+        "file": "vowl_demo_hdb_resale_prices.csv"
+      }
+    ],
+    "annotated_table": [
+      {
+        "schema": "hdb_resale_prices",
+        "rows": 201879,
+        "file": "vowl_demo_hdb_resale_prices_annotated.csv"
+      }
+    ],
+    "dq_metrics": [
+      {
+        "file": "vowl_demo_dq_metrics.json"
+      }
+    ]
+  }
+}

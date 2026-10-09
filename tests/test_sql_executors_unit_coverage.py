@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import narwhals as nw
 import pyarrow as pa
 import pytest
 from sqlglot import exp
@@ -24,7 +25,7 @@ class StubCheckReference:
         *,
         check: dict | None = None,
         rendered_query: str | None = "SELECT COUNT(*) FROM users",
-        failed_rows_query: str | None = "SELECT * FROM users",
+        row_query: str | None = "SELECT * FROM users",
         column_name: str | None = None,
         logical_type: str | None = None,
         schema_name: str = "users",
@@ -37,7 +38,7 @@ class StubCheckReference:
             "mustBe": 0,
         }
         self._rendered_query = rendered_query
-        self._failed_rows_query = failed_rows_query
+        self._row_query = row_query
         self._column_name = column_name
         self._logical_type = logical_type
         self._schema_name = schema_name
@@ -106,8 +107,8 @@ class StubCheckReference:
             return f"SELECT COUNT(*) FROM ({query}) AS _sub"
         return query
 
-    def get_failed_rows_query(self, output_dialect, query_filters, use_try_cast=True):
-        return self._failed_rows_query
+    def get_row_query(self, output_dialect, query_filters, use_try_cast=True):
+        return self._row_query
 
     def compute_failed_rows_count(self, actual_value):
         unit_is_rows = self.unit is None or self.unit == "rows"
@@ -370,7 +371,7 @@ def test_multisource_fetch_failed_rows_adds_limit_and_returns_dataframe(monkeypa
     executor._local_duckdb_con = local_con
 
     monkeypatch.setattr(executor, "validate_query_security", lambda query: None)
-    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names: None)
+    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names, owner_schema=None: None)
 
     result = executor._fetch_failed_rows("SELECT * FROM users", {"users"})
 
@@ -385,7 +386,7 @@ def test_multisource_fetch_failed_rows_warns_and_returns_none_on_error(monkeypat
     executor._local_duckdb_con = local_con
 
     monkeypatch.setattr(executor, "validate_query_security", lambda query: None)
-    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names: None)
+    monkeypatch.setattr(executor, "_ensure_tables_available", lambda table_names, owner_schema=None: None)
 
     with pytest.warns(UserWarning, match="Failed to fetch failed rows for cross-schema check: boom"):
         assert executor._fetch_failed_rows("SELECT * FROM users", {"users"}) is None
@@ -408,7 +409,7 @@ def test_multisource_run_single_check_wraps_missing_mode1_adapter(monkeypatch: p
     check_ref = StubCheckReference()
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: True)
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: True)
 
     result = executor.run_single_check(check_ref)
 
@@ -421,7 +422,7 @@ def test_multisource_run_single_check_errors_when_rendered_query_is_missing(monk
     check_ref = StubCheckReference(rendered_query=None)
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: False)
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: False)
 
     result = executor.run_single_check(check_ref)
 
@@ -434,11 +435,11 @@ def test_multisource_run_single_check_returns_security_error_with_metadata(monke
     check_ref = StubCheckReference(column_name="employee_id", logical_type="integer")
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: False)
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: False)
     monkeypatch.setattr(
         executor,
         "_execute_query",
-        lambda query, table_names: (_ for _ in ()).throw(
+        lambda query, table_names, owner_schema=None: (_ for _ in ()).throw(
             SQLSecurityError("blocked", violation_type="write_operation", query=query)
         ),
     )
@@ -457,12 +458,14 @@ def test_multisource_run_single_check_failed_result_defaults_row_count_to_zero(m
     check_ref = StubCheckReference()
 
     monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
-    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names: False)
-    monkeypatch.setattr(executor, "_execute_query", lambda query, table_names: ["not-an-int"])
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: False)
+    monkeypatch.setattr(executor, "_execute_query", lambda query, table_names, owner_schema=None: ["not-an-int"])
     monkeypatch.setattr(
         executor,
         "_fetch_failed_rows",
-        lambda query, table_names: SimpleNamespace(to_pandas=lambda: pa.table({"id": [1]}).to_pandas()),
+        lambda query, table_names, owner_schema=None, max_rows=None: nw.from_native(
+            pa.table({"id": [1]}), eager_only=True
+        ),
     )
 
     result = executor.run_single_check(check_ref)
@@ -504,6 +507,36 @@ def test_ibis_fetch_failed_rows_adds_limit_and_supports_to_arrow(monkeypatch: py
     assert query_log == ["SELECT * FROM users LIMIT 3"]
     assert result is not None
     assert result.to_pandas().to_dict(orient="records") == [{"id": 1}]
+
+
+@pytest.mark.parametrize(
+    ("query", "dialect", "expected"),
+    [
+        # Mentions of LIMIT that are not an outer limit keep the cap.
+        ("SELECT * FROM users WHERE credit_limit > 5", "duckdb", "SELECT * FROM users WHERE credit_limit > 5 LIMIT 3"),
+        ("SELECT * FROM users WHERE note = 'LIMIT'", "duckdb", "SELECT * FROM users WHERE note = 'LIMIT' LIMIT 3"),
+        (
+            "SELECT * FROM users WHERE id IN (SELECT id FROM r LIMIT 1)",
+            "duckdb",
+            "SELECT * FROM users WHERE id IN (SELECT id FROM r LIMIT 1) LIMIT 3",
+        ),
+        # An outer limit in any dialect's syntax is left alone.
+        ("SELECT * FROM users LIMIT 10", "duckdb", "SELECT * FROM users LIMIT 10"),
+        ("SELECT TOP 10 * FROM users", "tsql", "SELECT TOP 10 * FROM users"),
+        ("SELECT * FROM users FETCH FIRST 10 ROWS ONLY", "oracle", "SELECT * FROM users FETCH FIRST 10 ROWS ONLY"),
+    ],
+)
+def test_with_row_cap_detects_only_the_outer_limit(query: str, dialect: str, expected: str):
+    assert IbisSQLExecutor._with_row_cap(query, 3, dialect) == expected
+
+
+def test_with_row_cap_is_a_no_op_when_uncapped():
+    assert IbisSQLExecutor._with_row_cap("SELECT * FROM users", -1, "duckdb") == "SELECT * FROM users"
+
+
+def test_with_row_cap_falls_back_to_whole_word_match_when_unparseable():
+    assert IbisSQLExecutor._with_row_cap("SELECT credit_limit FROM (", 3, "duckdb").endswith(" LIMIT 3")
+    assert IbisSQLExecutor._with_row_cap("SELECT * FROM ( LIMIT 1", 3, "duckdb") == "SELECT * FROM ( LIMIT 1"
 
 
 def test_ibis_fetch_failed_rows_returns_none_for_unsupported_result_shape(monkeypatch: pytest.MonkeyPatch):
@@ -582,7 +615,7 @@ def test_ibis_run_single_check_failed_result_defaults_row_count_to_zero(monkeypa
     monkeypatch.setattr(
         executor,
         "_fetch_failed_rows",
-        lambda query: SimpleNamespace(to_pandas=lambda: pa.table({"id": [1]}).to_pandas()),
+        lambda query, max_rows=None: nw.from_native(pa.table({"id": [1]}), eager_only=True),
     )
 
     result = executor.run_single_check(check_ref)
@@ -650,3 +683,56 @@ def test_to_table_expression_rejects_non_table_results(monkeypatch: pytest.Monke
         to_table_expression("users")
 
     assert exc_info.value.violation_type == "invalid_identifier"
+
+
+@pytest.mark.parametrize(
+    ("query", "dialect", "expected"),
+    [
+        # Dialects with LIMIT keep the query text and get a literal LIMIT.
+        ("SELECT * FROM users ORDER BY id", "duckdb", "SELECT * FROM users ORDER BY id LIMIT 3"),
+        ("SELECT * FROM users ORDER BY id", "postgres", "SELECT * FROM users ORDER BY id LIMIT 3"),
+        # T-SQL and Oracle have no LIMIT, so sqlglot renders TOP or FETCH FIRST.
+        ("SELECT * FROM users ORDER BY id", "tsql", "SELECT TOP 3 * FROM users ORDER BY id"),
+        ("SELECT * FROM users ORDER BY id", "oracle", "SELECT * FROM users ORDER BY id FETCH FIRST 3 ROWS ONLY"),
+        (
+            "WITH u AS (SELECT * FROM users) SELECT * FROM u",
+            "tsql",
+            "WITH u AS (SELECT * FROM users) SELECT TOP 3 * FROM u",
+        ),
+        (
+            "WITH u AS (SELECT * FROM users) SELECT * FROM u",
+            "oracle",
+            "WITH u AS (SELECT * FROM users) SELECT * FROM u FETCH FIRST 3 ROWS ONLY",
+        ),
+        (
+            "SELECT id FROM a UNION SELECT id FROM b",
+            "tsql",
+            "SELECT TOP 3 * FROM (SELECT id FROM a UNION SELECT id FROM b) AS _l_0",
+        ),
+        (
+            "SELECT id FROM a UNION SELECT id FROM b",
+            "oracle",
+            "SELECT id FROM a UNION SELECT id FROM b FETCH FIRST 3 ROWS ONLY",
+        ),
+        # An ordered UNION cannot be wrapped in a T-SQL derived table, so the
+        # cap goes after the trailing ORDER BY.
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id",
+            "tsql",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 0 ROWS FETCH NEXT 3 ROWS ONLY",
+        ),
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id",
+            "oracle",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 0 ROWS FETCH NEXT 3 ROWS ONLY",
+        ),
+        # An existing OFFSET and FETCH is an outer limit too.
+        (
+            "SELECT * FROM users ORDER BY id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY",
+            "tsql",
+            "SELECT * FROM users ORDER BY id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY",
+        ),
+    ],
+)
+def test_with_row_cap_uses_each_dialects_row_limit_syntax(query: str, dialect: str, expected: str):
+    assert IbisSQLExecutor._with_row_cap(query, 3, dialect) == expected

@@ -723,10 +723,8 @@ class TestValidationResultAPI:
             assert "tables_in_query" in df.columns
 
     def test_get_consolidated_output_dfs(self, result):
-        # The public method is deprecated and warns; it delegates to a private
-        # helper that stays quiet so internal callers (e.g. save_outputs in
-        # failed_rows mode) don't emit the warning.
-        with pytest.warns(DeprecationWarning, match="get_annotated_output"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
             consolidated = result.get_consolidated_output_dfs()
 
         assert isinstance(consolidated, dict)
@@ -734,7 +732,7 @@ class TestValidationResultAPI:
             assert isinstance(df, nw.DataFrame)
 
         with warnings.catch_warnings():
-            warnings.simplefilter("error")  # the private helper must not warn
+            warnings.simplefilter("error", DeprecationWarning)
             internal = result._get_consolidated_output_dfs()
         assert list(consolidated.keys()) == list(internal.keys())
 
@@ -750,25 +748,39 @@ class TestValidationResultAPI:
         original_dir = os.getcwd()
         os.chdir(tmp_path)
         try:
-            # Default output_mode is still "failed_rows" (deprecated), so calling
-            # save() with no explicit mode warns about the upcoming default flip.
-            with pytest.warns(DeprecationWarning, match="default"):
+            # save() with no outputs writes the default set and does not warn.
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
                 chained = result.save(prefix="test_readme_results")
             assert chained is result
+            assert not [w for w in caught if issubclass(w.category, (FutureWarning, UserWarning))]
 
-            files = list(tmp_path.iterdir())
-            assert len(files) >= 1
+            files = {p.name for p in tmp_path.iterdir()}
+            assert any(f.startswith("test_readme_results_") and f.endswith("_annotated.csv") for f in files)
 
-            # Explicit deprecated modes each warn; the new "annotated" mode does not.
-            with pytest.warns(DeprecationWarning, match="failed_rows"):
-                result.save(prefix="fr_run", output_mode="failed_rows")
-            with pytest.warns(DeprecationWarning, match="both"):
-                result.save(prefix="both_run", output_mode="both")
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", DeprecationWarning)
-                result.save(prefix="annotated_run", output_mode="annotated")
+            result.save(prefix="grouped_run", outputs=["consolidated_query_outputs"])
+            files = {p.name for p in tmp_path.iterdir()}
+            assert "test_readme_results_dq_metrics.json" in files
+            assert "grouped_run_dq_metrics.json" not in files
         finally:
             os.chdir(original_dir)
+
+    def test_save_results_to_cloud_storage(self, result, tmp_path, monkeypatch):
+        """README: ``save()`` to an ``s3://`` URI. An in-memory filesystem stands in for S3."""
+        import pyarrow.fs as pafs
+        from pyarrow._fs import _MockFileSystem
+
+        from vowl.validation import _output_dir
+
+        fs = _MockFileSystem()
+        monkeypatch.setattr(_output_dir, "_filesystem_from_uri", lambda uri: (fs, uri.split("://", 1)[1]))
+        monkeypatch.chdir(tmp_path)
+
+        result.save("s3://my-bucket/dq-results/run-1/")
+
+        saved = fs.get_file_info(pafs.FileSelector("my-bucket/dq-results/run-1"))
+        assert any(info.path.endswith("_summary.json") for info in saved)
+        assert list(tmp_path.iterdir()) == []
 
     def test_summary_dict(self, result):
         assert "validation_summary" in result.summary

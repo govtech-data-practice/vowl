@@ -639,6 +639,41 @@ def test_contract_get_check_references_by_schema_covers_remaining_branch_paths(
     assert any("Unsupported logicalTypeOptions key 'unsupportedOption'" in message for message in warning_messages)
 
 
+def test_composite_primary_key_that_cannot_be_built_degrades_to_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from vowl.contracts.check_reference import CompositePrimaryKeyCheckReference, PrimaryKeyCheckReference
+    from vowl.contracts.check_reference_unsupported import UnsupportedTableCheckReference
+
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    contract = Contract(
+        {
+            "apiVersion": get_latest_version(),
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "test-contract",
+            "status": "active",
+            "schema": [
+                {
+                    "name": "regions",
+                    # The same column declared twice cannot form a composite key.
+                    "properties": [
+                        {"name": "country", "logicalType": "string", "primaryKey": True},
+                        {"name": "country", "logicalType": "string", "primaryKey": True},
+                    ],
+                },
+            ],
+        }
+    )
+
+    refs = contract.get_check_references_by_schema()["regions"]
+
+    assert not any(isinstance(ref, (PrimaryKeyCheckReference, CompositePrimaryKeyCheckReference)) for ref in refs)
+    unsupported = [ref for ref in refs if isinstance(ref, UnsupportedTableCheckReference)]
+    assert [ref.path for ref in unsupported] == ["$.schema[0].primaryKey"]
+    assert "repeats a column" in unsupported[0].error_message
+
+
 def test_get_check_references_yields_enum_check_when_property_has_enum(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -897,6 +932,31 @@ def test_load_external_resolves_relative_to_http_origin(monkeypatch: pytest.Monk
     assert captured == ["https://example.com/contracts/other.yaml"]
 
 
+@pytest.mark.parametrize(
+    ("origin", "file_ref", "expected"),
+    [
+        ("s3://bucket/dir/orders.yaml", "customers.yaml", "s3://bucket/dir/customers.yaml"),
+        ("s3://bucket/a/dir/orders.yaml", "../shared/customers.yaml", "s3://bucket/a/shared/customers.yaml"),
+        ("s3://bucket/orders.yaml", "customers.yaml", "s3://bucket/customers.yaml"),
+        ("s3://bucket/dir/orders.yaml", "s3://other/customers.yaml", "s3://other/customers.yaml"),
+    ],
+)
+def test_load_external_resolves_relative_to_s3_origin(
+    monkeypatch: pytest.MonkeyPatch, origin: str, file_ref: str, expected: str
+):
+    # urljoin does not know s3, so a sibling ref used to come back as a bare local path.
+    contract = _fk_resolver_contract(monkeypatch, origin=origin)
+    captured: list[str] = []
+
+    def fake_load(location: str) -> Contract:
+        captured.append(location)
+        return _fk_resolver_contract(monkeypatch)
+
+    monkeypatch.setattr(Contract, "load", staticmethod(fake_load))
+    contract._load_external(file_ref)
+    assert captured == [expected]
+
+
 def test_load_external_caches_per_reference(monkeypatch: pytest.MonkeyPatch):
     contract = _fk_resolver_contract(monkeypatch, origin="/data/main.yaml")
     calls: list[str] = []
@@ -921,3 +981,232 @@ def test_resolve_reference_external_fragment(monkeypatch: pytest.MonkeyPatch):
     assert resolved.external is True
     assert resolved.schema_name == "customers"
     assert resolved.columns == ["id"]
+
+
+def _sql_check(name: str) -> dict:
+    return {"type": "sql", "name": name, "query": "SELECT COUNT(*) FROM users", "mustBe": 0}
+
+
+def test_duplicate_check_names_on_one_column_raise(tmp_path: Path):
+    data = minimal_contract_data()
+    data["schema"][0]["properties"][0]["quality"] = [_sql_check("c"), _sql_check("c")]
+    with pytest.raises(ValueError, match=r"on 'users\.id' are both named 'c'.*Rename one"):
+        Contract(data)
+    with pytest.raises(ValueError, match=r"users\.id"):
+        Contract.load(str(write_contract(tmp_path, data)))
+
+
+def test_duplicate_schema_level_check_names_raise():
+    data = minimal_contract_data()
+    data["schema"][0]["quality"] = [_sql_check("c"), _sql_check("c")]
+    with pytest.raises(ValueError, match=r"on 'users' are both named 'c'"):
+        Contract(data)
+
+
+def test_one_check_name_on_different_columns_or_levels_is_allowed():
+    data = minimal_contract_data()
+    data["schema"][0]["quality"] = [_sql_check("c")]
+    for prop in data["schema"][0]["properties"]:
+        prop["quality"] = [_sql_check("c")]
+    Contract(data)
+
+
+# ---------------------------------------------------------------------------
+# Quality rules without an explicit type
+# ---------------------------------------------------------------------------
+
+
+def _untyped_quality_contract() -> dict:
+    return {
+        "apiVersion": get_latest_version(),
+        "kind": "DataContract",
+        "version": "1.0.0",
+        "id": "untyped-quality",
+        "status": "active",
+        "schema": [
+            {
+                "name": "users",
+                "quality": [{"name": "has_rows", "metric": "rowCount", "mustBeGreaterThan": 0}],
+                "properties": [
+                    {
+                        "name": "email",
+                        "logicalType": "string",
+                        "quality": [{"name": "no_null_emails", "metric": "nullValues", "mustBe": 0}],
+                    },
+                    {"name": "id", "logicalType": "integer"},
+                ],
+            }
+        ],
+    }
+
+
+def test_rule_with_metric_and_no_type_defaults_to_library():
+    # ODCS defaults type to library. Treating these as SQL crashed on the empty query.
+    import conftest as test_conftest
+
+    contract = Contract(_untyped_quality_contract())
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(
+        contract, df=pd.DataFrame({"email": ["a@x.io", None, "c@x.io"], "id": [1, 2, 3]})
+    )
+
+    statuses = {cr.check_name: cr.status for cr in result.check_results}
+    assert statuses["has_rows"] == "PASSED"
+    assert statuses["no_null_emails"] == "FAILED"
+
+
+def test_rule_with_query_and_no_type_still_defaults_to_sql(monkeypatch: pytest.MonkeyPatch):
+    # The ODCS schema rejects this shape, but contracts built without schema
+    # validation relied on the older sql default, so it is kept.
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    data = _untyped_quality_contract()
+    data["schema"][0]["quality"] = [{"name": "q", "query": "SELECT COUNT(*) FROM users", "mustBe": 3}]
+    refs = Contract(data).get_check_references_by_schema()["users"]
+    assert any(isinstance(ref, SQLTableCheckReference) for ref in refs)
+
+
+@pytest.mark.parametrize(
+    ("rule", "expected"),
+    [
+        ({"rule": "x"}, "library"),
+        ({"metric": "nullValues"}, "library"),
+        ({"type": "sql", "rule": "x"}, "sql"),
+        ({"query": "SELECT 1"}, "sql"),
+        ({}, "sql"),
+    ],
+)
+def test_quality_check_type_defaults(rule: dict, expected: str):
+    from vowl.contracts.contract import _quality_check_type
+
+    assert _quality_check_type(rule) == expected
+
+
+def _v302_rule_contract(rule: dict) -> dict:
+    return {
+        "apiVersion": "v3.0.2",
+        "kind": "DataContract",
+        "version": "1.0.0",
+        "id": "v302-rule",
+        "status": "active",
+        "schema": [
+            {
+                "name": "users",
+                "quality": [{"name": "table_rule", **rule}],
+                "properties": [
+                    {"name": "id", "logicalType": "integer", "quality": [{"name": "column_rule", **rule}]},
+                ],
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [{"rule": "nullCheck", "mustBe": 0}, {"type": "library", "rule": "nullCheck", "mustBe": 0}],
+    ids=["untyped", "typed_library"],
+)
+def test_v302_rule_ends_in_error_naming_the_rule(rule: dict):
+    # An untyped v3.0.2 rule used to become a SQL check with no query and crash the run
+    import conftest as test_conftest
+
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(Contract(_v302_rule_contract(rule)), df=pd.DataFrame({"id": [1, 2]}))
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    for name in ("table_rule", "column_rule"):
+        assert by_name[name].status == "ERROR"
+        assert "`rule: 'nullCheck'` is not supported" in by_name[name].details
+        assert "metric" in by_name[name].details
+    assert by_name["id_column_exists_check"].status == "PASSED"
+
+
+# ---------------------------------------------------------------------------
+# SQL checks whose query can't be parsed
+# ---------------------------------------------------------------------------
+
+
+def _bad_sql_contract(query: str) -> dict:
+    data = _untyped_quality_contract()
+    data["schema"][0]["quality"] = [
+        {"name": "bad_sql", "type": "sql", "query": query, "mustBe": 0},
+        {"name": "good_sql", "type": "sql", "query": "SELECT COUNT(*) FROM users", "mustBe": 3},
+    ]
+    data["schema"][0]["properties"][0]["quality"] = []
+    return data
+
+
+def test_sql_check_with_syntax_error_ends_in_error_and_the_run_completes():
+    # Building the ERROR result parsed the query again and raised out of validate_data
+    import conftest as test_conftest
+
+    df = pd.DataFrame({"email": ["a@x.io", None, "c@x.io"], "id": [1, 2, 3]})
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(Contract(_bad_sql_contract("SELEC nonsense FROM")), df=df)
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    assert by_name["bad_sql"].status == "ERROR"
+    assert by_name["bad_sql"].details.startswith("Error executing check:")
+    assert by_name["bad_sql"].metadata["check_path"] == "$.schema[0].quality[0]"
+    assert by_name["good_sql"].status == "PASSED"
+    assert result.get_dq_metrics() is not None
+
+
+def test_sql_check_with_no_query_ends_in_error(monkeypatch: pytest.MonkeyPatch):
+    import conftest as test_conftest
+
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    data = _bad_sql_contract("")
+    del data["schema"][0]["quality"][0]["query"]
+    df = pd.DataFrame({"email": ["a@x.io", None, "c@x.io"], "id": [1, 2, 3]})
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(Contract(data), df=df)
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    assert by_name["bad_sql"].status == "ERROR"
+    assert by_name["bad_sql"].details == "No query specified for SQL check"
+    assert by_name["good_sql"].status == "PASSED"
+
+
+def test_cross_table_sql_check_with_syntax_error_ends_in_error():
+    import conftest as test_conftest
+    import ibis
+
+    from vowl.adapters import IbisAdapter
+
+    orders = ibis.duckdb.connect()
+    orders.create_table("orders", pd.DataFrame({"cid": [1, 2]}))
+    customers = ibis.duckdb.connect()
+    customers.create_table("customers", pd.DataFrame({"cid": [1]}))
+    data = {
+        "apiVersion": get_latest_version(),
+        "kind": "DataContract",
+        "version": "1.0.0",
+        "id": "bad-join",
+        "status": "active",
+        "schema": [
+            {
+                "name": "orders",
+                "properties": [{"name": "cid", "logicalType": "integer"}],
+                "quality": [
+                    {
+                        "name": "bad_join",
+                        "type": "sql",
+                        "query": "SELEC COUNT(*) FROM orders JOIN customers ON orders.cid = customers.cid",
+                        "mustBe": 0,
+                    },
+                    {
+                        "name": "good_join",
+                        "type": "sql",
+                        "query": "SELECT COUNT(*) FROM orders LEFT JOIN customers ON orders.cid = customers.cid "
+                        "WHERE customers.cid IS NULL",
+                        "mustBe": 1,
+                    },
+                ],
+            },
+            {"name": "customers", "properties": [{"name": "cid", "logicalType": "integer"}]},
+        ],
+    }
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(
+        Contract(data), adapters={"orders": IbisAdapter(orders), "customers": IbisAdapter(customers)}
+    )
+
+    by_name = {cr.check_name: cr for cr in result.check_results}
+    assert by_name["bad_join"].status == "ERROR"
+    assert by_name["bad_join"].details.startswith("Error executing check:")
+    assert by_name["good_join"].status == "PASSED"

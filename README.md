@@ -102,56 +102,47 @@ result.display_full_report()
 <summary><strong>Output</strong> (click to expand)</summary>
 
 ```
+
+
 === Data Quality Validation Results ===
-   Contract Version:      v3.1.0
+   Contract Version:      v3.2.0
    Contract ID:           c11443ee-542f-4442-b28d-2d224342be37
    Schemas:               hdb_resale_prices
 
  OVERALL DATA QUALITY
    Overall:
-     Checks Pass Rate:       17 / 20 (85.0%)
+     Checks Pass Rate:          7 / 9 (77.7%)
 
    hdb_resale_prices:
      Overall:
-       Checks Pass Rate:       17 / 20 (85.0%)
-       ERRORED Checks:         0
+       Checks Pass Rate:          7 / 9 (77.7%)
+       ERRORED Checks:            0
+       Failed Rows (approximate): 14
      Single Table:
-       Checks Pass Rate:       17 / 20 (85.0%)
-       ERRORED Checks:         0
-       Unique Passed Rows:     201,863 / 201,879 (99.9%)
+       Checks Pass Rate:          7 / 9 (77.7%)
+       ERRORED Checks:            0
      Multi Table:
-       Checks Pass Rate:       0 / 0 (N/A)
-       ERRORED Checks:         0
-       Non-unique Failed Rows: 0
+       Checks Pass Rate:          0 / 0 (N/A)
+       ERRORED Checks:            0
+       Non-unique Failed Rows:    0
 
 
  CHECK RESULTS
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-| check_id                                | Target                                | tables_in_query   | status | operator      | expected      | actual | execution time |
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-| Month                                   | hdb_resale_prices.month               | hdb_resale_prices | FAILED | mustBe        | 0             | 2      | 17.84 ms       |
-| Year                                    | hdb_resale_prices.lease_commence_date | hdb_resale_prices | FAILED | mustBe        | 0             | 2      | 26.09 ms       |
-| floor_area_must_be_less_than_200        | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | FAILED | mustBe        | 0             | 12     | 13.58 ms       |
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-| AddressBlockHouseNumber                 | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 17.26 ms       |
-| block_column_exists_check               | hdb_resale_prices.block               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.56 ms        |
-| flat_model_column_exists_check          | hdb_resale_prices.flat_model          | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 31.60 ms       |
-| flat_type_column_exists_check           | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.45 ms        |
-| flat_type_invalidValues                 | hdb_resale_prices.flat_type           | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 17.79 ms       |
-| floor_area_sqm_column_exists_check      | hdb_resale_prices.floor_area_sqm      | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.90 ms        |
-| hdb_resale_prices_rowCount              | hdb_resale_prices                     | hdb_resale_prices | PASSED | mustBeBetween | [0, 30000000] | 201879 | 6.32 ms        |
-| lease_commence_date_column_exists_check | hdb_resale_prices.lease_commence_date | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.24 ms        |
-| month_column_exists_check               | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.43 ms        |
-| month_logical_type_check                | hdb_resale_prices.month               | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 8.16 ms        |
-| remaining_lease_column_exists_check     | hdb_resale_prices.remaining_lease     | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 3.81 ms        |
-| resale_price_column_exists_check        | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.33 ms        |
-| resale_price_must_not_exceed_2m         | hdb_resale_prices.resale_price        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 18.07 ms       |
-| storey_range_column_exists_check        | hdb_resale_prices.storey_range        | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 3.94 ms        |
-| street_name_column_exists_check         | hdb_resale_prices.street_name         | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.83 ms        |
-| town_column_exists_check                | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 4.53 ms        |
-| town_nullValues                         | hdb_resale_prices.town                | hdb_resale_prices | PASSED | mustBe        | 0             | 0      | 10.13 ms       |
-+-----------------------------------------+---------------------------------------+-------------------+--------+---------------+---------------+--------+----------------+
-Total Execution:       210.88 ms
++------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+| check_id                           | Target                           | tables_in_query   | status | operator | expected | actual | execution time |
++------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+| Month                              | hdb_resale_prices.month          | hdb_resale_prices | FAILED | mustBe   | 0        | 2      | 18.60 ms       |
+| floor_area_must_be_less_than_200   | hdb_resale_prices.floor_area_sqm | hdb_resale_prices | FAILED | mustBe   | 0        | 12     | 15.28 ms       |
++------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+| flat_type_column_exists_check      | hdb_resale_prices.flat_type      | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.44 ms        |
+| flat_type_enum_check               | hdb_resale_prices.flat_type      | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 8.24 ms        |
+| floor_area_sqm_column_exists_check | hdb_resale_prices.floor_area_sqm | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.43 ms        |
+| month_column_exists_check          | hdb_resale_prices.month          | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.81 ms        |
+| month_logical_type_check           | hdb_resale_prices.month          | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 10.04 ms       |
+| resale_price_column_exists_check   | hdb_resale_prices.resale_price   | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 4.32 ms        |
+| resale_price_must_not_exceed_2m    | hdb_resale_prices.resale_price   | hdb_resale_prices | PASSED | mustBe   | 0        | 0      | 14.53 ms       |
++------------------------------------+----------------------------------+-------------------+--------+----------+----------+--------+----------------+
+Total Execution:       84.69 ms
 
 === Failed Checks and Rows (up to 5 row(s) per failed check) ===
 
@@ -163,7 +154,7 @@ Total Execution:       210.88 ms
         Expected:   0
         Actual:     2
         Target:   hdb_resale_prices.month
-        Details:  Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
+        Details:  Based on ISO 8601 | YYYY-MM
         Rule:     SELECT COUNT(*) FROM "hdb_resale_prices" WHERE NOT REGEXP_MATCHES(TRY_CAST(month AS TEXT), '^[0-9]{4}-(0[1-9]|1[0-2])$')
         Rows shown: 2 of 2
 +----------+--------+-----------+-------+--------------+--------------+----------------+---------------+---------------------+--------------------+--------------+
@@ -178,7 +169,7 @@ Total Execution:       210.88 ms
         Expected:   0
         Actual:     12
         Target:   hdb_resale_prices.floor_area_sqm
-        Details:  Validates that floor area must be less than 200
+        Details:  Check failed: expected mustBe 0, got 12
         Rule:     SELECT COUNT(*) FROM "hdb_resale_prices" WHERE TRY_CAST(floor_area_sqm AS BIGINT) >= 200
         Rows shown: 5 of 12
 +---------+-----------------+-----------+-------+---------------------+--------------+----------------+--------------------+---------------------+--------------------+--------------+
@@ -190,21 +181,6 @@ Total Execution:       210.88 ms
 | 2018-01 | CHOA CHU KANG   | EXECUTIVE | 639   | CHOA CHU KANG ST 64 | 10 TO 12     | 215.0          | Premium Maisonette | 1998                | 79 years           | 900000.0     |
 | 2018-09 | KALLANG/WHAMPOA | 3 ROOM    | 41    | JLN BAHAGIA         | 01 TO 03     | 237.0          | Terrace            | 1972                | 52 years 10 months | 1185000.0    |
 +---------+-----------------+-----------+-------+---------------------+--------------+----------------+--------------------+---------------------+--------------------+--------------+
-
-      [Year]
-        Operator:   mustBe
-        Expected:   0
-        Actual:     2
-        Target:   hdb_resale_prices.lease_commence_date
-        Details:  Based on ISO 8601, assumed to be in UTC +8 | YYYY
-        Rule:     SELECT COUNT(*) FROM "hdb_resale_prices" WHERE NOT REGEXP_MATCHES(TRY_CAST(lease_commence_date AS TEXT), '^[0-9]{4}$')
-        Rows shown: 2 of 2
-+---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
-| month   | town       | flat_type | block | street_name      | storey_range | floor_area_sqm | flat_model     | lease_commence_date | remaining_lease    | resale_price |
-+---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
-| 2017-01 | ANG MO KIO | 3 ROOM    | 219   | ANG MO KIO AVE 1 | 07 TO 09     | 67.0           | New Generation | 1977.0              | 59 years 06 months | 297000.0     |
-| 2017-01 | ANG MO KIO | 3 ROOM    | 211   | ANG MO KIO AVE 3 | 01 TO 03     | 67.0           | New Generation | abc                 | 59 years 03 months | 325000.0     |
-+---------+------------+-----------+-------+------------------+--------------+----------------+----------------+---------------------+--------------------+--------------+
 ```
 
 </details>
@@ -221,14 +197,13 @@ This section walks through the four ideas you need: how you **declare** rules ([
 
 Instead of writing validation logic in Python, you declare it in a YAML file following the [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard). This separates your rules from your code, making them easier to manage, version, and share.
 
-**Example [`hdb_resale_simple.yaml`](tests/hdb_resale/hdb_resale_simple.yaml)** (trimmed for readability):
+**Example [`hdb_resale_simple.yaml`](tests/hdb_resale/hdb_resale_simple.yaml)**:
 
 ```yaml
 kind: DataContract
-apiVersion: v3.1.0
+apiVersion: v3.2.0
 version: 1.0.0
 id: c11443ee-542f-4442-b28d-2d224342be37
-status: draft
 name: HDB Resale Flat Prices
 schema:
   - name: hdb_resale_prices # This becomes the table name in your SQL queries
@@ -239,7 +214,7 @@ schema:
         quality:
           - type: sql
             name: Month
-            description: Based on ISO 8601, assumed to be in UTC +8 | YYYY-MM
+            description: Based on ISO 8601 | YYYY-MM
             mustBe: 0
             query: |-
               SELECT COUNT(*)
@@ -247,59 +222,34 @@ schema:
               WHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';
             dimension: conformity
 
-      # --- Library Metric: null-value check ---
-      - name: town
-        quality:
-          - type: library
-            metric: nullValues
-            mustBe: 0
-            dimension: completeness
-
-      # --- Library Metric: valid-value list ---
+      # --- Generated Check: allowed values from enum ---
       - name: flat_type
-        quality:
-          - type: library
-            metric: invalidValues
-            mustBe: 0
-            dimension: conformity
-            arguments:
-              validValues:
-                - 1 ROOM
-                - 2 ROOM
-                - 3 ROOM
-                - 4 ROOM
-                - 5 ROOM
-                - EXECUTIVE
-                - MULTI-GENERATION
+        enum:
+          - value: 1 ROOM
+          - value: 2 ROOM
+          - value: 3 ROOM
+          - value: 4 ROOM
+          - value: 5 ROOM
+          - value: EXECUTIVE
+          - value: MULTI-GENERATION
 
       # --- SQL Check: business rule ---
       - name: floor_area_sqm
         quality:
           - name: floor_area_must_be_less_than_200
-            description: Validates that floor area must be less than 200
             type: sql
-            dimension: consistency
             query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE floor_area_sqm >= 200
             mustBe: 0
+            dimension: consistency
 
       # --- SQL Check: resale price cap ---
       - name: resale_price
         quality:
           - name: resale_price_must_not_exceed_2m
-            description: Resale price must not be more than 2 million SGD
             type: sql
-            dimension: conformity
-            query: >-
-              SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price > 2000000
+            query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE resale_price > 2000000
             mustBe: 0
-
-    # --- Table-Level Library Metric ---
-    quality:
-      - type: library
-        metric: rowCount
-        mustBeBetween:
-          - 0
-          - 30000000
+            dimension: consistency
 ```
 
 ## Auto-Generated Checks
@@ -533,24 +483,44 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 #### Core Methods
 
-| Method/Property                                                                      | What It Does                                                                                                                                                                                          | Returns                         |
-| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                            | `self` (chainable)              |
-| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                            | `self` (chainable)              |
-| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                               | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", output_mode=None, check_info=None)`** | Saves enhanced CSV and summary JSON to disk. `output_mode` can be `"failed_rows"`, `"annotated"`, or `"both"`; `check_info` shapes the annotated `check_info` column (`"names"`/`"summary"`/`"full"`) | `self` (chainable)              |
-| **`get_output_dfs(checks=None)`**                                                    | Returns per-check failed rows as `{check_id: DataFrame}`                                                                                                                                              | Dict[str, DataFrame]            |
-| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) marking failed rows                                                                                                   | Dict[str, Dict[str, DataFrame]] |
-| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                               | `True`/`False`                  |
+| Method/Property                                                                      | What It Does                                                                                                                                                                                           | Returns                         |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                             | `self` (chainable)              |
+| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                             | `self` (chainable)              |
+| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", outputs=None, check_info=None)`**     | Saves the results to disk. `outputs` lists the files to write. The default writes everything but `"failed_query_outputs"`, whose files `"all_query_outputs"` already writes. `check_info` shapes the `check_info` column | `self` (chainable)              |
+| **`get_output_dfs(checks=None, scope="failed")`**                                    | Returns per-check failed rows as `{check_id: DataFrame}`. `scope="all"` returns the rows of every row-level check, with a `status` column | Dict[str, DataFrame]            |
+| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                 | Dict[str, Dict[str, DataFrame]] |
+| **`get_dq_metrics_df(by="schema")`**                                                 | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                   | DataFrame                       |
+| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                     | dict                            |
+| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                | `True`/`False`                  |
+
+#### Row Quality
+
+`get_dq_metrics_df()` returns the row counts. The summary does not show them. It shows **Failed Rows (approximate)**, a sum of the scalar counts of the failed checks. For each table, `get_dq_metrics_df()` gives how many rows failed at least one row-level check, and the share that passed. A row that fails two checks counts once, and every copy of a duplicated row counts. vowl counts inside your data source where it can, so the numbers do not depend on `max_failed_rows`, and each one carries an `approximate` flag for the cases where it could be off. A check whose failed rows vowl can't attribute to the table is left out and counted in `checks_not_attributable`. See [When counting and annotating differ](docs/design-considerations/checks/annotating-the-source-table.md#when-counting-and-annotating-differ) for how the row counts relate to annotated output.
+
+```python
+result.get_dq_metrics_df()                  # one row per table
+result.get_dq_metrics_df(by="dimension")    # one row per table and dimension
+result.get_dq_metrics_df(by="check")        # which checks are row-level, and how they were counted
+```
+
+By default only failed checks add rows. A check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) adds nothing. Set [`ValidationConfig(fetch_tolerated_rows=True)`](docs/run-settings.md#fetch_tolerated_rows) to fetch its rows too, so they count in the row counts and appear in every output, marked as tolerated. See [Tolerated rows](docs/design-considerations/checks/check-results.md#tolerated-rows).
+
+Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, vowl attributes each failed row to the source table, so a row that fails several checks counts once. On DuckDB, SQLite, Spark, Databricks and PostgreSQL the data source does this. Elsewhere vowl downloads the table and holds it in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download. This work runs only when you ask for DQ metrics. `print_summary()`, `get_check_results_df()` and `save()` use the scalar counts only.
+
+See [Counting Mechanisms](docs/design-considerations/checks/counting-mechanisms.md).
 
 #### Annotated Output
 
-`get_annotated_output()` returns the **full in-scope table** with a `check_info` column that marks which rows failed which checks. Passing rows have `null` in the `check_info` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
+`get_annotated_output()` returns the **full in-scope table** with a `check_info` column that annotates which rows failed which checks. Passing rows have `null` in the `check_info` column. This is useful when you need to see failures in the context of the full dataset rather than just the isolated failed rows.
+
+> New to this? [Check Results](docs/design-considerations/checks/check-results.md) explains failed rows, annotated output and residues in plain language, with a small worked example.
 
 It returns a nested dict with two reserved keys:
 
-- **`"annotated"`** — a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
-- **`"residues"`** — failed rows for checks that _cannot_ be merged onto a single table (aggregation and column-subset checks, plus cross-table checks whose failed rows carry columns from more than the anchor table). Single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>::<check_name>"`) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query` — so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its failed-rows query to project only that schema's columns — see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged).)
+- **`"annotated"`**: a `{schema: table}` dict where each table is your full in-scope data plus a `check_info` column. Every original row is present; `check_info` is `null` for rows that passed everything and holds a JSON array of objects describing the failing check(s) otherwise.
+- **`"residues"`**: failed rows for checks that _cannot_ be merged onto a single table (checks whose failed rows lack the table's primary key or, when it declares none, don't have exactly its columns, such as column-subset checks). Checks that return one number, such as an average, a sum, a minimum or a maximum, produce none. Most single-table contracts produce none. Residues are **per-check** (one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"`, or `"<schema>::<check_name>"` for a schema-level check) and carry the **same `check_info` column** as the annotated tables (a single-element JSON array, shaped by the same preset) plus `tables_in_query`, so everything `get_annotated_output()` returns is read the same way. (A cross-table check _can_ merge onto its home schema if you shape its row query to project only that schema's columns: see [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check).)
 
 The **`check_info`** parameter (`"names"` default, `"summary"`, or `"full"`) shapes each array element. Every preset emits a JSON **array of objects** so consumers parse uniformly via `item["check_name"]`; they differ only in how many keys each object carries:
 
@@ -613,12 +583,27 @@ clean = annotated[annotated["check_info"].isna()].drop(columns=["check_info"])
 
 </details>
 
-Aggregation checks, column-subset checks, and bare-JOIN cross-table checks can't be folded onto a single annotated table, so their failed rows surface under `"residues"` instead. (A cross-table check whose failed-rows query projects only its home schema's columns _is_ merged onto that schema — see the note above.) Residues are **per-check** — one entry per non-mergeable check, keyed `"<schema>::<check_name>"`, each carrying its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
+A check whose failed rows can't be matched to rows of one table becomes a residue: its rows lack the table's declared primary key or, when the table declares none, don't have exactly the table's columns. Column-subset checks, such as one that returns only distinct values, are the usual case. A cross-table check merges when its failed rows carry the table's primary key, or when its row query projects only its home schema's columns. See [Annotating the failed rows of a cross-table check](docs/design-considerations/cross-table/how-it-works.md#annotating-the-failed-rows-of-a-cross-table-check). Checks that return one number, such as an average, a sum, a minimum or a maximum, have no failed rows and appear only in the summary. Residues are **per-check**, one entry per non-mergeable check, keyed `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a schema-level check). Each carries its own failed rows plus the same `check_info` column the annotated tables use (a single-element JSON array) and `tables_in_query`:
 
 #### Residues
 
 <details>
-<summary><strong>Output</strong> — residues from a cross-table (multi-source) contract (click to expand)</summary>
+<summary><strong>Output</strong> — a residue from a cross-table (multi-source) contract (click to expand)</summary>
+
+The payroll table declares a primary key, so its bare-JOIN referential checks merge onto it. This check returns only the distinct phone numbers missing from the master list, which hold no key:
+
+```yaml
+- name: phone_numbers_missing_from_master_list
+  type: sql
+  query: >-
+    SELECT COUNT(*) FROM (
+      SELECT DISTINCT payroll.phone_number
+      FROM demo_employee_payroll payroll
+      LEFT JOIN demo_employee_list ref ON payroll.phone_number = ref.phone_number
+      WHERE payroll.phone_number IS NOT NULL AND ref.phone_number IS NULL
+    ) AS missing_numbers
+  mustBe: 0
+```
 
 ```python
 output = result.get_annotated_output()
@@ -627,55 +612,66 @@ print("Residue keys:", list(output["residues"].keys()))
 for key, residue in output["residues"].items():
     df = residue.to_pandas()
     print(f"\nResidue '{key}': {len(df)} failed row(s)")
-    print(df[["employee_id", "payroll_id", "month", "check_info", "tables_in_query"]])
+    print(df)
 ```
 
-Residue keys: `['demo_employee_payroll::employee_id_exists_in_master_list', 'demo_employee_payroll::phone_number_exists_in_master_list']`
+Residue keys: `['demo_employee_payroll::phone_numbers_missing_from_master_list']`
 
-Each non-mergeable check gets its own entry — they are never grouped together, so a row that failed two cross-table checks appears once under each check's residue:
+Each non-mergeable check gets its own entry. They are never grouped together, so a row that failed two such checks appears once under each check's residue:
 
-Residue `'demo_employee_payroll::employee_id_exists_in_master_list'`: 1 failed row(s)
+Residue `'demo_employee_payroll::phone_numbers_missing_from_master_list'`: 2 failed row(s)
 
-|     | employee_id | payroll_id                           | month   | check_info                                              | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | ------------------------------------------------------- | ----------------------------------------- |
-| 0   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "employee_id_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
-
-Residue `'demo_employee_payroll::phone_number_exists_in_master_list'`: 2 failed row(s)
-
-|     | employee_id | payroll_id                           | month   | check_info                                               | tables_in_query                           |
-| --- | ----------- | ------------------------------------ | ------- | -------------------------------------------------------- | ----------------------------------------- |
-| 0   | e128903     | cb04c5bb-9386-44cf-a565-2276744c9cc0 | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
-| 1   | e939123     | e52e556f-79b0-471f-ad08-e27b2c524ace | 2025-12 | `[{"check_name": "phone_number_exists_in_master_list"}]` | demo_employee_list, demo_employee_payroll |
+|     | phone_number | check_info                                                   | tables_in_query                           |
+| --- | ------------ | ------------------------------------------------------------ | ----------------------------------------- |
+| 0   | 6581234567   | `[{"check_name": "phone_numbers_missing_from_master_list"}]` | demo_employee_list, demo_employee_payroll |
+| 1   | 6594327654   | `[{"check_name": "phone_numbers_missing_from_master_list"}]` | demo_employee_list, demo_employee_payroll |
 
 </details>
 
-> For the full eligibility rules and worked examples of each non-mergeable category, see [Known Issues: Annotated Output](docs/known-issues.md#annotated-output-not-all-checks-can-be-merged). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
+> For the full eligibility rules and worked examples of each non-mergeable category, see [Where each failed check ends up](docs/design-considerations/checks/annotating-the-source-table.md#where-each-failed-check-ends-up). The [Basic Tutorial notebook](examples/1_basic_tutorial/basic_tutorial.ipynb) walks through these examples end-to-end.
 
-The `save()` method also supports annotated output via `output_mode`:
+`save()` always writes `<prefix>_check_results.csv` and `<prefix>_summary.json`. The `outputs` argument lists the other files to write:
+
+| Output                         | Files                                                            |
+| ------------------------------ | ---------------------------------------------------------------- |
+| `"failed_query_outputs"`       | `<prefix>_checks/<schema>__<column>__<check>.csv`, one per failed check |
+| `"all_query_outputs"`          | The same folder, one per row-level check whatever its status     |
+| `"consolidated_query_outputs"` | `<prefix>_<tables>.csv`, the failed rows grouped per table set   |
+| `"annotated_table"`            | `<prefix>_<schema>_annotated.csv` and the residue files          |
+| `"dq_metrics"`                 | `<prefix>_dq_metrics.json`                                       |
 
 ```python
-# Save annotated tables (full tables with check_info marking failures)
-result.save(output_mode="annotated")
+# Every output but "failed_query_outputs". This is the default.
+result.save()
 
 # Shape the check_info column: "names" (default), "summary", or "full"
-result.save(output_mode="annotated", check_info="summary")
+result.save(outputs=["annotated_table"], check_info="summary")
 
-# Save both failed-rows CSVs and annotated tables
-result.save(output_mode="both")
+# Only the grouped failed-rows CSVs
+result.save(outputs=["consolidated_query_outputs"])
 ```
 
-> **Deprecation:** `output_mode="failed_rows"` / `"both"` (the legacy failed-rows CSVs) are deprecated in favour of `"annotated"`. They still work but emit a `DeprecationWarning`. The `save()` default is currently `"failed_rows"` and will change to `"annotated"` in a future minor release — pass `output_mode` explicitly to pin the behaviour you want.
+> **Cost:** `"annotated_table"` and `"dq_metrics"` attribute failed rows to each table and may download it, which can be slow on a large table. They share that work, so writing both costs no more than writing one. The other outputs do nothing to the rows. `"all_query_outputs"` runs the row query of each check that passed.
 
-You can also set the output mode globally via `ValidationConfig`:
+`output_mode` is deprecated. It still works with a `FutureWarning` and will be removed in a future release. See [Deprecated output_mode](docs/results.md#deprecated-output_mode).
+
+You can also set the outputs globally via `ValidationConfig` (see [Run Settings](docs/run-settings.md#saving-results)):
 
 ```python
-from vowl import validate_data
-from vowl.config import ValidationConfig
+from vowl import ValidationConfig, validate_data
 
-config = ValidationConfig(output_mode="annotated")
+config = ValidationConfig(outputs=["annotated_table", "dq_metrics"], annotated_check_info="summary")
 result = validate_data("contract.yaml", df=df, config=config)
-result.save()  # uses the configured output_mode
+result.save()  # uses the configured outputs and check_info
 ```
+
+`save()` can also write straight to cloud storage. Pass a URI instead of a folder:
+
+```python
+result.save("s3://my-bucket/dq-results/run-1/")
+```
+
+It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-results).
 
 ## Architecture
 
@@ -824,7 +820,7 @@ dispatches checks across them; the verdicts are identical to a sequential run.
 ```python
 import ibis
 from vowl import validate_data
-from vowl.adapters import IbisAdapter, PooledAdapter, MultiSourceAdapter
+from vowl.adapters import IbisAdapter, PooledAdapter
 
 # factory: returns a fresh adapter (new connection) on each call. Called once
 # per pooled connection, so the table must be available on every connection.
@@ -834,12 +830,23 @@ def make_adapter():
 
 pooled = PooledAdapter(factory=make_adapter, max_concurrency=4)
 
-# PooledAdapter is a connection pool, so wire it in via MultiSourceAdapter
-# (keyed by schema name) and pass it through adapters=.
-multi = MultiSourceAdapter({"my_table": pooled})
-result = validate_data("contract.yaml", adapters=multi)
+# Pass the pool like any other adapter: adapter=pooled for every schema,
+# or adapters={"my_table": pooled, ...} to give each schema its own.
+result = validate_data("contract.yaml", adapter=pooled)
 result.display_full_report()
 ```
+
+`max_concurrency` caps the checks in flight, and so the connections open, for
+the whole run. Schemas given the same pool share that cap and run side by side.
+A join between tables on one pool runs in the database on one of the pool's
+connections. A join across two pools, or between a pool and another adapter,
+is copied to a local DuckDB. See [PooledAdapter](docs/design-considerations/cross-table/how-it-works.md#pooledadapter).
+
+The pool keeps its adapters after the run, so you can pass it to another
+`validate_data` call. Call `pooled.cleanup()` when you are done with it. This
+drops the pooled adapters and calls `cleanup()` on each one that defines it. It
+does not close Ibis connections, so close those yourself if your factory opens
+ones that need closing.
 
 ## Filtering & cross-source
 
@@ -906,7 +913,7 @@ result.display_full_report()
 
 There are two ways to validate across tables in different databases.
 
-#### Option A: DuckDB ATTACH (recommended: streams data, no materialisation)
+#### Option A: DuckDB ATTACH (streams rows per check, no up-front download)
 
 ```python
 import ibis
@@ -931,9 +938,9 @@ result = validate_data("contract.yaml", adapter=IbisAdapter(con))
 result.display_full_report()
 ```
 
-> **Note:** DuckDB evaluates views dynamically at query time, so this does **not** materialise or copy data. It streams live from your attached databases; you just get cleaner, prefix-free table names in your contracts. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
+> **Note:** A view is a saved query, not a copy, and it gives your contracts clean, prefix-free table names. DuckDB still runs on your machine, so each check streams the rows it reads from the attached databases, then discards them. For PostgreSQL and MySQL, simple filters are sent to the source. Joins and aggregates such as `COUNT(*)` run inside DuckDB, so the rows they read cross the network, and a table used by several checks is read once per check. DuckDB ATTACH supports PostgreSQL, MySQL, and SQLite.
 
-#### Option B: Multi-Source Adapters (materialises data locally)
+#### Option B: Multi-Source Adapters (downloads tables for cross-table checks)
 
 ```python
 from vowl import validate_data
@@ -952,7 +959,7 @@ result = validate_data("contract.yaml", adapters=adapters)
 result.display_full_report()
 ```
 
-> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). The `MultiSourceAdapter` **materialises entire tables on the client** via Arrow into a local DuckDB instance, so prefer ATTACH whenever possible. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/known-issues.md#why-not-use-duckdb-attach-internally). It also preserves a [known dark pattern](docs/known-issues.md#dark-patterns): SQL checks can reference tables not declared in the contract's `schema` block, and those queries succeed with `MultiSourceAdapter` (everything is materialised locally) but fail with DuckDB ATTACH (only explicitly attached tables are visible).
+> **Why this exists:** A fallback for backends that DuckDB ATTACH does not support (e.g. Snowflake, BigQuery, Databricks, Oracle, MSSQL). Single-table checks run inside each table's own database. For a cross-table check across different connections, the `MultiSourceAdapter` **downloads each table it reads in full** (after filter conditions) via Arrow into a local DuckDB instance, so prefer ATTACH for large tables when your sources support it. DuckDB ATTACH only supports PostgreSQL, MySQL, and SQLite. It cannot be used as a general-purpose multi-source strategy because of [namespace, credential, and filter limitations](docs/design-considerations/cross-table/how-it-works.md#why-vowl-copies-instead-of-using-attach). Both options share a [known dark pattern](docs/design-considerations/cross-table/how-it-works.md#tables-outside-the-contract): SQL checks can reference tables not declared in the contract's `schema` block. vowl reads an undeclared table through the connection of the schema the check sits under, whether the check reads it alone or joins it to other tables, and the check runs whenever that connection can see the table.
 
 ### Compatibility Mode ([DuckDB](https://github.com/duckdb/duckdb) ATTACH)
 
@@ -1050,7 +1057,7 @@ executors = adapter.get_executors()
 assert "sql" in executors
 ```
 
-This section documents the extension boilerplate rather than a guaranteed drop-in `validate_data(..., adapter=...)` path for arbitrary non-Ibis adapters. For end-to-end validation in the built-in runner today, the supported runtime adapter type is `IbisAdapter`.
+`validate_data` accepts any `BaseAdapter` through `adapter=` or `adapters=`, including `IbisAdapter`, `PooledAdapter` and your own subclasses. A custom adapter runs its checks through the executors it registers. A cross-table check runs in the database only if `is_compatible_with` says the adapters can share a query. The default returns `False`, so vowl copies the tables to a local DuckDB, which needs `export_table_as_arrow`. When the tables in such a join have different filter conditions, the adapter also needs `with_filter_conditions`, or vowl copies the tables.
 
 ### Loading Contracts from Remote Sources (Git/S3)
 
@@ -1109,6 +1116,7 @@ result.display_full_report()
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅ **Ibis Connectors**             | Interoperability with 20+ data sources via Ibis (PostgreSQL, Snowflake, BigQuery, Databricks, etc.)                                                                     |
 | ✅ **Remote Contract Loading**     | Load contracts from S3 (`s3://`) and Git (GitHub/GitLab URLs)                                                                                                           |
+| ✅ **Remote Result Saving**        | Save results straight to S3, Google Cloud, Azure, or HDFS with `result.save("s3://...")`                                                                                |
 | ✅ **JSONPath Navigation**         | Navigate contract elements using JSONPath expressions (`contract.resolve("$.schema[0].name")`)                                                                          |
 | ✅ **Static Checks**               | Auto-generated checks from contract elements: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`                                                   |
 | ✅ **Library Metrics**             | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. SQL auto-generated at runtime |
@@ -1116,16 +1124,19 @@ result.display_full_report()
 | ✅ **Filter Conditions**           | Incremental quality testing with wildcard pattern matching - optimised for append-only data sources                                                                     |
 | ✅ **Multi-Schema Checks**         | Cross-table referential checks within a single contract                                                                                                                 |
 | ✅ **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                             |
+| ✅ **Foreign Key Checks**          | Checks built from ODCS `relationships` (`foreignKey`), including composite, self-referencing and external-file targets                                                  |
 | ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
 | ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
+| ✅ **Annotated Output**            | Failed rows marked on a copy of the source table, with residues for checks that can't be merged                                                                         |
+| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/understanding-metrics.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                            |
+| ✅ **DQ Metrics Export**           | Row-level pass and fail counts per table, dimension and check, saved to `dq_metrics.json`                                                                               |
 
 ### Planned
 
 | Capability                       | Description                                                               | Status  |
 | -------------------------------- | ------------------------------------------------------------------------- | ------- |
 | 🔬 **Alternative Check Engines** | Support for dqx, Soda, Great Expectations (subject to licensing review)   | Planned |
-| 📡 **OpenTelemetry Export**      | Export validation metrics, logs, and traces via OpenTelemetry (OTLP)      | Planned |
 | 📅 **CLI Interface**             | Command-line interface for running validations directly from the terminal | Planned |
 | 📅 **vowl-ui**                   | Web-based validation interface for vowl                                   | Planned |
 

@@ -1,6 +1,7 @@
 import contextvars
 import ipaddress
 import os
+import posixpath
 import re
 import socket
 import warnings
@@ -12,6 +13,7 @@ from urllib.parse import urljoin, urlparse
 import yaml
 from jsonpath_ng import parse as jsonpath_parse
 
+from .keys import primary_key_columns
 from .models import SUPPORTED_VERSIONS, validate_contract
 from .models.ODCS_types import DataContract, Server
 
@@ -155,6 +157,60 @@ _SHORTHAND_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*(?:\.[A-Za-z_][A-Za-z0
 _EXTERNAL_REF_RE = re.compile(r"^((?:https?://)?[A-Za-z0-9._\-/]+\.ya?ml)#(.+)$")
 
 
+def _reject_duplicate_check_names(contract_data: dict[str, Any]) -> None:
+    """Raise when two quality checks in one ``quality`` list share a name.
+
+    Results are keyed and saved by schema, column and check name, so two checks
+    with one name on the same column, or both on the schema, would overwrite
+    each other. The same name on different columns is fine.
+
+    Raises:
+        ValueError: Naming the schema, the column if any, and the check.
+    """
+    for schema_obj in contract_data.get("schema") or []:
+        schema_name = schema_obj.get("name")
+        lists = [(schema_name, schema_obj.get("quality"))]
+        lists += [
+            (f"{schema_name}.{prop.get('name')}", prop.get("quality")) for prop in schema_obj.get("properties") or []
+        ]
+        for label, quality in lists:
+            seen: set[str] = set()
+            for check in quality or []:
+                name = check.get("name")
+                if name is None:
+                    continue
+                if name in seen:
+                    raise ValueError(
+                        f"Two quality checks on '{label}' are both named '{name}'. "
+                        "Check names must be unique per column, and per schema for schema-level checks. Rename one."
+                    )
+                seen.add(name)
+
+
+def _quality_check_type(rule: dict[str, Any]) -> str:
+    """Return a quality rule's ``type``, defaulting the way ODCS does where it matters.
+
+    ODCS defaults ``type`` to ``library``, so a rule with a ``metric``, or the
+    ODCS v3.0.2 ``rule`` field, and no ``type`` is a library check. A rule
+    without either keeps the older ``sql`` default, so untyped ``query`` rules
+    still run as SQL.
+    """
+    if "type" in rule:
+        return rule["type"]
+    return "library" if ("metric" in rule or "rule" in rule) else "sql"
+
+
+def _unsupported_library_message(rule: dict[str, Any], level: str, supported: Any) -> str:
+    """Explain why a library rule has no check, naming a v3.0.2 ``rule`` when that is the cause."""
+    metric = rule.get("metric")
+    if metric is None and "rule" in rule:
+        return (
+            f"ODCS v3.0.2 `rule: '{rule['rule']}'` is not supported. Use `metric:` (ODCS v3.1+). "
+            f"Supported {level}-level metrics: {', '.join(sorted(supported))}"
+        )
+    return f"Unsupported library metric '{metric}' at {level} level. Supported {level}-level metrics: {', '.join(sorted(supported))}"
+
+
 @dataclass(frozen=True)
 class ResolvedRef:
     """A resolved foreign-key reference endpoint.
@@ -206,6 +262,7 @@ class Contract:
                 f"Contract does not specify an apiVersion. Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
         validate_contract(contract_data, api_version)
+        _reject_duplicate_check_names(contract_data)
 
     @property
     def origin(self) -> str | None:
@@ -629,14 +686,20 @@ class Contract:
             return self._external_cache[file_ref]
 
         parsed = urlparse(file_ref)
-        if parsed.scheme in ("http", "https"):
-            location = file_ref  # absolute URL — fetched via the SSRF-guarded path
+        if parsed.scheme in ("http", "https", "s3"):
+            location = file_ref  # absolute URL or s3 URI, used as is
         elif self._origin is None:
             raise ValueError(
                 f"cannot resolve external reference '{file_ref}': contract has no origin (loaded from in-memory data)"
             )
-        elif self._origin.startswith(("http://", "https://", "s3://")):
+        elif self._origin.startswith(("http://", "https://")):
             location = urljoin(self._origin, file_ref)
+        elif self._origin.startswith("s3://"):
+            # urljoin does not know the s3 scheme and would return file_ref
+            # unchanged, so join the sibling key with posixpath instead.
+            origin = urlparse(self._origin)
+            key = posixpath.normpath(posixpath.join(posixpath.dirname(origin.path) or "/", file_ref))
+            location = f"s3://{origin.netloc}/{key.lstrip('/')}"
         else:
             location = os.path.normpath(os.path.join(os.path.dirname(self._origin), file_ref))
 
@@ -680,6 +743,7 @@ class Contract:
             LOGICAL_TYPE_TO_SQL,
             ArrayItemsCheckReference,
             CheckReference,
+            CompositePrimaryKeyCheckReference,
             DeclaredColumnExistsCheckReference,
             EnumCheckReference,
             LogicalTypeCheckReference,
@@ -726,6 +790,10 @@ class Contract:
 
             # Auto-generated checks from property attributes (run first)
             properties = schema_obj.get("properties", [])
+            # ODCS: all primaryKey columns together form one key. A single
+            # column keeps its per-column check, two or more get one
+            # composite check after the property loop.
+            pk_columns = primary_key_columns(properties or [])
             for prop_idx, prop in enumerate(properties):
                 prop_path = f"$.schema[{schema_idx}].properties[{prop_idx}]"
                 prop_name = prop.get("name", f"property[{prop_idx}]")
@@ -846,7 +914,7 @@ class Contract:
                     refs_by_schema[schema_name].append(UniqueCheckReference(self, prop_path))
 
                 # Primary key checks for columns with primaryKey: true
-                if prop.get("primaryKey") is True:
+                if prop.get("primaryKey") is True and len(pk_columns) < 2:
                     refs_by_schema[schema_name].append(PrimaryKeyCheckReference(self, prop_path))
 
                 # Property-level relationships (foreign keys)
@@ -856,6 +924,13 @@ class Contract:
                         refs_by_schema[schema_name].append(PropertyForeignKeyCheckReference(self, prop_path, rel_idx))
                     except ValueError as exc:
                         refs_by_schema[schema_name].append(UnsupportedColumnCheckReference(self, rel_path, str(exc)))
+
+            if len(pk_columns) >= 2:
+                pk_path = f"$.schema[{schema_idx}].primaryKey"
+                try:
+                    refs_by_schema[schema_name].append(CompositePrimaryKeyCheckReference(self, schema_idx, pk_columns))
+                except ValueError as exc:
+                    refs_by_schema[schema_name].append(UnsupportedTableCheckReference(self, pk_path, str(exc)))
 
             # Schema-level relationships (foreign keys)
             for rel_idx, _rel in enumerate(schema_obj.get("relationships", []) or []):
@@ -869,7 +944,7 @@ class Contract:
             table_quality = schema_obj.get("quality", [])
             for qual_idx in range(len(table_quality)):
                 check_path = f"$.schema[{schema_idx}].quality[{qual_idx}]"
-                check_type = table_quality[qual_idx].get("type", "sql")
+                check_type = _quality_check_type(table_quality[qual_idx])
 
                 if check_type == "library":
                     metric = table_quality[qual_idx].get("metric")
@@ -879,8 +954,7 @@ class Contract:
                             UnsupportedTableCheckReference(
                                 self,
                                 check_path,
-                                f"Unsupported library metric '{metric}' at schema level. "
-                                f"Supported schema-level metrics: {', '.join(sorted(LIBRARY_TABLE_METRICS))}",
+                                _unsupported_library_message(table_quality[qual_idx], "schema", LIBRARY_TABLE_METRICS),
                             )
                         )
                     else:
@@ -906,7 +980,7 @@ class Contract:
                 prop_quality = prop.get("quality", [])
                 for qual_idx in range(len(prop_quality)):
                     check_path = f"$.schema[{schema_idx}].properties[{prop_idx}].quality[{qual_idx}]"
-                    check_type = prop_quality[qual_idx].get("type", "sql")
+                    check_type = _quality_check_type(prop_quality[qual_idx])
 
                     if check_type == "library":
                         metric = prop_quality[qual_idx].get("metric")
@@ -916,8 +990,9 @@ class Contract:
                                 UnsupportedColumnCheckReference(
                                     self,
                                     check_path,
-                                    f"Unsupported library metric '{metric}' at property level. "
-                                    f"Supported property-level metrics: {', '.join(sorted(LIBRARY_COLUMN_METRICS))}",
+                                    _unsupported_library_message(
+                                        prop_quality[qual_idx], "property", LIBRARY_COLUMN_METRICS
+                                    ),
                                 )
                             )
                         else:

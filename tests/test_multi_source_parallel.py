@@ -30,7 +30,7 @@ class StubSQLCheckRef:
     def get_scalar_query(self, dialect, filters, **kwargs) -> str:
         return self._query
 
-    def get_failed_rows_query(self, dialect, filters, **kwargs) -> str | None:
+    def get_row_query(self, dialect, filters, **kwargs) -> str | None:
         return None
 
     def get_result_metadata(self):

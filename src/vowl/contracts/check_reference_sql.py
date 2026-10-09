@@ -30,6 +30,32 @@ if TYPE_CHECKING:
 LOGICAL_TYPE_TO_SQL = _sql.LOGICAL_TYPE_TO_SQL
 
 
+def _count_skips_nulls(argument: exp.Expression | None) -> bool:
+    """Whether ``COUNT(argument)`` skips the rows where the argument is NULL."""
+    return argument is not None and not isinstance(argument, (exp.Star, exp.Literal, exp.Distinct))
+
+
+def _null_skipping_arguments(argument: exp.Expression | None) -> list[exp.Expression]:
+    """The expressions whose NULL rows ``COUNT(argument)`` skips.
+
+    ``COUNT(DISTINCT a, b)`` skips a row when any of its arguments is NULL.
+    """
+    if isinstance(argument, exp.Distinct):
+        return [e for e in argument.expressions if _count_skips_nulls(e)]
+    return [argument] if argument is not None and _count_skips_nulls(argument) else []
+
+
+def _counts_whole_values(argument: exp.Expression) -> bool:
+    """Whether ``COUNT(DISTINCT ...)`` over *argument* skips exactly the rows where it is NULL.
+
+    A row value such as ``(a, b)`` or ``ROW(a, b)`` is not NULL when only some
+    of its fields are, and databases treat it differently, so it is left out.
+    """
+    if isinstance(argument, (exp.Tuple, exp.Struct, exp.Star)):
+        return False
+    return not (isinstance(argument, exp.Anonymous) and argument.name.upper() == "ROW")
+
+
 class SQLCheckReference(CheckReference, ABC):
     """
     Abstract base for all SQL-based check references.
@@ -61,17 +87,42 @@ class SQLCheckReference(CheckReference, ABC):
     @cached_property
     def aggregation_type(self) -> str:
         """Normalized aggregation type detected from the canonical query."""
-        query = self.get_query(self._INTERNAL_DIALECT, None, use_try_cast=False)
+        try:
+            query = self.get_query(self._INTERNAL_DIALECT, None, use_try_cast=False)
+        except Exception:
+            # A query that can't be parsed has no known aggregation
+            return "custom"
         if not query:
             return "custom"
         return self.detect_aggregation_type(query, self._INTERNAL_DIALECT)
 
+    @cached_property
+    def _counts_rows(self) -> bool:
+        """Whether the check's query counts rows, so its failed rows are the counted rows.
+
+        ``COUNT(DISTINCT x)`` counts values, but its row query returns
+        the rows holding them, with ``x IS NOT NULL``, so it qualifies too.
+        """
+        if self.aggregation_type in ("count", "none"):
+            return True
+        if self.aggregation_type != "count_distinct":
+            return False
+        try:
+            parsed = sqlglot.parse_one(
+                self.get_query(self._INTERNAL_DIALECT, None, use_try_cast=False), dialect=self._INTERNAL_DIALECT
+            )
+            count = parsed.find(exp.Count)
+        except Exception:
+            return False
+        distinct = count.this if count is not None else None
+        return isinstance(distinct, exp.Distinct) and all(_counts_whole_values(e) for e in distinct.expressions)
+
     @property
     def supports_row_level_output(self) -> bool:
-        """Whether the check's scalar result can be interpreted as a row count."""
+        """Whether the check's failed rows are rows of the table it counted."""
         if self.unit is not None and self.unit != "rows":
             return False
-        return self.aggregation_type in ("count", "none")
+        return self._counts_rows
 
     def get_result_metadata(self) -> CheckResultMetadata:
         """Extend base metadata with SQL-specific aggregation metadata."""
@@ -79,7 +130,7 @@ class SQLCheckReference(CheckReference, ABC):
         metadata["aggregation_type"] = self.aggregation_type
         return metadata
 
-    def get_failed_rows_query(
+    def get_row_query(
         self,
         dialect: str,
         filter_conditions: dict[str, FilterConditionType] | None = None,
@@ -93,15 +144,20 @@ class SQLCheckReference(CheckReference, ABC):
             parsed = sqlglot.parse_one(query, dialect=dialect)
             if not isinstance(parsed, exp.Select):
                 return None
-            has_count = any(isinstance(e, exp.Count) for e in parsed.expressions)
+            counts = [e.unalias() for e in parsed.expressions if isinstance(e.unalias(), exp.Count)]
             has_any_agg = any(
                 isinstance(node, (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max))
                 for sel_expr in parsed.expressions
                 for node in sel_expr.walk()
             )
-            if has_count:
+            if counts:
                 result = parsed.copy()
                 result.set("expressions", [exp.Star()])
+                # COUNT(expr) and COUNT(DISTINCT expr) skip rows where expr is
+                # NULL, so the failed rows skip them too.
+                if len(counts) == 1:
+                    for argument in _null_skipping_arguments(counts[0].this):
+                        result = result.where(exp.Not(this=exp.Is(this=argument.copy(), expression=exp.Null())))
                 return result.sql(dialect=dialect)
             if not has_any_agg and parsed.find(exp.From):
                 return query
@@ -124,9 +180,12 @@ class SQLCheckReference(CheckReference, ABC):
         return query
 
     def compute_failed_rows_count(self, actual_value: Any) -> int:
-        """Derive failed_rows_count from a check's scalar result."""
-        unit_is_rows = self.unit is None or self.unit == "rows"
-        if self.aggregation_type in ("count", "none") and unit_is_rows:
+        """Derive failed_rows_count from a check's scalar result.
+
+        For ``COUNT(DISTINCT ...)`` this is the number of distinct values, a
+        lower bound on the rows that hold them.
+        """
+        if self.supports_row_level_output:
             try:
                 return int(actual_value)
             except (TypeError, ValueError):
@@ -175,6 +234,7 @@ class SQLCheckReference(CheckReference, ABC):
                 details=check.get("description") or f"Check passed: {operator} {expected_value}",
                 actual_value=actual_value,
                 expected_value=expected_value,
+                failed_rows_fetcher=failed_rows_fetcher,
                 supports_row_level_output=self.supports_row_level_output,
                 metadata=metadata,
                 execution_time_ms=execution_time_ms,
@@ -206,12 +266,18 @@ class SQLCheckReference(CheckReference, ABC):
         """Build an ERROR result with SQL metadata."""
         from vowl.executors.base import CheckResult
 
-        metadata = self._build_full_metadata(
-            dialect,
-            filter_conditions,
-            use_try_cast,
-            **extra_metadata,
-        )
+        try:
+            metadata = self._build_full_metadata(
+                dialect,
+                filter_conditions,
+                use_try_cast,
+                **extra_metadata,
+            )
+        except Exception:
+            # The query itself may be what failed, for example a syntax error.
+            # The base metadata doesn't parse it, so the ERROR result is kept.
+            metadata = dict(CheckReference.get_result_metadata(self))
+            metadata.update(extra_metadata)
         return CheckResult(
             check_name=self.get_check_name(),
             status="ERROR",
@@ -252,6 +318,8 @@ class SQLTableCheckReference(TableCheckMixin, SQLCheckReference):
     ) -> str:
         check = self.get_check()
         query = check.get("query") or ""
+        if not query.strip():
+            return ""
         query = self.transpile(query, self._INTERNAL_DIALECT, dialect)
         if filter_conditions:
             query = self.apply_filters(query, dialect, filter_conditions)
@@ -271,6 +339,8 @@ class SQLColumnCheckReference(ColumnCheckMixin, SQLCheckReference):
     ) -> str:
         check = self.get_check()
         query = check.get("query") or ""
+        if not query.strip():
+            return ""
         query = self.transpile(query, self._INTERNAL_DIALECT, dialect)
         if filter_conditions:
             query = self.apply_filters(query, dialect, filter_conditions)

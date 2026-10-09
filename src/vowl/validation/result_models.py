@@ -15,13 +15,20 @@ class CheckStatusSummary:
 
 
 @dataclass(frozen=True)
-class SingleTableSummary(CheckStatusSummary):
-    """Single-table validation summary including row-quality counts."""
+class OverallSummary(CheckStatusSummary):
+    """A schema's check counts plus its approximate failed rows.
 
-    failed_unique_rows: int
-    passed_unique_rows: int
-    total_rows: int | None
-    passed_row_percentage: float | None
+    ``failed_rows_approximate`` sums ``failed_rows_count`` over the schema's
+    row-level checks. A row caught by two checks counts twice, so the sum is
+    approximate. It is None when the schema has no row-level check.
+    """
+
+    failed_rows_approximate: int | None
+
+
+@dataclass(frozen=True)
+class SingleTableSummary(CheckStatusSummary):
+    """Check counts of the checks that read one table."""
 
 
 @dataclass(frozen=True)
@@ -35,16 +42,6 @@ class MultiTableSummary(CheckStatusSummary):
 class SchemaValidationBreakdown:
     """Typed breakdown of validation metrics for one schema."""
 
-    overall: CheckStatusSummary
+    overall: OverallSummary
     single_table: SingleTableSummary
     multi_table: MultiTableSummary
-
-
-@dataclass(frozen=True)
-class RowQualitySummary:
-    """Typed row-quality counters for a schema or aggregate result."""
-
-    total_rows: int
-    records_with_issues: int
-    clean_records: int
-    data_quality: float
