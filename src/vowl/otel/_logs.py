@@ -53,7 +53,7 @@ class LogEmitter:
 
         LogRecord = _log_record_class()
 
-        row_attrs = check_row_attributes(result, self._ns)
+        row_attrs = check_row_attributes(result)
         for check_result in result.check_results:
             severity = severity_for(check_result.status)
             if severity is None:

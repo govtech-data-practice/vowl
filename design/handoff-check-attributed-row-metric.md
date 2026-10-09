@@ -13,10 +13,10 @@ rows) at every level. The scalar count gets a name that says what it is.
 
 A check has two numbers for the rows it failed:
 
-| Number              | What it is                                                                                    | Where it lives today                                                                                                                |
-| ------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Scalar count**    | The number the check reports. It decides pass or fail. Every row-level check has one.         | `vowl.check.row.count`, `vowl.check.row.pass_rate`, `scalar_count` in `get_row_quality_df(by="check")`, `row.count.*` on the span |
-| **Attributed rows** | The rows of the table that failed, found by matching failed rows back to the table. Only attributable checks have them. | `attributed_rows` in `get_row_quality_df(by="check")`, `vowl.row_quality.attributed_rows` on the `vowl.check` span              |
+| Number              | What it is                                                                                                              | Where it lives today                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Scalar count**    | The number the check reports. It decides pass or fail. Every row-level check has one.                                   | `vowl.check.row.count`, `vowl.check.row.pass_rate`, `scalar_count` in `get_row_quality_df(by="check")`, `row.count.*` on the span |
+| **Attributed rows** | The rows of the table that failed, found by matching failed rows back to the table. Only attributable checks have them. | `attributed_rows` in `get_row_quality_df(by="check")`, `row.count.failed` on the `vowl.check` span                                |
 
 The two can differ. `DISTINCT` lowers the scalar count, a join that fans out
 raises it (it can exceed the table's rows, so `PASSED` goes negative), and
@@ -29,11 +29,11 @@ get one. The number is only on the span and in the df.
 
 ## Proposed behaviour
 
-| Metric                         | Value                                               | Emitted for                                       | Clamped                                  |
-| ------------------------------ | --------------------------------------------------- | ------------------------------------------------- | ---------------------------------------- |
-| `vowl.check.row.count`         | Attributed rows, `PASSED` and `FAILED`              | Row-level checks that were attributed             | Yes, like the other levels               |
-| `vowl.check.row.pass_rate`     | From attributed rows                                | Same                                              | Yes                                      |
-| `vowl.check.row.scalar_count`  | Scalar count, `PASSED` and `FAILED`                 | Every row-level check, attributable or not        | No, so an overcount stays visible        |
+| Metric                        | Value                                  | Emitted for                                | Clamped                           |
+| ----------------------------- | -------------------------------------- | ------------------------------------------ | --------------------------------- |
+| `vowl.check.row.count`        | Attributed rows, `PASSED` and `FAILED` | Row-level checks that were attributed      | Yes, like the other levels        |
+| `vowl.check.row.pass_rate`    | From attributed rows                   | Same                                       | Yes                               |
+| `vowl.check.row.scalar_count` | Scalar count, `PASSED` and `FAILED`    | Every row-level check, attributable or not | No, so an overcount stays visible |
 
 Open questions to settle before coding:
 
@@ -49,7 +49,7 @@ Open questions to settle before coding:
    read as "every row passed". This matches how the higher levels already
    treat them.
 3. **Passed checks under the default `attribute_tolerated_rows=False`.**
-   They are not attributed (`reason` is `passed, not attributed`). Decide
+   They are not attributed (`attribution_note` is `passed, not attributed`). Decide
    whether they get `row.count` with `FAILED` 0, or nothing. `FAILED` 0
    matches the dimension and schema levels, where a passed check adds
    nothing.
@@ -77,6 +77,7 @@ Grafana dashboard queries it:
 ## Where to change
 
 Code:
+
 - `src/vowl/validation/dq_metrics.py`
   - `check_row_counts()` (around line 220) returns `(total, scalar_count)`.
     Add the attributed figure, or a second function. The attributed rows per
@@ -89,6 +90,7 @@ Code:
   for the span attributes in question 5.
 
 Tests:
+
 - `tests/test_dq_metrics.py`, the block after the comment "The check level
   reports the check's own scalar count" (around line 172), including
   `test_distinct_reports_the_scalar_at_check_level`.
@@ -98,6 +100,7 @@ Tests:
   and re-execute `examples/6_dq_metrics/dq_metrics.ipynb`.
 
 Docs:
+
 - `docs/dq-metrics/understanding-metrics.md`: the "All metrics" table, and
   "How rows are counted" (anchor `#how-failed-rows-are-counted`, keep it).
   The section's "Why the levels use different numbers" part no longer holds

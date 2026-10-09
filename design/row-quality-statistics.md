@@ -31,16 +31,16 @@ the implementation differs from the text below.
 This record uses the terms of the user docs
 ([Check Results](../docs/design-considerations/checks/check-results.md#failed-row-results)):
 
-| Term                 | Meaning                                                                                                                                                                                                                                                                                                                                                          |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Failed check**     | A check with the status `FAILED`. Its rows are the rows that failed when it is a row-level check. The rows of passed checks are attributed only under `attribute_tolerated_rows=True`.                                                                                                                                                                           |
-| **Query output**     | What the check's own queries return: the scalar count and the failed rows.                                                                                                                                                                                                                                                                                       |
-| **Scalar count**     | The number the count (scalar) query returns. It decides pass or fail. `scalar_count` on the check selection.                                                                                                                                                                                                                                                     |
-| **Failed rows**      | The rows the row query returns, as fetched for `show_failed_rows()`, `get_output_dfs()` and residues.                                                                                                                                                                                                                                                            |
-| **Attributed rows**  | The source table rows the failed rows stand for, every copy counted. Every row count in this record.                                                                                                                                                                                                                                                             |
-| **Attribute**        | To find those rows by the match key. The `server_predicate`, `server_lookup` and `client_lookup` routes attribute. `server_scalar` does not.                                                                                                                                                                                                                     |
-| **Row-level check**  | A check about bad rows: not ERROR, row-level, with an operator that sets an upper bound. Step 2 picks them.                                                                                                                                                                                                                                                      |
-| **Not attributable** | A row-level check whose attributed rows are not in the row counts. It is never attributable when its failed rows have no match key, and those rows become residues. It is not attributable this run when, for example, its rows were truncated or the table could not be exported. Under `row_counts="scalar"` every failed row-level check is not attributable. |
+| Term                 | Meaning                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Failed check**     | A check with the status `FAILED`. Its rows are the rows that failed when it is a row-level check. The rows of passed checks are attributed only under `attribute_tolerated_rows=True`.                                                                                                                                                                             |
+| **Query output**     | What the check's own queries return: the scalar count and the failed rows.                                                                                                                                                                                                                                                                                         |
+| **Scalar count**     | The number the count (scalar) query returns. It decides pass or fail. `scalar_count` on the check selection.                                                                                                                                                                                                                                                       |
+| **Failed rows**      | The rows the row query returns, as fetched for `show_failed_rows()`, `get_output_dfs()` and residues.                                                                                                                                                                                                                                                              |
+| **Attributed rows**  | The source table rows the failed rows stand for, every copy counted. Every row count in this record.                                                                                                                                                                                                                                                               |
+| **Attribute**        | To find those rows by the match key. The `server_predicate`, `server_lookup` and `client_lookup` routes attribute. `server_scalar` does not.                                                                                                                                                                                                                       |
+| **Row-level check**  | A check about bad rows: not ERROR, row-level, with an operator that sets an upper bound. Step 2 picks them.                                                                                                                                                                                                                                                        |
+| **Not attributable** | A row-level check whose attributed rows are not in the row counts. It is never attributable when its failed rows have no match key, and those rows become residues. It is not attributable this run when, for example, its rows were truncated or the table could not be downloaded. Under `row_counts="scalar"` every failed row-level check is not attributable. |
 
 The `failed_rows` column of `get_row_quality_df()` at schema and dimension
 level, and the "failed rows" of a schema or dimension below, are attributed
@@ -614,12 +614,12 @@ A full-table match check that cannot be matched is not attributable. It adds
 nothing to the row counts. Table match is not an option, since a check that
 could use it already does. It keeps a reason:
 
-| Cause                                                | Reason                                                |
-| ---------------------------------------------------- | ----------------------------------------------------- |
-| The export fails, or there is no adapter             | `the table could not be exported`                     |
-| The table's values cannot be turned into row keys    | `the failed rows could not be turned into match keys` |
-| The check's failed rows could not be fetched         | `the failed rows could not be fetched`                |
-| The check's rows were cut short by `max_failed_rows` | `truncated by max_failed_rows`                        |
+| Cause                                                | Reason                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------ |
+| The export fails, or there is no adapter             | `the table could not be downloaded`                    |
+| The table's values cannot be turned into row keys    | `the table's rows could not be turned into match keys` |
+| The check's failed rows could not be fetched         | `the failed rows could not be fetched`                 |
+| The check's rows were cut short by `max_failed_rows` | `truncated by max_failed_rows`                         |
 
 A table match or pushdown branch that fails in the engine also leaves its check
 not attributable, with the reason `its row query failed in the data source`.
@@ -1023,11 +1023,11 @@ Columns:
 
 - `schema_name`, `check_name`, `dimension`, `status`
 - `row_level`: whether the check is about bad rows (step 2)
-- `route`: `server_predicate`, `server_lookup` or `client_lookup`, `server_scalar`
+- `attribution_method`: `server_predicate`, `server_lookup` or `client_lookup`, `server_scalar`
   for a failed check under `row_counts="scalar"`, and empty when not row-level,
   not attributed or not attributable
-- `reason`: why the check was not row-level or not attributable, or why it left
-  pushdown
+- `attribution_note`: why the check was not row-level or not attributable, or
+  why it is not on `server_predicate`
 - `scalar_count`: the check's scalar count
 - `attributed_rows`: the rows of the table the check caught, before the merge.
   None when the check is not attributable
@@ -1044,7 +1044,7 @@ Columns:
 A value that cannot be turned into a merge key does not mark a check. It makes
 only the schema and dimension numbers approximate.
 
-`reason` uses a short fixed vocabulary:
+`attribution_note` uses a short fixed vocabulary:
 
 | Reason                                                                          | Row-level                      | Attributable   | Route                              |
 | ------------------------------------------------------------------------------- | ------------------------------ | -------------- | ---------------------------------- |
@@ -1054,13 +1054,13 @@ only the schema and dimension numbers approximate.
 | `failed rows do not have the table's columns or primary key`                    | yes                            | no, never      | empty                              |
 | `primary key has duplicate values`                                              | yes                            | no, never      | empty                              |
 | `primary key uniqueness could not be checked`                                   | yes                            | no, never      | empty                              |
-| `not certified for pushdown: uses <rule>`, for example `uses DISTINCT`          | yes                            | yes            | `client_lookup` or `server_lookup` |
-| `checks tables from more than one data source`                                  | yes                            | yes            | `client_lookup`                    |
-| `data source does not support pushdown`                                         | yes                            | yes            | `client_lookup`                    |
+| `not a plain filter: uses <rule>`, for example `uses DISTINCT`                  | yes                            | yes            | `client_lookup` or `server_lookup` |
+| `reads tables from more than one data source`                                   | yes                            | yes            | `client_lookup`                    |
+| `the data source can't count rows for this check`                               | yes                            | yes            | `client_lookup`                    |
 | `its row query failed in the data source`                                       | yes                            | no, this run   | empty                              |
 | `truncated by max_failed_rows`                                                  | yes                            | no, this run   | empty                              |
-| `the table could not be exported`                                               | yes                            | no, this run   | empty                              |
-| `the failed rows could not be turned into match keys`                           | yes                            | no, this run   | empty                              |
+| `the table could not be downloaded`                                             | yes                            | no, this run   | empty                              |
+| `the table's rows could not be turned into match keys`                          | yes                            | no, this run   | empty                              |
 | `the failed rows could not be fetched`                                          | yes                            | no, this run   | empty                              |
 | `passed, not attributed` (the default for a PASSED check)                       | yes                            | not attributed | empty                              |
 | `the check counts distinct values, not rows` (only under `row_counts="scalar"`) | yes, with `approximate = true` | no             | `server_scalar`                    |
@@ -1270,8 +1270,8 @@ Details that the sections above leave open:
   on the export. `_leave_lookup_unattributed` leaves a check that cannot be attributed out of
   the row counts as not attributable, and `_run_scalars` counts every failed check from its scalar count under
   `row_counts="scalar"`. The export warnings read
-  `No adapter for schema %r, so its table cannot be exported.` and
-  `Could not export the table of %r: %s`.
+  `No adapter for schema %r, so its table cannot be downloaded.` and
+  `Could not download the table of %r: %s`.
 - **Annotated output** reads the same step 2 selection, so inverted checks are
   not flagged and tolerated checks are flagged only under
   `attribute_tolerated_rows=True`. It
@@ -1285,10 +1285,9 @@ Details that the sections above leave open:
   exact. At check level it is sent for every check with a scalar count and
   means the check made its schema approximate, the same as the span
   attribute, so it names the check. The `vowl.validate` span carries
-  `vowl.row_quality.approximate` and `vowl.row_quality.checks_not_attributable`,
-  and each `vowl.check` span and log record that gets row counts carries the
-  check's `vowl.row_quality.approximate`, `route`, `reason` and
-  `attributed_rows`. A gauge is left out when its number is
+  `row.approximate` and `row.checks_not_attributable`, and each `vowl.check`
+  span and log record that gets row counts carries the check's
+  `row.approximate`, `row.attribution_method` and `row.attribution_note`. A gauge is left out when its number is
   missing. The row counts need a total and a failed count, and the rate also
   needs a non-empty table.
 - **`print_summary`** adds `(approx.)` to a Passed Rows figure that is not

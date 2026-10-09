@@ -36,7 +36,7 @@ result = validate_data("orders.yaml", df=df, config=config)
   source attributes (`server_predicate` and `server_lookup`) don't use the downloaded
   failed rows. A `client_lookup` check that is cut
   short is [not attributable](counting-mechanisms.md#fallbacks), with the
-  `reason` `truncated by max_failed_rows`. It is left out of the row counts,
+  `attribution_note` `truncated by max_failed_rows`. It is left out of the row counts,
   which become [approximate](counting-mechanisms.md#exact-numbers). Its
   failed rows are still annotated, up to the cap.
 - **The annotated output can miss rows.** `get_annotated_output()` warns if

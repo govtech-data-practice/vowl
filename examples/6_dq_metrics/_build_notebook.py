@@ -202,7 +202,7 @@ quality dimension (completeness, conformity, and so on), so it tells you *what
 kind* of problem the failing rows have.
 
 The metrics do not say whether a row count is approximate. The `vowl.validate` and
-`vowl.check` spans do, through `vowl.row_quality.approximate`.
+`vowl.check` spans do, through `row.approximate`.
 """
 )
 

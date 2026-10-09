@@ -122,7 +122,7 @@ def check_query(check_result: Any) -> str | None:
     return metadata.get("rendered_implementation") or definition.get("query")
 
 
-def check_row_attributes(result: ValidationResult, namespace: str = "vowl") -> dict[int, dict[str, Any]]:
+def check_row_attributes(result: ValidationResult) -> dict[int, dict[str, Any]]:
     """Each check's row counts as span/log attributes, keyed by ``id(check)``.
 
     The same numbers as the check-level row metrics, named without the level:
@@ -141,13 +141,12 @@ def check_row_attributes(result: ValidationResult, namespace: str = "vowl") -> d
     every row passing.
 
     The same checks also get how they took part in the row counts:
-    ``vowl.row_quality.approximate``, plus ``.route``, ``.reason`` and
-    ``.attributed_rows`` when set. They say which check made a schema's row
-    numbers approximate, like the ``vowl.check.row.approximate`` gauge, and
-    ``.reason`` says why.
+    ``row.approximate``, plus ``row.attribution_method`` and
+    ``row.attribution_note`` when set. They say which check made a schema's
+    row numbers approximate, like the ``vowl.check.row.approximate`` gauge,
+    and ``row.attribution_note`` says why.
     """
     check_rows = result._row_quality().check_rows()
-    prefix = f"{namespace}.row_quality"
     attrs: dict[int, dict[str, Any]] = {}
     for key, rows in check_row_counts(result).items():
         attrs[key] = {
@@ -166,9 +165,11 @@ def check_row_attributes(result: ValidationResult, namespace: str = "vowl") -> d
         entry = check_rows.get(key)
         if entry is None:
             continue
-        attrs[key][f"{prefix}.approximate"] = entry.approximate
-        extra = {"route": entry.route or None, "reason": entry.reason or None, "attributed_rows": entry.attributed_rows}
-        attrs[key].update({f"{prefix}.{name}": value for name, value in extra.items() if value is not None})
+        attrs[key]["row.approximate"] = entry.approximate
+        if entry.attribution_method:
+            attrs[key]["row.attribution_method"] = entry.attribution_method
+        if entry.attribution_note:
+            attrs[key]["row.attribution_note"] = entry.attribution_note
     return attrs
 
 

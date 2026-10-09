@@ -1261,7 +1261,7 @@ def test_run_span_attributes_match_the_run_metrics(two_schema_result):
     assert root.attributes["row.count.passed"] == one("vowl.run.row.count", "PASSED")
     assert root.attributes["row.count.failed"] == one("vowl.run.row.count", "FAILED")
     assert root.attributes["row.pass_rate"] == one("vowl.run.row.pass_rate")
-    assert root.attributes["vowl.row_quality.approximate"] is run_row_counts(two_schema_result)[2]
+    assert root.attributes["row.approximate"] is run_row_counts(two_schema_result)[2]
 
 
 def test_errored_check_has_no_row_attributes(errored_result):

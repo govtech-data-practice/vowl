@@ -9,7 +9,7 @@
       "max_failed_rows": -1,
       "use_try_cast": true,
       "outputs": [
-        "failed_query_outputs",
+        "all_query_outputs",
         "consolidated_query_outputs",
         "annotated_table",
         "dq_metrics"
@@ -18,7 +18,7 @@
       "fetch_tolerated_rows": false
     },
     "failed_rows_approximate": 16,
-    "total_execution_time_ms": 1240.9449620172381,
+    "total_execution_time_ms": 1226.0637999279425,
     "success_rate": 89.6103896103896,
     "connection_results": {
       "demo_employee_payroll": {
@@ -38,7 +38,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.52966701798141,
+      "execution_time_ms": 5.113624967634678,
       "check_path": "$.schema[0].properties[0].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -74,7 +74,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 10.449291905388236,
+      "execution_time_ms": 9.9587079603225,
       "check_path": "$.schema[0].properties[0].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -110,7 +110,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.560500014573336,
+      "execution_time_ms": 34.225541981868446,
       "check_path": "$.schema[0].properties[0].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -146,7 +146,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 34.194207983091474,
+      "execution_time_ms": 34.50820897705853,
       "check_path": "$.schema[0].properties[0].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -182,7 +182,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.821415971033275,
+      "execution_time_ms": 32.075125025585294,
       "check_path": "$.schema[0].properties[0].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -218,7 +218,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.020416923798621,
+      "execution_time_ms": 4.25166601780802,
       "check_path": "$.schema[0].properties[0].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -254,7 +254,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.747749961912632,
+      "execution_time_ms": 8.142458042129874,
       "check_path": "$.schema[0].properties[0].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -290,7 +290,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.715958028100431,
+      "execution_time_ms": 4.843791946768761,
       "check_path": "$.schema[0].properties[1].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -326,7 +326,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.894459042698145,
+      "execution_time_ms": 9.713416919112206,
       "check_path": "$.schema[0].properties[1].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -362,7 +362,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 90.86520806886256,
+      "execution_time_ms": 85.69704205729067,
       "check_path": "$.schema[0].properties[1].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -398,7 +398,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.89312501531094,
+      "execution_time_ms": 32.943000085651875,
       "check_path": "$.schema[0].properties[1].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -434,7 +434,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.2001670030877,
+      "execution_time_ms": 33.320624963380396,
       "check_path": "$.schema[0].properties[1].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -470,7 +470,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.301833014935255,
+      "execution_time_ms": 7.054958026856184,
       "check_path": "$.schema[0].properties[1].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -506,7 +506,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.25487498473376,
+      "execution_time_ms": 6.077707977965474,
       "check_path": "$.schema[0].properties[1].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -542,7 +542,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.985874984413385,
+      "execution_time_ms": 4.575291997753084,
       "check_path": "$.schema[0].properties[2].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -578,7 +578,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.965915952809155,
+      "execution_time_ms": 7.649209001101553,
       "check_path": "$.schema[0].properties[2].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -614,7 +614,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 32.327999942936,
+      "execution_time_ms": 35.52983293775469,
       "check_path": "$.schema[0].properties[2].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -650,7 +650,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.2041250532492995,
+      "execution_time_ms": 8.846124983392656,
       "check_path": "$.schema[0].properties[2].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -686,7 +686,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.265458021312952,
+      "execution_time_ms": 5.562416976317763,
       "check_path": "$.schema[0].properties[3].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -722,7 +722,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.855500073172152,
+      "execution_time_ms": 9.345832979306579,
       "check_path": "$.schema[0].properties[3].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -758,7 +758,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.838458029553294,
+      "execution_time_ms": 4.946250002831221,
       "check_path": "$.schema[0].properties[4].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -794,7 +794,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.643458994105458,
+      "execution_time_ms": 9.388584061525762,
       "check_path": "$.schema[0].properties[4].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -830,7 +830,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.745166981592774,
+      "execution_time_ms": 4.332458949647844,
       "check_path": "$.schema[0].properties[5].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -866,7 +866,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.890250046737492,
+      "execution_time_ms": 12.832542066462338,
       "check_path": "$.schema[0].properties[5].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -902,7 +902,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.679749952629209,
+      "execution_time_ms": 4.746583988890052,
       "check_path": "$.schema[0].properties[6].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -938,7 +938,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.779416046105325,
+      "execution_time_ms": 7.720332941971719,
       "check_path": "$.schema[0].properties[6].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -974,7 +974,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.120666930451989,
+      "execution_time_ms": 4.621334024704993,
       "check_path": "$.schema[0].properties[7].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1010,7 +1010,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.552042068913579,
+      "execution_time_ms": 8.471749955788255,
       "check_path": "$.schema[0].properties[7].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1046,7 +1046,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.0998340379446745,
+      "execution_time_ms": 6.847416050732136,
       "check_path": "$.schema[0].properties[7].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1082,7 +1082,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.310917040333152,
+      "execution_time_ms": 5.347916972823441,
       "check_path": "$.schema[0].properties[8].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1118,7 +1118,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.799082996323705,
+      "execution_time_ms": 9.658124996349216,
       "check_path": "$.schema[0].properties[8].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1154,7 +1154,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.8302499344572425,
+      "execution_time_ms": 4.433125024661422,
       "check_path": "$.schema[0].properties[8].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1190,7 +1190,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.856584106571972,
+      "execution_time_ms": 6.176916998811066,
       "check_path": "$.schema[0].properties[9].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1226,7 +1226,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 8.114750031381845,
+      "execution_time_ms": 7.927708909846842,
       "check_path": "$.schema[0].properties[9].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1262,7 +1262,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.641875021159649,
+      "execution_time_ms": 6.1460420256480575,
       "check_path": "$.schema[0].properties[9].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1298,7 +1298,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.786332952789962,
+      "execution_time_ms": 4.919499973766506,
       "check_path": "$.schema[0].properties[10].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1334,7 +1334,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.870458045043051,
+      "execution_time_ms": 9.209249983541667,
       "check_path": "$.schema[0].properties[10].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1370,7 +1370,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.40770804788917,
+      "execution_time_ms": 31.896207947283983,
       "check_path": "$.schema[0].properties[10].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1406,7 +1406,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 34.020208986476064,
+      "execution_time_ms": 31.422792002558708,
       "check_path": "$.schema[0].properties[10].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1442,7 +1442,7 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 3,
-      "execution_time_ms": 34.17370899114758,
+      "execution_time_ms": 32.321417005732656,
       "check_path": "$.schema[0].properties[10].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1478,7 +1478,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 6.389333982951939,
+      "execution_time_ms": 6.048374925740063,
       "check_path": "$.schema[0].primaryKey",
       "check_ref_type": "CompositePrimaryKeyCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1511,7 +1511,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 13.721542083658278,
+      "execution_time_ms": 13.163832947611809,
       "check_path": "$.schema[0].quality[0]",
       "check_ref_type": "SQLTableCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1556,7 +1556,7 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.993959101848304,
+      "execution_time_ms": 10.227416991256177,
       "check_path": "$.schema[0].quality[4]",
       "check_ref_type": "RowCountCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1593,7 +1593,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 12.712416937574744,
+      "execution_time_ms": 13.286540983244777,
       "check_path": "$.schema[0].properties[0].quality[0]",
       "check_ref_type": "NullValuesCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1631,7 +1631,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 15.745209064334631,
+      "execution_time_ms": 16.497708042152226,
       "check_path": "$.schema[0].properties[2].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1675,7 +1675,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 17.875750083476305,
+      "execution_time_ms": 19.09137493930757,
       "check_path": "$.schema[0].properties[2].quality[1]",
       "check_ref_type": "InvalidValuesCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1719,7 +1719,7 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 3,
-      "execution_time_ms": 16.306874924339354,
+      "execution_time_ms": 17.09141698665917,
       "check_path": "$.schema[0].properties[3].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1763,7 +1763,7 @@
       "expected_value": 0,
       "actual_value": 3,
       "failed_rows_count": 3,
-      "execution_time_ms": 18.8476670300588,
+      "execution_time_ms": 19.240375026129186,
       "check_path": "$.schema[0].properties[4].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1807,7 +1807,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 13.673416920937598,
+      "execution_time_ms": 13.356332900002599,
       "check_path": "$.schema[0].properties[5].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1853,7 +1853,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 18.37591698858887,
+      "execution_time_ms": 17.456208006478846,
       "check_path": "$.schema[0].properties[5].quality[1]",
       "check_ref_type": "MissingValuesCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -1903,7 +1903,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.544916959479451,
+      "execution_time_ms": 4.620167077519,
       "check_path": "$.schema[1].properties[0].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
@@ -1939,7 +1939,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.910625056363642,
+      "execution_time_ms": 9.269375004805624,
       "check_path": "$.schema[1].properties[0].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
@@ -1975,7 +1975,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.63837499637157,
+      "execution_time_ms": 32.05233300104737,
       "check_path": "$.schema[1].properties[0].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2011,7 +2011,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.64041598979384,
+      "execution_time_ms": 31.962292036041617,
       "check_path": "$.schema[1].properties[0].logicalTypeOptions.minLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2047,7 +2047,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 33.955708029679954,
+      "execution_time_ms": 31.181750004179776,
       "check_path": "$.schema[1].properties[0].logicalTypeOptions.maxLength",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2083,7 +2083,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.670374910347164,
+      "execution_time_ms": 4.059250000864267,
       "check_path": "$.schema[1].properties[0].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_list",
@@ -2119,7 +2119,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.982707953080535,
+      "execution_time_ms": 5.5966670624911785,
       "check_path": "$.schema[1].properties[0].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_list",
@@ -2155,7 +2155,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.580625031143427,
+      "execution_time_ms": 5.000917008146644,
       "check_path": "$.schema[1].properties[0].primaryKey",
       "check_ref_type": "PrimaryKeyCheckReference",
       "schema_name": "demo_employee_list",
@@ -2191,7 +2191,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.220165941864252,
+      "execution_time_ms": 4.376084078103304,
       "check_path": "$.schema[1].properties[1].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2227,7 +2227,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 7.563999970443547,
+      "execution_time_ms": 7.414374966174364,
       "check_path": "$.schema[1].properties[1].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
@@ -2263,7 +2263,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.8712079878896475,
+      "execution_time_ms": 4.742375109344721,
       "check_path": "$.schema[1].properties[1].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_list",
@@ -2299,7 +2299,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.085458979010582,
+      "execution_time_ms": 4.760041949339211,
       "check_path": "$.schema[1].properties[2].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2335,7 +2335,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 98.10958302114159,
+      "execution_time_ms": 98.1947920517996,
       "check_path": "$.schema[1].properties[2].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
@@ -2371,7 +2371,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.532624967396259,
+      "execution_time_ms": 4.39975003246218,
       "check_path": "$.schema[1].properties[2].required",
       "check_ref_type": "RequiredCheckReference",
       "schema_name": "demo_employee_list",
@@ -2407,7 +2407,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.368500016629696,
+      "execution_time_ms": 5.631292006000876,
       "check_path": "$.schema[1].properties[3].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2443,7 +2443,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.75737499538809,
+      "execution_time_ms": 10.164374951273203,
       "check_path": "$.schema[1].properties[3].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
@@ -2479,7 +2479,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 4.484124947339296,
+      "execution_time_ms": 5.862209014594555,
       "check_path": "$.schema[1].properties[4].name",
       "check_ref_type": "DeclaredColumnExistsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2515,7 +2515,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 9.672207990661263,
+      "execution_time_ms": 9.13679099176079,
       "check_path": "$.schema[1].properties[4].logicalType",
       "check_ref_type": "LogicalTypeCheckReference",
       "schema_name": "demo_employee_list",
@@ -2551,7 +2551,7 @@
       "expected_value": 0,
       "actual_value": 2,
       "failed_rows_count": 2,
-      "execution_time_ms": 33.75170798972249,
+      "execution_time_ms": 33.12608296982944,
       "check_path": "$.schema[1].properties[4].logicalTypeOptions.pattern",
       "check_ref_type": "LogicalTypeOptionsCheckReference",
       "schema_name": "demo_employee_list",
@@ -2587,7 +2587,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 5.978374974802136,
+      "execution_time_ms": 5.954833002761006,
       "check_path": "$.schema[1].properties[4].unique",
       "check_ref_type": "UniqueCheckReference",
       "schema_name": "demo_employee_list",
@@ -2623,7 +2623,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 18.108665943145752,
+      "execution_time_ms": 17.699541989713907,
       "check_path": "$.schema[1].properties[1].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_list",
@@ -2667,7 +2667,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 17.662334023043513,
+      "execution_time_ms": 18.227834021672606,
       "check_path": "$.schema[1].properties[2].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_list",
@@ -2711,7 +2711,7 @@
       "expected_value": 0,
       "actual_value": 0,
       "failed_rows_count": 0,
-      "execution_time_ms": 18.679708940908313,
+      "execution_time_ms": 18.484833068214357,
       "check_path": "$.schema[1].properties[4].quality[0]",
       "check_ref_type": "SQLColumnCheckReference",
       "schema_name": "demo_employee_list",
@@ -2755,7 +2755,7 @@
       "expected_value": 0,
       "actual_value": 1,
       "failed_rows_count": 1,
-      "execution_time_ms": 52.51508404035121,
+      "execution_time_ms": 58.08283400256187,
       "check_path": "$.schema[0].properties[0].relationships[0]",
       "check_ref_type": "PropertyForeignKeyCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -2793,7 +2793,7 @@
       "expected_value": 0,
       "actual_value": 1,
       "failed_rows_count": 1,
-      "execution_time_ms": 18.60762492287904,
+      "execution_time_ms": 18.09833408333361,
       "check_path": "$.schema[0].quality[1]",
       "check_ref_type": "SQLTableCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -2837,7 +2837,7 @@
       "expected_value": 0,
       "actual_value": 1,
       "failed_rows_count": 1,
-      "execution_time_ms": 18.56745802797377,
+      "execution_time_ms": 18.946291995234787,
       "check_path": "$.schema[0].quality[2]",
       "check_ref_type": "SQLTableCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -2881,7 +2881,7 @@
       "expected_value": 0,
       "actual_value": 2,
       "failed_rows_count": 2,
-      "execution_time_ms": 20.628250087611377,
+      "execution_time_ms": 20.75795899145305,
       "check_path": "$.schema[0].quality[3]",
       "check_ref_type": "SQLTableCheckReference",
       "schema_name": "demo_employee_payroll",
@@ -2932,13 +2932,281 @@
     }
   },
   "saved_outputs": {
-    "failed_query_outputs": [
+    "all_query_outputs": [
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_options_minLength_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_options_maxLength_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_options_pattern_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_unique_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_id",
+        "check": "payroll_id_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_id",
+        "check": "payroll_id_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_id",
+        "check": "payroll_id_logical_type_options_minLength_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_id",
+        "check": "payroll_id_logical_type_options_maxLength_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_id",
+        "check": "payroll_id_logical_type_options_pattern_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_id",
+        "check": "payroll_id_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_id",
+        "check": "payroll_id_unique_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "month",
+        "check": "month_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "month",
+        "check": "month_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "month",
+        "check": "month_logical_type_options_pattern_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "month",
+        "check": "month_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_start_dt",
+        "check": "payroll_start_dt_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_start_dt",
+        "check": "payroll_start_dt_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_end_dt",
+        "check": "payroll_end_dt_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "payroll_end_dt",
+        "check": "payroll_end_dt_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "total_amt",
+        "check": "total_amt_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "total_amt",
+        "check": "total_amt_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employer_cpf_amt",
+        "check": "employer_cpf_amt_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employer_cpf_amt",
+        "check": "employer_cpf_amt_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "total_amt_employee",
+        "check": "total_amt_employee_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "total_amt_employee",
+        "check": "total_amt_employee_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "total_amt_employee",
+        "check": "total_amt_employee_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_cpf_amt",
+        "check": "employee_cpf_amt_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_cpf_amt",
+        "check": "employee_cpf_amt_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_cpf_amt",
+        "check": "employee_cpf_amt_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_gross_amt",
+        "check": "employee_gross_amt_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_gross_amt",
+        "check": "employee_gross_amt_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_gross_amt",
+        "check": "employee_gross_amt_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "phone_number",
+        "check": "phone_number_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "phone_number",
+        "check": "phone_number_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "phone_number",
+        "check": "phone_number_logical_type_options_minLength_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "phone_number",
+        "check": "phone_number_logical_type_options_maxLength_check",
+        "rows": 0
+      },
       {
         "schema": "demo_employee_payroll",
         "column": "phone_number",
         "check": "phone_number_logical_type_options_pattern_check",
         "rows": 3,
         "file": "vowl_demo_multi_table_results_checks/demo_employee_payroll__phone_number__phone_number_logical_type_options_pattern_check.csv"
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "check": "demo_employee_payroll_employee_id_payroll_id_primary_key_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "check": "total_amt_employee_equals_gross_plus_cpf",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "check": "demo_employee_payroll_rowCount",
+        "rows": 3,
+        "file": "vowl_demo_multi_table_results_checks/demo_employee_payroll__demo_employee_payroll_rowCount.csv"
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "employee_id",
+        "check": "employee_id_nullValues",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "month",
+        "check": "Month",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "month",
+        "check": "month_invalidValues",
+        "rows": 0
       },
       {
         "schema": "demo_employee_payroll",
@@ -2955,11 +3223,155 @@
         "file": "vowl_demo_multi_table_results_checks/demo_employee_payroll__payroll_end_dt__Date_With_Timezone.csv"
       },
       {
+        "schema": "demo_employee_payroll",
+        "column": "total_amt",
+        "check": "total_amt_equals_employer_cpf_plus_total_amt_employee",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_payroll",
+        "column": "total_amt",
+        "check": "total_amt_missingValues",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_options_pattern_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_options_minLength_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_logical_type_options_maxLength_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_unique_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_id",
+        "check": "employee_id_primary_key_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_last_name",
+        "check": "employee_last_name_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_last_name",
+        "check": "employee_last_name_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_last_name",
+        "check": "employee_last_name_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_first_name",
+        "check": "employee_first_name_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_first_name",
+        "check": "employee_first_name_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_first_name",
+        "check": "employee_first_name_required_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "current_title",
+        "check": "current_title_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "current_title",
+        "check": "current_title_logical_type_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "phone_number",
+        "check": "phone_number_column_exists_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "phone_number",
+        "check": "phone_number_logical_type_check",
+        "rows": 0
+      },
+      {
         "schema": "demo_employee_list",
         "column": "phone_number",
         "check": "phone_number_logical_type_options_pattern_check",
         "rows": 2,
         "file": "vowl_demo_multi_table_results_checks/demo_employee_list__phone_number__phone_number_logical_type_options_pattern_check.csv"
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "phone_number",
+        "check": "phone_number_unique_check",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_last_name",
+        "check": "PersonName",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "employee_first_name",
+        "check": "PersonName",
+        "rows": 0
+      },
+      {
+        "schema": "demo_employee_list",
+        "column": "phone_number",
+        "check": "TelephoneNumber",
+        "rows": 0
       },
       {
         "schema": "demo_employee_payroll",

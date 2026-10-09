@@ -9,10 +9,10 @@ Starts after the handoff work in `design/handoff-check-attributed-row-metric.md`
 
 Two separate tiers, with one consistent rule for each.
 
-| Tier | Methods | Cost | Counts it shows |
-|---|---|---|---|
-| Basic (default) | `print_summary`, `get_check_results_df`, `summary` / summary.json, `save()` | Check SQL only. Never attributes rows. | Scalar counts. Any sum across checks is labelled "approximate". |
-| DQ metrics (opt in) | `get_dq_metrics`, `get_dq_metrics_df`, `export_otel`, `save_dq_metrics` | Attributes rows once, then caches the result. | Attributed counts. The check level also carries `scalar_count`. |
+| Tier                | Methods                                                                     | Cost                                          | Counts it shows                                                 |
+| ------------------- | --------------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------- |
+| Basic (default)     | `print_summary`, `get_check_results_df`, `summary` / summary.json, `save()` | Check SQL only. Never attributes rows.        | Scalar counts. Any sum across checks is labelled "approximate". |
+| DQ metrics (opt in) | `get_dq_metrics`, `get_dq_metrics_df`, `export_otel`, `save_dq_metrics`     | Attributes rows once, then caches the result. | Attributed counts. The check level also carries `scalar_count`. |
 
 ## Decisions
 
@@ -81,6 +81,7 @@ See "D explained" below. The user chose to drop the key. Step 6 removes it and s
 Today `validate()` runs a `SELECT COUNT(*)` per table and records it in `summary["validation_summary"]["total_rows_by_schema"]`. The key shipped in v0.0.6.
 
 Who reads it now:
+
 - Nothing in the basic tier. On this branch `print_summary` already takes totals from the attributed report.
 - `row_counts="scalar"`, which step 5 removes.
 - `dq_metrics.check_row_counts`, only as a fallback that step 6 removes.
@@ -89,9 +90,9 @@ So after steps 5 and 6 the key would only be an output for users, with no reader
 
 Step 6 (lazy totals) means `validate()` no longer knows the totals, so summary.json cannot be filled at validate time. The options:
 
-| Option | Effect |
-|---|---|
-| Drop the key (recommended) | summary.json becomes purely about check outcomes. Totals live in the DQ-metrics output (`vowl.schema.row.count` and friends), the tier that pays for them. One changelog line. |
-| Keep it as `{}` | Stable shape, but an empty dict looks like "zero tables" and misleads readers. |
-| Fill it once computed | The key appears only if a DQ-metrics method ran before `save()`. The same call can produce different summary.json files depending on call order. Avoid. |
-| Keep counting eagerly (undo B) | Keeps the key at the cost of one COUNT(*) per table in every run. Cheap on DuckDB and Postgres, but can mean a full scan on Spark or files. |
+| Option                         | Effect                                                                                                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Drop the key (recommended)     | summary.json becomes purely about check outcomes. Totals live in the DQ-metrics output (`vowl.schema.row.count` and friends), the tier that pays for them. One changelog line. |
+| Keep it as `{}`                | Stable shape, but an empty dict looks like "zero tables" and misleads readers.                                                                                                 |
+| Fill it once computed          | The key appears only if a DQ-metrics method ran before `save()`. The same call can produce different summary.json files depending on call order. Avoid.                        |
+| Keep counting eagerly (undo B) | Keeps the key at the cost of one COUNT(*) per table in every run. Cheap on DuckDB and Postgres, but can mean a full scan on Spark or files.                                    |

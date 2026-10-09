@@ -8,8 +8,7 @@ description: How to use the ValidationResult that validate_data returns. Check w
 page. It holds the status of every check. It fetches failed rows, row counts
 and tables only when a method first needs them, and keeps them for later
 calls. Keep the connection to your data open until you are done with the
-result. Terms such as _failed rows_, _row counts_ and _residue_ are defined in
-the [Glossary](glossary.md).
+result.
 
 !!! tip "Interactive Demo"
 
@@ -71,26 +70,26 @@ from.
 Three methods return failed rows. They differ in how the rows are arranged and
 in how much data they read.
 
-|                       | [`get_output_dfs()`](#failed-rows-per-check) | [`get_consolidated_output_dfs()`](#consolidated-failed-rows) | [`get_annotated_output()`](#annotated-output) |
-| --------------------- | -------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------- |
-| Keyed by              | Check                                        | Tables the checks read                                       | Schema                                        |
-| One row per           | Row the check's row query returned           | Distinct row across checks, with `check_ids`                 | Row of the table, with `check_info`           |
-| Columns               | The check's own                              | Every column the checks returned                             | The table's                                   |
-| Attributes rows       | No                                           | No                                                           | Yes                                           |
-| Downloads tables      | No                                           | No                                                           | Every table in the contract                   |
-| Saved by `outputs=`   | `"failed_query_outputs"`                     | `"consolidated_query_outputs"`                               | `"annotated_table"`                           |
+|                     | [`get_output_dfs()`](#failed-rows-per-check) | [`get_consolidated_output_dfs()`](#consolidated-failed-rows) | [`get_annotated_output()`](#annotated-output) |
+| ------------------- | -------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------- |
+| Keyed by            | Check                                        | Tables the checks read                                       | Schema                                        |
+| One row per         | Row the check's row query returned           | Distinct row across checks, with `check_ids`                 | Row of the table, with `check_info`           |
+| Columns             | The check's own                              | Every column the checks returned                             | The table's                                   |
+| Attributes rows     | No                                           | No                                                           | Yes                                           |
+| Downloads tables    | No                                           | No                                                           | Every table in the contract                   |
+| Saved by `outputs=` | `"failed_query_outputs"`                     | `"consolidated_query_outputs"`                               | `"annotated_table"`                           |
 
 All three take `checks=["check_a", "check_b"]` to return only those checks, and
 share the failed rows they fetch, so a second call queries nothing again. They
 include the same checks. [`get_output_dfs(scope="all")`](#every-checks-rows)
 includes more:
 
-| Check                                                                          | Included                                                                                                     |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `FAILED`                                                                       | Yes                                                                                                          |
-| `FAILED`, with an operator that sets no upper limit, such as `mustBeGreaterThan` | No. Its rows are the ones that passed.                                                                     |
-| `PASSED`                                                                       | Only with [`fetch_tolerated_rows=True`](run-settings.md#fetch_tolerated_rows), as [tolerated rows](design-considerations/checks/check-results.md#tolerated-rows) |
-| `ERROR`                                                                        | No                                                                                                           |
+| Check                                                                            | Included                                                                                                                                                         |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FAILED`                                                                         | Yes                                                                                                                                                              |
+| `FAILED`, with an operator that sets no upper limit, such as `mustBeGreaterThan` | No. Its rows are the ones that passed.                                                                                                                           |
+| `PASSED`                                                                         | Only with [`fetch_tolerated_rows=True`](run-settings.md#fetch_tolerated_rows), as [tolerated rows](design-considerations/checks/check-results.md#tolerated-rows) |
+| `ERROR`                                                                          | No                                                                                                                                                               |
 
 Tolerated rows are marked by a `tolerated` column in `get_output_dfs()`, a
 `tolerated_check_ids` column in `get_consolidated_output_dfs()` and
@@ -189,7 +188,6 @@ failed["orders.price::price_must_be_positive"]
     | -------- | ----- | -------- | ------------------------- | --------------- |
     | 2        | -1.0  | 0        | quantity_must_be_positive | orders          |
 
-
 ##### Every check's rows
 
 `get_output_dfs(scope="all")` returns what the row query of every row-level
@@ -198,13 +196,13 @@ check returned, whatever its status, with a `status` column in place of
 `fetch_tolerated_rows`. It differs from the default scope in which checks it
 includes:
 
-| Check                                                                            | `scope="failed"` (default)                    | `scope="all"`                          |
-| -------------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------- |
-| `FAILED`                                                                         | Yes                                           | Yes                                    |
-| `FAILED`, with an operator that sets no upper limit, such as `mustBeGreaterThan` | No                                            | Yes. Its rows are the ones that passed |
-| `PASSED`, with rows within its limit                                             | Only with `fetch_tolerated_rows=True`         | Yes                                    |
-| `PASSED`, with no rows                                                           | No                                            | Yes, as an empty DataFrame             |
-| `ERROR`, or not row-level                                                        | No                                            | No                                     |
+| Check                                                                            | `scope="failed"` (default)            | `scope="all"`                          |
+| -------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------- |
+| `FAILED`                                                                         | Yes                                   | Yes                                    |
+| `FAILED`, with an operator that sets no upper limit, such as `mustBeGreaterThan` | No                                    | Yes. Its rows are the ones that passed |
+| `PASSED`, with rows within its limit                                             | Only with `fetch_tolerated_rows=True` | Yes                                    |
+| `PASSED`, with no rows                                                           | No                                    | Yes, as an empty DataFrame             |
+| `ERROR`, or not row-level                                                        | No                                    | No                                     |
 
 Use `get_consolidated_output_dfs()` with `fetch_tolerated_rows=True` for every
 row that broke a limit, even under a check that passed. Use `scope="all"` for
@@ -239,7 +237,6 @@ consolidated["orders"]                          # each failed row once, with che
     orders. Counting this table gives 4 failed rows, but only 2 orders failed.
     See [Limits of consolidated failed rows](#limits-of-consolidated-failed-rows).
 
-
 ??? example "With tolerated rows"
 
     With `fetch_tolerated_rows=True`, a row returned by failed check `A` and
@@ -250,13 +247,13 @@ consolidated["orders"]                          # each failed row once, with che
 Rows merge by value. They are not attributed to the table, as they are in the
 annotated output and the row counts, so the output can differ from the table:
 
-| Cause                                                       | Effect                                                                                                         |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Identical rows in the table, or a join that repeats a row   | They merge into one row                                                                                        |
-| A check that returns fewer columns                          | Its rows have nulls in the other columns and do not merge with the full row of the same record                 |
-| `DISTINCT`, a join or an aggregate in the row query         | The rows may not be rows of the table. See [Checks can change the rows they return](design-considerations/checks/how-attributed-rows-work.md#checks-can-change-the-rows-they-return). |
-| A cross-table check                                         | Its rows are keyed by every table it reads, such as `"customers, orders"`, even when they hold only `orders` columns |
-| [`max_failed_rows`](run-settings.md#max_failed_rows)        | Each check holds at most that many rows                                                                        |
+| Cause                                                     | Effect                                                                                                                                                                                |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identical rows in the table, or a join that repeats a row | They merge into one row                                                                                                                                                               |
+| A check that returns fewer columns                        | Its rows have nulls in the other columns and do not merge with the full row of the same record                                                                                        |
+| `DISTINCT`, a join or an aggregate in the row query       | The rows may not be rows of the table. See [Checks can change the rows they return](design-considerations/checks/how-attributed-rows-work.md#checks-can-change-the-rows-they-return). |
+| A cross-table check                                       | Its rows are keyed by every table it reads, such as `"customers, orders"`, even when they hold only `orders` columns                                                                  |
+| [`max_failed_rows`](run-settings.md#max_failed_rows)      | Each check holds at most that many rows                                                                                                                                               |
 
 Use `len()` on this output as a rough guide only. For exact counts, use the
 [row counts](#row-counts).
@@ -265,10 +262,10 @@ Use `len()` on this output as a rough guide only. For exact counts, use the
 
 `get_annotated_output()` returns a `dict` with two keys:
 
-| Key           | Holds                                                                                                                                  |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `"annotated"` | One table per schema: the full table with a `check_info` column, listing the checks each row failed. Empty on rows that failed none.  |
-| `"residues"`  | The failed rows of each check that could not be annotated on its table, keyed like `get_output_dfs()`                                  |
+| Key           | Holds                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `"annotated"` | One table per schema: the full table with a `check_info` column, listing the checks each row failed. Empty on rows that failed none. |
+| `"residues"`  | The failed rows of each check that could not be annotated on its table, keyed like `get_output_dfs()`                                |
 
 ```python
 output = result.get_annotated_output()
@@ -299,7 +296,6 @@ output["residues"]                              # {"<schema>.<column>::<check_na
      {"check_name": "price_below_one", "dimension": null, "tags": null, "target": "orders.price"}]
     ```
 
-
 `check_info` takes `"names"` (the default), `"summary"` or `"full"`.
 [What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds)
 describes each option, and
@@ -315,13 +311,13 @@ The DQ metrics are the counts and pass rates at check, dimension, schema and
 run level, ready for a dashboard. vowl attributes failed rows to each table to
 compute them, so each failed row counts once.
 
-| Method or property      | What it does                                                                                                                                  |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_dq_metrics_df()`   | Returns the row counts as a DataFrame. See [Row counts](#row-counts).                                                                         |
-| `get_dq_metrics()`      | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
-| `save(...)`             | Writes the DQ metrics to `<prefix>_dq_metrics.json`. See [Outputs](#outputs).                                                                 |
-| `export_otel(...)`      | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
-| `run_id`                | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
+| Method or property    | What it does                                                                                                                                  |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_dq_metrics_df()` | Returns the row counts as a DataFrame. See [Row counts](#row-counts).                                                                         |
+| `get_dq_metrics()`    | Returns the DQ metrics as a `dict`. See [Exporting to dq_metrics.json](dq-metrics/json-export.md).                                            |
+| `save(...)`           | Writes the DQ metrics to `<prefix>_dq_metrics.json`. See [Outputs](#outputs).                                                                 |
+| `export_otel(...)`    | Sends the DQ metrics, traces and logs to OpenTelemetry. See [Exporting to OpenTelemetry](dq-metrics/otel-export.md).                          |
+| `run_id`              | The run ID. `save()` and `export_otel()` both use it. You can set your own. See [The run ID](dq-metrics/understanding-metrics.md#the-run-id). |
 
 ### Row counts
 
@@ -356,14 +352,14 @@ source where it can, so the row counts do not depend on `max_failed_rows`.
 
 `by="check"` has one row per check, with these columns:
 
-| Column            | What it holds                                                                                                           |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `row_level`       | Whether the check is a row-level check                                                                                  |
-| `route`           | How vowl counted the check. Empty when it is not row-level, not attributable or passed.                                 |
-| `reason`          | Why the check is not row-level or not attributable. A passed check has `passed, not attributed`.                        |
-| `scalar_count`    | The check's scalar count, the number that decides pass or fail                                                          |
-| `attributed_rows` | The rows of the table its failed rows are attributed to, every copy counted. `None` when the check is not attributable. |
-| `approximate`     | `True` when this check's rows are incomplete or approximate                                                             |
+| Column               | What it holds                                                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `row_level`          | Whether the check is a row-level check                                                                                  |
+| `attribution_method` | How vowl counted the check. Empty when it is not row-level, not attributable or passed.                                 |
+| `attribution_note`   | Why the check is not row-level or not attributable. A passed check has `passed, not attributed`.                        |
+| `scalar_count`       | The check's scalar count, the number that decides pass or fail                                                          |
+| `attributed_rows`    | The rows of the table its failed rows are attributed to, every copy counted. `None` when the check is not attributable. |
+| `approximate`        | `True` when this check's rows are incomplete or approximate                                                             |
 
 `scalar_count` and `attributed_rows` differ for a check that uses `DISTINCT`
 or a join, or that counts distinct values.
@@ -388,14 +384,14 @@ File names start with `prefix`, or with `vowl_results` if you leave it out.
 `outputs` is a list of the files `save()` writes. `<prefix>_check_results.csv`
 and `<prefix>_summary.json` are always written.
 
-| Output                         | Files                                                                                  | Default |
-| ------------------------------ | -------------------------------------------------------------------------------------- | ------- |
-| (always)                       | `orders_check_results.csv` with the [check results](#check-results), `orders_summary.json` with the numbers behind the summary | Yes |
-| `"failed_query_outputs"`       | `orders_checks/<schema>__<column>__<check>.csv`, the rows of one failed check          | No      |
-| `"all_query_outputs"`          | `orders_checks/<schema>__<column>__<check>.csv`, the rows of every row-level check, with `status` | Yes |
-| `"consolidated_query_outputs"` | `orders_<tables>.csv`, a [consolidated file](#consolidated-files)                          | Yes     |
-| `"annotated_table"`            | `orders_<schema>_annotated.csv`, the annotated table of one schema, and `orders_<schema>__<column>__<check>_residue.csv`, the residue of one check | Yes |
-| `"dq_metrics"`                 | `orders_dq_metrics.json`, the [DQ metrics](dq-metrics/json-export.md)                  | Yes     |
+| Output                         | Files                                                                                                                                              | Default |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| (always)                       | `orders_check_results.csv` with the [check results](#check-results), `orders_summary.json` with the numbers behind the summary                     | Yes     |
+| `"failed_query_outputs"`       | `orders_checks/<schema>__<column>__<check>.csv`, the rows of one failed check                                                                      | No      |
+| `"all_query_outputs"`          | `orders_checks/<schema>__<column>__<check>.csv`, the rows of every row-level check, with `status`                                                  | Yes     |
+| `"consolidated_query_outputs"` | `orders_<tables>.csv`, a [consolidated file](#consolidated-files)                                                                                  | Yes     |
+| `"annotated_table"`            | `orders_<schema>_annotated.csv`, the annotated table of one schema, and `orders_<schema>__<column>__<check>_residue.csv`, the residue of one check | Yes     |
+| `"dq_metrics"`                 | `orders_dq_metrics.json`, the [DQ metrics](dq-metrics/json-export.md)                                                                              | Yes     |
 
 ```python
 result.save("dq-results/", prefix="orders")  # every output but "failed_query_outputs"
@@ -444,9 +440,9 @@ The `saved_outputs` list in the summary says which file is which check.
 joined by `_`. The files have the same
 [limits](#limits-of-consolidated-failed-rows).
 
-| Checks read            | File                          |
-| ---------------------- | ----------------------------- |
-| `orders`               | `orders_orders.csv`           |
+| Checks read              | File                          |
+| ------------------------ | ----------------------------- |
+| `orders`                 | `orders_orders.csv`           |
 | `orders` and `customers` | `orders_orders_customers.csv` |
 
 ### The saved_outputs list
@@ -570,8 +566,8 @@ These still work but will be removed in a future release.
 in v0.0.6. It will be removed in a future release. Passing it with
 `outputs` raises a `ValueError`.
 
-| `output_mode`   | Use instead                                                            |
-| --------------- | ---------------------------------------------------------------------- |
-| `"failed_rows"` | `outputs=["consolidated_query_outputs"]`                               |
-| `"annotated"`   | `outputs=["annotated_table", "dq_metrics"]`                            |
+| `output_mode`   | Use instead                                                               |
+| --------------- | ------------------------------------------------------------------------- |
+| `"failed_rows"` | `outputs=["consolidated_query_outputs"]`                                  |
+| `"annotated"`   | `outputs=["annotated_table", "dq_metrics"]`                               |
 | `"both"`        | `outputs=["consolidated_query_outputs", "annotated_table", "dq_metrics"]` |

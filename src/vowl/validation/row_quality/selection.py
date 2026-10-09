@@ -23,19 +23,19 @@ REASON_NO_MATCH_KEY = "failed rows do not have the table's columns or primary ke
 REASON_PK_NOT_UNIQUE = "primary key has duplicate values"
 REASON_PK_UNCHECKED = "primary key uniqueness could not be checked"
 REASON_TRUNCATED = "truncated by max_failed_rows"
-REASON_CROSS_SOURCE = "checks tables from more than one data source"
-REASON_NO_PUSHDOWN = "data source does not support pushdown"
-REASON_NO_EXPORT = "the table could not be exported"
+REASON_CROSS_SOURCE = "reads tables from more than one data source"
+REASON_NO_PUSHDOWN = "the data source can't count rows for this check"
+REASON_NO_EXPORT = "the table could not be downloaded"
 REASON_NO_FETCH = "the failed rows could not be fetched"
-REASON_MATCH_KEYS_FAILED = "the failed rows could not be turned into match keys"
+REASON_MATCH_KEYS_FAILED = "the table's rows could not be turned into match keys"
 REASON_UNATTRIBUTED = "some failed rows could not be attributed to a table row"
 REASON_COUNTS_VALUES = "the check counts distinct values, not rows"
 REASON_PASSED_NOT_ATTRIBUTED = "passed, not attributed"
 
 
 def uncertified_reason(rule: str) -> str:
-    """Reason for a row-level check that left pushdown because of *rule*."""
-    return f"not certified for pushdown: uses {rule}"
+    """Reason for a row-level check that is not a plain filter because of *rule*."""
+    return f"not a plain filter: uses {rule}"
 
 
 def resolve_check_dimension(check_result: CheckResult) -> str:

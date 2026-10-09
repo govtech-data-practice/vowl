@@ -304,20 +304,20 @@ values. Their names leave out the level, because the span is the run. A span
 holds one value per name, so the status is part of the name:
 `vowl.run.check.count{status="FAILED"}` becomes `check.count.failed`.
 
-| Attribute                                  | Same as                                            | Description                                                                                                                                                  | Presence                    |
-| ------------------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| `check.count.passed`                       | `vowl.run.check.count{status="PASSED"}`            | Number of checks that passed                                                                                                                                 | Always                      |
-| `check.count.failed`                       | `vowl.run.check.count{status="FAILED"}`            | Number of failed checks                                                                                                                                      | Always                      |
-| `check.count.error`                        | `vowl.run.check.count{status="ERROR"}`             | Number of checks that could not run                                                                                                                          | Always                      |
-| `check.pass_rate`                          | `vowl.run.check.pass_rate`                         | Share of checks that passed, 0 to 1. Checks that could not run count against it.                                                                             | When the run has checks     |
-| `schema.count.passed`                      | `vowl.run.schema.count{status="PASSED"}`           | Number of schemas whose checks all passed                                                                                                                    | Always                      |
-| `schema.count.failed`                      | `vowl.run.schema.count{status="FAILED"}`           | Number of schemas with a failed check                                                                                                                        | Always                      |
-| `schema.count.error`                       | `vowl.run.schema.count{status="ERROR"}`            | Number of schemas with a check that could not run, and no failed check                                                                                       | Always                      |
-| `row.count.passed`                         | `vowl.run.row.count{status="PASSED"}`              | Rows that passed every row-level check, over all schemas                                                                                                     | When the run has row counts |
-| `row.count.failed`                         | `vowl.run.row.count{status="FAILED"}`              | Rows that failed at least one row-level check, over all schemas                                                                                              | When the run has row counts |
-| `row.pass_rate`                            | `vowl.run.row.pass_rate`                           | Share of rows that passed, 0 to 1                                                                                                                            | When the run has rows       |
-| `vowl.row_quality.approximate`             | `approximate` in `get_dq_metrics_df()`             | Whether the row counts could be off. See [The approximate flag](../design-considerations/checks/counting-mechanisms.md#exact-numbers) for when it is `true`. | When the run has row counts |
-| `vowl.row_quality.checks_not_attributable` | `checks_not_attributable` in `get_dq_metrics_df()` | How many row-level checks are [not attributable](../glossary.md#results), over all schemas, so their rows are not in the row counts                          | When the run has row counts |
+| Attribute                     | Same as                                            | Description                                                                                                                                                  | Presence                    |
+| ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| `check.count.passed`          | `vowl.run.check.count{status="PASSED"}`            | Number of checks that passed                                                                                                                                 | Always                      |
+| `check.count.failed`          | `vowl.run.check.count{status="FAILED"}`            | Number of failed checks                                                                                                                                      | Always                      |
+| `check.count.error`           | `vowl.run.check.count{status="ERROR"}`             | Number of checks that could not run                                                                                                                          | Always                      |
+| `check.pass_rate`             | `vowl.run.check.pass_rate`                         | Share of checks that passed, 0 to 1. Checks that could not run count against it.                                                                             | When the run has checks     |
+| `schema.count.passed`         | `vowl.run.schema.count{status="PASSED"}`           | Number of schemas whose checks all passed                                                                                                                    | Always                      |
+| `schema.count.failed`         | `vowl.run.schema.count{status="FAILED"}`           | Number of schemas with a failed check                                                                                                                        | Always                      |
+| `schema.count.error`          | `vowl.run.schema.count{status="ERROR"}`            | Number of schemas with a check that could not run, and no failed check                                                                                       | Always                      |
+| `row.count.passed`            | `vowl.run.row.count{status="PASSED"}`              | Rows that passed every row-level check, over all schemas                                                                                                     | When the run has row counts |
+| `row.count.failed`            | `vowl.run.row.count{status="FAILED"}`              | Rows that failed at least one row-level check, over all schemas                                                                                              | When the run has row counts |
+| `row.pass_rate`               | `vowl.run.row.pass_rate`                           | Share of rows that passed, 0 to 1                                                                                                                            | When the run has rows       |
+| `row.approximate`             | `approximate` in `get_dq_metrics_df()`             | Whether the row counts could be off. See [The approximate flag](../design-considerations/checks/counting-mechanisms.md#exact-numbers) for when it is `true`. | When the run has row counts |
+| `row.checks_not_attributable` | `checks_not_attributable` in `get_dq_metrics_df()` | How many row-level checks are [not attributable](../glossary.md#results), over all schemas, so their rows are not in the row counts                          | When the run has row counts |
 
 ### Check span: `vowl.check`
 
@@ -333,9 +333,9 @@ metrics. A check that returns one number, such as an average, or that could
 not run has none, because a `0` would wrongly report that every row passed.
 See [Check Results](../design-considerations/checks/check-results.md).
 
-A check span's `vowl.row_quality.approximate` is the same flag as the
+A check span's `row.approximate` is the same flag as the
 `vowl.check.row.approximate` gauge: `true` when this check made its schema's
-row counts approximate. The span adds `vowl.row_quality.reason`, which says
+row counts approximate. The span adds `row.attribution_note`, which says
 why. See [Approximate row counts](understanding-metrics.md#approximate-row-counts).
 
 Each check span lasts as long as its check. vowl does not record when each
@@ -343,30 +343,29 @@ check started, so the spans are placed one after another from the start of the
 run. When checks ran at the same time, they all start at the start of the run.
 Durations are exact, and start times are approximate.
 
-| Attribute                          | Description                                                                                                                                                         | Presence                                          |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `check_name`                       | Name of the check                                                                                                                                                   | Always                                            |
-| `status`                           | `PASSED`, `FAILED`, or `ERROR`                                                                                                                                      | Always                                            |
-| `schema_name`                      | Schema the check belongs to                                                                                                                                         | When known                                        |
-| `dimension`                        | Quality dimension (for example `completeness` or `consistency`)                                                                                                     | Always. `"unknown"` when the check has none.      |
-| `severity`                         | Check severity (for example `error` or `warning`)                                                                                                                   | When the contract sets one                        |
-| `engine`                           | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                                         | When known                                        |
-| `operator`                         | How the result was compared (for example `mustBe`)                                                                                                                  | When known                                        |
-| `query`                            | The SQL the check ran                                                                                                                                               | When known                                        |
-| `expected_value`                   | The expected value or threshold                                                                                                                                     | When known                                        |
-| `actual_value`                     | The value vowl found                                                                                                                                                | When known                                        |
-| `row.count.passed`                 | The table's rows minus the check's attributed rows. Same as `vowl.check.row.count{status="PASSED"}`.                                                                | When the check has attributed rows                |
-| `row.count.failed`                 | The check's attributed rows. Same as `vowl.check.row.count{status="FAILED"}`.                                                                                       | When the check has attributed rows                |
-| `row.pass_rate`                    | Share of rows that passed this check. Same as `vowl.check.row.pass_rate`.                                                                                           | When the check has attributed rows                |
-| `row.scalar_count.passed`          | The table's rows minus the check's scalar count. Same as `vowl.check.row.scalar_count{status="PASSED"}`. Can be negative.                                           | When the check gets row counts                    |
-| `row.scalar_count.failed`          | The check's scalar count. Same as `vowl.check.row.scalar_count{status="FAILED"}`.                                                                                   | When the check gets row counts                    |
-| `row.scalar_pass_rate`             | Share of rows that passed by the scalar count. Same as `vowl.check.row.scalar_pass_rate`. Can be negative.                                                          | When the check gets row counts                    |
-| `vowl.row_quality.approximate`     | Whether this check made the row counts of its schema approximate. See [The approximate flag](../design-considerations/checks/counting-mechanisms.md#exact-numbers). | When the check gets row counts                    |
-| `vowl.row_quality.route`           | How the check's rows were [attributed](../design-considerations/checks/how-attributed-rows-work.md), such as `server_predicate`                                     | When the check gets row counts and was attributed |
-| `vowl.row_quality.reason`          | Why the check was not attributable, or why it did not take the `server_predicate` route                                                                             | When there is one                                 |
-| `vowl.row_quality.attributed_rows` | The table rows the check caught. Same as `attributed_rows` in `get_dq_metrics_df(by="check")`.                                                                      | When the check gets row counts and was attributed |
-| `check.definition.*`               | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it.                          | When known                                        |
-| `check.definition.custom.<name>`   | The check's `customProperties`, one key per property                                                                                                                | When the contract sets them                       |
+| Attribute                        | Description                                                                                                                                                         | Presence                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `check_name`                     | Name of the check                                                                                                                                                   | Always                                            |
+| `status`                         | `PASSED`, `FAILED`, or `ERROR`                                                                                                                                      | Always                                            |
+| `schema_name`                    | Schema the check belongs to                                                                                                                                         | When known                                        |
+| `dimension`                      | Quality dimension (for example `completeness` or `consistency`)                                                                                                     | Always. `"unknown"` when the check has none.      |
+| `severity`                       | Check severity (for example `error` or `warning`)                                                                                                                   | When the contract sets one                        |
+| `engine`                         | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                                         | When known                                        |
+| `operator`                       | How the result was compared (for example `mustBe`)                                                                                                                  | When known                                        |
+| `query`                          | The SQL the check ran                                                                                                                                               | When known                                        |
+| `expected_value`                 | The expected value or threshold                                                                                                                                     | When known                                        |
+| `actual_value`                   | The value vowl found                                                                                                                                                | When known                                        |
+| `row.count.passed`               | The table's rows minus the check's attributed rows. Same as `vowl.check.row.count{status="PASSED"}`.                                                                | When the check has attributed rows                |
+| `row.count.failed`               | The check's attributed rows. Same as `vowl.check.row.count{status="FAILED"}`.                                                                                       | When the check has attributed rows                |
+| `row.pass_rate`                  | Share of rows that passed this check. Same as `vowl.check.row.pass_rate`.                                                                                           | When the check has attributed rows                |
+| `row.scalar_count.passed`        | The table's rows minus the check's scalar count. Same as `vowl.check.row.scalar_count{status="PASSED"}`. Can be negative.                                           | When the check gets row counts                    |
+| `row.scalar_count.failed`        | The check's scalar count. Same as `vowl.check.row.scalar_count{status="FAILED"}`.                                                                                   | When the check gets row counts                    |
+| `row.scalar_pass_rate`           | Share of rows that passed by the scalar count. Same as `vowl.check.row.scalar_pass_rate`. Can be negative.                                                          | When the check gets row counts                    |
+| `row.approximate`                | Whether this check made the row counts of its schema approximate. See [The approximate flag](../design-considerations/checks/counting-mechanisms.md#exact-numbers). | When the check gets row counts                    |
+| `row.attribution_method`         | How the check's rows were [attributed](../design-considerations/checks/how-attributed-rows-work.md), such as `server_predicate`                                     | When the check gets row counts and was attributed |
+| `row.attribution_note`           | Why the check was not attributable, or why it did not take the `server_predicate` attribution method                                                                | When there is one                                 |
+| `check.definition.*`             | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it.                          | When known                                        |
+| `check.definition.custom.<name>` | The check's `customProperties`, one key per property                                                                                                                | When the contract sets them                       |
 
 ### Failed row events: `vowl.failed_row`
 
@@ -396,13 +395,13 @@ Trace 7f3a...  (inside the pipeline's trace, if there is one)
    |   check.pass_rate=0.4
    |   schema.count.passed=0  schema.count.failed=1  schema.count.error=0
    |   row.count.passed=957  row.count.failed=43  row.pass_rate=0.957
-   |   vowl.row_quality.approximate=false  vowl.row_quality.checks_not_attributable=0
+   |   row.approximate=false  row.checks_not_attributable=0
    |
    +- SPAN vowl.check  email_required_check          status=OK       38ms
    |     schema_name=orders  dimension=completeness  severity=error
    |     status=FAILED  engine=sql
    |     row.count.passed=958  row.count.failed=42  row.pass_rate=0.958
-   |     vowl.row_quality.approximate=false  vowl.row_quality.route=server_predicate
+   |     row.approximate=false  row.attribution_method=server_predicate
    |
    +- SPAN vowl.check  updated_at_within_24h         status=OK       51ms
    |     dimension=timeliness  status=PASSED  operator=mustBe
@@ -418,7 +417,7 @@ Trace 7f3a...  (inside the pipeline's trace, if there is one)
    +- SPAN vowl.check  order_id_unique_check         status=OK       44ms
    |     dimension=consistency  status=FAILED
    |     row.count.passed=997  row.count.failed=3  row.pass_rate=0.997
-   |     vowl.row_quality.approximate=false  vowl.row_quality.route=server_predicate
+   |     row.approximate=false  row.attribution_method=server_predicate
    |
    +- SPAN vowl.check  region_valid                  status=ERROR     9ms
          "Error executing check: Binder Error: Referenced column "region" not found"
@@ -452,23 +451,23 @@ check, filter on the `status` attribute instead.
 
 ### Log record attributes
 
-| Attribute                        | Description                                                                                                                                | Presence                                                 |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| `check_name`                     | Name of the check                                                                                                                          | Always                                                   |
-| `status`                         | `FAILED` or `ERROR`                                                                                                                        | Always                                                   |
-| `schema_name`                    | Schema the check belongs to                                                                                                                | When known                                               |
-| `dimension`                      | Quality dimension                                                                                                                          | Always. `"unknown"` when the check has none.             |
-| `severity`                       | Check severity                                                                                                                             | When the contract sets one                               |
-| `engine`                         | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                | When known                                               |
-| `row.count.passed`               | The table's rows minus the check's attributed rows, as on its span                                                                         | When the check has attributed rows                       |
-| `row.count.failed`               | The check's attributed rows, as on its span                                                                                                | When the check has attributed rows                       |
-| `row.pass_rate`                  | Share of rows that passed this check, as on its span                                                                                       | When the check has attributed rows                       |
-| `row.scalar_count.*`             | The scalar count and its pass rate, as on its span                                                                                         | When the check gets row counts                           |
-| `vowl.row_quality.*`             | How the check took part in the row counts, as on its span                                                                                  | As on its span                                           |
-| `query`                          | The SQL the check ran                                                                                                                      | When known                                               |
-| `check.definition.*`             | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known                                               |
-| `check.definition.custom.<name>` | The check's `customProperties`, one key per property                                                                                       | When the contract sets them                              |
-| `vowl.failed_rows_sample`        | Sampled failed rows, as a JSON list                                                                                                        | When `max_failed_rows_sample` is above 0 and rows failed |
+| Attribute                                                           | Description                                                                                                                                | Presence                                                 |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `check_name`                                                        | Name of the check                                                                                                                          | Always                                                   |
+| `status`                                                            | `FAILED` or `ERROR`                                                                                                                        | Always                                                   |
+| `schema_name`                                                       | Schema the check belongs to                                                                                                                | When known                                               |
+| `dimension`                                                         | Quality dimension                                                                                                                          | Always. `"unknown"` when the check has none.             |
+| `severity`                                                          | Check severity                                                                                                                             | When the contract sets one                               |
+| `engine`                                                            | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                | When known                                               |
+| `row.count.passed`                                                  | The table's rows minus the check's attributed rows, as on its span                                                                         | When the check has attributed rows                       |
+| `row.count.failed`                                                  | The check's attributed rows, as on its span                                                                                                | When the check has attributed rows                       |
+| `row.pass_rate`                                                     | Share of rows that passed this check, as on its span                                                                                       | When the check has attributed rows                       |
+| `row.scalar_count.*`                                                | The scalar count and its pass rate, as on its span                                                                                         | When the check gets row counts                           |
+| `row.approximate`, `row.attribution_method`, `row.attribution_note` | How the check took part in the row counts, as on its span                                                                                  | As on its span                                           |
+| `query`                                                             | The SQL the check ran                                                                                                                      | When known                                               |
+| `check.definition.*`                                                | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known                                               |
+| `check.definition.custom.<name>`                                    | The check's `customProperties`, one key per property                                                                                       | When the contract sets them                              |
+| `vowl.failed_rows_sample`                                           | Sampled failed rows, as a JSON list                                                                                                        | When `max_failed_rows_sample` is above 0 and rows failed |
 
 ### Worked example
 
@@ -509,15 +508,15 @@ There are two ways to get from an alert to the failed rows themselves:
    [`max_failed_rows`](../run-settings.md#max_failed_rows) in the
    `ValidationConfig` you passed to `validate_data` also caps it.
 
-    ```python
-    config = ValidationConfig(max_failed_rows=100)  # rows downloaded per check
-    result = validate_data("contract.yaml", df=df, config=config)
+   ```python
+   config = ValidationConfig(max_failed_rows=100)  # rows downloaded per check
+   result = validate_data("contract.yaml", df=df, config=config)
 
-    result.export_otel(
-        endpoint="http://localhost:4317",
-        max_failed_rows_sample=5,  # rows sent per check
-    )
-    ```
+   result.export_otel(
+       endpoint="http://localhost:4317",
+       max_failed_rows_sample=5,  # rows sent per check
+   )
+   ```
 
 2. **A link to the saved failed rows**, with `custom_attributes`. Save the
    results with `result.save(...)`, then pass their location as a custom

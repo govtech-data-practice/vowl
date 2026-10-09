@@ -70,8 +70,8 @@ class TraceEmitter:
             root_attrs["row.count.failed"] = failed
             if total:
                 root_attrs["row.pass_rate"] = max(total - failed, 0) / total
-            root_attrs[f"{self._ns}.row_quality.approximate"] = approximate
-            root_attrs[f"{self._ns}.row_quality.checks_not_attributable"] = not_attributable
+            root_attrs["row.approximate"] = approximate
+            root_attrs["row.checks_not_attributable"] = not_attributable
         root = self._tracer.start_span(
             f"{self._ns}.validate",
             start_time=start_ns,
@@ -89,7 +89,7 @@ class TraceEmitter:
         # checks ran in parallel, so start them all at the root start instead.
         sequential = start_ns + sum(durations) <= end_ns
 
-        row_attrs = check_row_attributes(result, self._ns)
+        row_attrs = check_row_attributes(result)
         contexts: dict[int, SpanContext] = {}
         cursor_ns = start_ns
         for check_result, duration_ns in zip(result.check_results, durations, strict=True):

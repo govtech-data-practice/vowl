@@ -402,7 +402,7 @@ def _view(result, name: str) -> dict[str, Any]:
         "residue": key in annotated["residues"],
         "annotated_flags": flags,
         "row_quality": {
-            field: row_quality[field] for field in ("row_level", "route", "reason", "scalar_count", "attributed_rows")
+            field: row_quality[field] for field in ("row_level", "attribution_method", "attribution_note", "scalar_count", "attributed_rows")
         },
         "check_row_metrics": metric_points,
     }
@@ -442,6 +442,6 @@ def test_failing_row_count_reports_the_table_size_and_no_rows():
     assert view["supports_row_level_output"] is True
     assert view["residue"] is False
     assert view["row_quality"]["row_level"] is False
-    assert view["row_quality"]["reason"] == "operator does not set an upper limit"
+    assert view["row_quality"]["attribution_note"] == "operator does not set an upper limit"
     assert view["check_row_metrics"] == []
     assert not any(view["annotated_flags"]["t"])

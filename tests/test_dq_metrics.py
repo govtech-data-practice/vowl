@@ -277,7 +277,7 @@ def test_a_join_that_fans_out_goes_negative_at_check_level_only(rq):
         "row.scalar_count.failed": 7,
         "row.scalar_pass_rate": -0.75,
     }
-    assert attrs["vowl.row_quality.attributed_rows"] == 3
+    assert "row.attributed_rows" not in attrs
 
 
 def test_distinct_lowers_only_the_scalar_count(rq):
@@ -311,7 +311,7 @@ def test_spans_name_the_checks_not_attributable(rq):
     document = result.get_dq_metrics()
     # The flag is its own gauge, never an attribute, so it splits no series.
     for point in document["points"]:
-        assert not any(key.startswith("vowl.row_quality.") for key in point["attributes"])
+        assert not any(key.startswith("row.") for key in point["attributes"])
     assert _row_points(document, "check", "scalar_count", check_name="id_in_u")["FAILED"] == 2
     # A check that is not attributable gets no row.count, not a 0.
     assert _row_points(document, "check", check_name="id_in_u") == {}
@@ -325,18 +325,18 @@ def test_spans_name_the_checks_not_attributable(rq):
     TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(result)
     spans = exporter.get_finished_spans()
     (root,) = [s for s in spans if s.name == "vowl.validate"]
-    assert root.attributes["vowl.row_quality.checks_not_attributable"] == 2
-    assert root.attributes["vowl.row_quality.approximate"] is True
+    assert root.attributes["row.checks_not_attributable"] == 2
+    assert root.attributes["row.approximate"] is True
 
     # The check spans say which checks made it approximate, and why.
     checks = {s.attributes["check_name"]: s.attributes for s in spans if s.name == "vowl.check"}
-    flagged = {name for name, attrs in checks.items() if attrs.get("vowl.row_quality.approximate")}
+    flagged = {name for name, attrs in checks.items() if attrs.get("row.approximate")}
     rows = rq._check_rows(result)
     assert flagged == {name for name, row in rows.items() if row["approximate"] and name in checks}
     assert flagged
     for name in flagged:
-        assert checks[name]["vowl.row_quality.reason"] == rows[name]["reason"]
-        assert "vowl.row_quality.attributed_rows" not in checks[name]
+        assert checks[name]["row.attribution_note"] == rows[name]["attribution_note"]
+        assert "row.count.failed" not in checks[name]
 
 
 def _flags(document: dict, level: str, *keys: str) -> dict:

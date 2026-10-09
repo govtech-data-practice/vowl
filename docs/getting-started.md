@@ -137,7 +137,6 @@ In the **CHECK RESULTS** table, `check_id` is the check's name, and
 
 ## Next steps
 
-- [Glossary](glossary.md) defines the words used across these docs.
 - [Writing contracts](contracts.md) shows how to describe your data and its
   checks.
 - [Connecting to data](usage-patterns.md) covers databases, Spark and

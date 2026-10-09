@@ -732,7 +732,7 @@ class ValidationResult:
         schema or the adapter cannot export it.  Annotated output then skips
         the schema and keeps its residues. In the row-quality numbers its
         ``client_lookup`` checks are then not attributable, with the reason
-        ``the table could not be exported``. Its plain row filters are still
+        ``the table could not be downloaded``. Its plain row filters are still
         counted in the data source.
 
         The row-quality numbers and annotated output share this cache, so a
@@ -743,13 +743,13 @@ class ValidationResult:
             get_adapter = getattr(self._multi_adapter, "get_adapter", None)
             adapter = get_adapter(schema_name) if get_adapter is not None else None
             if adapter is None:
-                logger.warning("No adapter for schema %r, so its table cannot be exported.", schema_name)
+                logger.warning("No adapter for schema %r, so its table cannot be downloaded.", schema_name)
             else:
                 try:
                     arrow_table = adapter.export_table_as_arrow(schema_name)
                     result = nw.from_native(arrow_table, eager_only=True)
                 except Exception as exc:  # NotImplementedError + any backend export error
-                    logger.warning("Could not export the table of %r: %s", schema_name, exc)
+                    logger.warning("Could not download the table of %r: %s", schema_name, exc)
             self._full_table_cache[schema_name] = result
         return self._full_table_cache[schema_name]
 
@@ -1339,8 +1339,8 @@ class ValidationResult:
         Args:
             by: ``"schema"`` for one row per schema, ``"dimension"`` for one
                 row per (schema, dimension), or ``"check"`` for one row per
-                check, with the route its rows took and why it was or was not
-                row-level or attributable.
+                check, with the attribution method its rows took and a note on
+                why it was or was not row-level or attributable.
 
         Columns for ``"schema"`` and ``"dimension"``: ``schema_name``,
         ``dimension`` (``"dimension"`` only), ``total_rows``, ``failed_rows``,
@@ -1353,7 +1353,7 @@ class ValidationResult:
         unavailable, for example a dimension with no attributable checks.
 
         Columns for ``"check"``: ``schema_name``, ``check_name``,
-        ``dimension``, ``status``, ``row_level``, ``route``, ``reason``,
+        ``dimension``, ``status``, ``row_level``, ``attribution_method``, ``attribution_note``,
         ``scalar_count``, ``attributed_rows`` and ``approximate``. ``scalar_count`` is the count the check's own query
         returned. ``attributed_rows`` is the rows of the table the check
         caught, which differs when the query does not return each such row
@@ -1487,9 +1487,10 @@ class ValidationResult:
 
         The schema and dimension row gauges use the same row counts as
         :meth:`get_dq_metrics_df`. If they were not computed yet, they are
-        computed now, which can export a table. The
-        ``vowl.validate`` and ``vowl.check`` spans carry ``vowl.row_quality.approximate``,
-        which says whether the row numbers are approximate. The metrics do not.
+        computed now, which can download a table. The ``vowl.validate`` and
+        ``vowl.check`` spans carry ``row.approximate``, which says whether the
+        row numbers are approximate. The metrics carry it as the
+        ``vowl.<level>.row.approximate`` gauges.
 
         Args:
             signals: Which signals to emit, any subset of ``"metrics"``,

@@ -115,7 +115,7 @@ def test_unknown_column_types_with_a_partial_contract_count_on_the_exported_tabl
     result = _partial_contract(monkeypatch)
 
     check = rq._check_rows(result)["negative"]
-    assert (check["row_level"], check["route"], check["attributed_rows"], check["approximate"]) == (
+    assert (check["row_level"], check["attribution_method"], check["attributed_rows"], check["approximate"]) == (
         True,
         "client_lookup",
         2,

@@ -158,16 +158,16 @@ def test_counts_match_the_truth_per_schema_and_dimension(backend: str):
     assert dimensions["completeness"]["failed_rows"] == 2
 
     checks = _check_rows(result)
-    assert checks["negative"]["route"] == "server_predicate"
+    assert checks["negative"]["attribution_method"] == "server_predicate"
     assert checks["negative"]["attributed_rows"] == 3
     # DISTINCT returns one row for three copies, so it is matched onto the table.
-    assert checks["twos_distinct"]["route"] == "server_lookup"
-    assert checks["twos_distinct"]["reason"] == "not certified for pushdown: uses a FROM that is not the table itself"
+    assert checks["twos_distinct"]["attribution_method"] == "server_lookup"
+    assert checks["twos_distinct"]["attribution_note"] == "not a plain filter: uses a FROM that is not the table itself"
     assert checks["twos_distinct"]["attributed_rows"] == 3
     assert checks["ones_inverted"]["row_level"] is False
-    assert checks["ones_inverted"]["reason"] == REASON_OPERATOR
+    assert checks["ones_inverted"]["attribution_note"] == REASON_OPERATOR
     threes = checks["threes_tolerated"]
-    assert (threes["route"], threes["reason"]) == ("", REASON_PASSED_NOT_ATTRIBUTED)
+    assert (threes["attribution_method"], threes["attribution_note"]) == ("", REASON_PASSED_NOT_ATTRIBUTED)
     assert (threes["scalar_count"], threes["attributed_rows"], threes["approximate"]) == (1, None, False)
 
 
@@ -177,7 +177,7 @@ def test_fetch_tolerated_rows_counts_passed_checks_as_failed():
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL", "c = 3"]) == 10
     threes = _check_rows(result)["threes_tolerated"]
-    assert (threes["route"], threes["reason"], threes["attributed_rows"]) == ("server_predicate", "", 1)
+    assert (threes["attribution_method"], threes["attribution_note"], threes["attributed_rows"]) == ("server_predicate", "", 1)
 
 
 def test_passed_checks_run_no_query_by_default(monkeypatch: pytest.MonkeyPatch):
@@ -217,7 +217,7 @@ def test_a_passed_check_with_no_count_is_not_attributed(monkeypatch: pytest.Monk
     _, result = _mixed("duckdb")
 
     threes = _check_rows(result)["threes_tolerated"]
-    assert (threes["reason"], threes["attributed_rows"], threes["approximate"]) == (
+    assert (threes["attribution_note"], threes["attributed_rows"], threes["approximate"]) == (
         REASON_PASSED_NOT_ATTRIBUTED,
         None,
         False,
@@ -326,7 +326,7 @@ def test_sqlite_rtrim_values_caught_by_different_checks_stay_apart():
 
     result = _validate(con, [_schema("t", checks)])
 
-    assert all(row["route"] == "server_predicate" for row in _check_rows(result).values() if row["status"] == "FAILED")
+    assert all(row["attribution_method"] == "server_predicate" for row in _check_rows(result).values() if row["status"] == "FAILED")
     assert _schema_row(result)["failed_rows"] == 4
 
 
@@ -342,7 +342,7 @@ def test_duckdb_interval_and_bit_columns_are_counted_without_an_annotated_table(
 
     result = _validate(con, [_schema("t", checks, properties)])
 
-    assert _check_rows(result)["one_day"]["route"] == "server_predicate"
+    assert _check_rows(result)["one_day"]["attribution_method"] == "server_predicate"
     assert _schema_row(result)["failed_rows"] == 3
     assert _schema_row(result)["approximate"] is False
     # Arrow cannot export INTERVAL, so annotated output keeps the checks as residues.
@@ -377,7 +377,7 @@ def test_duplicates_count_once_per_copy_not_once_per_check():
     result = _validate(con, [_schema("t", checks)])
 
     assert _schema_row(result)["failed_rows"] == 3
-    assert {row["attributed_rows"] for row in _check_rows(result).values() if row["row_level"] and row["route"]} == {3}
+    assert {row["attributed_rows"] for row in _check_rows(result).values() if row["row_level"] and row["attribution_method"]} == {3}
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +480,7 @@ def test_composite_primary_key_is_pushed_down(backend: str):
     result = _validate(con, [_schema("t", [], properties=_COMPOSITE_KEY)])
 
     check = _check_rows(result)["t_a_b_primary_key_check"]
-    assert (check["status"], check["route"], check["attributed_rows"]) == ("FAILED", "server_predicate", 3)
+    assert (check["status"], check["attribution_method"], check["attributed_rows"]) == ("FAILED", "server_predicate", 3)
     assert _schema_row(result)["failed_rows"] == 3
 
 
@@ -493,7 +493,7 @@ def test_count_of_an_expression_skips_null_rows_and_is_pushed_down():
     result = _validate(con, [_schema("t", checks)])
 
     row = _check_rows(result)["count_c"]
-    assert row["route"] == "server_predicate"
+    assert row["attribution_method"] == "server_predicate"
     assert row["attributed_rows"] == 2
     assert _schema_row(result)["failed_rows"] == 2
     assert _schema_row(result)["approximate"] is False
@@ -510,7 +510,7 @@ def test_aliased_count_is_counted_and_annotated():
     result = _validate(con, [_schema("t", checks)])
 
     row = _check_rows(result)["negative"]
-    assert row["route"] == "server_predicate"
+    assert row["attribution_method"] == "server_predicate"
     assert row["attributed_rows"] == 2
     assert _schema_row(result)["approximate"] is False
     output = result.get_annotated_output()
@@ -541,7 +541,7 @@ def test_every_generated_check_is_certified():
 
     failed = [row for row in _check_rows(result).values() if row["status"] == "FAILED"]
     assert failed
-    assert all(row["route"] == "server_predicate" for row in failed), failed
+    assert all(row["attribution_method"] == "server_predicate" for row in failed), failed
     assert _schema_row(result)["failed_rows"] == _truth(con, ["id = 1", "c IS NULL", "length(c) > 1"])
 
 
@@ -570,7 +570,7 @@ def test_chunk_size_does_not_change_the_numbers(monkeypatch: pytest.MonkeyPatch,
     assert _schema_row(result)["failed_rows"] == _count(con, "SELECT COUNT(*) FROM t WHERE c < 70")
     assert _schema_row(result)["approximate"] is False
     counts = {cr.check_name: cr.failed_rows_count for cr in result.check_results}
-    assert all(row["attributed_rows"] == counts[name] for name, row in _check_rows(result).items() if row["route"])
+    assert all(row["attributed_rows"] == counts[name] for name, row in _check_rows(result).items() if row["attribution_method"])
 
 
 def test_more_than_five_hundred_checks_on_sqlite():
@@ -602,7 +602,7 @@ def test_a_branch_that_fails_is_not_attributable(monkeypatch: pytest.MonkeyPatch
 
     checks_df = _check_rows(result)
     marker = checks_df["marker"]
-    assert (marker["row_level"], marker["route"], marker["reason"]) == (True, "", REASON_QUERY_FAILED)
+    assert (marker["row_level"], marker["attribution_method"], marker["attribution_note"]) == (True, "", REASON_QUERY_FAILED)
     assert (marker["scalar_count"], marker["attributed_rows"], marker["approximate"]) == (1, None, True)
     schema = _schema_row(result)
     # The marker's row is left out, so the numbers are approximate.
@@ -686,8 +686,8 @@ def test_collation_does_not_merge_rows_without_a_key_entry(unkeyed, monkeypatch:
     result = _validate(con, [_schema("t", checks, properties=[{"name": "name"}])])
 
     checks_df = _check_rows(result)
-    assert (checks_df["lower_a"]["route"], checks_df["lower_a"]["attributed_rows"]) == ("server_predicate", 1)
-    assert (checks_df["upper_a"]["route"], checks_df["upper_a"]["attributed_rows"]) == ("server_predicate", 2)
+    assert (checks_df["lower_a"]["attribution_method"], checks_df["lower_a"]["attributed_rows"]) == ("server_predicate", 1)
+    assert (checks_df["upper_a"]["attribution_method"], checks_df["upper_a"]["attributed_rows"]) == ("server_predicate", 2)
     schema = _schema_row(result)
     # Grouping on the plain NOCASE column merges the three rows into one of two copies.
     assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (4, 3, False)
@@ -734,7 +734,7 @@ def test_uncertified_check_without_a_key_entry_is_exact_on_the_table(unkeyed):
     con, result = _mixed("duckdb")
 
     twos = _check_rows(result)["twos_distinct"]
-    assert (twos["route"], twos["attributed_rows"], twos["approximate"]) == ("client_lookup", 3, False)
+    assert (twos["attribution_method"], twos["attributed_rows"], twos["approximate"]) == ("client_lookup", 3, False)
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"])
     assert schema["approximate"] is False
@@ -785,10 +785,10 @@ def test_pushdown_table_match_and_cross_source_rows_merge():
     con, result = _two_sources()
 
     checks = _check_rows(result)
-    assert checks["negative"]["route"] == "server_predicate"
-    assert checks["twos_distinct"]["route"] == "server_lookup"
-    assert checks["id_in_u"]["route"] == "client_lookup"
-    assert checks["id_in_u"]["reason"] == REASON_CROSS_SOURCE
+    assert checks["negative"]["attribution_method"] == "server_predicate"
+    assert checks["twos_distinct"]["attribution_method"] == "server_lookup"
+    assert checks["id_in_u"]["attribution_method"] == "client_lookup"
+    assert checks["id_in_u"]["attribution_note"] == REASON_CROSS_SOURCE
     # Rows (4, 5) twice and (9, 0) have no match in u. (2, 2) and (3, 2) have one.
     assert _schema_row(result)["failed_rows"] == _truth(con, ["c < 0", "c = 2", "id NOT IN (1, 2, 3)"]) == 7
     assert _schema_row(result)["approximate"] is False
@@ -805,7 +805,7 @@ def test_join_fan_out_counts_each_table_row_once():
     result = _validate(con, [_schema("t", checks)])
 
     row = _check_rows(result)["fan"]
-    assert row["route"] == "server_lookup"
+    assert row["attribution_method"] == "server_lookup"
     assert row["attributed_rows"] == 3
     assert _schema_row(result)["failed_rows"] == _truth(con, ["c < 0"]) == 3
     annotated = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
@@ -816,7 +816,7 @@ def test_a_truncated_check_is_not_attributable():
     _, result = _two_sources(ValidationConfig(max_failed_rows=1))
 
     row = _check_rows(result)["id_in_u"]
-    assert (row["route"], row["reason"], row["row_level"], row["attributed_rows"]) == ("", REASON_TRUNCATED, True, None)
+    assert (row["attribution_method"], row["attribution_note"], row["row_level"], row["attributed_rows"]) == ("", REASON_TRUNCATED, True, None)
     # Its rows are left out of the row counts.
     schema = _schema_row(result)
     assert (schema["approximate"], schema["checks_not_attributable"]) == (True, 1)
@@ -855,9 +855,9 @@ def test_checks_not_attributable_is_counted_at_every_level():
     result = _not_attributable_pair()
 
     checks = _check_rows(result)
-    assert (checks["id_in_u"]["reason"], checks["ids_negative"]["reason"]) == (REASON_TRUNCATED, REASON_NO_MATCH_KEY)
+    assert (checks["id_in_u"]["attribution_note"], checks["ids_negative"]["attribution_note"]) == (REASON_TRUNCATED, REASON_NO_MATCH_KEY)
     for name in ("id_in_u", "ids_negative"):
-        assert (checks[name]["row_level"], checks[name]["route"], checks[name]["attributed_rows"]) == (True, "", None)
+        assert (checks[name]["row_level"], checks[name]["attribution_method"], checks[name]["attributed_rows"]) == (True, "", None)
         assert checks[name]["approximate"] is True
     assert checks["nine"]["attributed_rows"] == 1
 
@@ -888,9 +888,9 @@ def test_primary_key_lets_a_column_subset_check_merge():
     keyed = _validate(con, [_schema("t", checks, with_pk)])
     unkeyed = _validate(con, [_schema("t", checks)])
 
-    assert _check_rows(keyed)["ids_negative"]["route"] == "server_lookup"
+    assert _check_rows(keyed)["ids_negative"]["attribution_method"] == "server_lookup"
     assert _schema_row(keyed)["failed_rows"] == 3
-    assert _check_rows(unkeyed)["ids_negative"]["reason"] == REASON_NO_MATCH_KEY
+    assert _check_rows(unkeyed)["ids_negative"]["attribution_note"] == REASON_NO_MATCH_KEY
     assert _schema_row(unkeyed)["failed_rows"] == 1
 
     # Annotated output merges the same checks on the same key.
@@ -918,7 +918,7 @@ def test_a_duplicated_primary_key_is_not_trusted():
 
     from vowl.validation.row_quality.selection import REASON_PK_NOT_UNIQUE
 
-    assert _check_rows(result)["ids_negative"]["reason"] == REASON_PK_NOT_UNIQUE
+    assert _check_rows(result)["ids_negative"]["attribution_note"] == REASON_PK_NOT_UNIQUE
     assert "t::ids_negative" in result.get_annotated_output()["residues"]
 
 
@@ -1002,10 +1002,10 @@ def test_a_passed_check_without_pushdown_is_not_fetched():
 
     checks = _check_rows(result)
     tolerated = checks["threes_tolerated"]
-    assert (tolerated["route"], tolerated["reason"]) == ("", REASON_PASSED_NOT_ATTRIBUTED)
+    assert (tolerated["attribution_method"], tolerated["attribution_note"]) == ("", REASON_PASSED_NOT_ATTRIBUTED)
     assert tolerated["attributed_rows"] is None
     assert tolerated["scalar_count"] == _truth(con, ["c = 3"])
-    assert checks["negative"]["route"] == "client_lookup"
+    assert checks["negative"]["attribution_method"] == "client_lookup"
     schema = _schema_row(result)
     # Without pushdown every check is matched onto the table, so DISTINCT keeps its copies.
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL"]) == 9
@@ -1022,7 +1022,7 @@ def test_error_check_makes_the_numbers_inexact():
     result = _validate(con, [_schema("t", checks)])
 
     rows = _check_rows(result)
-    assert rows["broken"]["reason"] == REASON_ERROR
+    assert rows["broken"]["attribution_note"] == REASON_ERROR
     schema = _schema_row(result)
     assert (schema["failed_rows"], schema["approximate"]) == (1, True)
     dimensions = _dimension_rows(result)
@@ -1061,7 +1061,7 @@ def test_non_row_level_checks_are_not_row_level():
 
     result = _validate(con, [_schema("t", checks)])
 
-    assert _check_rows(result)["average"]["reason"] == REASON_NOT_ROW_LEVEL
+    assert _check_rows(result)["average"]["attribution_note"] == REASON_NOT_ROW_LEVEL
 
 
 def test_the_deprecated_statistics_flag_does_not_turn_row_counts_off():
@@ -1115,7 +1115,7 @@ def test_otel_row_gauges_carry_no_trust_attributes():
     failed = [value for attrs, value in points["vowl.schema.row.count"] if attrs["status"] == "FAILED"]
     assert failed == [9]
     assert all(
-        not any(key.startswith("vowl.row_quality.") for key in attrs)
+        not any(key.startswith("row.") for key in attrs)
         for series in points.values()
         for attrs, _ in series
     )
@@ -1170,9 +1170,9 @@ def test_spark_single_scan_keeps_negative_zero_and_nan_apart(spark_session):
     schema = _schema_row(result)
     assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (7, 7, False)
     rows_by_check = _check_rows(result)
-    assert rows_by_check["neg_zero"]["route"] == "server_predicate"
+    assert rows_by_check["neg_zero"]["attribution_method"] == "server_predicate"
     # Spark is a keyed dialect, so the data source looks the rows up and must keep NaN.
-    assert rows_by_check["distinct"]["route"] == "server_lookup"
+    assert rows_by_check["distinct"]["attribution_method"] == "server_lookup"
     assert rows_by_check["distinct"]["attributed_rows"] == 2
 
 
@@ -1196,7 +1196,7 @@ def test_spark_utf8_lcase_values_caught_by_different_checks_stay_apart(spark_ses
     # With a plain column key the merged group lands in one dimension, so they would not split 2 and 1.
     dimensions = _dimension_rows(result)
     assert (dimensions["validity"]["failed_rows"], dimensions["conformity"]["failed_rows"]) == (2, 1)
-    assert {row["route"] for row in _check_rows(result).values() if row["status"] == "FAILED"} == {"server_predicate"}
+    assert {row["attribution_method"] for row in _check_rows(result).values() if row["status"] == "FAILED"} == {"server_predicate"}
 
 
 # ---------------------------------------------------------------------------
@@ -1279,7 +1279,7 @@ def test_an_ungroupable_key_sends_the_schema_to_fetched_rows(monkeypatch: pytest
 
     result = _validate(con, [_schema("t", [_check("negative", "c < 0")])])
 
-    assert _check_rows(result)["negative"]["route"] == "client_lookup"
+    assert _check_rows(result)["negative"]["attribution_method"] == "client_lookup"
     assert _schema_row(result)["failed_rows"] == 2
 
 
@@ -1400,7 +1400,7 @@ def test_employee_numbers_match_annotated_output(sources: str):
     for name, failed in {"demo_employee_payroll": 3, "demo_employee_list": 2}.items():
         flagged = sum(1 for info in annotated[name].to_arrow().column("check_info").to_pylist() if info)
         assert _schema_row(result, name)["failed_rows"] == flagged == failed
-    routes = {row["route"] for row in _check_rows(result).values() if row["status"] == "FAILED"}
+    routes = {row["attribution_method"] for row in _check_rows(result).values() if row["status"] == "FAILED"}
     # The joins are matched onto the table, in the data source when the
     # tables share one connection and onto the exported table when they do not.
     assert routes == {"server_predicate", "server_lookup" if sources == "one_connection" else "client_lookup"}
@@ -1464,7 +1464,7 @@ def test_errored_count_distinct_check_is_inexact():
     ]
     _, result = _distinct(checks=checks)
 
-    assert _check_rows(result)["broken"]["reason"] == REASON_ERROR
+    assert _check_rows(result)["broken"]["attribution_note"] == REASON_ERROR
     assert _schema_row(result)["approximate"] is True
 
 
@@ -1476,7 +1476,7 @@ def test_truncation_is_detected_from_the_rows_not_the_check_count(cap: int, trun
 
     check = _check_rows(result)["distinct_twos_sub"]
     # server_lookup counts in SQL, so the cap only reaches the annotated output.
-    assert (check["route"], check["attributed_rows"], check["approximate"]) == ("server_lookup", 3, False)
+    assert (check["attribution_method"], check["attributed_rows"], check["approximate"]) == ("server_lookup", 3, False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         annotated = result.get_annotated_output()["annotated"]["t"].to_arrow()

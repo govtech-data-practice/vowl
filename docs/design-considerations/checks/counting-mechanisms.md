@@ -2,36 +2,36 @@
 title: Counting Mechanisms
 description: >-
   How vowl attributes each check's failed rows to the source table, the three
-  routes it uses, what each costs, and when the numbers are exact.
+  attribution methods it uses, what each costs, and when the numbers are exact.
 ---
 
 # Counting Mechanisms
 
 This page explains how vowl attributes each row-level check's failed rows, and
-what each way costs. vowl picks a **route** for each check.
+what each way costs. vowl picks an **attribution method** for each check.
 
 By default vowl attributes the failed rows of every row-level check that
-failed. A check that passed takes no route and runs no extra query, unless
+failed. A check that passed takes no attribution method and runs no extra query, unless
 [`fetch_tolerated_rows`](../../run-settings.md#fetch_tolerated_rows)
 is set. This work runs only when you ask for DQ metrics or annotated output,
 through `get_dq_metrics()`, `get_dq_metrics_df()`, `export_otel()`,
 `get_annotated_output()` or `save()` with `"annotated_table"` or `"dq_metrics"`
 in its outputs.
 
-## Which route a check takes
+## Which attribution method a check takes {#which-route-a-check-takes}
 
 vowl asks up to three questions about each check:
 
 1. **Can the data source count for this check?** vowl must know the table's
    column types, a test query must run without an error, and the check must
-   read only this table's data source. When it can't, the `reason` is
-   `data source does not support pushdown` or
-   `checks tables from more than one data source`.
+   read only this table's data source. When it can't, the `attribution_note` is
+   `the data source can't count rows for this check` or
+   `reads tables from more than one data source`.
 2. **Is the query a plain filter?** A plain filter only keeps or drops rows,
    like `SELECT * FROM orders WHERE price <= 0`, so every row it returns is
    already a row of the table. `DISTINCT`, `GROUP BY`, `LIMIT`, a join or
-   `RANDOM()` make a query not a plain filter. The `reason` then starts with
-   `not certified for pushdown`.
+   `RANDOM()` make a query not a plain filter. The `attribution_note` then starts with
+   `not a plain filter`.
 3. **Is the data source a tested source?** `server_lookup` attributes rows by
    value, which is only safe where values are compared exactly (see
    [When two values count as the same](how-attributed-rows-work.md#how-values-are-compared)).
@@ -61,11 +61,11 @@ One more rule applies. When the table is downloaded anyway and the data
 source is not a tested source, the plain filters are attributed in the
 downloaded table too, and take `client_lookup`.
 
-Under `fetch_tolerated_rows=True`, a passed check is routed like a failed
+Under `fetch_tolerated_rows=True`, a passed check gets an attribution method like a failed
 one. If it needs the table downloaded, the failed checks of that table can
 move to `client_lookup` too.
 
-A check can still end with no route, not attributable, when something goes
+A check can still end with no attribution method, not attributable, when something goes
 wrong. See [When something goes wrong](#fallbacks).
 
 ## Trade-offs {#when-exact}
@@ -77,9 +77,9 @@ wrong. See [When something goes wrong](#fallbacks).
 A table whose checks are all plain filters on a source that can count is
 never downloaded to count it.
 
-**Whether each check's number is exact, by route:**
+**Whether each check's number is exact, by attribution method:**
 
-| Route              | Plain filter | `DISTINCT` or join | Returns changed values | Untested source | Failed rows cut short by `max_failed_rows` |
+| Method             | Plain filter | `DISTINCT` or join | Returns changed values | Untested source | Failed rows cut short by `max_failed_rows` |
 | ------------------ | ------------ | ------------------ | ---------------------- | --------------- | ------------------------------------------ |
 | `server_predicate` | Yes          | Not used           | Yes[^1]                | Approx[^2]      | Yes[^3]                                    |
 | `server_lookup`    | Yes          | Yes                | Approx[^4]             | Not used        | Yes[^3]                                    |
@@ -112,7 +112,7 @@ never downloaded to count it.
 
 ### Every case {#route-scenarios}
 
-Each cell is the route, then whether the check's number is exact. "Can
+Each cell is the attribution method, then whether the check's number is exact. "Can
 count" refers to question 1.
 
 | Check                                    | Data source                 | Default                                                                                                              |
@@ -124,27 +124,27 @@ count" refers to question 1.
 | Plain filter                             | Can't count                 | `client_lookup`, exact                                                                                               |
 | Not a plain filter, or reads two sources | Can't count, or two sources | `client_lookup`, exact                                                                                               |
 
-## The three routes {#the-four-routes}
+## The three attribution methods {#the-four-routes}
 
-A route is how vowl finds how many copies of each failed row the table holds.
+An attribution method is how vowl finds how many copies of each failed row the table holds.
 For `price_must_be_positive`, that is "bread 2 copies, milk 1 copy".
 
 On `server_predicate` and `server_lookup`, vowl puts the row queries of a
 table's checks into one **attribution query** and runs it in the data source.
 It attributes the rows there, and only the numbers come back.
 
-| Route                                         | When it's used                                                       | What vowl downloads                 | Exact                                        |
+| Method                                        | When it's used                                                       | What vowl downloads                 | Exact                                        |
 | --------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------- |
 | [`server_predicate`](#route-server-predicate) | The query is a plain filter, so the data source just counts          | Only numbers                        | Yes on a tested source                       |
 | [`server_lookup`](#route-server-lookup)       | Not a plain filter. The data source attributes the rows to the table | Only numbers                        | Yes, unless the check returns changed values |
 | [`client_lookup`](#route-client-lookup)       | Not a plain filter. vowl attributes the rows in the downloaded table | The whole table and the failed rows | Yes, unless the check returns changed values |
 
-The `route` column of `get_dq_metrics_df(by="check")` shows each check's
-route. It is empty for a check that is not row-level, or not attributable on a
-default run. The `reason` column says why the check is not on
+The `attribution_method` column of `get_dq_metrics_df(by="check")` shows each check's
+attribution method. It is empty for a check that is not row-level, or not attributable on a
+default run. The `attribution_note` column says why the check is not on
 `server_predicate`.
 
-The routes below use `price_must_be_positive`, a plain filter, and one extra
+The attribution methods below use `price_must_be_positive`, a plain filter, and one extra
 check, `distinct_bad_prices`, which is not:
 
 ```sql
@@ -165,7 +165,7 @@ Both checks should count 3 rows.
 
 ### `server_predicate` {#route-server-predicate}
 
-The fastest route. A plain filter already returns every copy, so its rows are
+The fastest attribution method. A plain filter already returns every copy, so its rows are
 already attributed and the data source only has to count them.
 
 ```text
@@ -183,7 +183,7 @@ already attributed and the data source only has to count them.
  ON YOUR MACHINE      bread 2, milk 1
 ```
 
-- All three row-level checks of the example take this route.
+- `price_must_be_positive` takes this attribution method.
 - On a source that is not tested, the numbers are exact only when every
   row-level check of the table takes `server_predicate`.
 
@@ -214,8 +214,8 @@ copies. Still only numbers come back.
  ON YOUR MACHINE      bread 2, milk 1
 ```
 
-- On a tested source, `distinct_bad_prices` takes this route, with the
-  `reason` `not certified for pushdown: uses DISTINCT`.
+- On a tested source, `distinct_bad_prices` takes this attribution method, with the
+  `attribution_note` `not a plain filter: uses DISTINCT`.
 - It only runs on a tested source.
 - The failed rows must hold the
   [match key](how-attributed-rows-work.md#the-match-key), or they can't be
@@ -252,7 +252,7 @@ and for checks that read two data sources.
                       bread 2, milk 1
 ```
 
-- On a source that is not tested, `distinct_bad_prices` takes this route.
+- On a source that is not tested, `distinct_bad_prices` takes this attribution method.
 - A join that returns a row twice counts it once, because the table holds it
   once.
 - When the table is downloaded, the table's total is the downloaded row count.
@@ -264,34 +264,33 @@ and for checks that read two data sources.
 
 !!! note "Checks that return changed values"
 
-    On both lookup routes, a check whose SELECT list holds anything other than
+    On both lookup attribution methods, a check whose SELECT list holds anything other than
     plain table columns or `*`, such as `price * 1.5` or `upper(item)`, is
-    marked not exact. So is a query vowl can't parse. Such a check may return
+    marked approximate. So is a query vowl can't parse. Such a check may return
     values that no table row holds, or that happen to equal another row's
     values, as `lower('A')` matches a row holding `a`. vowl still counts the
     rows that can be attributed. When some failed rows can't be attributed,
-    the `reason` is `some failed rows could not be attributed to a table row`. On
+    the `attribution_note` is `some failed rows could not be attributed to a table row`. On
     `server_lookup`, finding them costs one more query per table.
 
 ## When something goes wrong {#fallbacks}
 
 Sometimes vowl can't attribute a row-level check on this run. The check is then
-**not attributable**: its `route` is empty and it adds nothing to the row
+**not attributable**: its `attribution_method` is empty and it adds nothing to the row
 counts, and `checks_not_attributable` counts it. When its scalar count is
-above 0, the numbers of its dimension, its schema and the run are marked not
-exact. The other checks of the table keep their routes. The `reason` says what
+above 0, the numbers of its dimension, its schema and the run are marked approximate. The other checks of the table keep their attribution methods. The `attribution_note` says what
 happened:
 
-| What happened                                          | `reason`                                              |
-| ------------------------------------------------------ | ----------------------------------------------------- |
-| The table could not be downloaded                      | `the table could not be exported`                     |
-| The table's values could not be turned into match keys | `the failed rows could not be turned into match keys` |
-| The check's failed rows could not be fetched           | `the failed rows could not be fetched`                |
-| `max_failed_rows` cut the check's failed rows short    | `truncated by max_failed_rows`                        |
-| The check's row query failed in the data source        | `its row query failed in the data source`             |
+| What happened                                          | `attribution_note`                                     |
+| ------------------------------------------------------ | ------------------------------------------------------ |
+| The table could not be downloaded                      | `the table could not be downloaded`                    |
+| The table's values could not be turned into match keys | `the table's rows could not be turned into match keys` |
+| The check's failed rows could not be fetched           | `the failed rows could not be fetched`                 |
+| `max_failed_rows` cut the check's failed rows short    | `truncated by max_failed_rows`                         |
+| The check's row query failed in the data source        | `its row query failed in the data source`              |
 
 The first four mostly happen to a check meant for `client_lookup`.
-`the failed rows could not be turned into match keys` can also happen to a `server_predicate`
+`the table's rows could not be turned into match keys` can also happen to a `server_predicate`
 check that is attributed to the table on a source that is not tested. The last
 can also happen when the data source attributes the rows.
 
@@ -303,11 +302,10 @@ check that is never attributable is a different case. See
 ## The approximate flag {#exact-numbers}
 
 Every number has an `approximate` flag. It is `True` when the number could be off.
-The summary then shows **(approx.)** after it, with the number of checks not
-attributable when there are any, and the OTEL `vowl.validate` span sets
-`vowl.row_quality.approximate`. The DQ metrics carry it as the
+The summary does not show the flag. The OTEL `vowl.validate` span sets
+`row.approximate`. The DQ metrics carry it as the
 `row.approximate` gauge at each level. To find the check that caused it, look at
-`vowl.check.row.approximate`, the `approximate` and `reason` columns of
+`vowl.check.row.approximate`, the `approximate` and `attribution_note` columns of
 `get_dq_metrics_df(by="check")`, or the same attributes on its `vowl.check` span.
 
 A number is approximate when:
@@ -327,7 +325,7 @@ A number is approximate when:
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Pick the row-level checks        | `row_quality/selection.py`                                                                                                 |
 | Pick the match key               | `_choose_key` in `row_quality/__init__.py`, `row_quality/match_key.py`                                                     |
-| Pick the route                   | `_assign_route` in `row_quality/__init__.py`, `row_quality/certify.py`                                                     |
+| Pick the attribution method      | `_assign_route` in `row_quality/__init__.py`, `row_quality/certify.py`                                                     |
 | `client_lookup`                  | `_fetch`, `_export_table` and `_run_onto_table` in `row_quality/__init__.py`, `merge_onto_table` in `row_quality/merge.py` |
 | Not attributable                 | `_leave_unattributed`, `_leave_lookup_unattributed` and `_check_match_key` in `row_quality/__init__.py`                    |
 | Merging the attributed rows      | `row_quality/pushdown.py` (data source), `row_quality/merge.py` (your machine)                                             |

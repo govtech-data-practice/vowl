@@ -53,18 +53,18 @@ class CheckRowQuality:
     """How one check took part in the row-quality numbers.
 
     Attributes:
-        route: ``"server_predicate"``, ``"server_lookup"`` or
+        attribution_method: ``"server_predicate"``, ``"server_lookup"`` or
             ``"client_lookup"``, or empty when the check is not row-level or not
             attributed.
-        reason: Why the check was not row-level or not attributed, or why it
-            left pushdown.
+        attribution_note: Why the check was not row-level or not attributed,
+            why it left pushdown, or why its count is approximate.
         scalar_count: The number the check's own query returned, as a count.
             It decides pass or fail, and is what the summary shows as ``actual``.
         attributed_rows: The rows of the table the check caught, before the
             merge. It differs from ``scalar_count`` when the check's query does
             not return each failing row of the table once, for example under
             ``DISTINCT``. None when the check is not attributed, and
-            ``reason`` then says why.
+            ``attribution_note`` then says why.
         approximate: True when this check's rows are incomplete or approximate.
     """
 
@@ -73,8 +73,8 @@ class CheckRowQuality:
     dimension: str
     status: str
     row_level: bool
-    route: str
-    reason: str
+    attribution_method: str
+    attribution_note: str
     scalar_count: int | None
     attributed_rows: int | None
     approximate: bool

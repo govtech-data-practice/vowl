@@ -58,7 +58,7 @@ Each failed check ends up in exactly one place:
 ## How vowl annotates
 
 Annotating runs on your machine, once per table. It uses the failed rows each
-check returned, not the [routes](counting-mechanisms.md) used for counting.
+check returned, not the [attribution methods](counting-mechanisms.md) used for counting.
 
 1. **Download the whole table**, with your filter conditions applied. If
    counting already downloaded it, vowl reuses that copy, so a table is
@@ -88,8 +88,8 @@ before it merges them.
 vowl logs a warning and makes no annotated table for that schema. Its failed
 rows become residues. This happens, for example, when no adapter was given
 for the table (the log says "No adapter for schema ..., so its table cannot
-be exported."), or the table has a DuckDB `INTERVAL`, `BIT` or `UNION` column
-(the log says "Could not export the table of ...").
+be downloaded."), or the table has a DuckDB `INTERVAL`, `BIT` or `UNION` column
+(the log says "Could not download the table of ...").
 
 ## Residues
 
@@ -157,7 +157,7 @@ annotated rows. Here is when it doesn't:
 | A check had more failed rows than `max_failed_rows`                            | Right on `server_predicate` and `server_lookup`. On `client_lookup` the check is [not attributable](counting-mechanisms.md#fallbacks) and left out, and the numbers are [approximate](counting-mechanisms.md#exact-numbers) | A warning. The rows past the cap look clean, and the check's `check_info` items carry `"truncated": true` |
 | The table has a column vowl can't download (`INTERVAL`, `BIT`, `UNION`)        | Right for plain filters. Other checks are [not attributable](counting-mechanisms.md#fallbacks) and left out                                                                                                                 | None. The failed rows become residues                                                                     |
 | A check's failed rows can never be attributed, such as rows with fewer columns | The check is left out, and the numbers are approximate                                                                                                                                                                      | None. The failed rows become a residue                                                                    |
-| An untested data source treats different values as equal (`a` and `A`)         | Two rows can count as one, marked not exact. When the table was downloaded, both rows count                                                                                                                                 | Both rows are annotated                                                                                   |
+| An untested data source treats different values as equal (`a` and `A`)         | Two rows can count as one, marked approximate. When the table was downloaded, both rows count                                                                                                                               | Both rows are annotated                                                                                   |
 | The table changes while vowl reads it                                          | Read at one moment                                                                                                                                                                                                          | Read again later                                                                                          |
 
 vowl can't detect the last case. It only matters if the table is written to
@@ -172,9 +172,9 @@ They stay cheap on large tables when every check is a plain filter. Use the **an
 The annotated output downloads your whole table. On a large table, these
 give you the failed rows without it:
 
-| Method                                | What you get                                                                    |
-| ------------------------------------- | ------------------------------------------------------------------------------- |
-| `result.show_failed_rows(max_rows=5)` | Prints a few failed rows for each failed check. `max_rows=-1` prints them all.  |
+| Method                                | What you get                                                                                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `result.show_failed_rows(max_rows=5)` | Prints a few failed rows for each failed check. `max_rows=-1` prints them all.                                                                 |
 | `result.get_output_dfs()`             | Each check's failed rows as a separate table, under `"<schema>.<column>::<check_name>"` (`"<schema>::<check_name>"` for a schema-level check). |
 
 `result.save()` saves the annotated tables, residues, `summary.json` and

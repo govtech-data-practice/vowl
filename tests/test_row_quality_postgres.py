@@ -90,7 +90,7 @@ def test_negative_zero_nan_and_close_floats_are_kept_apart(con):
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, list(predicates.values())) == 6
     assert schema["approximate"] is False
-    assert {row["route"] for row in rq._check_rows(result).values() if row["status"] == "FAILED"} == {
+    assert {row["attribution_method"] for row in rq._check_rows(result).values() if row["status"] == "FAILED"} == {
         "server_predicate"
     }
 
@@ -122,7 +122,7 @@ def test_duplicates_count_once_per_copy_not_once_per_check(con):
     result = rq._validate(con, [rq._schema("t", checks)])
 
     assert rq._schema_row(result)["failed_rows"] == 3
-    assert {row["failed_rows"] for row in rq._check_rows(result).values() if row["row_level"] and row["route"]} == {3}
+    assert {row["failed_rows"] for row in rq._check_rows(result).values() if row["row_level"] and row["attribution_method"]} == {3}
 
 
 def test_an_uncertified_check_goes_by_table_match(con):
@@ -140,8 +140,8 @@ def test_an_uncertified_check_goes_by_table_match(con):
     result = rq._validate(con, [rq._schema("t", checks)])
 
     rows = rq._check_rows(result)
-    assert rows["negative"]["route"] == "server_predicate"
-    assert rows["twos_distinct"]["route"] == "client_lookup"
+    assert rows["negative"]["attribution_method"] == "server_predicate"
+    assert rows["twos_distinct"]["attribution_method"] == "client_lookup"
     assert rows["twos_distinct"]["failed_rows"] == 3
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c = 2"]) == 4
@@ -175,8 +175,8 @@ def test_boolean_json_and_bytea_columns_merge_with_fetched_rows(con):
     result = rq._validate(con, schemas, adapters={"t": IbisAdapter(con), "u": IbisAdapter(other)})
 
     rows = rq._check_rows(result)
-    assert rows["flagged"]["route"] == "server_predicate"
-    assert rows["id_in_u"]["route"] == "client_lookup"
+    assert rows["flagged"]["attribution_method"] == "server_predicate"
+    assert rows["id_in_u"]["attribution_method"] == "client_lookup"
     # Rows 1 (twice) are flagged, row 3 has no match in u.
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["flag", "id NOT IN (1, 2)"]) == 3

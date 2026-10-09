@@ -16,12 +16,9 @@ explains how vowl gets from a check to those answers:
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | This page                                                     | The check result types, what a check gives you, and the scalar and row queries |
 | [How Attributed Rows Work](how-attributed-rows-work.md)       | How vowl attributes failed rows and adds them up                               |
-| [Counting Mechanisms](counting-mechanisms.md)                 | The routes vowl uses to attribute rows, and what each one costs                |
+| [Counting Mechanisms](counting-mechanisms.md)                 | The attribution methods vowl uses to attribute rows, and what each one costs   |
 | [Annotating the Source Table](annotating-the-source-table.md) | How vowl writes the attributed rows into your table                            |
 | [Capping Failed Rows](capping-failed-rows.md)                 | What changes when you limit how many failed rows vowl downloads                |
-
-Words such as **failed rows** and **row counts** are defined in the
-[Glossary](../../glossary.md).
 
 ## Check result types {#counted-checks}
 
@@ -58,7 +55,7 @@ flowchart LR
 
 Only attributable row-level checks that failed add rows to the row counts.
 `get_dq_metrics_df(by="check")` shows the type of each check in its
-`row_level`, `route` and `reason` columns. A check passes or fails as usual
+`row_level`, `attribution_method` and `attribution_note` columns. A check passes or fails as usual
 whatever its type, and a passed check can be row-level too. By default vowl
 does not attribute a passed check (see [Tolerated rows](#tolerated-rows)).
 
@@ -77,9 +74,9 @@ The check could not run, so it has no scalar count and no failed rows. The
 
 If the check would have been row-level, it may have had failed rows that vowl
 never saw. The row counts of its table and dimension are then marked
-[not exact](counting-mechanisms.md#exact-numbers).
+[approximate](counting-mechanisms.md#exact-numbers).
 
-`reason`: `check ended in ERROR`
+`attribution_note`: `check ended in ERROR`
 
 ### Non-row-level check {#non-row-level-check}
 
@@ -111,7 +108,7 @@ no aggregate. These checks don't:
 | A `unit` other than `rows`                  | `unit: percent`                                         |
 | A check type with no SQL behind it          | Custom and unsupported check types                      |
 
-`reason`: `not a row-level check`
+`attribution_note`: `not a row-level check`
 
 ### Non-limiting check {#non-limiting-check}
 
@@ -144,7 +141,7 @@ this many":
 | `mustBeGreaterThan`, `mustBeGreaterOrEqualTo`                                                       | No. The check counts good rows, such as "at least 100 are paid". |
 | `mustBe: n` with n above 0, `mustNotBe`, `mustBeBetween: [a, b]` with a above 0, `mustNotBeBetween` | No. When the total is off, no single row is at fault.            |
 
-`reason`: `operator does not set an upper limit`
+`attribution_note`: `operator does not set an upper limit`
 
 ### Not attributable row-level check {#not-attributable-row-level-check}
 
@@ -245,7 +242,7 @@ A passed check still reports its scalar count in
 rule as its tolerated rows: `FAILED` is 0 by default, and its attributed rows
 with `fetch_tolerated_rows=True`. By default vowl does not attribute its rows. It runs no extra query for it,
 adds nothing to the row counts and leaves its rows out of every output.
-Its `reason` is `passed, not attributed`, and it is not counted in
+Its `attribution_note` is `passed, not attributed`, and it is not counted in
 `checks_not_attributable`.
 
 [`fetch_tolerated_rows`](../../run-settings.md#fetch_tolerated_rows)
@@ -264,14 +261,14 @@ Every output then holds the rows of the passed checks too, and marks them per
 check, so you can tell them apart from failed checks. All of them read the
 check's rows from one fetch, so they agree.
 
-| Output                          | Setting off (default) | `fetch_tolerated_rows=True`                                  |
-| ------------------------------- | --------------------- | ---------------------------------------------------------------- |
-| `get_annotated_output()`        | Failed checks only    | Adds tolerated checks, their `check_info` items `"tolerated": true` |
-| `get_output_dfs()`              | Failed checks only    | Adds tolerated checks, with a `tolerated` column                 |
-| `get_consolidated_output_dfs()` and the grouped failed-rows CSVs | Failed checks only | Adds tolerated rows, with a `tolerated_check_ids` column |
-| `show_failed_rows()`            | Failed checks only    | Adds tolerated checks, labelled `(tolerated)`                    |
-| DQ metrics                      | Failed checks only    | A row picked out by any of these checks counts as failing        |
-| OpenTelemetry `failed_rows_sample` | Failed checks only | Failed checks only                                               |
+| Output                                                           | Setting off (default) | `fetch_tolerated_rows=True`                                         |
+| ---------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------- |
+| `get_annotated_output()`                                         | Failed checks only    | Adds tolerated checks, their `check_info` items `"tolerated": true` |
+| `get_output_dfs()`                                               | Failed checks only    | Adds tolerated checks, with a `tolerated` column                    |
+| `get_consolidated_output_dfs()` and the grouped failed-rows CSVs | Failed checks only    | Adds tolerated rows, with a `tolerated_check_ids` column            |
+| `show_failed_rows()`                                             | Failed checks only    | Adds tolerated checks, labelled `(tolerated)`                       |
+| DQ metrics                                                       | Failed checks only    | A row picked out by any of these checks counts as failing           |
+| OpenTelemetry `failed_rows_sample`                               | Failed checks only    | Failed checks only                                                  |
 
 A row picked out only by a tolerated check counts as failing in the DQ
 metrics. That is what the setting asks for.
@@ -450,12 +447,12 @@ flowchart LR
     a -->|"No, not this run"| skip["Left out and flagged"]
 ```
 
-| Outcome                       | Example                                                  | Row counts                     | Annotated output                 |
-| ----------------------------- | -------------------------------------------------------- | ------------------------------ | -------------------------------- |
-| **Attributed**                | `WHERE price <= 0`                                       | Counted, each row once         | Each row marked with its checks  |
-| **Never attributable**        | The failed rows lack some columns of the table           | Left out, marked not exact     | The failed rows become a residue |
-| **Not attributable this run** | The failed rows were cut off by `max_failed_rows`        | Left out, marked not exact     | Annotated as usual               |
+| Outcome                       | Example                                           | Row counts                   | Annotated output                 |
+| ----------------------------- | ------------------------------------------------- | ---------------------------- | -------------------------------- |
+| **Attributed**                | `WHERE price <= 0`                                | Counted, each row once       | Each row marked with its checks  |
+| **Never attributable**        | The failed rows lack some columns of the table    | Left out, marked approximate | The failed rows become a residue |
+| **Not attributable this run** | The failed rows were cut off by `max_failed_rows` | Left out, marked approximate | Annotated as usual               |
 
 [How Attributed Rows Work](how-attributed-rows-work.md) explains how vowl
-attributes the rows, every `reason` a check can be left out for, and how the
-attributed rows add up to the numbers at each grain.
+attributes the rows, every `attribution_note` a check can be left out for, and how the
+attributed rows add up to the row counts at each level.

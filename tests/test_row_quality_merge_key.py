@@ -77,7 +77,7 @@ def test_a_duplicated_primary_key_is_not_attributable_with_its_own_reason():
 
     assert result._row_quality().merge_key("t") is None
     checks = rq._check_rows(result)
-    assert checks["ids_negative"]["reason"] == REASON_PK_NOT_UNIQUE
+    assert checks["ids_negative"]["attribution_note"] == REASON_PK_NOT_UNIQUE
     # Still about bad rows, so row-level, but its rows become residues.
     assert (checks["ids_negative"]["row_level"], checks["ids_negative"]["attributed_rows"]) == (True, None)
     assert checks["ids_negative"]["attributed_rows"] is None
@@ -99,7 +99,7 @@ def test_a_failed_probe_falls_back_with_its_own_reason(monkeypatch: pytest.Monke
     result = rq._validate(con, [rq._schema("t", [_SUBSET, rq._check("five", "c = 5")], _PK)])
 
     assert result._row_quality().merge_key("t") is None
-    assert rq._check_rows(result)["ids_negative"]["reason"] == REASON_PK_UNCHECKED
+    assert rq._check_rows(result)["ids_negative"]["attribution_note"] == REASON_PK_UNCHECKED
     assert rq._schema_row(result)["failed_rows"] == 1
 
 
@@ -109,7 +109,7 @@ def test_a_check_without_the_primary_key_keeps_the_general_reason():
 
     result = rq._validate(con, [rq._schema("t", [only_c], _PK)])
 
-    assert rq._check_rows(result)["c_negative"]["reason"] == REASON_NO_MATCH_KEY
+    assert rq._check_rows(result)["c_negative"]["attribution_note"] == REASON_NO_MATCH_KEY
 
 
 def test_the_primary_key_is_probed_once_per_schema(monkeypatch: pytest.MonkeyPatch):
@@ -144,7 +144,7 @@ def test_a_table_match_check_with_transformed_values_matches_on_the_primary_key(
     keyed = rq._validate(con, [rq._schema("t", [shifted], _PK)])
     unkeyed = rq._validate(con, [rq._schema("t", [shifted])])
 
-    assert rq._check_rows(keyed)["shifted"]["route"] == "server_lookup"
+    assert rq._check_rows(keyed)["shifted"]["attribution_method"] == "server_lookup"
     # c * 10 is not a plain column, so the check is marked approximate.
     assert rq._check_rows(keyed)["shifted"]["approximate"] is True
     assert rq._schema_row(keyed)["failed_rows"] == 2
@@ -152,7 +152,7 @@ def test_a_table_match_check_with_transformed_values_matches_on_the_primary_key(
     assert rq._schema_row(unkeyed)["failed_rows"] == 0
     # No table row has the changed values, which the count reports.
     shifted_row = rq._check_rows(unkeyed)["shifted"]
-    assert (shifted_row["reason"], shifted_row["approximate"]) == (REASON_UNATTRIBUTED, True)
+    assert (shifted_row["attribution_note"], shifted_row["approximate"]) == (REASON_UNATTRIBUTED, True)
 
 
 # ---------------------------------------------------------------------------

@@ -372,10 +372,10 @@ their rationale.
 19. **Spans and logs carry the metrics' numbers under the metrics' names.**
     The run span carries every run-level number (`check.count.*`,
     `check.pass_rate`, `schema.count.*`, `row.count.*`, `row.pass_rate`,
-    `vowl.row_quality.approximate`, `vowl.row_quality.checks_not_attributable`), and each check span and log record carries the
+    `row.approximate`, `row.checks_not_attributable`), and each check span and log record carries the
     check-level row counts (`row.count.passed`, `row.count.failed`,
     `row.pass_rate`) and how the check took part in them
-    (`vowl.row_quality.approximate`, `.route`, `.reason`, `.attributed_rows`).
+    (`row.approximate`, `row.attribution_method`, `row.attribution_note`).
     The approximate flag is not on the metrics, so the spans are where to find
     which check made a number approximate. Each is named like its metric without the level, with
     the status moved into the name because a span holds one value per key.

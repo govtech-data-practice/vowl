@@ -257,8 +257,8 @@ The two differ when the check changes the rows it returns. A `DISTINCT`
 lowers the scalar count. A join that returns one row twice raises it.
 
 A check's attributed rows are also in the `attributed_rows` column of
-`get_dq_metrics_df(by="check")` and the `vowl.row_quality.attributed_rows`
-attribute of its [`vowl.check` span](otel-export.md#traces).
+`get_dq_metrics_df(by="check")` and the `row.count.failed` attribute of its
+[`vowl.check` span](otel-export.md#traces).
 
 For the details, see
 [Attributed rows](../design-considerations/checks/check-results.md#from-query-output-to-row-counts)
@@ -271,11 +271,11 @@ Only [row-level checks](../design-considerations/checks/check-results.md#counted
 have row counts. A check that is not row-level, such as an average, has check
 counts only.
 
-| Check                    | `scalar_count` | `row.count` at check level                                                 |
-| ------------------------ | -------------- | -------------------------------------------------------------------------- |
-| Failed, attributable     | Yes            | Its attributed rows                                                        |
+| Check                    | `scalar_count` | `row.count` at check level                                             |
+| ------------------------ | -------------- | ---------------------------------------------------------------------- |
+| Failed, attributable     | Yes            | Its attributed rows                                                    |
 | Passed                   | Yes            | `FAILED` is 0, or its attributed rows with `fetch_tolerated_rows=True` |
-| Failed, not attributable | Yes            | None                                                                       |
+| Failed, not attributable | Yes            | None                                                                   |
 
 A passed check follows the same rule as [tolerated rows](../design-considerations/checks/check-results.md#tolerated-rows).
 By default it adds no rows, so its `FAILED` is 0. With
@@ -296,12 +296,12 @@ Each level with row counts has a `row.approximate` gauge that says so. It is
 same attributes as that level's `row.pass_rate`, so it lines up with the row
 counts it describes.
 
-| Metric                           | `1` means                                                     |
-| -------------------------------- | ------------------------------------------------------------- |
-| `vowl.run.row.approximate`       | Some row count of the run could be off                        |
-| `vowl.schema.row.approximate`    | The schema's row counts could be off                          |
-| `vowl.dimension.row.approximate` | The dimension's row counts could be off                       |
-| `vowl.check.row.approximate`     | This check made its schema's row counts approximate           |
+| Metric                           | `1` means                                           |
+| -------------------------------- | --------------------------------------------------- |
+| `vowl.run.row.approximate`       | Some row count of the run could be off              |
+| `vowl.schema.row.approximate`    | The schema's row counts could be off                |
+| `vowl.dimension.row.approximate` | The dimension's row counts could be off             |
+| `vowl.check.row.approximate`     | This check made its schema's row counts approximate |
 
 The check level reads differently from the others. It says whether this check
 is a cause, not whether its own count is off. So it is sent for every check
@@ -310,8 +310,8 @@ has no `row.count`. That is the usual cause.
 
 To find out why, look at the check's
 [`vowl.check` span](otel-export.md#traces): it carries the same flag as
-`vowl.row_quality.approximate`, and `vowl.row_quality.reason` says why.
-Without traces, the `approximate` and `reason` columns of
+`row.approximate`, and `row.attribution_note` says why.
+Without traces, the `approximate` and `attribution_note` columns of
 `get_dq_metrics_df(by="check")` give the same answer.
 
 !!! note "Why the flag is its own metric, not an attribute"
