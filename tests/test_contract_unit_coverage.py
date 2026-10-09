@@ -1009,3 +1009,56 @@ def test_one_check_name_on_different_columns_or_levels_is_allowed():
     for prop in data["schema"][0]["properties"]:
         prop["quality"] = [_sql_check("c")]
     Contract(data)
+
+
+# ---------------------------------------------------------------------------
+# Quality rules without an explicit type
+# ---------------------------------------------------------------------------
+
+
+def _untyped_quality_contract() -> dict:
+    return {
+        "apiVersion": get_latest_version(),
+        "kind": "DataContract",
+        "version": "1.0.0",
+        "id": "untyped-quality",
+        "status": "active",
+        "schema": [
+            {
+                "name": "users",
+                "quality": [{"name": "has_rows", "metric": "rowCount", "mustBeGreaterThan": 0}],
+                "properties": [
+                    {
+                        "name": "email",
+                        "logicalType": "string",
+                        "quality": [{"name": "no_null_emails", "metric": "nullValues", "mustBe": 0}],
+                    },
+                    {"name": "id", "logicalType": "integer"},
+                ],
+            }
+        ],
+    }
+
+
+def test_rule_with_metric_and_no_type_defaults_to_library():
+    # ODCS defaults type to library. Treating these as SQL crashed on the empty query.
+    import conftest as test_conftest
+
+    contract = Contract(_untyped_quality_contract())
+    result = test_conftest._ORIGINAL_VALIDATE_DATA(
+        contract, df=pd.DataFrame({"email": ["a@x.io", None, "c@x.io"], "id": [1, 2, 3]})
+    )
+
+    statuses = {cr.check_name: cr.status for cr in result.check_results}
+    assert statuses["has_rows"] == "PASSED"
+    assert statuses["no_null_emails"] == "FAILED"
+
+
+def test_rule_with_query_and_no_type_still_defaults_to_sql(monkeypatch: pytest.MonkeyPatch):
+    # The ODCS schema rejects this shape, but contracts built without schema
+    # validation relied on the older sql default, so it is kept.
+    monkeypatch.setattr("vowl.contracts.contract.validate_contract", lambda data, version: None)
+    data = _untyped_quality_contract()
+    data["schema"][0]["quality"] = [{"name": "q", "query": "SELECT COUNT(*) FROM users", "mustBe": 3}]
+    refs = Contract(data).get_check_references_by_schema()["users"]
+    assert any(isinstance(ref, SQLTableCheckReference) for ref in refs)

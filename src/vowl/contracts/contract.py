@@ -187,6 +187,18 @@ def _reject_duplicate_check_names(contract_data: dict[str, Any]) -> None:
                 seen.add(name)
 
 
+def _quality_check_type(rule: dict[str, Any]) -> str:
+    """Return a quality rule's ``type``, defaulting the way ODCS does where it matters.
+
+    ODCS defaults ``type`` to ``library``, so a rule with a ``metric`` and no
+    ``type`` is a library check. A rule without either keeps the older ``sql``
+    default, so untyped ``query`` rules still run as SQL.
+    """
+    if "type" in rule:
+        return rule["type"]
+    return "library" if "metric" in rule else "sql"
+
+
 @dataclass(frozen=True)
 class ResolvedRef:
     """A resolved foreign-key reference endpoint.
@@ -920,7 +932,7 @@ class Contract:
             table_quality = schema_obj.get("quality", [])
             for qual_idx in range(len(table_quality)):
                 check_path = f"$.schema[{schema_idx}].quality[{qual_idx}]"
-                check_type = table_quality[qual_idx].get("type", "sql")
+                check_type = _quality_check_type(table_quality[qual_idx])
 
                 if check_type == "library":
                     metric = table_quality[qual_idx].get("metric")
@@ -957,7 +969,7 @@ class Contract:
                 prop_quality = prop.get("quality", [])
                 for qual_idx in range(len(prop_quality)):
                     check_path = f"$.schema[{schema_idx}].properties[{prop_idx}].quality[{qual_idx}]"
-                    check_type = prop_quality[qual_idx].get("type", "sql")
+                    check_type = _quality_check_type(prop_quality[qual_idx])
 
                     if check_type == "library":
                         metric = prop_quality[qual_idx].get("metric")
