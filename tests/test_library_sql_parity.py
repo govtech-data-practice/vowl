@@ -402,7 +402,8 @@ def _view(result, name: str) -> dict[str, Any]:
         "residue": key in annotated["residues"],
         "annotated_flags": flags,
         "row_quality": {
-            field: row_quality[field] for field in ("row_level", "attribution_method", "attribution_note", "scalar_count", "attributed_rows")
+            field: row_quality[field]
+            for field in ("row_level", "attribution_method", "attribution_note", "scalar_count", "attributed_rows")
         },
         "check_row_metrics": metric_points,
     }

@@ -483,17 +483,17 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 
 #### Core Methods
 
-| Method/Property                                                                      | What It Does                                                                                                                                                                                           | Returns                         |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| **`print_summary()`**                                                                | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                             | `self` (chainable)              |
-| **`show_failed_rows(max_rows=5)`**                                                   | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                             | `self` (chainable)              |
-| **`display_full_report(max_rows=5)`**                                                | Prints summary + shows failed rows (convenience method)                                                                                                                                                | `self` (chainable)              |
-| **`save(output_dir=".", prefix="vowl_results", outputs=None, check_info=None)`**     | Saves the results to disk. `outputs` lists the files to write. The default writes everything but `"failed_query_outputs"`, whose files `"all_query_outputs"` already writes. `check_info` shapes the `check_info` column | `self` (chainable)              |
-| **`get_output_dfs(checks=None, scope="failed")`**                                    | Returns per-check failed rows as `{check_id: DataFrame}`. `scope="all"` returns the rows of every row-level check, with a `status` column | Dict[str, DataFrame]            |
-| **`get_annotated_output(checks=None, check_info=None)`**                             | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                 | Dict[str, Dict[str, DataFrame]] |
-| **`get_dq_metrics_df(by="schema")`**                                                 | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                   | DataFrame                       |
-| **`get_dq_metrics()`**                                                               | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                     | dict                            |
-| **`.passed`** (property)                                                             | Boolean indicating if all checks passed                                                                                                                                                                | `True`/`False`                  |
+| Method/Property                                                                  | What It Does                                                                                                                                                                                                             | Returns                         |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| **`print_summary()`**                                                            | Prints high-level statistics (pass/fail counts, success rate, performance)                                                                                                                                               | `self` (chainable)              |
+| **`show_failed_rows(max_rows=5)`**                                               | Displays sample of failed rows in console. Use `max_rows=-1` for all rows.                                                                                                                                               | `self` (chainable)              |
+| **`display_full_report(max_rows=5)`**                                            | Prints summary + shows failed rows (convenience method)                                                                                                                                                                  | `self` (chainable)              |
+| **`save(output_dir=".", prefix="vowl_results", outputs=None, check_info=None)`** | Saves the results to disk. `outputs` lists the files to write. The default writes everything but `"failed_query_outputs"`, whose files `"all_query_outputs"` already writes. `check_info` shapes the `check_info` column | `self` (chainable)              |
+| **`get_output_dfs(checks=None, scope="failed")`**                                | Returns per-check failed rows as `{check_id: DataFrame}`. `scope="all"` returns the rows of every row-level check, with a `status` column                                                                                | Dict[str, DataFrame]            |
+| **`get_annotated_output(checks=None, check_info=None)`**                         | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                                   | Dict[str, Dict[str, DataFrame]] |
+| **`get_dq_metrics_df(by="schema")`**                                             | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                                     | DataFrame                       |
+| **`get_dq_metrics()`**                                                           | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                                       | dict                            |
+| **`.passed`** (property)                                                         | Boolean indicating if all checks passed                                                                                                                                                                                  | `True`/`False`                  |
 
 #### Row Quality
 
@@ -632,13 +632,13 @@ Residue `'demo_employee_payroll::phone_numbers_missing_from_master_list'`: 2 fai
 
 `save()` always writes `<prefix>_check_results.csv` and `<prefix>_summary.json`. The `outputs` argument lists the other files to write:
 
-| Output                         | Files                                                            |
-| ------------------------------ | ---------------------------------------------------------------- |
+| Output                         | Files                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------- |
 | `"failed_query_outputs"`       | `<prefix>_checks/<schema>__<column>__<check>.csv`, one per failed check |
-| `"all_query_outputs"`          | The same folder, one per row-level check whatever its status     |
-| `"consolidated_query_outputs"` | `<prefix>_<tables>.csv`, the failed rows grouped per table set   |
-| `"annotated_table"`            | `<prefix>_<schema>_annotated.csv` and the residue files          |
-| `"dq_metrics"`                 | `<prefix>_dq_metrics.json`                                       |
+| `"all_query_outputs"`          | The same folder, one per row-level check whatever its status            |
+| `"consolidated_query_outputs"` | `<prefix>_<tables>.csv`, the failed rows grouped per table set          |
+| `"annotated_table"`            | `<prefix>_<schema>_annotated.csv` and the residue files                 |
+| `"dq_metrics"`                 | `<prefix>_dq_metrics.json`                                              |
 
 ```python
 # Every output but "failed_query_outputs". This is the default.

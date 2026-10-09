@@ -177,7 +177,11 @@ def test_fetch_tolerated_rows_counts_passed_checks_as_failed():
     schema = _schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c > 5", "c = 2", "c IS NULL", "c = 3"]) == 10
     threes = _check_rows(result)["threes_tolerated"]
-    assert (threes["attribution_method"], threes["attribution_note"], threes["attributed_rows"]) == ("server_predicate", "", 1)
+    assert (threes["attribution_method"], threes["attribution_note"], threes["attributed_rows"]) == (
+        "server_predicate",
+        "",
+        1,
+    )
 
 
 def test_passed_checks_run_no_query_by_default(monkeypatch: pytest.MonkeyPatch):
@@ -326,7 +330,11 @@ def test_sqlite_rtrim_values_caught_by_different_checks_stay_apart():
 
     result = _validate(con, [_schema("t", checks)])
 
-    assert all(row["attribution_method"] == "server_predicate" for row in _check_rows(result).values() if row["status"] == "FAILED")
+    assert all(
+        row["attribution_method"] == "server_predicate"
+        for row in _check_rows(result).values()
+        if row["status"] == "FAILED"
+    )
     assert _schema_row(result)["failed_rows"] == 4
 
 
@@ -377,7 +385,9 @@ def test_duplicates_count_once_per_copy_not_once_per_check():
     result = _validate(con, [_schema("t", checks)])
 
     assert _schema_row(result)["failed_rows"] == 3
-    assert {row["attributed_rows"] for row in _check_rows(result).values() if row["row_level"] and row["attribution_method"]} == {3}
+    assert {
+        row["attributed_rows"] for row in _check_rows(result).values() if row["row_level"] and row["attribution_method"]
+    } == {3}
 
 
 # ---------------------------------------------------------------------------
@@ -570,7 +580,9 @@ def test_chunk_size_does_not_change_the_numbers(monkeypatch: pytest.MonkeyPatch,
     assert _schema_row(result)["failed_rows"] == _count(con, "SELECT COUNT(*) FROM t WHERE c < 70")
     assert _schema_row(result)["approximate"] is False
     counts = {cr.check_name: cr.failed_rows_count for cr in result.check_results}
-    assert all(row["attributed_rows"] == counts[name] for name, row in _check_rows(result).items() if row["attribution_method"])
+    assert all(
+        row["attributed_rows"] == counts[name] for name, row in _check_rows(result).items() if row["attribution_method"]
+    )
 
 
 def test_more_than_five_hundred_checks_on_sqlite():
@@ -602,7 +614,11 @@ def test_a_branch_that_fails_is_not_attributable(monkeypatch: pytest.MonkeyPatch
 
     checks_df = _check_rows(result)
     marker = checks_df["marker"]
-    assert (marker["row_level"], marker["attribution_method"], marker["attribution_note"]) == (True, "", REASON_QUERY_FAILED)
+    assert (marker["row_level"], marker["attribution_method"], marker["attribution_note"]) == (
+        True,
+        "",
+        REASON_QUERY_FAILED,
+    )
     assert (marker["scalar_count"], marker["attributed_rows"], marker["approximate"]) == (1, None, True)
     schema = _schema_row(result)
     # The marker's row is left out, so the numbers are approximate.
@@ -686,8 +702,14 @@ def test_collation_does_not_merge_rows_without_a_key_entry(unkeyed, monkeypatch:
     result = _validate(con, [_schema("t", checks, properties=[{"name": "name"}])])
 
     checks_df = _check_rows(result)
-    assert (checks_df["lower_a"]["attribution_method"], checks_df["lower_a"]["attributed_rows"]) == ("server_predicate", 1)
-    assert (checks_df["upper_a"]["attribution_method"], checks_df["upper_a"]["attributed_rows"]) == ("server_predicate", 2)
+    assert (checks_df["lower_a"]["attribution_method"], checks_df["lower_a"]["attributed_rows"]) == (
+        "server_predicate",
+        1,
+    )
+    assert (checks_df["upper_a"]["attribution_method"], checks_df["upper_a"]["attributed_rows"]) == (
+        "server_predicate",
+        2,
+    )
     schema = _schema_row(result)
     # Grouping on the plain NOCASE column merges the three rows into one of two copies.
     assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (4, 3, False)
@@ -816,7 +838,12 @@ def test_a_truncated_check_is_not_attributable():
     _, result = _two_sources(ValidationConfig(max_failed_rows=1))
 
     row = _check_rows(result)["id_in_u"]
-    assert (row["attribution_method"], row["attribution_note"], row["row_level"], row["attributed_rows"]) == ("", REASON_TRUNCATED, True, None)
+    assert (row["attribution_method"], row["attribution_note"], row["row_level"], row["attributed_rows"]) == (
+        "",
+        REASON_TRUNCATED,
+        True,
+        None,
+    )
     # Its rows are left out of the row counts.
     schema = _schema_row(result)
     assert (schema["approximate"], schema["checks_not_attributable"]) == (True, 1)
@@ -855,9 +882,16 @@ def test_checks_not_attributable_is_counted_at_every_level():
     result = _not_attributable_pair()
 
     checks = _check_rows(result)
-    assert (checks["id_in_u"]["attribution_note"], checks["ids_negative"]["attribution_note"]) == (REASON_TRUNCATED, REASON_NO_MATCH_KEY)
+    assert (checks["id_in_u"]["attribution_note"], checks["ids_negative"]["attribution_note"]) == (
+        REASON_TRUNCATED,
+        REASON_NO_MATCH_KEY,
+    )
     for name in ("id_in_u", "ids_negative"):
-        assert (checks[name]["row_level"], checks[name]["attribution_method"], checks[name]["attributed_rows"]) == (True, "", None)
+        assert (checks[name]["row_level"], checks[name]["attribution_method"], checks[name]["attributed_rows"]) == (
+            True,
+            "",
+            None,
+        )
         assert checks[name]["approximate"] is True
     assert checks["nine"]["attributed_rows"] == 1
 
@@ -1114,11 +1148,7 @@ def test_otel_row_gauges_carry_no_trust_attributes():
                     points[metric.name] = [(dict(p.attributes), p.value) for p in metric.data.data_points]
     failed = [value for attrs, value in points["vowl.schema.row.count"] if attrs["status"] == "FAILED"]
     assert failed == [9]
-    assert all(
-        not any(key.startswith("row.") for key in attrs)
-        for series in points.values()
-        for attrs, _ in series
-    )
+    assert all(not any(key.startswith("row.") for key in attrs) for series in points.values() for attrs, _ in series)
 
 
 # ---------------------------------------------------------------------------
@@ -1196,7 +1226,9 @@ def test_spark_utf8_lcase_values_caught_by_different_checks_stay_apart(spark_ses
     # With a plain column key the merged group lands in one dimension, so they would not split 2 and 1.
     dimensions = _dimension_rows(result)
     assert (dimensions["validity"]["failed_rows"], dimensions["conformity"]["failed_rows"]) == (2, 1)
-    assert {row["attribution_method"] for row in _check_rows(result).values() if row["status"] == "FAILED"} == {"server_predicate"}
+    assert {row["attribution_method"] for row in _check_rows(result).values() if row["status"] == "FAILED"} == {
+        "server_predicate"
+    }
 
 
 # ---------------------------------------------------------------------------
