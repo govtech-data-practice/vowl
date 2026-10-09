@@ -25,6 +25,14 @@ _DEFAULT_PROTOCOL = "grpc"
 _DEFAULT_PREFIX = "vowl"
 
 
+def _without_attribute(resource: Any, key: str) -> Any:
+    """A copy of *resource* without the attribute *key*."""
+    from opentelemetry.sdk.resources import Resource
+
+    attrs = {k: v for k, v in resource.attributes.items() if k != key}
+    return Resource(attrs, resource.schema_url)
+
+
 def _resolve_protocol(protocol: str | None) -> str:
     """The argument if given, else ``OTEL_EXPORTER_OTLP_PROTOCOL``, else gRPC."""
     resolved = protocol or os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL") or _DEFAULT_PROTOCOL
@@ -109,14 +117,18 @@ class OtelExporter:
         # provider vowl builds is always reached by the shutdown below.
         sample_rows = self._collect_row_samples(result)
         context_attrs = build_context_attributes(result, **identity)
-        # The run id stays off metric points: a fresh value per run would start
-        # a new metric series every run. Spans, logs and the Resource keep it.
-        metric_attrs = {k: v for k, v in context_attrs.items() if k != f"{self._prefix}.run.id"}
+        # The run id stays off metric points and off the Resource of the meter
+        # provider vowl builds: a fresh value per run would start a new metric
+        # series every run. Spans and logs keep it, Resource included.
+        run_id_key = f"{self._prefix}.run.id"
+        metric_attrs = {k: v for k, v in context_attrs.items() if k != run_id_key}
         resource = build_resource(result, **identity)
+        metrics_resource = _without_attribute(resource, run_id_key)
 
         providers = resolve_providers(
             self._signals,
             resource=resource,
+            metrics_resource=metrics_resource,
             protocol=self._protocol,
             endpoint=self._endpoint,
             headers=self._headers,

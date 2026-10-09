@@ -206,6 +206,7 @@ def resolve_providers(
     signals: tuple[str, ...],
     *,
     resource: Any,
+    metrics_resource: Any | None = None,
     protocol: str,
     endpoint: str | None,
     headers: dict[str, str] | None,
@@ -214,7 +215,11 @@ def resolve_providers(
     tracer_provider: Any | None,
     logger_provider: Any | None,
 ) -> Providers:
-    """Resolve one provider per enabled signal following the precedence above."""
+    """Resolve one provider per enabled signal following the precedence above.
+
+    *metrics_resource*, when given, replaces *resource* on the meter provider
+    vowl builds. Providers passed in or taken from the globals keep their own.
+    """
     from opentelemetry import metrics as _metrics
     from opentelemetry import trace as _trace
     from opentelemetry._logs import get_logger_provider
@@ -233,7 +238,9 @@ def resolve_providers(
         rp = _resolve(
             metric_provider,
             _metrics.get_meter_provider,
-            lambda: _build_meter_provider(resource, protocol, endpoint, headers, failed),
+            lambda: _build_meter_provider(
+                resource if metrics_resource is None else metrics_resource, protocol, endpoint, headers, failed
+            ),
         )
         resolved.meter = rp.provider
         if rp.owned:

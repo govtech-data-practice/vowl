@@ -1107,6 +1107,34 @@ def test_run_id_is_on_spans_and_logs_but_not_metrics(result):
         assert entry.log_record.attributes["vowl.run.id"] == run_id
 
 
+def test_self_built_meter_provider_resource_has_no_run_id(result, monkeypatch):
+    """In self-contained mode the run id stays off the metrics Resource as well."""
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+    from opentelemetry.sdk.trace import TracerProvider
+
+    import vowl.otel._providers as providers_module
+
+    built: dict[str, object] = {}
+
+    def fake_meter_provider(resource, *_args):
+        built["metrics"] = resource
+        return MeterProvider(resource=resource, metric_readers=[InMemoryMetricReader()])
+
+    def fake_tracer_provider(resource, *_args):
+        built["traces"] = resource
+        return TracerProvider(resource=resource)
+
+    monkeypatch.setattr(providers_module, "_build_meter_provider", fake_meter_provider)
+    monkeypatch.setattr(providers_module, "_build_tracer_provider", fake_tracer_provider)
+
+    run_id = result.export_otel(endpoint="http://localhost:4317", signals=("metrics", "traces"))
+
+    assert "vowl.run.id" not in built["metrics"].attributes
+    assert built["metrics"].attributes["vowl.contract.id"] == "orders-contract"
+    assert built["traces"].attributes["vowl.run.id"] == run_id
+
+
 def test_caller_supplied_run_id_is_used_and_returned(result):
     run_id, _reader, span_exporter, _logs = _explicit_export(result, run_id="nightly-2026-09-29")
 
