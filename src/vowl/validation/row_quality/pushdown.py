@@ -24,7 +24,7 @@ import pyarrow as pa
 import sqlglot
 from sqlglot import exp
 
-from .keys import cast, column_ref, key_expression, null_safe_equal, quote, value_aggregate
+from .keys import cast, column_ref, key_expression, null_safe_equal, quote, value_aggregate, value_expression
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,8 @@ class KeySpec:
         """``key AS _vowl_c{i}`` and, when needed, ``value AS _vowl_v{i}``."""
         items = [f"{self.key(alias, i)} AS {name}" for i, name in enumerate(self.key_aliases)]
         items += [
-            f"{column_ref(alias, self.columns[i], self.dialect)} AS {name}" for i, name in enumerate(self.value_aliases)
+            f"{value_expression(column_ref(alias, self.columns[i], self.dialect), self.dtypes[i], self.dialect)} AS {name}"
+            for i, name in enumerate(self.value_aliases)
         ]
         return items
 

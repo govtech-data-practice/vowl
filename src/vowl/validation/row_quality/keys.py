@@ -109,6 +109,15 @@ def key_expression(column_sql: str, dtype: Any, dialect: str) -> str:
     return column_sql
 
 
+def value_expression(column_sql: str, dtype: Any, dialect: str) -> str:
+    """The value expression for one column, which must arrive as the exported table holds it."""
+    if dialect == "postgres" and _is(dtype, "is_json"):
+        # The driver decodes json into an Arrow struct, but the exported table
+        # holds it as text, so the two would never match.
+        return f"CAST({column_sql} AS TEXT)"
+    return column_sql
+
+
 def key_is_exact(dialect: str) -> bool:
     """Whether *dialect* has a tested binary key entry."""
     return dialect in KEYED_DIALECTS

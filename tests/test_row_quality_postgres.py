@@ -122,7 +122,11 @@ def test_duplicates_count_once_per_copy_not_once_per_check(con):
     result = rq._validate(con, [rq._schema("t", checks)])
 
     assert rq._schema_row(result)["failed_rows"] == 3
-    assert {row["failed_rows"] for row in rq._check_rows(result).values() if row["row_level"] and row["attribution_method"]} == {3}
+    assert {
+        row["attributed_rows"]
+        for row in rq._check_rows(result).values()
+        if row["row_level"] and row["attribution_method"]
+    } == {3}
 
 
 def test_an_uncertified_check_goes_by_table_match(con):
@@ -141,8 +145,8 @@ def test_an_uncertified_check_goes_by_table_match(con):
 
     rows = rq._check_rows(result)
     assert rows["negative"]["attribution_method"] == "server_predicate"
-    assert rows["twos_distinct"]["attribution_method"] == "client_lookup"
-    assert rows["twos_distinct"]["failed_rows"] == 3
+    assert rows["twos_distinct"]["attribution_method"] == "server_lookup"
+    assert rows["twos_distinct"]["attributed_rows"] == 3
     schema = rq._schema_row(result)
     assert schema["failed_rows"] == _truth(con, ["c < 0", "c = 2"]) == 4
     assert schema["approximate"] is False
