@@ -104,10 +104,10 @@ The [summary](../../results.md#print-a-report) is the report that
 an [example output](../../getting-started.md#validate-in-3-lines)). Two of its
 numbers are each check's scalar count added together:
 
-| Summary number                | Where in the summary | Total of the scalar counts of                    |
-| ----------------------------- | -------------------- | ------------------------------------------------ |
-| **Failed Rows (approximate)** | **Overall**          | Every failed row-level check of the table        |
-| **Non-unique Failed Rows**    | **Multi Table**      | Every failed check that also reads another table |
+| Summary number                | Where in the summary | Total of the scalar counts of                     |
+| ----------------------------- | -------------------- | ------------------------------------------------- |
+| **Failed Rows (approximate)** | **Overall**          | Every failed check of the table that returns rows |
+| **Non-unique Failed Rows**    | **Multi Table**      | Every failed check that also reads another table  |
 
 These totals don't account for overlap, so a row that fails two checks is
 counted twice. For the `orders` table:
@@ -158,10 +158,10 @@ vowl attributes a failed row by comparing the columns of the **match key**.
 A failed row stands for every row of the source table with the same values
 in all match key columns.
 
-| Match key           | Used when                                                                                                                                                                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The primary key** | All three are true: the contract declares a primary key (`primaryKey: true`) that is not every column, the [data source can count](counting-mechanisms.md#which-route-a-check-takes) for the check, and no key value repeats in the table |
-| **Every column**    | Otherwise                                                                                                                                                                                                                                 |
+| Match key           | Used when                                                                                                                                                                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The primary key** | All three are true: the contract declares a primary key (`primaryKey: true`) that is not every column, the [data source can run the attribution query](counting-mechanisms.md#which-route-a-check-takes) for the table, and no key value repeats in the table |
+| **Every column**    | Otherwise                                                                                                                                                                                                                                                     |
 
 Both give the same row counts. The primary key is faster, and it can
 attribute failed rows that hold only some columns. A check whose failed rows
@@ -209,19 +209,29 @@ same, so its row counts are marked approximate.
 A row-level check that vowl can't attribute is **not attributable**. The
 `attribution_note` column of `get_dq_metrics_df(by="check")` says why:
 
-| `attribution_note`                                           | Not attributable | Meaning                                                                                                              |
-| ------------------------------------------------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `failed rows do not have the table's columns or primary key` | Never            | The failed rows lack a match key column. Or they hold the primary key, but the data source can't count for the check |
-| `primary key has duplicate values`                           | Never            | A primary key value repeats in the table                                                                             |
-| `primary key uniqueness could not be checked`                | Never            | The data source could not say whether a primary key value repeats                                                    |
-| `truncated by max_failed_rows`                               | This run         | [`max_failed_rows`](capping-failed-rows.md) cut the failed rows short                                                |
-| `the table could not be downloaded`                          | This run         | vowl could not download the source table                                                                             |
-| `the failed rows could not be fetched`                       | This run         | vowl could not download the failed rows                                                                              |
-| `the table's rows could not be turned into match keys`       | This run         | Values of the source table could not be turned into match keys                                                       |
-| `its row query failed in the data source`                    | This run         | The row query failed inside the attribution query                                                                    |
+| `attribution_note`                                           | Not attributable | Meaning                                                                                                                                  |
+| ------------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `failed rows do not have the table's columns or primary key` | Never            | The failed rows lack a match key column. Or they hold the primary key, but the data source can't run the attribution query for the table |
+| `primary key has duplicate values`                           | Never            | A primary key value repeats in the table                                                                                                 |
+| `primary key uniqueness could not be checked`                | Never            | The data source could not say whether a primary key value repeats                                                                        |
+| `truncated by max_failed_rows`                               | This run         | [`max_failed_rows`](capping-failed-rows.md) cut the failed rows short                                                                    |
+| `the table could not be downloaded`                          | This run         | vowl could not download the source table                                                                                                 |
+| `the failed rows could not be fetched`                       | This run         | vowl could not download the failed rows                                                                                                  |
+| `the table's rows could not be turned into match keys`       | This run         | Values of the source table could not be turned into match keys                                                                           |
+| `its row query failed in the data source`                    | This run         | The row query failed inside the attribution query                                                                                        |
 
 See [When something goes wrong](counting-mechanisms.md#fallbacks) for the
 reasons that apply to this run only.
+
+An attributed check can have an `attribution_note` too. It says why vowl
+chose its attribution method, such as
+`the data source can't count rows for this check`,
+`reads tables from more than one data source` or a note that starts with
+`not a plain filter`. Or it says why the count is approximate:
+`some failed rows could not be attributed to a table row`. See
+[Which attribution method a check takes](counting-mechanisms.md#which-route-a-check-takes).
+The notes of checks that are not row-level are on
+[Check result types](check-results.md#counted-checks).
 
 A check that is not attributable has an `attribution_note`, an empty `attribution_method` and no
 `attributed_rows`. Its effect on each output:
@@ -304,12 +314,11 @@ conditions. `max_failed_rows` never caps it.
 
     vowl uses the first of these it has:
 
-    1. The count from the attribution query, if everything ran in one query.
-    2. The row count of the downloaded source table.
+    1. The count from the attribution query.
+    2. The row count from the adapter. When vowl downloaded the table, it uses
+       the downloaded table's row count instead.
     3. A new `COUNT(*)` from the data source, with no cap. vowl runs it only
-       when you first ask for DQ metrics.
-
-    A total of 0 is counted again, because a failed count also returns 0.
+       when the adapter's count gave 0, because a failed count also returns 0.
 
 ### Adding up per dimension and schema
 

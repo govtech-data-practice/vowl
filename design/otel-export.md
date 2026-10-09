@@ -186,9 +186,10 @@ raises for a signal vowl has to build a provider for and that has no
 Contract identity attributes (`vowl.contract.id` and the rest) and
 `custom_attributes` are emitted as signal-level attributes on every metric data
 point, span, and log record in all three modes. `vowl.run.id` rides on spans
-and log records only (see design decision 11). In mode 3, the same attributes,
-including `vowl.run.id`, are also placed on the OTEL `Resource` for backends
-that surface resource metadata separately. Delta temporality is set on the
+and log records only (see design decision 11). In mode 3, the same attributes
+are also placed on the OTEL `Resource` for backends that surface resource
+metadata separately. `vowl.run.id` is on the traces and logs Resource only, not
+on the Resource of the meter provider vowl builds. Delta temporality is set on the
 metric reader when vowl builds the provider, and is the host's responsibility
 in the other two modes.
 
@@ -309,9 +310,11 @@ their rationale.
     creation. `vowl.run.id` is the exception. It is a new value every run, so
     on a metric point it would start a new metric series every run, and the
     number of stored series would grow without limit. It goes on spans, log
-    records, and (in mode 3) the Resource, which is where a single run is
-    looked up. In mode 3 the other identity attributes also go on the
-    Resource for backends that surface resource metadata separately.
+    records, and (in mode 3) the Resource of the tracer and logger providers,
+    which is where a single run is looked up. The meter provider vowl builds
+    in mode 3 gets a Resource without it. In mode 3 the other identity
+    attributes also go on every Resource for backends that surface resource
+    metadata separately.
 12. **OTLP/HTTP endpoints get the per-signal path added.** The OTLP/HTTP
     exporters use an explicit `endpoint=` exactly as given and only add
     `/v1/traces`, `/v1/metrics`, or `/v1/logs` when the URL comes from the

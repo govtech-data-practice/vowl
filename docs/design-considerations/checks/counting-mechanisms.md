@@ -62,8 +62,8 @@ source is not a tested source, the plain filters are attributed in the
 downloaded table too, and take `client_lookup`.
 
 Under `fetch_tolerated_rows=True`, a passed check gets an attribution method like a failed
-one. If it needs the table downloaded, the failed checks of that table can
-move to `client_lookup` too.
+one. If it needs the table downloaded on a source that is not tested, the
+plain filters of that table are attributed in the downloaded table too.
 
 A check can still end with no attribution method, not attributable, when something goes
 wrong. See [When something goes wrong](#fallbacks).
@@ -260,7 +260,8 @@ and for checks that read two data sources.
   at most once per run, and counting and annotating flag the same rows.
 - The whole table is held in memory. At 6 columns this took about 3 s and 1
   to 1.5 GiB for 1 million rows, and about 13 s and 3.5 GiB for 5 million
-  rows. The download happens only when you ask for DQ metrics.
+  rows. The download happens only when you ask for DQ metrics or annotated
+  output.
 
 !!! note "Checks that return changed values"
 

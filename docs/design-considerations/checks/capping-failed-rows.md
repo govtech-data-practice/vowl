@@ -55,5 +55,5 @@ reported as cut short, and one with more always is. The scalar count is
 not used for this, because it does not always equal the number of failed
 rows, for example under `DISTINCT` or a join.
 
-`max_rows_for_statistics` is deprecated and has no effect. vowl always counts
+`max_rows_for_statistics` is deprecated. It has no effect and warns. vowl always counts
 the whole table.

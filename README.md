@@ -1124,10 +1124,13 @@ result.display_full_report()
 | ✅ **Filter Conditions**           | Incremental quality testing with wildcard pattern matching - optimised for append-only data sources                                                                     |
 | ✅ **Multi-Schema Checks**         | Cross-table referential checks within a single contract                                                                                                                 |
 | ✅ **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                             |
+| ✅ **Foreign Key Checks**          | Checks built from ODCS `relationships` (`foreignKey`), including composite, self-referencing and external-file targets                                                  |
 | ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
 | ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
+| ✅ **Annotated Output**            | Failed rows marked on a copy of the source table, with residues for checks that can't be merged                                                                         |
 | ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/understanding-metrics.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                            |
+| ✅ **DQ Metrics Export**           | Row-level pass and fail counts per table, dimension and check, saved to `dq_metrics.json`                                                                               |
 
 ### Planned
 

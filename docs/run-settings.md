@@ -28,15 +28,17 @@ These change what each check returns.
 ## Row attribution
 
 These change how vowl attributes failed rows to the rows of each table. They
-apply only to [row attribution](results.md#what-each-method-costs):
-`get_dq_metrics`, `get_dq_metrics_df`, `export_otel` and the annotated modes of
-`save()`. They change the row counts there, `failed_rows`, `passed_rows` and
-`pass_rate` per table, dimension and check. They do not change each check's
-scalar `failed_rows_count`, its status, or any method that does not attribute rows. See
+change the [row attribution](results.md#what-each-method-costs) of
+`get_dq_metrics`, `get_dq_metrics_df`, `export_otel` and the `"annotated_table"`
+and `"dq_metrics"` outputs of `save()`. There they change the row counts,
+`failed_rows`, `passed_rows` and `pass_rate` per table, dimension and check.
+`fetch_tolerated_rows` also adds tolerated rows to `get_output_dfs`,
+`get_consolidated_output_dfs` and `show_failed_rows`. No setting changes each
+check's scalar `failed_rows_count` or its status. See
 [How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md).
 
-| Setting                                                         | Default | What it does                                                                                                                                                                                                               |
-| --------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Setting                                                 | Default | What it does                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <a id="fetch_tolerated_rows"></a>`fetch_tolerated_rows` | `False` | `True` also fetches the tolerated rows of checks that passed, an extra query per check. Every output then holds them, each marked as tolerated, and they count as failed rows in the DQ metrics. The check stays `PASSED`. OpenTelemetry's `failed_rows_sample` still holds failed checks only. See [Tolerated rows](design-considerations/checks/check-results.md#tolerated-rows). |
 
 ## Saving results
@@ -44,10 +46,10 @@ scalar `failed_rows_count`, its status, or any method that does not attribute ro
 These set what `save()` and `get_annotated_output()` do when you do not pass
 the matching argument. An argument you pass always wins.
 
-| Setting                                                 | Default       | What it does                                                                                                                                                                       |
-| ------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="outputs"></a>`outputs`                           | every output but `"failed_query_outputs"` | The list of files `save()` writes. See [Outputs](results.md#outputs). |
-| <a id="annotated_check_info"></a>`annotated_check_info` | `"names"`     | How much detail the `check_info` column holds. See [What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds). |
+| Setting                                                 | Default                                   | What it does                                                                                                                                                                       |
+| ------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="outputs"></a>`outputs`                           | every output but `"failed_query_outputs"` | The list of files `save()` writes. See [Outputs](results.md#outputs).                                                                                                              |
+| <a id="annotated_check_info"></a>`annotated_check_info` | `"names"`                                 | How much detail the `check_info` column holds. See [What the annotated output holds](design-considerations/checks/annotating-the-source-table.md#what-the-annotated-output-holds). |
 
 ## Deprecated
 

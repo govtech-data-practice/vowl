@@ -57,10 +57,19 @@ it reads into an in-memory DuckDB on your machine and runs the check there:
 - **Filter conditions apply at the source.** Only the rows your
   [filter conditions](../../usage-patterns.md#filter-conditions) keep are
   copied.
-- **Each table is copied once per run**, however many checks use it. The
-  copies are dropped when the run ends.
+- **Each table is copied once for the cross-table checks**, however many
+  checks use it. The copies are dropped once those checks have run.
+- **A table can be copied again later.** Reading a check's failed rows,
+  annotated output and the DQ metrics can each read a table again after the
+  checks have run.
 - **The cost is memory and network.** The copied rows travel to your machine
-  and stay in memory for the run, so a large table can run out of memory.
+  and stay in memory while they are used, so a large table can run out of
+  memory.
+
+A join on one connection whose tables have different filter conditions is
+copied too, when its adapter has no `with_filter_conditions` method to apply
+each table's own conditions. `IbisAdapter` and `PooledAdapter` have one, so
+this only affects custom adapters.
 
 To copy less, add filter conditions, or use Option A if your databases
 support it.
@@ -183,12 +192,12 @@ swaps the outer `SELECT COUNT(*)` for `SELECT *`, so the outer `FROM` decides
 which columns the failed rows have. For "every payroll row has an employee in
 the master list":
 
-| How the query is written                               | Columns of the failed rows               | Annotated on payroll?                         |
-| ------------------------------------------------------ | ---------------------------------------- | --------------------------------------------- |
-| Plain `SELECT COUNT(*) FROM payroll LEFT JOIN ref ...` | Both tables' columns (`ref.*` all empty) | Only if payroll declares a primary key        |
-| A subquery with `SELECT payroll.*`                     | Payroll columns only                     | Yes                                           |
-| `WHERE NOT EXISTS (SELECT 1 FROM ref ...)`             | Payroll columns only                     | Yes                                           |
-| A subquery with `SELECT DISTINCT payroll.phone_number` | One column, no key                       | No, it becomes a residue                      |
+| How the query is written                               | Columns of the failed rows               | Annotated on payroll?                  |
+| ------------------------------------------------------ | ---------------------------------------- | -------------------------------------- |
+| Plain `SELECT COUNT(*) FROM payroll LEFT JOIN ref ...` | Both tables' columns (`ref.*` all empty) | Only if payroll declares a primary key |
+| A subquery with `SELECT payroll.*`                     | Payroll columns only                     | Yes                                    |
+| `WHERE NOT EXISTS (SELECT 1 FROM ref ...)`             | Payroll columns only                     | Yes                                    |
+| A subquery with `SELECT DISTINCT payroll.phone_number` | One column, no key                       | No, it becomes a residue               |
 
 This check annotates rows whether or not the table has a primary key. The
 subquery returns only payroll columns, so each failed row can be attributed

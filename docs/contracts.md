@@ -99,14 +99,27 @@ schema:
 
 | Field         | What it does                                                                                                                                      |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`        | `sql` (the default) runs your `query`. `library` runs a built-in [library check](#library-checks) named by `metric`.                              |
+| `type`        | `sql` runs your `query`. `library` runs a built-in [library check](#library-checks) named by `metric`. See [Check types](#check-types).           |
 | `name`        | The check's name in every result. If you leave it out, vowl names it `<column or schema>_<metric or dimension>`.                                  |
 | `query`       | For `type: sql`. A query that returns one number, usually `SELECT COUNT(*) ... WHERE <rows that break the rule>`.                                 |
 | `metric`      | For `type: library`. Which library check to run, such as `nullValues` or `rowCount`.                                                              |
 | `dimension`   | The group the check belongs to in the results: `accuracy`, `completeness`, `conformity`, `consistency`, `coverage`, `timeliness` or `uniqueness`. |
 | `description` | Free text, shown next to failed checks in the report.                                                                                             |
-| `unit`        | `percent` turns a library check's count into a percentage of all rows.                                                                            |
+| `unit`        | `percent` turns a library check's count into a percentage of all rows. `rowCount` ignores it.                                                     |
 | An operator   | What the number must be for the check to pass. See below.                                                                                         |
+
+Check names must be unique within one `quality` list. Two checks with the same name on one column, or both on the schema, make `Contract.load` raise a `ValueError`. The same name on different columns is fine.
+
+### Check types
+
+| `type`    | What vowl does                                                                                                                                   |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sql`     | Runs `query`.                                                                                                                                    |
+| `library` | Runs the [library check](#library-checks) named by `metric`. A check with a `metric` and no `type` is a library check.                           |
+| `custom`  | Sends the check, with its `engine` and `implementation`, to the executor registered for that `engine`. With no such executor it ends as `ERROR`. |
+| `text`    | A description for people. vowl cannot run it, so it always ends as `ERROR`.                                                                      |
+
+Under `apiVersion` v3.1.0 and v3.2.0 the ODCS schema needs `type: sql` on a `query` check, so leave `type` out only on library checks.
 
 ### Operators
 
@@ -129,7 +142,7 @@ Write `query` in PostgreSQL syntax. vowl translates it with [SQLGlot](https://gi
 
 A query that counts rows, such as `SELECT COUNT(*) ... WHERE ...`, also lets vowl fetch the rows that failed and show them in the report. A query that returns another kind of number, such as an average, still passes or fails but has no failed rows to show.
 
-A check with an unknown `type` or `metric` is not skipped. It ends as `ERROR`, so a typo shows up in the results.
+Under `apiVersion` v3.1.0 and v3.2.0, an unknown `type` or `metric` fails the ODCS schema, so `Contract.load` raises a `ValidationError` before any check runs. Some checks load but cannot run, and end as `ERROR` instead of being skipped: `type: text`, a metric at the wrong level (such as `rowCount` under a property), a v3.0.2 check that names a `rule:` in place of a `metric:`, with or without `type: library`, and a `custom` check with no executor for its `engine`. A SQL check whose `query` has a syntax error also ends as `ERROR`, and the other checks still run.
 
 ## Auto-generated Checks
 
@@ -192,7 +205,7 @@ The SQL on this page is what vowl writes for DuckDB. On other data sources vowl 
 
 !!! note
 
-    Any value can be read as a string, so the logical type check for `logicalType: string` always passes. It is still listed in the results. For `integer`, `number`, `boolean`, `date`, `timestamp` and `time`, the check fails every value that cannot be converted to that type.
+    Any value can be read as a string, so the logical type check for `logicalType: string` always passes. It is still listed in the results. For `integer`, `number`, `boolean`, `date`, `timestamp` and `time`, the check fails every value that cannot be converted to that type. Other logical types, such as `object`, get no type check, and vowl emits a `UserWarning`.
 
 ### Column Details
 
@@ -219,7 +232,7 @@ Every check below skips `NULL` values, except `required`. Use `required: true` t
            OR TRY_CAST("age" AS DOUBLE) <> TRY_CAST("age" AS BIGINT));
     ```
 
-    `boolean`, `date` and `timestamp` cast to `BOOLEAN`, `DATE` and `TIMESTAMP` in the same way.
+    `boolean`, `date`, `timestamp` and `time` cast to `BOOLEAN`, `DATE`, `TIMESTAMP` and `TIME` in the same way.
 
 === "Length and pattern"
 
@@ -335,7 +348,7 @@ Validates that values fall within the range of a fixed-width integer type.
 | `u32`    | 0                          | 4,294,967,295              |
 | `u64`    | 0                          | 18,446,744,073,709,551,615 |
 
-`i128` and `u128` are recognised but skipped because their ranges exceed what SQL engines can represent.
+`i128` and `u128` get no range check, because their ranges exceed what SQL engines can represent. They end as an `ERROR` result named `<col>_check` that says so. An unknown integer format does the same.
 
 ```yaml
 - name: age
@@ -364,7 +377,7 @@ Validates values against a built-in regex pattern.
 | `hostname` | RFC-952 hostname with TLD                                      |
 | `uri`      | URI with a valid scheme prefix (e.g. `https:`, `s3:`)          |
 
-`password`, `byte`, and `binary` are recognised but skipped because they cannot be validated against data.
+A `format` that is not in this table is read as a Java date pattern, as for [date formats](#date-timestamp-and-time-formats), and checked the same way. `password`, `byte` and `binary` cannot be validated against data. They, and a format vowl cannot read, end as an `ERROR` result named `<col>_check` that explains why.
 
 ```yaml
 - name: request_id
@@ -385,13 +398,13 @@ WHERE NOT "request_id" IS NULL
 
 #### Number formats
 
-`f32` and `f64` are recognised but produce no check. SQL engines do not tell them apart when they read the data.
+`f32` and `f64` produce no check, because SQL engines do not tell them apart when they read the data. They end as an `ERROR` result named `<col>_check` that says so.
 
 #### Date, timestamp and time formats
 
 For `date`, `timestamp` and `time` logical types, `format` takes a pattern such as `yyyy-MM-dd` or `yyyy-MM-dd HH:mm:ss`. These are Java date patterns ([`DateTimeFormatter`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html)): `yyyy` is a four-digit year, `MM` a two-digit month, and so on. vowl turns the pattern into a regex and checks that each value, read as text, matches it.
 
-Supported tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`, `h`, `mm`, `ss`, `SSS` (fractional seconds), and timezone offsets (`X`/`XX`/`XXX`/`Z`). Literal characters such as `-`, `:`, `T`, and quoted sections (`'T'`) are preserved. If a pattern contains tokens vowl cannot translate, the check is skipped with a warning.
+Supported tokens include `yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `hh`, `h`, `mm`, `ss`, `SSS` (fractional seconds), and timezone offsets (`X`/`XX`/`XXX`/`Z`). Literal characters such as `-`, `:`, `T`, and quoted sections (`'T'`) are preserved. If a pattern contains tokens vowl cannot translate, vowl emits a warning and the check ends as an `ERROR` result named `<col>_check`.
 
 ```yaml
 - name: created_at
@@ -412,7 +425,7 @@ WHERE NOT "created_at" IS NULL
 
 #### Array Formats
 
-When a property declares `logicalType: array`, vowl checks the array's size, and it uses the `items` sub-schema to check the elements inside it. These checks run only when `logicalType: array` is set. On any other property, the same options or an `items` block are reported as unsupported checks.
+When a property declares `logicalType: array`, vowl checks the array's size, and it uses the `items` sub-schema to check the elements inside it. These checks run only when `logicalType: array` is set. Under `apiVersion` v3.1.0 and v3.2.0, the ODCS schema rejects `minItems`, `maxItems` and `uniqueItems` on other logical types when the contract loads. An `items` block on a property with no `logicalType` loads, and ends as an `ERROR` result.
 
 ```yaml
 - name: tags
@@ -437,7 +450,7 @@ This produces a column-exists check plus one check per array constraint:
 | ------------------------------------ | ------------------------------------------------------------------------- |
 | `logicalTypeOptions.minItems`        | Array has at least `minItems` elements                                    |
 | `logicalTypeOptions.maxItems`        | Array has at most `maxItems` elements                                     |
-| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`, `false` is a no-op) |
+| `logicalTypeOptions.uniqueItems`     | Array has no duplicate elements (`uniqueItems: true`, `false` is `ERROR`) |
 | `items.logicalType`                  | Every element casts to the element type                                   |
 | `items.logicalTypeOptions.minLength` | Every element satisfies the element option                                |
 | `items.enum`                         | Every element is one of the allowed values                                |
@@ -657,7 +670,7 @@ Under a schema's `quality`:
 | `rowCount`        | Total number of rows in the table                | -                                                     |
 | `duplicateValues` | Count of duplicate rows across specified columns | `arguments.properties`: list of column names to check |
 
-All library checks support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
+All library checks except `rowCount` support `unit: "percent"` to return the result as a percentage of total rows instead of an absolute count. `rowCount` ignores it. They also accept any of the standard check operators (`mustBe`, `mustBeGreaterThan`, etc.).
 
 #### Example
 

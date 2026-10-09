@@ -44,9 +44,10 @@ relationships:
   shorthand after a file name, so `customers.yaml#customers.customer_id`
   fails contract validation.
 - **The file is found relative to the contract that points at it.** When you
-  load `orders.yaml` from a path or URL, vowl looks for `customers.yaml` next
-  to it. A `Contract` built from an in-memory dict has no location, so vowl
-  does not guess where the file is, and reports the check as unsupported.
+  load `orders.yaml` from a local path, an `http(s)://` URL or an `s3://`
+  URI, vowl looks for `customers.yaml` next to it. A `Contract` built from an
+  in-memory dict has no location, so vowl does not guess where the file is,
+  and the check ends in `ERROR`.
 - **External files load the same way as contracts**, so the same
   [public address rule](../../usage-patterns.md#from-git-github-or-gitlab)
   applies.
@@ -79,16 +80,21 @@ From there the check runs like any [cross-table check](how-it-works.md#where-eac
 - **Different connections.** vowl copies both tables into memory and runs the
   check there.
 - **A table that references itself.** The check runs as a single-table check.
-- **No adapter for the target.** vowl reads the target table through the
-  adapter of the schema that holds the relationship, as it does for any
+- **No adapter for a target in an external file.** vowl reads the target
+  table through the adapter of the schema that holds the relationship, as it
+  does for any
   [table outside the contract](how-it-works.md#tables-outside-the-contract).
   The check runs if that connection has the table. Otherwise it ends in
   `ERROR` with the database's "table not found" message.
 - **A target vowl can't find**, such as a missing property or an external
-  file with no known location to start from. vowl logs a warning and reports
-  the check as unsupported.
+  file with no known location to start from. The check ends in `ERROR`, with
+  the reason in its message. It is named after the column, for example
+  `customer_id_check`, not `<schema>_<column>_foreign_key_check`.
 
-In every case the rest of the run goes ahead.
+In every case the rest of the run goes ahead. A target schema in the same
+contract is different. With `adapters={...}` it needs its own adapter like
+any other schema, or `validate_data` raises
+`ValueError: No adapter provided for schema(s)` before any check runs.
 
 The failed rows hold only the columns of the schema that holds the
 relationship, so they are

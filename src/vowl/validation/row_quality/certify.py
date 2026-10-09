@@ -1,8 +1,8 @@
 """Certification: is a check's row query a pure row filter of its table?
 
 A certified check returns every copy of each failing row and nothing
-else, so its rows can be counted in the data source by the pushdown route. See
-"Certification" in ``design/row-quality-statistics.md``.
+else, so its rows can be counted in the data source by the server_predicate
+attribution method. See "Certification" in ``design/row-quality-statistics.md``.
 """
 
 from __future__ import annotations
@@ -191,7 +191,7 @@ def certify_check(
     *,
     rendered: tuple[str | None, str | None] | None = None,
 ) -> tuple[bool, str]:
-    """Certify a SQL check reference for the pushdown route.
+    """Certify a SQL check reference for the server_predicate attribution method.
 
     Certification runs on the unfiltered queries. Filter conditions wrap the
     table in the same ``(SELECT * FROM t WHERE ...)`` subquery for every check,

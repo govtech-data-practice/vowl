@@ -261,14 +261,20 @@ Every output then holds the rows of the passed checks too, and marks them per
 check, so you can tell them apart from failed checks. All of them read the
 check's rows from one fetch, so they agree.
 
-| Output                                                           | Setting off (default) | `fetch_tolerated_rows=True`                                         |
-| ---------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------- |
-| `get_annotated_output()`                                         | Failed checks only    | Adds tolerated checks, their `check_info` items `"tolerated": true` |
-| `get_output_dfs()`                                               | Failed checks only    | Adds tolerated checks, with a `tolerated` column                    |
-| `get_consolidated_output_dfs()` and the grouped failed-rows CSVs | Failed checks only    | Adds tolerated rows, with a `tolerated_check_ids` column            |
-| `show_failed_rows()`                                             | Failed checks only    | Adds tolerated checks, labelled `(tolerated)`                       |
-| DQ metrics                                                       | Failed checks only    | A row picked out by any of these checks counts as failing           |
-| OpenTelemetry `failed_rows_sample`                               | Failed checks only    | Failed checks only                                                  |
+| Output                                                           | Setting off (default)     | `fetch_tolerated_rows=True`                                         |
+| ---------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------- |
+| `get_annotated_output()`                                         | Failed checks only        | Adds tolerated checks, their `check_info` items `"tolerated": true` |
+| `get_output_dfs()`                                               | Failed checks only        | Adds tolerated checks, with a `tolerated` column                    |
+| `get_consolidated_output_dfs()` and the grouped failed-rows CSVs | Failed checks only        | Adds tolerated rows, with a `tolerated_check_ids` column            |
+| `show_failed_rows()`                                             | Failed checks only        | Adds tolerated checks, labelled `(tolerated)`                       |
+| DQ metrics                                                       | Failed checks only        | A row picked out by any of these checks counts as failing           |
+| OpenTelemetry `failed_rows_sample`                               | Failed and errored checks | Failed and errored checks                                           |
+
+The OpenTelemetry `failed_rows_sample` is off by default
+(`max_failed_rows_sample=0`). When you
+[turn it on](../../dq-metrics/otel-export.md#capturing-failed-rows), it
+samples the failed rows of `FAILED` and `ERROR` checks, never of passed
+checks.
 
 A row picked out only by a tolerated check counts as failing in the DQ
 metrics. That is what the setting asks for.
@@ -290,8 +296,9 @@ metrics. That is what the setting asks for.
     `price_must_be_positive` failed.
 
 A passed check is attributed the same way as a failed one, so it can need the
-table downloaded. The failed checks of that table then take `client_lookup`
-too (see [Counting Mechanisms](counting-mechanisms.md)).
+table downloaded. On an untested data source, the plain-filter checks of that
+table are then matched on the downloaded table too (see
+[Counting Mechanisms](counting-mechanisms.md)).
 
 ## What a check gives you {#failed-row-results}
 
@@ -320,10 +327,10 @@ flowchart LR
 You write one query per SQL check, and vowl gets two queries out of it. One
 returns the scalar count, and the other returns the failed rows.
 
-| Query            | What it returns                      | When it runs                                      |
-| ---------------- | ------------------------------------ | ------------------------------------------------- |
-| **Scalar query** | The number that decides pass or fail | Always                                            |
-| **Row query**    | The rows behind that number          | Only when the check fails and the rows are needed |
+| Query            | What it returns                      | When it runs                                                                        |
+| ---------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
+| **Scalar query** | The number that decides pass or fail | Always                                                                              |
+| **Row query**    | The rows behind that number          | When something needs the rows. A default `save()` runs it for every row-level check |
 
 The row query returns the rows of its own result. They are rows of the source
 table only when the query is a plain filter of that table. A `DISTINCT`, a
@@ -382,7 +389,8 @@ them to the source table. See
 #### When each query runs
 
 The scalar query always runs, because vowl needs it to pass or fail the check.
-A check that passes costs one query.
+A check that passes costs one query, unless something asks for the rows of
+passed checks too.
 
 The row query runs when a check fails and something needs its rows:
 
@@ -393,6 +401,12 @@ The row query runs when a check fails and something needs its rows:
 - The [annotated output](annotating-the-source-table.md), from
   `get_annotated_output()` or `save()`.
 - `show_failed_rows()` and `get_output_dfs()`.
+
+It also runs for a passed check under
+[`fetch_tolerated_rows`](../../run-settings.md#fetch_tolerated_rows), and for
+`get_output_dfs(scope="all")`. A default `save()` writes `all_query_outputs`,
+so it runs the row query of every row-level check, passed or failed. Leave
+`all_query_outputs` out of `outputs` to skip that.
 
 !!! info "Query performance"
 

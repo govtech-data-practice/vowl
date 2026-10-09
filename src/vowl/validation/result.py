@@ -1602,10 +1602,10 @@ class ValidationResult:
 
         Per-check and residue file names come from the schema, column and
         check names, each cleaned on its own and joined with ``__``. A
-        schema-level check has no column part. Two checks whose names clean
-        to the same file name, compared without case, or two checks with the
-        same name on one column, raise ``ValueError`` before anything is
-        written.
+        schema-level check has no column part. When two checks clean to the
+        same file name, compared without case, the later one in the contract
+        gets ``_2``, the next ``_3`` and so on, skipping any name another
+        check already has.
 
         ``check_info`` shapes the annotated ``check_info`` column. Passing it
         without ``"annotated_table"`` warns.

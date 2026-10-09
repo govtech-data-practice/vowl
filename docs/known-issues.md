@@ -33,30 +33,33 @@ SQL Server does not support regex (`REGEXP_LIKE`). Any check that uses pattern m
 
 **Affected checks:**
 
-- `logicalType` checks that validate string formats (e.g. `date`, `timestamp`, `time`)
 - `logicalTypeOptions.pattern` checks
 - `logicalTypeOptions.format` checks for string, date, timestamp, and time logical types
 - `library` metric `invalidValues` with `arguments.pattern`
 
-**Workaround:** Route queries through DuckDB instead, which has full regex support:
+Plain `logicalType` checks, such as `date`, `timestamp` and `time`, use `TRY_CAST` rather than regex, so they are not affected.
+
+**Workaround:** Copy the table into DuckDB, which has full regex support, and validate the copy:
 
 ```python
 import ibis
 from vowl import validate_data
 from vowl.adapters import IbisAdapter
 
+mssql = ibis.mssql.connect(host="host", user="user", password="pass", database="mydb")
 con = ibis.duckdb.connect()
-con.raw_sql("ATTACH 'mssql://user:pass@host:1433/mydb' AS mssql_db (TYPE sqlserver, READ_ONLY)")
-con.raw_sql("USE mssql_db")
+con.create_table("my_table", mssql.table("my_table").to_pyarrow())
 
 result = validate_data("contract.yaml", adapter=IbisAdapter(con))
 ```
+
+The whole table is read into memory, so use a filter in the Ibis expression (for example `.filter(...)`) to copy less. DuckDB ATTACH is not an option here, because DuckDB can only attach PostgreSQL, MySQL and SQLite.
 
 ### Oracle: Dialect Differences
 
 Oracle's SQL dialect differs from standard SQL in ways that can cause some checks to `ERROR`:
 
-- **No `LIMIT` clause:** Ibis rewrites this as `FETCH FIRST N ROWS ONLY`, but edge cases may arise.
+- **No `LIMIT` clause:** vowl caps the failed rows it fetches with `FETCH FIRST N ROWS ONLY` instead. This has not been tested against a live Oracle database, and a query sqlglot can't parse still gets a plain `LIMIT`.
 - **No `!~` regex operator:** vowl rewrites regex checks to use `REGEXP_LIKE`, but complex patterns may not translate cleanly.
 - **Case-sensitive identifiers:** Oracle uppercases unquoted identifiers. If your tables were created with quoted lowercase names (e.g. `CREATE TABLE "my_table"`), checks may fail because Oracle looks for `MY_TABLE` instead. vowl applies quoting transforms, but mismatches can still occur.
 - **`TEXT`/`CLOB` columns can't use `REGEXP_LIKE`:** vowl auto-casts these to `VARCHAR(4000)`, which means values longer than 4000 characters get truncated before the regex runs.

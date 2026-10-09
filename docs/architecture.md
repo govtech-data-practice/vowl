@@ -31,10 +31,10 @@ database.
 ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
 │   IbisAdapter    │      │  PooledAdapter   │      │  Custom Adapter  │
 │                  │      │                  │      │                  │
-│ • pandas/Polars  │      │ • Several        │      │ • Extend         │
-│ • PySpark        │      │   IbisAdapters   │      │   BaseAdapter    │
-│ • PostgreSQL     │      │   from a factory │      │                  │
-│ • Snowflake      │      │ • Runs checks    │      │                  │
+│ • DataFrames, in │      │ • Several        │      │ • Extend         │
+│   local DuckDB   │      │   IbisAdapters   │      │   BaseAdapter    │
+│ • PySpark        │      │   from a factory │      │                  │
+│ • PostgreSQL     │      │ • Runs checks    │      │                  │
 │ • 20+ backends   │      │   side by side   │      │                  │
 └──────────────────┘      └──────────────────┘      └──────────────────┘
           │                          │                          │
@@ -65,13 +65,13 @@ database.
 
 ## Key Components
 
-| Component                  | What it does                                                                                                                                                                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **DataSourceMapper**       | Looks at what you passed (a DataFrame, a Spark object, an Ibis connection or a connection string) and creates the right adapter                                                                                                             |
-| **MultiSourceAdapter**     | vowl builds one for every run from `adapter=` or `adapters={...}`. You don't create it yourself. It sends single-table checks to each schema's adapter, and cross-table checks to `MultiSourceSQLExecutor`                                  |
-| **IbisAdapter**            | Connects to any of the 20+ Ibis backends (pandas, Polars, PySpark, PostgreSQL, Snowflake, BigQuery and more)                                                                                                                                |
-| **PooledAdapter**          | Opens several adapters from a factory function you give it, and runs up to `max_concurrency` checks at once. See [Concurrent checks](usage-patterns.md#concurrent-checks-pooledadapter)                                                     |
-| **IbisSQLExecutor**        | Runs a SQL check inside the database through Ibis                                                                                                                                                                                           |
-| **MultiSourceSQLExecutor** | Runs a cross-table check. When every table it reads is on one connection, the check runs in that database. Otherwise vowl copies each table into memory (as an Arrow table), loads it into DuckDB on your machine, and runs the check there |
-| **Contract**               | Reads an ODCS YAML contract and turns it into checks                                                                                                                                                                                        |
-| **ValidationResult**       | Holds the outcome of the run. See [The Results Object](results.md)                                                                                                                                                                             |
+| Component                  | What it does                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DataSourceMapper**       | Looks at what you passed (a DataFrame, a Spark object, an Ibis connection or a connection string) and creates the right adapter                                                                                                                                                                                                                |
+| **MultiSourceAdapter**     | vowl builds one for every run from `adapter=` or `adapters={...}`, so you usually don't create it, but you can pass one through `adapters=`. It sends single-table checks to each schema's adapter, and cross-table checks to `MultiSourceSQLExecutor`                                                                                         |
+| **IbisAdapter**            | Connects to any of the 20+ Ibis backends (PySpark, PostgreSQL, Snowflake, BigQuery and more). A pandas or Polars DataFrame goes through Narwhals into an in-memory Ibis DuckDB                                                                                                                                                                 |
+| **PooledAdapter**          | Opens several adapters from a factory function you give it, and runs up to `max_concurrency` checks at once. See [Concurrent checks](usage-patterns.md#concurrent-checks-pooledadapter)                                                                                                                                                        |
+| **IbisSQLExecutor**        | Runs a SQL check inside the database through Ibis                                                                                                                                                                                                                                                                                              |
+| **MultiSourceSQLExecutor** | Runs a cross-table check. When every table it reads is on one connection, the check runs in that database. If those tables have different filter conditions, the adapter also needs `with_filter_conditions`. Otherwise vowl copies each table into memory (as an Arrow table), loads it into DuckDB on your machine, and runs the check there |
+| **Contract**               | Reads an ODCS YAML contract and turns it into checks                                                                                                                                                                                                                                                                                           |
+| **ValidationResult**       | Holds the outcome of the run. See [The Results Object](results.md)                                                                                                                                                                                                                                                                             |

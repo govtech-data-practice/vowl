@@ -13,7 +13,7 @@ from typing import Any
 
 from ...executors.base import CheckResult
 
-# The short, fixed vocabulary of the ``reason`` column of
+# The short, fixed vocabulary of the ``attribution_note`` column of
 # ``get_dq_metrics_df(by="check")``.
 REASON_OPERATOR = "operator does not set an upper limit"
 REASON_NOT_ROW_LEVEL = "not a row-level check"

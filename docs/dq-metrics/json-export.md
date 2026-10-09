@@ -42,7 +42,7 @@ failed. Everything below is the real output of this run.
 
 ### The file
 
-The file starts with the run identity and times, then holds 109 points. Here
+The file starts with the run identity and times, then holds 145 points. Here
 are three of them, one of each type:
 
 ```json
@@ -212,6 +212,7 @@ vowl.run.check.pass_rate               NaN   0.571429
       vowl.run.row.count            PASSED 111.000000
       vowl.run.row.count            FAILED   9.000000
   vowl.run.row.pass_rate               NaN   0.925000
+vowl.run.row.approximate               NaN   0.000000
        vowl.run.duration               NaN 400.125000
 ```
 
@@ -231,7 +232,7 @@ Each entry in `points` has:
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`       | The metric name, for example `vowl.schema.row.pass_rate`. [All metrics](understanding-metrics.md#all-metrics) lists them.                                                                      |
 | `type`       | `counter`, `gauge` or `histogram`. It says whether the value adds up. See [Which numbers add up](understanding-metrics.md#which-numbers-add-up).                                               |
-| `unit`       | `{check}`, `{row}` or `{schema}` for counts, `1` for pass rates, `ms` for durations.                                                                                                           |
+| `unit`       | `{check}`, `{row}` or `{schema}` for counts, `1` for pass rates and approximate flags, `ms` for durations.                                                                                     |
 | `value`      | The reading for this run. For a counter, it is this run's count. For a histogram, it is one timing.                                                                                            |
 | `attributes` | What the reading is for, such as `schema_name` and `status`. The run identity is in `run` instead, not repeated. [Attributes](understanding-metrics.md#attributes) lists them for each metric. |
 
@@ -269,10 +270,10 @@ The rules for combining runs are the same as on a dashboard:
 check and what each check found. `dq_metrics.json` is the numbers computed
 from it, in the vocabulary on [Understanding DQ Metrics](understanding-metrics.md).
 
-Some fields in `summary.json` look like DQ metrics but follow older rules.
-Prefer `dq_metrics.json` for these:
+Some fields under `validation_summary` in `summary.json` look like DQ metrics
+but follow older rules. Prefer `dq_metrics.json` for these:
 
-| In `summary.json`                            | Use instead                | Why                                                                                                             |
+| In `summary.json` `validation_summary`       | Use instead                | Why                                                                                                             |
 | -------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `success_rate`                               | `vowl.run.check.pass_rate` | `success_rate` is a percentage from 0 to 100. Pass rates are from 0 to 1.                                       |
 | `failed_rows_approximate`                    | `vowl.run.row.count`       | `failed_rows_approximate` adds up the scalar counts of each check, so a row that fails two checks counts twice. |

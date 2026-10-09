@@ -18,6 +18,10 @@ queries on one data source. Most of the time you do not build one yourself:
 | A database                                  | `adapter=IbisAdapter(con)`               | [Ibis connections](#ibis-connections-20-backends)     |
 | A database, with many checks to run at once | `adapter=PooledAdapter(...)`             | [Concurrent checks](#concurrent-checks-pooledadapter) |
 | Several databases                           | `adapters={"schema_name": adapter, ...}` | [Multi-source validation](#multi-source-validation)   |
+| A database, from a connection URI           | `connection_str="postgres://..."`        | [Ibis connections](#ibis-connections-20-backends)     |
+| A Spark session, reading tables by name     | `spark_session=spark`                    | [PySpark](#pyspark)                                   |
+
+vowl passes `connection_str` to `ibis.connect`.
 
 ## Local DataFrame (Pandas/Polars)
 
@@ -31,8 +35,9 @@ result.display_full_report()
 ```
 
 Any DataFrame that [Narwhals](https://narwhals-dev.github.io/narwhals/)
-supports works the same way. vowl loads it into an in-memory DuckDB and runs
-the checks there.
+supports works the same way. vowl loads it into an in-memory DuckDB, as a
+table named after each contract schema, and runs the checks there. If a column
+cannot be converted to Arrow, vowl loads it as strings and emits a warning.
 
 ## PySpark
 
@@ -72,11 +77,15 @@ result.display_full_report()
 Checks run inside the database. Only counts and failed rows come back.
 
 Ibis supports Amazon Athena, BigQuery, ClickHouse, Databricks, DataFusion,
-Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, pandas, Polars,
+Druid, DuckDB, Exasol, Flink, Impala, MSSQL, MySQL, Oracle, Polars,
 PostgreSQL, PySpark, RisingWave, SingleStoreDB, Snowflake, SQLite, Trino, and
 more. See [ibis-project/ibis](https://github.com/ibis-project/ibis). Some
 databases handle nulls, regex or arrays differently. See
 [Known issues](known-issues.md#database-backend-differences).
+
+vowl writes SQL in each backend's own dialect. Athena, Druid, Exasol, Flink,
+Impala, Polars, RisingWave and SingleStoreDB have no dialect mapping in vowl,
+so it writes PostgreSQL SQL for them.
 
 !!! info "MySQL"
 
@@ -117,8 +126,10 @@ servers or none match. `contract.get_servers()` returns them all.
 ## Filter Conditions
 
 Filter conditions limit which rows vowl checks, for example only the last
-seven days. Pass them to the adapter. Keys are table names, and `*` matches
-any characters.
+seven days. Pass them to the adapter. Keys are table names, matched with
+[`fnmatch`](https://docs.python.org/3/library/fnmatch.html), so `*` matches
+any characters, `?` matches one character and `[seq]` matches any character in
+`seq`.
 
 ```python
 from datetime import datetime, timedelta
@@ -161,6 +172,10 @@ adapter = IbisAdapter(
     },
 )
 ```
+
+The supported operators are `=`, `!=`, `>`, `>=`, `<`, `<=`, `IN`, `NOT IN`,
+`LIKE`, `NOT LIKE`, `IS NULL` and `IS NOT NULL`. `IN` and `NOT IN` take a list
+as `value`, and `IS NULL` and `IS NOT NULL` take no `value`.
 
 ## Concurrent Checks (`PooledAdapter`)
 
@@ -375,6 +390,8 @@ assert "sql" in executors
 ```
 
 `validate_data` accepts any `BaseAdapter` through `adapter=` or `adapters=`.
+A `MultiSourceAdapter` goes through `adapters=` only. Passing one to
+`adapter=` raises a `TypeError`.
 For cross-table checks, a custom adapter can implement three more methods:
 
 - `is_compatible_with(other)` returns `True` when two adapters can run one

@@ -23,8 +23,9 @@ Both come from the same calculation. The names, attributes and values are
 the same in both, so a number on a dashboard always matches the number in
 the file. This page describes the metrics once for both.
 
-The DQ metrics are opt-in. They attribute failed rows to each table and count
-its rows, which the basic summary never does. See
+vowl computes the DQ metrics only when you ask for them or save them, and the
+default `save()` outputs include them. They attribute failed rows to each
+table and count its rows, which the basic summary never does. See
 [What each method costs](../results.md#what-each-method-costs).
 
 ## The four levels
@@ -217,7 +218,7 @@ Whether a number adds up across runs decides its metric type:
 - **Counters** hold numbers that add up: every `check.count` and
   `vowl.run.schema.count`.
 - **Gauges** hold readings of one run, like a thermometer: every `row.count`,
-  every `pass_rate` and every `row.approximate`.
+  `vowl.check.row.scalar_count`, every `pass_rate` and every `row.approximate`.
 - **Histograms** hold timings: `vowl.check.duration` and `vowl.run.duration`,
   in milliseconds.
 
@@ -271,11 +272,12 @@ Only [row-level checks](../design-considerations/checks/check-results.md#counted
 have row counts. A check that is not row-level, such as an average, has check
 counts only.
 
-| Check                    | `scalar_count` | `row.count` at check level                                             |
-| ------------------------ | -------------- | ---------------------------------------------------------------------- |
-| Failed, attributable     | Yes            | Its attributed rows                                                    |
-| Passed                   | Yes            | `FAILED` is 0, or its attributed rows with `fetch_tolerated_rows=True` |
-| Failed, not attributable | Yes            | None                                                                   |
+| Check                    | `scalar_count` | `row.count` at check level                                             | `row.approximate` at check level |
+| ------------------------ | -------------- | ---------------------------------------------------------------------- | -------------------------------- |
+| Failed, attributable     | Yes            | Its attributed rows                                                    | Yes                              |
+| Passed                   | Yes            | `FAILED` is 0, or its attributed rows with `fetch_tolerated_rows=True` | Yes                              |
+| Failed, not attributable | Yes            | None                                                                   | Yes                              |
+| Ended in `ERROR`         | No             | None                                                                   | No                               |
 
 A passed check follows the same rule as [tolerated rows](../design-considerations/checks/check-results.md#tolerated-rows).
 By default it adds no rows, so its `FAILED` is 0. With
@@ -313,6 +315,12 @@ To find out why, look at the check's
 `row.approximate`, and `row.attribution_note` says why.
 Without traces, the `approximate` and `attribution_note` columns of
 `get_dq_metrics_df(by="check")` give the same answer.
+
+A row-level check that ended in `ERROR` is the exception. It has no scalar
+count, so it gets no `vowl.check.row.approximate` gauge and no `row.*`
+attributes on its span. It still makes its schema's row counts approximate.
+Only `get_dq_metrics_df(by="check")` shows it as the cause, with `approximate`
+set to `True` and the note `check ended in ERROR`.
 
 !!! note "Why the flag is its own metric, not an attribute"
 
@@ -407,59 +415,59 @@ the run sends is shown.
 ```
 # Check level: each check on its own
 vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="order_id_column_exists_check"}
-vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="email_column_exists_check"}
 vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="order_id_required_check"}
-vowl.check.check.count:    1     {status="FAILED", schema_name="orders",  check_name="email_required_check"}
 vowl.check.check.count:    1     {status="FAILED", schema_name="orders",  check_name="order_id_unique_check"}
+vowl.check.check.count:    1     {status="PASSED", schema_name="orders",  check_name="email_column_exists_check"}
+vowl.check.check.count:    1     {status="FAILED", schema_name="orders",  check_name="email_required_check"}
 vowl.check.check.count:    1     {status="PASSED", schema_name="refunds", check_name="amount_column_exists_check"}
 vowl.check.check.count:    1     {status="FAILED", schema_name="refunds", check_name="refund_positive"}
 vowl.check.row.count:      100   {status="PASSED", check_name="order_id_column_exists_check"}
 vowl.check.row.count:      0     {status="FAILED", check_name="order_id_column_exists_check"}
-vowl.check.row.count:      100   {status="PASSED", check_name="email_column_exists_check"}
-vowl.check.row.count:      0     {status="FAILED", check_name="email_column_exists_check"}
 vowl.check.row.count:      100   {status="PASSED", check_name="order_id_required_check"}
 vowl.check.row.count:      0     {status="FAILED", check_name="order_id_required_check"}
-vowl.check.row.count:      95    {status="PASSED", check_name="email_required_check"}
-vowl.check.row.count:      5     {status="FAILED", check_name="email_required_check"}
 vowl.check.row.count:      97    {status="PASSED", check_name="order_id_unique_check"}
 vowl.check.row.count:      3     {status="FAILED", check_name="order_id_unique_check"}
+vowl.check.row.count:      100   {status="PASSED", check_name="email_column_exists_check"}
+vowl.check.row.count:      0     {status="FAILED", check_name="email_column_exists_check"}
+vowl.check.row.count:      95    {status="PASSED", check_name="email_required_check"}
+vowl.check.row.count:      5     {status="FAILED", check_name="email_required_check"}
 vowl.check.row.count:      20    {status="PASSED", check_name="amount_column_exists_check"}
 vowl.check.row.count:      0     {status="FAILED", check_name="amount_column_exists_check"}
 vowl.check.row.count:      18    {status="PASSED", check_name="refund_positive"}
 vowl.check.row.count:      2     {status="FAILED", check_name="refund_positive"}
 vowl.check.row.pass_rate:  1.0   {check_name="order_id_column_exists_check"}
-vowl.check.row.pass_rate:  1.0   {check_name="email_column_exists_check"}
 vowl.check.row.pass_rate:  1.0   {check_name="order_id_required_check"}
-vowl.check.row.pass_rate:  0.95  {check_name="email_required_check"}
 vowl.check.row.pass_rate:  0.97  {check_name="order_id_unique_check"}
+vowl.check.row.pass_rate:  1.0   {check_name="email_column_exists_check"}
+vowl.check.row.pass_rate:  0.95  {check_name="email_required_check"}
 vowl.check.row.pass_rate:  1.0   {check_name="amount_column_exists_check"}
 vowl.check.row.pass_rate:  0.9   {check_name="refund_positive"}
 vowl.check.row.scalar_count:      100   {status="PASSED", check_name="order_id_column_exists_check"}
 vowl.check.row.scalar_count:      0     {status="FAILED", check_name="order_id_column_exists_check"}
-vowl.check.row.scalar_count:      100   {status="PASSED", check_name="email_column_exists_check"}
-vowl.check.row.scalar_count:      0     {status="FAILED", check_name="email_column_exists_check"}
 vowl.check.row.scalar_count:      100   {status="PASSED", check_name="order_id_required_check"}
 vowl.check.row.scalar_count:      0     {status="FAILED", check_name="order_id_required_check"}
-vowl.check.row.scalar_count:      95    {status="PASSED", check_name="email_required_check"}
-vowl.check.row.scalar_count:      5     {status="FAILED", check_name="email_required_check"}
 vowl.check.row.scalar_count:      97    {status="PASSED", check_name="order_id_unique_check"}
 vowl.check.row.scalar_count:      3     {status="FAILED", check_name="order_id_unique_check"}
+vowl.check.row.scalar_count:      100   {status="PASSED", check_name="email_column_exists_check"}
+vowl.check.row.scalar_count:      0     {status="FAILED", check_name="email_column_exists_check"}
+vowl.check.row.scalar_count:      95    {status="PASSED", check_name="email_required_check"}
+vowl.check.row.scalar_count:      5     {status="FAILED", check_name="email_required_check"}
 vowl.check.row.scalar_count:      20    {status="PASSED", check_name="amount_column_exists_check"}
 vowl.check.row.scalar_count:      0     {status="FAILED", check_name="amount_column_exists_check"}
 vowl.check.row.scalar_count:      18    {status="PASSED", check_name="refund_positive"}
 vowl.check.row.scalar_count:      2     {status="FAILED", check_name="refund_positive"}
 vowl.check.row.scalar_pass_rate:  1.0   {check_name="order_id_column_exists_check"}
-vowl.check.row.scalar_pass_rate:  1.0   {check_name="email_column_exists_check"}
 vowl.check.row.scalar_pass_rate:  1.0   {check_name="order_id_required_check"}
-vowl.check.row.scalar_pass_rate:  0.95  {check_name="email_required_check"}
 vowl.check.row.scalar_pass_rate:  0.97  {check_name="order_id_unique_check"}
+vowl.check.row.scalar_pass_rate:  1.0   {check_name="email_column_exists_check"}
+vowl.check.row.scalar_pass_rate:  0.95  {check_name="email_required_check"}
 vowl.check.row.scalar_pass_rate:  1.0   {check_name="amount_column_exists_check"}
 vowl.check.row.scalar_pass_rate:  0.9   {check_name="refund_positive"}
 vowl.check.row.approximate:       0     {check_name="order_id_column_exists_check"}
-vowl.check.row.approximate:       0     {check_name="email_column_exists_check"}
 vowl.check.row.approximate:       0     {check_name="order_id_required_check"}
-vowl.check.row.approximate:       0     {check_name="email_required_check"}
 vowl.check.row.approximate:       0     {check_name="order_id_unique_check"}
+vowl.check.row.approximate:       0     {check_name="email_column_exists_check"}
+vowl.check.row.approximate:       0     {check_name="email_required_check"}
 vowl.check.row.approximate:       0     {check_name="amount_column_exists_check"}
 vowl.check.row.approximate:       0     {check_name="refund_positive"}
 
@@ -475,23 +483,23 @@ vowl.dimension.check.pass_rate:  0.5   {schema_name="orders",  dimension="comple
 vowl.dimension.check.pass_rate:  0.0   {schema_name="orders",  dimension="consistency"}
 vowl.dimension.check.pass_rate:  1.0   {schema_name="refunds", dimension="conformity"}
 vowl.dimension.check.pass_rate:  0.0   {schema_name="refunds", dimension="consistency"}
-vowl.dimension.row.count:        100   {status="PASSED", schema_name="orders",  dimension="conformity"}
-vowl.dimension.row.count:        0     {status="FAILED", schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.count:        95    {status="PASSED", schema_name="orders",  dimension="completeness"}
 vowl.dimension.row.count:        5     {status="FAILED", schema_name="orders",  dimension="completeness"}
+vowl.dimension.row.count:        100   {status="PASSED", schema_name="orders",  dimension="conformity"}
+vowl.dimension.row.count:        0     {status="FAILED", schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.count:        97    {status="PASSED", schema_name="orders",  dimension="consistency"}
 vowl.dimension.row.count:        3     {status="FAILED", schema_name="orders",  dimension="consistency"}
 vowl.dimension.row.count:        20    {status="PASSED", schema_name="refunds", dimension="conformity"}
 vowl.dimension.row.count:        0     {status="FAILED", schema_name="refunds", dimension="conformity"}
 vowl.dimension.row.count:        18    {status="PASSED", schema_name="refunds", dimension="consistency"}
 vowl.dimension.row.count:        2     {status="FAILED", schema_name="refunds", dimension="consistency"}
-vowl.dimension.row.pass_rate:    1.0   {schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.pass_rate:    0.95  {schema_name="orders",  dimension="completeness"}
+vowl.dimension.row.pass_rate:    1.0   {schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.pass_rate:    0.97  {schema_name="orders",  dimension="consistency"}
 vowl.dimension.row.pass_rate:    1.0   {schema_name="refunds", dimension="conformity"}
 vowl.dimension.row.pass_rate:    0.9   {schema_name="refunds", dimension="consistency"}
-vowl.dimension.row.approximate:  0     {schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.approximate:  0     {schema_name="orders",  dimension="completeness"}
+vowl.dimension.row.approximate:  0     {schema_name="orders",  dimension="conformity"}
 vowl.dimension.row.approximate:  0     {schema_name="orders",  dimension="consistency"}
 vowl.dimension.row.approximate:  0     {schema_name="refunds", dimension="conformity"}
 vowl.dimension.row.approximate:  0     {schema_name="refunds", dimension="consistency"}
