@@ -795,15 +795,17 @@ The table name is the schema `name`, here `hdb_resale_prices`.
     -- hdb_resale_prices_duplicateValues
     SELECT COUNT(*) FROM "hdb_resale_prices"
     WHERE EXISTS(
-      SELECT 1 FROM "hdb_resale_prices" AS "dup_src"
+      SELECT 1 FROM (
+        SELECT "month", "block", "street_name" FROM "hdb_resale_prices"
+        WHERE NOT "month" IS NULL
+          AND NOT "block" IS NULL
+          AND NOT "street_name" IS NULL
+        GROUP BY "month", "block", "street_name"
+        HAVING COUNT(*) > 1
+      ) AS "dup_src"
       WHERE "dup_src"."month" = "hdb_resale_prices"."month"
-        AND NOT "dup_src"."month" IS NULL
         AND "dup_src"."block" = "hdb_resale_prices"."block"
-        AND NOT "dup_src"."block" IS NULL
         AND "dup_src"."street_name" = "hdb_resale_prices"."street_name"
-        AND NOT "dup_src"."street_name" IS NULL
-      GROUP BY "dup_src"."month", "dup_src"."block", "dup_src"."street_name"
-      HAVING COUNT(*) > 1
     );
     ```
 

@@ -486,6 +486,39 @@ class TestLibraryMetricVariations:
         assert "GROUP BY" in query.upper()
         assert "col_a" in query
 
+    @pytest.mark.parametrize("dialect", ["postgres", "duckdb", "tsql", "oracle", "sqlite", "mysql", "bigquery"])
+    def test_duplicate_values_table_groups_in_uncorrelated_derived_table(
+        self, monkeypatch: pytest.MonkeyPatch, dialect: str
+    ):
+        """The GROUP BY sits in a derived table that never reads the outer row.
+
+        A GROUP BY/HAVING correlated to the outer row cannot become a
+        semi-join, and Postgres re-ran it for every row (hours on ~1M rows).
+        """
+        import sqlglot
+        from sqlglot import exp
+
+        table_q = [
+            {
+                "type": "library",
+                "metric": "duplicateValues",
+                "mustBe": 0,
+                "arguments": {"properties": ["col_a", "col_b"]},
+            }
+        ]
+        contract = _make_contract(monkeypatch, table_quality=table_q)
+        refs = contract.get_check_references_by_schema()["items"]
+        dv = [r for r in refs if isinstance(r, DuplicateValuesTableCheckReference)]
+        parsed = sqlglot.parse_one(dv[0].get_query(dialect), dialect=dialect)
+        exists = parsed.find(exp.Exists)
+        assert exists is not None
+        assert exists.this.args.get("group") is None
+        derived = exists.this.args["from_"].this
+        assert isinstance(derived, exp.Subquery)
+        assert derived.alias == "dup_src"
+        assert derived.this.args.get("group") is not None
+        assert all(col.table in ("", "dup_src") for col in derived.this.find_all(exp.Column))
+
 
 # ===================================================================
 # Group C2 — percent-unit metrics produce VALID SQL

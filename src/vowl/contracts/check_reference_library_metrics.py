@@ -399,17 +399,17 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
         # Count *participating rows* (rows whose key-tuple belongs to a
         # duplicate group) so the auto-derived row query is
         # SELECT * FROM table WHERE EXISTS(...) -- full rows that merge into the
-        # annotated table.  A correlated EXISTS is used instead of a tuple-IN
-        # subquery because row-value IN-subqueries do not execute on SQL Server;
-        # EXISTS renders and runs portably across all supported dialects.  The
-        # inner table is aliased ``dup_src`` (no leading underscore, to avoid
-        # Oracle alias-quoting edge cases) and correlated back to the outer
-        # table.  NULL-exclusion per column preserves the original semantics.
+        # annotated table.  The duplicate groups are computed once in an
+        # uncorrelated derived table and only the equality chain is correlated
+        # back to the outer table.  Correlating the GROUP BY/HAVING itself stops
+        # planners from turning the EXISTS into a semi-join, so Postgres re-ran
+        # the grouping for every outer row (hours on ~1M rows).  EXISTS is used
+        # instead of a tuple-IN subquery because row-value IN-subqueries do not
+        # execute on SQL Server.  The derived table is aliased ``dup_src`` (no
+        # leading underscore, to avoid Oracle alias-quoting edge cases), and
+        # sqlglot drops the AS keyword where the dialect forbids it (Oracle).
+        # NULL-exclusion per column preserves the original semantics.
         inner_alias = "dup_src"
-        inner_table = exp.Table(
-            this=exp.to_identifier(schema_name, quoted=True),
-            alias=exp.TableAlias(this=exp.to_identifier(inner_alias, quoted=True)),
-        )
 
         def _inner_col(name: str) -> exp.Column:
             return exp.Column(
@@ -423,20 +423,28 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
                 table=exp.to_identifier(schema_name, quoted=True),
             )
 
-        conditions: list[exp.Expression] = []
+        all_present: exp.Expression | None = None
         for name in prop_names:
-            conditions.append(exp.EQ(this=_inner_col(name), expression=_outer_col(name)))
-            conditions.append(_inner_col(name).is_(exp.Null()).not_())
-        where = conditions[0]
-        for cond in conditions[1:]:
-            where = exp.And(this=where, expression=cond)
+            present = _col_ref(name).is_(exp.Null()).not_()
+            all_present = present if all_present is None else exp.And(this=all_present, expression=present)
+
+        dup_groups = (
+            sqlglot.select(*[_col_ref(name) for name in prop_names])
+            .from_(table)
+            .where(all_present)
+            .group_by(*[_col_ref(name) for name in prop_names])
+            .having(_count_star() > exp.Literal.number(1))
+        )
+
+        match: exp.Expression | None = None
+        for name in prop_names:
+            eq = exp.EQ(this=_inner_col(name), expression=_outer_col(name))
+            match = eq if match is None else exp.And(this=match, expression=eq)
 
         inner = (
             sqlglot.select(exp.Literal.number(1))
-            .from_(inner_table)
-            .where(where)
-            .group_by(*[_inner_col(name) for name in prop_names])
-            .having(_count_star() > exp.Literal.number(1))
+            .from_(dup_groups.subquery(exp.to_identifier(inner_alias, quoted=True)))
+            .where(match)
         )
 
         core = sqlglot.select(_count_star()).from_(table).where(exp.Exists(this=inner))
