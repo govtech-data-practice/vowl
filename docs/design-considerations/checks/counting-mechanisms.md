@@ -35,7 +35,7 @@ vowl asks up to three questions about each check:
 3. **Is the data source a tested source?** `server_lookup` attributes rows by
    value, which is only safe where values are compared exactly (see
    [When two values count as the same](how-attributed-rows-work.md#how-values-are-compared)).
-   The tested sources are DuckDB, SQLite, Spark, Databricks and PostgreSQL.
+   The tested sources are DuckDB, SQLite, Spark, Databricks and PostgreSQL. Databricks uses the same code as Spark but has no test of its own.
 
 ```text
  1. Can the data source count?

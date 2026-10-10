@@ -429,8 +429,9 @@ digit, `.`, `_` or `-` becomes `_`. So check `amount > 0` on column `amount` of
 schema `orders` writes `orders_checks/orders__amount__amount_gt_0.csv`.
 
 If two checks still clean to the same name, compared without case, such as
-`Amount` and `amount` on one column, the later one in the contract gets `_2`,
-the next `_3` and so on: `orders__amount__Amount.csv` and
+`Amount` and `amount` on one column, the later one in the run gets `_2`, the
+next `_3` and so on. The run takes each schema's checks in contract order, then
+the cross-table checks, so the names are the same on every run: `orders__amount__Amount.csv` and
 `orders__amount__amount_2.csv`. Every check holds its name, even one that
 writes no file, so a check's file name does not depend on how the others did.
 The `saved_outputs` list in the summary says which file is which check.
@@ -533,10 +534,10 @@ group also does the work it needs from the groups above.
     <tr><td><code>result.passed</code>, <code>result.summary</code>, <code>print_summary()</code>, <code>show_failed_checks()</code>, <code>get_check_results_df()</code></td><td>Nothing more.</td></tr>
     <tr><td><code>save()</code> with <code>outputs=[]</code>: <code>check_results.csv</code> and <code>summary.json</code></td><td>Writing two small files. They are written by every <code>save()</code>.</td></tr>
     <tr class="table-group"><th colspan="2">Failed query outputs<small>Runs the row query of each failed check.</small></th></tr>
-    <tr><td><code>show_failed_rows()</code>, <code>get_output_dfs()</code>, <code>get_consolidated_output_dfs()</code></td><td>One query per failed check, the first time one of these is called. Each returns only that check's failed rows, at most <code>max_failed_rows</code>. <code>get_consolidated_output_dfs()</code> then groups them on your machine.</td></tr>
+    <tr><td><code>show_failed_rows()</code>, <code>get_output_dfs()</code>, <code>get_consolidated_output_dfs()</code></td><td>One query per failed check, the first time one of these is called. Each returns only that check's failed rows, at most <code>max_failed_rows</code>. <code>get_consolidated_output_dfs()</code> then groups them on your machine. A cross-source check also copies its tables into memory again to run its row query.</td></tr>
     <tr><td><code>save()</code> with <code>"failed_query_outputs"</code> or <code>"consolidated_query_outputs"</code></td><td>The same queries, plus writing the files.</td></tr>
-    <tr class="table-group"><th colspan="2">All query outputs<small>Runs the row query of every row-level check, passed or failed.</small></th></tr>
-    <tr><td><code>get_output_dfs(scope="all")</code></td><td>One query per row-level check that did not error. A check that passed can return many rows, so this can fetch far more than the failed rows.</td></tr>
+    <tr class="table-group"><th colspan="2">All query outputs<small>Runs the row query of every check, passed or failed.</small></th></tr>
+    <tr><td><code>get_output_dfs(scope="all")</code></td><td>One query per check with a row query that did not end in <code>ERROR</code>. A check that passed can return many rows, so this can fetch far more than the failed rows.</td></tr>
     <tr><td><code>save()</code> with <code>"all_query_outputs"</code></td><td>The same queries, plus writing the files.</td></tr>
     <tr class="table-group"><th colspan="2">Row attribution<small>Matches failed rows to the rows of each table, and counts the rows of each table.</small></th></tr>
     <tr><td><code>get_dq_metrics()</code>, <code>get_dq_metrics_df(by=...)</code>, <code>export_otel(...)</code></td><td>A <code>COUNT(*)</code> on each table, and queries that count failed rows inside the data source. Where the data source can't count a check, vowl fetches its failed rows and downloads the table to count them on your machine.</td></tr>
@@ -561,9 +562,9 @@ group also does the work it needs from the groups above.
 
 These still work but will be removed in a future release.
 
-| Deprecated                          | Use instead                                       |
-| ----------------------------------- | ------------------------------------------------- |
-| `ValidationResult.save_dataframe()` | `pyarrow.parquet.write_table(df.to_arrow(), ...)` |
+| Deprecated                          | Use instead                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------- |
+| `ValidationResult.save_dataframe()` | `pyarrow.parquet.write_table(df.to_arrow(), "my-bucket/rows.parquet", filesystem=fs)` |
 
 <a id="deprecated-output_mode"></a>
 

@@ -1603,9 +1603,10 @@ class ValidationResult:
         Per-check and residue file names come from the schema, column and
         check names, each cleaned on its own and joined with ``__``. A
         schema-level check has no column part. When two checks clean to the
-        same file name, compared without case, the later one in the contract
-        gets ``_2``, the next ``_3`` and so on, skipping any name another
-        check already has.
+        same file name, compared without case, the later one in
+        ``check_results`` gets ``_2``, the next ``_3`` and so on, skipping any
+        name another check already has. ``check_results`` holds each schema's
+        checks in contract order, then the cross-table checks.
 
         ``check_info`` shapes the annotated ``check_info`` column. Passing it
         without ``"annotated_table"`` warns.
@@ -1712,7 +1713,7 @@ class ValidationResult:
 
         .. deprecated::
             Write the frame with its own library instead, for example
-            ``pyarrow.parquet.write_table(df.to_arrow(), "s3://...", filesystem=fs)``.
+            ``pyarrow.parquet.write_table(df.to_arrow(), "my-bucket/rows.parquet", filesystem=fs)``.
             This helper will be removed in a future release.
         """
         warnings.warn(

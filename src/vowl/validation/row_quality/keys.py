@@ -15,8 +15,9 @@ from sqlglot import exp
 
 from vowl.contracts.keys import primary_key_columns as primary_key_columns  # re-exported
 
-# Dialects with a tested binary key entry. Any other dialect groups on the
-# plain column and reports ``exact = false``.
+# Dialects with a binary key entry, tested on all but Databricks, which uses
+# Spark's entry. Any other dialect groups on the plain column and reports
+# ``exact = false``.
 KEYED_DIALECTS = frozenset({"duckdb", "sqlite", "spark", "databricks", "postgres"})
 
 _SPARK_DIALECTS = frozenset({"spark", "databricks"})

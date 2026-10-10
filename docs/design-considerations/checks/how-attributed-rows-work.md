@@ -199,9 +199,9 @@ Most values are equal or not. These cases may be unexpected:
 | `[1, 2]` and `[1, 3]`             | No    | Lists and nested values must match item by item          |
 | Two times a nanosecond apart      | No    | Times must match exactly                                 |
 
-vowl compares values this way in the data source and on your machine. This
-is tested on DuckDB, SQLite, Spark, Databricks and PostgreSQL, the
-**tested sources**. On another data source, `a` and `A` may count as the
+vowl compares values this way in the data source and on your machine. The
+**tested sources** are DuckDB, SQLite, Spark, Databricks and PostgreSQL.
+Databricks uses the same code as Spark but has no test of its own. On another data source, `a` and `A` may count as the
 same, so its row counts are marked approximate.
 
 ### When a check is not attributable
