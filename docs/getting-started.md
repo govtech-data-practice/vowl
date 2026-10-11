@@ -55,7 +55,7 @@ result.display_full_report()
          Multi Table:
            Checks Pass Rate:          0 / 0 (N/A)
            ERRORED Checks:            0
-           Non-unique Failed Rows:    0
+           Failed Rows (approximate): N/A
 
 
      CHECK RESULTS
@@ -122,15 +122,14 @@ The summary groups the numbers for each schema (one table in the contract):
 - **ERRORED Checks** are checks that could not run, for example because the
   query names a missing column.
 - **Failed Rows (approximate)** adds up the failed rows of each row-level
-  check for this schema. A row that fails two checks counts twice, so the
-  number is approximate. It shows `N/A` when the schema has no row-level
+  check in its block. A row that fails two checks counts twice, so the
+  number is approximate. It shows `N/A` when the block has no row-level
   checks. For how many rows failed at least once, and the row pass rate, call
   `result.get_dq_metrics_df()`. See
   [How Attributed Rows Work](design-considerations/checks/how-attributed-rows-work.md).
 - **Single Table** covers checks that read only this schema's table.
   **Multi Table** covers cross-table checks, which read more than one table.
-- **Non-unique Failed Rows** adds up the scalar counts of the failed
-  cross-table checks. A row that fails two of them is counted twice.
+  Its **Failed Rows (approximate)** counts the cross-table checks only.
 
 In the **CHECK RESULTS** table, `check_id` is the check's name, and
 `tables_in_query` lists the tables its query reads.

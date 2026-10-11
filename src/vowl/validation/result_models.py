@@ -33,9 +33,13 @@ class SingleTableSummary(CheckStatusSummary):
 
 @dataclass(frozen=True)
 class MultiTableSummary(CheckStatusSummary):
-    """Multi-table validation summary including failing row counts."""
+    """Check counts of the checks that read more than one table, plus their approximate failed rows.
 
-    failed_non_unique_rows: int
+    ``failed_rows_approximate`` is computed like the one in ``OverallSummary``,
+    over the multi-table row-level checks only.
+    """
+
+    failed_rows_approximate: int | None
 
 
 @dataclass(frozen=True)

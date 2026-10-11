@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from vowl.validation.result import _safe_filename_component
-from vowl.validation.result_models import OverallSummary
 from vowl.validation.result_rendering import format_failed_rows_approximate
 
 
@@ -31,22 +30,13 @@ def test_safe_filename_component_strips_traversal(value: str, expected: str):
     assert not result.startswith(".")
 
 
-def _summary(failed_rows_approximate):
-    return OverallSummary(
-        passed_checks=0,
-        error_checks=0,
-        total_checks=0,
-        failed_rows_approximate=failed_rows_approximate,
-    )
-
-
 def test_format_failed_rows_approximate_groups_thousands():
-    assert format_failed_rows_approximate(_summary(1234)) == "1,234"
+    assert format_failed_rows_approximate(1234) == "1,234"
 
 
 def test_format_failed_rows_approximate_shows_zero():
-    assert format_failed_rows_approximate(_summary(0)) == "0"
+    assert format_failed_rows_approximate(0) == "0"
 
 
 def test_format_failed_rows_approximate_without_row_level_checks_is_na():
-    assert format_failed_rows_approximate(_summary(None)) == "N/A"
+    assert format_failed_rows_approximate(None) == "N/A"

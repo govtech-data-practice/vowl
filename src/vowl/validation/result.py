@@ -355,24 +355,23 @@ class ValidationResult:
             total_checks=len(check_results),
         )
 
+    @classmethod
+    def _sum_failed_rows_approximate(cls, check_results: Sequence[CheckResult]) -> int | None:
+        """Sum the failed rows of the row-level checks, or None when there are none."""
+        row_level = [cr for cr in check_results if cls._supports_row_level_output(cr)]
+        return sum(cr.failed_rows_count or 0 for cr in row_level) if row_level else None
+
     def _build_schema_breakdown(self, schema_checks: Sequence[CheckResult]) -> SchemaValidationBreakdown:
         single_table_checks, multi_table_checks = self._split_checks_by_scope(schema_checks)
-        row_level = [cr for cr in schema_checks if self._supports_row_level_output(cr)]
-        overall = OverallSummary(
-            **asdict(self._summarize_check_statuses(schema_checks)),
-            failed_rows_approximate=sum(cr.failed_rows_count or 0 for cr in row_level) if row_level else None,
-        )
-        multi_status = self._summarize_check_statuses(multi_table_checks)
         return SchemaValidationBreakdown(
-            overall=overall,
+            overall=OverallSummary(
+                **asdict(self._summarize_check_statuses(schema_checks)),
+                failed_rows_approximate=self._sum_failed_rows_approximate(schema_checks),
+            ),
             single_table=SingleTableSummary(**asdict(self._summarize_check_statuses(single_table_checks))),
             multi_table=MultiTableSummary(
-                **asdict(multi_status),
-                failed_non_unique_rows=sum(
-                    (check_result.failed_rows_count or 0)
-                    for check_result in multi_table_checks
-                    if check_result.status == "FAILED" and self._supports_row_level_output(check_result)
-                ),
+                **asdict(self._summarize_check_statuses(multi_table_checks)),
+                failed_rows_approximate=self._sum_failed_rows_approximate(multi_table_checks),
             ),
         )
 

@@ -102,12 +102,13 @@ rows: 2, 3 and 5.
 The [summary](../../results.md#print-a-report) is the report that
 `print_summary()` prints and `save()` writes to `<prefix>_summary.json` (see
 an [example output](../../getting-started.md#validate-in-3-lines)). Two of its
-numbers are each check's scalar count added together:
+numbers are each check's scalar count added together. Both are labelled
+**Failed Rows (approximate)**:
 
-| Summary number                | Where in the summary | Total of the scalar counts of                     |
-| ----------------------------- | -------------------- | ------------------------------------------------- |
-| **Failed Rows (approximate)** | **Overall**          | Every failed check of the table that returns rows |
-| **Non-unique Failed Rows**    | **Multi Table**      | Every failed check that also reads another table  |
+| Where in the summary | Total of the scalar counts of                         |
+| -------------------- | ----------------------------------------------------- |
+| **Overall**          | Every check of the table that returns rows            |
+| **Multi Table**      | Every check that returns rows and reads another table |
 
 These totals don't account for overlap, so a row that fails two checks is
 counted twice. For the `orders` table:
@@ -147,7 +148,7 @@ To count each failed row once, use `get_dq_metrics_df()`.
       Overall:
         Failed Rows (approximate): 3
       Multi Table:
-        Non-unique Failed Rows:    3
+        Failed Rows (approximate): 3
     ```
 
     `get_dq_metrics_df()` counts each failed order once, so it shows 2.

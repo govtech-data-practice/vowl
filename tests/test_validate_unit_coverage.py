@@ -269,8 +269,12 @@ def test_validation_result_print_summary_show_methods_and_chaining(capsys: pytes
     assert "Multi Table:" in output
     assert "ERRORED Checks:            1" in output
     # The basic tier sums each row-level check's failed rows without attributing.
-    assert "Failed Rows (approximate): 2" in output
-    assert "Non-unique Failed Rows:    0" in output
+    assert "Failed Rows (approximate): 2\n     Single Table:" in output
+    # No multi-table check, so no row-level one either.
+    assert (
+        "     Multi Table:\n       Checks Pass Rate:          0 / 0 (N/A)\n       ERRORED Checks:            0\n       Failed Rows (approximate): N/A"
+        in output
+    )
     assert "VALIDATION CHECKS" not in output
     assert "CHECK RESULTS" in output
     assert "Total Execution:       7.50 ms" in output
@@ -700,10 +704,12 @@ def test_validation_result_print_summary_shows_row_quality_per_schema(capsys: py
     assert "ERRORED Checks:            1" in output
     # Each table sums the failed rows of its own row-level checks, including the
     # cross-table ones, so a row caught twice counts twice.
-    assert "Failed Rows (approximate): 4" in output
-    assert "Failed Rows (approximate): 2" in output
-    assert "Non-unique Failed Rows:    2" in output
-    assert "Non-unique Failed Rows:    0" in output
+    assert "Failed Rows (approximate): 4\n     Single Table:" in output
+    assert "Failed Rows (approximate): 2\n     Single Table:" in output
+    # Multi Table sums the same way over its own row-level checks only. A
+    # passing row-level check gives 0, not N/A.
+    assert "       Failed Rows (approximate): 2\n\n   employee_list:" in output
+    assert output.rstrip().count("Failed Rows (approximate): 0") == 1
     assert "CHECK RESULTS" in output
     assert "payroll" in output
     assert "employee_list" in output
@@ -762,11 +768,11 @@ def test_validation_result_print_summary_leaves_out_a_cross_table_failure_it_can
     assert "Single Table:" in output
     assert "Checks Pass Rate:          0 / 0 (N/A)" in output
     assert "ERRORED Checks:            0" in output
-    # users sums its one cross-table check, and orders has no row-level check.
-    assert "Failed Rows (approximate): 2" in output
-    assert "Failed Rows (approximate): N/A" in output
+    # users sums its one cross-table check in Overall and in Multi Table, and
+    # orders has no row-level check.
+    assert output.count("Failed Rows (approximate): 2") == 2
+    assert output.count("Failed Rows (approximate): N/A") == 2
     assert "Multi Table:" in output
-    assert output.count("Non-unique Failed Rows:    2") == 1
     assert "CHECK RESULTS" in output
     assert "users" in output
     assert "Target" in output

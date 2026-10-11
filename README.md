@@ -124,7 +124,7 @@ result.display_full_report()
      Multi Table:
        Checks Pass Rate:          0 / 0 (N/A)
        ERRORED Checks:            0
-       Non-unique Failed Rows:    0
+       Failed Rows (approximate): N/A
 
 
  CHECK RESULTS

@@ -8,14 +8,13 @@ from collections.abc import Sequence
 import pyarrow as pa
 
 from ..executors.base import CheckResult
-from .result_models import CheckStatusSummary, OverallSummary, SchemaValidationBreakdown
+from .result_models import CheckStatusSummary, SchemaValidationBreakdown
 
 STATUS_ORDER = ("FAILED", "ERROR", "PASSED")
 SUMMARY_LABELS = (
     "Checks Pass Rate:",
     "ERRORED Checks:",
     "Failed Rows (approximate):",
-    "Non-unique Failed Rows:",
 )
 
 
@@ -117,15 +116,24 @@ def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | Non
     return "\n".join(lines)
 
 
-def format_failed_rows_approximate(overall: OverallSummary) -> str:
-    """Format a schema's approximate failed rows, or ``N/A`` without row-level checks.
+def format_failed_rows_approximate(failed_rows_approximate: int | None) -> str:
+    """Format approximate failed rows, or ``N/A`` without row-level checks.
 
     The number sums each row-level check's failed rows, so a row caught by
     two checks counts twice. The DQ metrics give the exact count.
     """
-    if overall.failed_rows_approximate is None:
+    if failed_rows_approximate is None:
         return "N/A"
-    return f"{overall.failed_rows_approximate:,}"
+    return f"{failed_rows_approximate:,}"
+
+
+def _failed_rows_approximate_line(failed_rows_approximate: int | None, label_width: int) -> str:
+    return format_summary_metric(
+        "       ",
+        "Failed Rows (approximate):",
+        format_failed_rows_approximate(failed_rows_approximate),
+        label_width,
+    )
 
 
 def _check_status_lines(
@@ -162,20 +170,13 @@ def build_schema_summary_lines(
     lines += (
         ["     Overall:"]
         + _check_status_lines(overall, w)
-        + [format_summary_metric("       ", "Failed Rows (approximate):", format_failed_rows_approximate(overall), w)]
+        + [_failed_rows_approximate_line(overall.failed_rows_approximate, w)]
     )
     lines += ["     Single Table:"] + _check_status_lines(single_table, w)
     lines += (
         ["     Multi Table:"]
         + _check_status_lines(multi_table, w)
-        + [
-            format_summary_metric(
-                "       ",
-                "Non-unique Failed Rows:",
-                f"{multi_table.failed_non_unique_rows:,}",
-                w,
-            ),
-        ]
+        + [_failed_rows_approximate_line(multi_table.failed_rows_approximate, w)]
     )
     return "\n".join(lines)
 
