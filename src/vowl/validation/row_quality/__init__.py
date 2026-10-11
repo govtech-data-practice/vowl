@@ -564,7 +564,8 @@ class _SchemaComputation:
     ) -> tuple[SchemaRowQuality, list[DimensionRowQuality], list[CheckRowQuality]]:
         """Count the schema on the exported table: each check marks its rows there."""
         table = self._export
-        assert table is not None
+        if table is None:
+            raise RuntimeError("_run_onto_table needs the exported table")
         engine_work = [
             work
             for work in pending
