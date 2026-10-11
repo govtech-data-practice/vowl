@@ -400,10 +400,10 @@ Its status is `ERROR` when the save raised, with the error as the status
 description, and `OK` otherwise. A failed save does not change the run span's
 status.
 
-| Attribute    | Description                                                                 | Presence |
-| ------------ | --------------------------------------------------------------------------- | -------- |
-| `outputs`    | The outputs the save wrote, such as `["annotated_table", "dq_metrics"]`     | Always   |
-| `file.count` | Number of files written, the two summary files included                     | Always   |
+| Attribute    | Description                                                             | Presence |
+| ------------ | ----------------------------------------------------------------------- | -------- |
+| `outputs`    | The outputs the save wrote, such as `["annotated_table", "dq_metrics"]` | Always   |
+| `file.count` | Number of files written, the two summary files included                 | Always   |
 
 The save span does not carry where the files went. To link a run to its saved
 files, add the location as a [custom attribute](#custom-attributes).
