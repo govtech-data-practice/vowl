@@ -49,3 +49,20 @@ class SchemaValidationBreakdown:
     overall: OverallSummary
     single_table: SingleTableSummary
     multi_table: MultiTableSummary
+
+
+@dataclass(frozen=True)
+class SaveRecord:
+    """One call to ``ValidationResult.save()``, kept for the OpenTelemetry trace.
+
+    ``started_ns`` and ``finished_ns`` are epoch nanoseconds, like the run
+    window. ``outputs`` holds the outputs the call wrote, sorted.
+    ``file_count`` counts the files it wrote. ``error`` is
+    ``"<ExceptionType>: <message>"`` when the call raised, else None.
+    """
+
+    started_ns: int
+    finished_ns: int
+    outputs: tuple[str, ...]
+    file_count: int
+    error: str | None = None

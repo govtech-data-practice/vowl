@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, fields
@@ -23,6 +24,7 @@ from .result_models import (
     CheckStatusSummary,
     MultiTableSummary,
     OverallSummary,
+    SaveRecord,
     SchemaValidationBreakdown,
     SingleTableSummary,
 )
@@ -213,6 +215,8 @@ class ValidationResult:
         # Wall-clock run window in epoch nanoseconds, set by the runner.
         self._run_started_ns: int | None = None
         self._run_finished_ns: int | None = None
+        # One record per save() call, for the vowl.save spans of export_otel().
+        self._saves: list[SaveRecord] = []
 
     def __repr__(self) -> str:
         total = self._vs["total_checks"]
@@ -1623,6 +1627,9 @@ class ValidationResult:
         ``["consolidated_query_outputs"]``, ``"annotated"`` to
         ``["annotated_table", "dq_metrics"]`` and ``"both"`` to all three.
         It will be removed in a future release.
+
+        Each call, including one that raises, is timed and becomes a
+        ``vowl.save`` span in the trace of a later :meth:`export_otel`.
         """
         chosen = set(_resolve_outputs(outputs, output_mode, stacklevel=2, default=self._config.outputs))
         if check_info is not None and "annotated_table" not in chosen:
@@ -1632,6 +1639,52 @@ class ValidationResult:
                 stacklevel=2,
             )
 
+        started_ns = time.time_ns()
+        saved_files: list[str] = []
+        error: str | None = None
+        try:
+            self._write_outputs(
+                saved_files,
+                chosen,
+                output_dir,
+                prefix,
+                include_check_definition=include_check_definition,
+                include_contract_definition=include_contract_definition,
+                check_info=check_info,
+                filesystem=filesystem,
+            )
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            raise
+        finally:
+            self._saves.append(
+                SaveRecord(
+                    started_ns=started_ns,
+                    finished_ns=time.time_ns(),
+                    outputs=tuple(sorted(chosen)),
+                    file_count=len(saved_files),
+                    error=error,
+                )
+            )
+
+        print("\nResults saved:")
+        for fp in saved_files:
+            print(f"   - {fp}")
+        return self
+
+    def _write_outputs(
+        self,
+        saved_files: list[str],
+        chosen: set[str],
+        output_dir: str,
+        prefix: str,
+        *,
+        include_check_definition: bool,
+        include_contract_definition: bool,
+        check_info: CheckInfoPreset | None,
+        filesystem: Any | None,
+    ) -> None:
+        """The work of :meth:`save`. Appends each written file to *saved_files*."""
         query_scope = "all" if "all_query_outputs" in chosen else "failed" if "failed_query_outputs" in chosen else None
         per_check = self._per_check_outputs(None, query_scope) if query_scope else []
         annotated: dict[str, nw.DataFrame] = {}
@@ -1645,7 +1698,7 @@ class ValidationResult:
         # Sanitize the caller-supplied prefix so it cannot traverse directories.
         prefix = _safe_filename_component(prefix, fallback="vowl_results")
 
-        saved_files = [
+        saved_files.append(
             target.write_csv(
                 f"{prefix}_check_results.csv",
                 self.get_check_results_df(
@@ -1653,7 +1706,7 @@ class ValidationResult:
                     include_contract_definition=include_contract_definition,
                 ).to_arrow(),
             )
-        ]
+        )
         saved_outputs: dict[str, list[dict[str, Any]]] = {}
 
         if query_scope:
@@ -1693,11 +1746,6 @@ class ValidationResult:
 
         summary = {**self.summary, "saved_outputs": saved_outputs}
         saved_files.append(target.write_text(f"{prefix}_summary.json", json.dumps(summary, indent=2, default=str)))
-
-        print("\nResults saved:")
-        for fp in saved_files:
-            print(f"   - {fp}")
-        return self
 
     @staticmethod
     def save_dataframe(

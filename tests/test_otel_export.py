@@ -955,6 +955,102 @@ def test_root_span_uses_the_recorded_run_window(result):
         assert root.start_time <= child.start_time <= child.end_time <= root.end_time
 
 
+def _spans_by_name(exporter, name):
+    return [s for s in exporter.get_finished_spans() if s.name == name]
+
+
+def test_no_save_gives_no_save_span(result):
+    _, _, span_exporter, _ = _explicit_export(result)
+    assert _spans_by_name(span_exporter, "vowl.save") == []
+    (root,) = _spans_by_name(span_exporter, "vowl.validate")
+    assert root.end_time == result._run_finished_ns
+
+
+def test_save_before_export_gives_a_save_span(result, tmp_path):
+    _, _, before, _ = _explicit_export(result)
+    checks_without_save = [(s.start_time, s.end_time) for s in _spans_by_name(before, "vowl.check")]
+
+    result.save(str(tmp_path), outputs=["consolidated_query_outputs", "dq_metrics"])
+    (record,) = result._saves
+    run_id, _, span_exporter, _ = _explicit_export(result)
+
+    (root,) = _spans_by_name(span_exporter, "vowl.validate")
+    (save,) = _spans_by_name(span_exporter, "vowl.save")
+    assert save.parent.span_id == root.context.span_id
+    assert (save.start_time, save.end_time) == (record.started_ns, record.finished_ns)
+    assert save.attributes["outputs"] == ("consolidated_query_outputs", "dq_metrics")
+    assert save.attributes["file.count"] == record.file_count
+    assert save.attributes["vowl.run.id"] == run_id
+    assert save.status.status_code.name == "OK"
+    # The root covers the save. The checks keep the run window.
+    assert root.start_time == result._run_started_ns
+    assert root.end_time == record.finished_ns
+    assert [(s.start_time, s.end_time) for s in _spans_by_name(span_exporter, "vowl.check")] == checks_without_save
+
+
+def test_each_save_gives_a_span_and_later_saves_are_not_in_the_export(result, tmp_path):
+    result.save(str(tmp_path / "a"), outputs=[])
+    result.save(str(tmp_path / "b"), outputs=[])
+    _, _, span_exporter, _ = _explicit_export(result)
+    result.save(str(tmp_path / "c"), outputs=[])
+
+    saves = _spans_by_name(span_exporter, "vowl.save")
+    assert [s.start_time for s in saves] == [r.started_ns for r in result._saves[:2]]
+
+
+def test_failed_save_span_has_error_status(result, tmp_path, monkeypatch):
+    from opentelemetry.trace import StatusCode
+
+    from vowl.validation._output_dir import OutputDir
+
+    def broken(self, name, text):
+        raise OSError("disk full")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(OutputDir, "write_text", broken)
+        with pytest.raises(OSError):
+            result.save(str(tmp_path), outputs=[])
+    _, _, span_exporter, _ = _explicit_export(result)
+
+    (save,) = _spans_by_name(span_exporter, "vowl.save")
+    assert save.status.status_code == StatusCode.ERROR
+    assert save.status.description == "OSError: disk full"
+    # A broken save does not mark the run as broken.
+    (root,) = _spans_by_name(span_exporter, "vowl.validate")
+    assert root.status.status_code == StatusCode.OK
+
+
+def test_save_span_name_uses_the_prefix(result, tmp_path):
+    result.save(str(tmp_path), outputs=[])
+    _, _, span_exporter, _ = _explicit_export(result, prefix="myorg")
+    assert len(_spans_by_name(span_exporter, "myorg.save")) == 1
+
+
+def test_save_does_not_change_run_duration(result, tmp_path):
+    result._run_started_ns = 1_700_000_000_000_000_000
+    result._run_finished_ns = result._run_started_ns + 250_000_000  # 250 ms
+    result.save(str(tmp_path), outputs=[])
+    _, reader, span_exporter, _ = _explicit_export(result)
+
+    (point,) = _metric_points(reader)["vowl.run.duration"]
+    assert point.sum == pytest.approx(250.0)
+    (root,) = _spans_by_name(span_exporter, "vowl.validate")
+    assert root.end_time > result._run_finished_ns
+
+
+def test_save_before_the_run_is_kept_inside_the_root(result):
+    from vowl.otel._traces import TraceEmitter
+    from vowl.validation.result_models import SaveRecord
+
+    start = result._run_started_ns
+    result._saves.append(SaveRecord(started_ns=start - 10, finished_ns=start - 5, outputs=(), file_count=2))
+    provider, exporter = _tracer_provider()
+    TraceEmitter(provider, namespace="vowl", sample_rows_by_check={}).emit(result)
+    (root,) = _spans_by_name(exporter, "vowl.validate")
+    (save,) = _spans_by_name(exporter, "vowl.save")
+    assert root.start_time <= save.start_time <= save.end_time <= root.end_time
+
+
 # --------------------------------------------------------------------------- #
 # Facade: endpoints, protocol and environment variables
 # --------------------------------------------------------------------------- #

@@ -287,7 +287,8 @@ gauges. Runs that are minutes or hours apart are not affected.
 ## Traces
 
 A trace is a timeline of one run. It is made of **spans**: one span for the
-whole run, with one span inside it for each check. A run started from an
+whole run, with one span inside it for each check and one for each
+`result.save(...)`. A run started from an
 orchestrator that already sends traces, such as Airflow or Dagster, appears
 inside that orchestrator's trace.
 
@@ -302,7 +303,8 @@ problems. To find failed checks in a trace, filter on the `status` attribute
 ### Run span: `vowl.validate`
 
 One per run. It starts when vowl connects to the data and ends when the last
-check finishes. Its status is `ERROR` if any check could not run, and `OK`
+check finishes, or when the last [save](#save-span-vowlsave) finishes if that
+is later. Its status is `ERROR` if any check could not run, and `OK`
 otherwise. The `check.count.failed` attribute counts the failed checks.
 
 Its attributes are the run-level [DQ metrics](understanding-metrics.md), with the same
@@ -377,6 +379,35 @@ Durations are exact, and start times are approximate.
 | `check.definition.*`             | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it.                                                                                 | When known                                        |
 | `check.definition.custom.<name>` | The check's `customProperties`, one key per property                                                                                                                                                                       | When the contract sets them                       |
 
+### Save span: `vowl.save`
+
+One per call to `result.save(...)` made before `export_otel()`. A save made
+after the export is not in that export's trace. Its start and end are the real
+times of the call, so the gap between the last check and the first save is the
+time your own code took in between.
+
+The run span is extended to end with the last save, so trace views draw the
+save inside it. `vowl.run.duration` is not extended. It measures the
+validation only, so the run span can be longer than that metric.
+
+A save does only the work no earlier call has done. The row queries, table
+downloads and row counts behind its outputs are kept on the result, so the
+first of `save()`, `get_dq_metrics()` and `export_otel()` that needs them pays
+for them. A save after `get_dq_metrics()`, or a second save, mostly writes
+files. See [What each method costs](../results.md#what-each-method-costs).
+
+Its status is `ERROR` when the save raised, with the error as the status
+description, and `OK` otherwise. A failed save does not change the run span's
+status.
+
+| Attribute    | Description                                                                 | Presence |
+| ------------ | --------------------------------------------------------------------------- | -------- |
+| `outputs`    | The outputs the save wrote, such as `["annotated_table", "dq_metrics"]`     | Always   |
+| `file.count` | Number of files written, the two summary files included                     | Always   |
+
+The save span does not carry where the files went. To link a run to its saved
+files, add the location as a [custom attribute](#custom-attributes).
+
 ### Failed row events: `vowl.failed_row`
 
 When `max_failed_rows_sample` is above 0, the span of each failed check also
@@ -430,8 +461,12 @@ Trace 7f3a...  (inside the pipeline's trace, if there is one)
    |     row.approximate=false  row.attribution_method=server_predicate
    |
    +- SPAN vowl.check  region_valid                  status=ERROR     9ms
-         "Error executing check: Binder Error: Referenced column "region" not found"
-         dimension=conformity  status=ERROR
+   |     "Error executing check: Binder Error: Referenced column "region" not found"
+   |     dimension=conformity  status=ERROR
+   |
+   +- SPAN vowl.save                                 status=OK      620ms
+         outputs=["all_query_outputs", "annotated_table", "consolidated_query_outputs", "dq_metrics"]
+         file.count=8
 ```
 
 The two failed checks have `OK` spans and `status=FAILED`. The run span is
@@ -439,6 +474,10 @@ The two failed checks have `OK` spans and `status=FAILED`. The run span is
 span is its status description. The span has no row attributes, because a
 check that could not run has no row counts. Its failed rows are unknown, so
 the run's row counts could be off, and the run span has `row.approximate=true`.
+
+The `vowl.save` span is from a `result.save(...)` called before the export.
+The run span's 1840ms includes its 620ms, which `vowl.run.duration` leaves
+out.
 
 The example is abbreviated. Every check span with row counts also has the
 `row.scalar_count.*` attributes, and the passed check spans also have

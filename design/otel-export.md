@@ -335,7 +335,9 @@ their rationale.
     only durations, and checks may run in parallel. So child spans keep their
     real durations and are laid out one after another from the run start. If
     that would run past the end of the run (because checks overlapped), every
-    child starts at the run start instead. The root span's status is ERROR
+    child starts at the run start instead. The root span ends at the run end,
+    or at the end of the last save if that is later (see decision 20). The
+    root span's status is ERROR
     when any check errored (see decision 15). It does not use
     `result.passed`, which ignores ERROR checks.
 15. **Span status ERROR means the check broke, not that the data was bad.**
@@ -382,6 +384,18 @@ their rationale.
     The approximate flag is not on the metrics, so the spans are where to find
     which check made a number approximate. Each is named like its metric without the level, with
     the status moved into the name because a span holds one value per key.
+20. **Save time goes on spans only.** `save()` can run row queries, download
+    tables and upload files, which can take longer than the checks. Each call
+    records its wall-clock start and end, outputs, file count and any error on
+    the result, and `TraceEmitter` turns each record into a `vowl.save` child
+    of the root span. The export stays read-only and `save()` needs no OTEL.
+    A save made after the export is not traced. The root span is extended to
+    cover the saves so trace views can draw them. `vowl.run.duration` and
+    `dq_metrics.json` are not changed: they describe the validation, and
+    `dq_metrics.json` is written by `save()` itself, so it cannot include its
+    own save. The work behind a save is cached on the result, so a save span
+    shows only work no earlier call did. The span carries no output location,
+    which may name storage the user does not want in telemetry.
     Row attributes go only on the checks the check-level row metrics cover,
     so an aggregate or errored check gets no row counts instead of a `0`
     that reads as every row passing. This replaced the earlier

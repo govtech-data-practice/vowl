@@ -4,7 +4,9 @@ Emits one root ``{namespace}.validate`` span per run and one
 ``{namespace}.check`` child span per check. The root span uses the real run
 start and end recorded by the runner when they exist. Each child keeps its real
 duration, but its start is approximate because vowl does not record when each
-check began (checks can run in parallel). Spans join any active context, so a
+check began (checks can run in parallel). Each ``save()`` made before the
+export adds one ``{namespace}.save`` child span with its real start and end,
+and the root span is extended to cover it. Spans join any active context, so a
 run nested inside an instrumented orchestrator attaches to the parent trace.
 
 ``emit`` returns the span context of each check span keyed by ``id(check)`` so
@@ -72,6 +74,10 @@ class TraceEmitter:
                 root_attrs["row.pass_rate"] = max(total - failed, 0) / total
             root_attrs["row.approximate"] = approximate
             root_attrs["row.checks_not_attributable"] = not_attributable
+        saves = list(getattr(result, "_saves", None) or [])
+        # The root covers the saves too, so trace UIs draw them inside it. The
+        # checks keep using the run window, like vowl.run.duration.
+        root_end_ns = max([end_ns, *(save.finished_ns for save in saves)])
         root = self._tracer.start_span(
             f"{self._ns}.validate",
             start_time=start_ns,
@@ -111,8 +117,28 @@ class TraceEmitter:
             child.end(end_time=min(child_start + duration_ns, end_ns))
             cursor_ns += duration_ns
 
-        root.end(end_time=end_ns)
+        for save in saves:
+            self._emit_save_span(save, root_ctx, start_ns)
+
+        root.end(end_time=root_end_ns)
         return contexts
+
+    def _emit_save_span(self, save: Any, root_ctx: Any, run_start_ns: int) -> None:
+        """One ``{namespace}.save`` child span for one ``save()`` call."""
+        from opentelemetry.trace import Status, StatusCode
+
+        attrs = dict(self._ctx_attrs)
+        attrs["outputs"] = list(save.outputs)
+        attrs["file.count"] = save.file_count
+        # Only a synthetic result can have a save before its run. Keep the span
+        # inside the root anyway.
+        start = max(save.started_ns, run_start_ns)
+        span = self._tracer.start_span(f"{self._ns}.save", context=root_ctx, start_time=start, attributes=attrs)
+        if save.error:
+            span.set_status(Status(StatusCode.ERROR, save.error))
+        else:
+            span.set_status(Status(StatusCode.OK))
+        span.end(end_time=max(save.finished_ns, start))
 
     @staticmethod
     def _run_window(result: ValidationResult) -> tuple[int, int]:

@@ -376,3 +376,58 @@ def test_mixed_column_sets_give_one_grouped_file_with_nulls(tmp_path):
     result.save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs"])
     assert _files(tmp_path) == {"r_check_results.csv", "r_summary.json", "r_orders.csv"}
     assert pa_csv.read_csv(tmp_path / "r_orders.csv").num_rows == 2
+
+
+# --------------------------------------------------------------------------- #
+# Save records (the vowl.save spans of export_otel)
+# --------------------------------------------------------------------------- #
+
+
+def test_save_records_its_window_outputs_and_file_count(tmp_path):
+    result = _result(_check("c"))
+    assert result._saves == []
+    result.save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs", "dq_metrics"])
+    (record,) = result._saves
+    assert record.started_ns <= record.finished_ns
+    assert record.outputs == ("consolidated_query_outputs", "dq_metrics")
+    assert record.file_count == len(_files(tmp_path)) == 4
+    assert record.error is None
+
+
+def test_save_with_no_outputs_records_the_two_summary_files(tmp_path):
+    result = _result(_check("c"))
+    result.save(str(tmp_path), prefix="r", outputs=[])
+    (record,) = result._saves
+    assert record.outputs == ()
+    assert record.file_count == 2
+
+
+def test_each_save_adds_a_record(tmp_path):
+    result = _result(_check("c"))
+    result.save(str(tmp_path / "a"), outputs=[])
+    result.save(str(tmp_path / "b"), outputs=["dq_metrics"])
+    first, second = result._saves
+    assert first.finished_ns <= second.started_ns
+    assert second.outputs == ("dq_metrics",)
+
+
+def test_invalid_save_arguments_leave_no_record(tmp_path):
+    result = _result(_check("c"))
+    with pytest.raises(ValueError, match="Unknown output"):
+        result.save(str(tmp_path), outputs=["nope"])
+    assert result._saves == []
+
+
+def test_failed_save_is_recorded_with_its_error(tmp_path, monkeypatch):
+    from vowl.validation._output_dir import OutputDir
+
+    def broken(self, name, text):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(OutputDir, "write_text", broken)
+    result = _result(_check("c"))
+    with pytest.raises(OSError, match="disk full"):
+        result.save(str(tmp_path), prefix="r", outputs=[])
+    (record,) = result._saves
+    assert record.error == "OSError: disk full"
+    assert record.file_count == 1  # check_results.csv was written before summary.json failed
