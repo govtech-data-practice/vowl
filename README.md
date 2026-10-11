@@ -513,7 +513,9 @@ By default only failed checks add rows. A check that passed within its tolerance
 
 Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, vowl attributes each failed row to the source table, so a row that fails several checks counts once. On DuckDB, SQLite, Spark, Databricks and PostgreSQL the data source does this. Elsewhere vowl downloads the table and holds it in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download. This work runs only when you ask for DQ metrics or annotated output, which includes the default `save()` and `export_otel()`. `print_summary()`, `get_check_results_df()` and `save(outputs=["consolidated_query_outputs"])` use the scalar counts only.
 
-See [Counting Mechanisms](docs/design-considerations/checks/counting-mechanisms.md).
+When a count could be off, for example because a check ended in `ERROR` and may hide failed rows, its `approximate` flag is set. The same flag is exported as the `vowl.<level>.row.approximate` gauges, so you can alert on it. See [Approximate row counts](docs/dq-metrics/understanding-metrics.md#approximate-row-counts).
+
+See [How Attributed Rows Work](docs/design-considerations/checks/how-attributed-rows-work.md) for how each failed row is matched to its table, and [Counting Mechanisms](docs/design-considerations/checks/counting-mechanisms.md).
 
 #### Annotated Output
 
@@ -676,6 +678,36 @@ result.save("s3://my-bucket/dq-results/run-1/")
 ```
 
 It works for `s3://`, `gs://`, `abfs://` and `hdfs://` using the filesystems built into pyarrow, so there's nothing extra to install. Credentials come from the usual place for each cloud, such as environment variables, `~/.aws`, or an IAM role. To use a custom endpoint or explicit credentials, pass `filesystem=`. See [Saving Results to Cloud Storage](docs/results.md#saving-results).
+
+#### OpenTelemetry Export
+
+`export_otel()` sends a run's results to an OpenTelemetry Collector or any monitoring tool that accepts OTLP. Install the extra first with `pip install 'vowl[otel]'`.
+
+```python
+result = validate_data("contract.yaml", df=df)
+
+run_id = result.export_otel(
+    endpoint="http://localhost:4317",
+    service_name="orders-dq",
+    custom_attributes={"deployment.environment": "prod"},
+)
+```
+
+vowl sends three signals by default:
+
+- **Metrics**: the [DQ metrics](docs/dq-metrics/understanding-metrics.md) at check, dimension, schema and run level, for dashboards and alerts.
+- **Traces**: one `vowl.validate` span per run, with a `vowl.check` span per check and a `vowl.save` span for each `save()` made before the export.
+- **Logs**: one record per check that failed or ended in `ERROR`.
+
+Nothing is re-run against the data. The returned `run_id` matches the one in `dq_metrics.json`, so you can link a saved run to its telemetry. In a deployed pipeline, leave out `endpoint` and set the standard `OTEL_EXPORTER_OTLP_*` environment variables instead.
+
+To try it locally, the repo ships a Collector, Prometheus, Tempo, Loki and Grafana stack with a ready-made DQ dashboard. Run `make otel-up`, then `make otel-add-vowl-runs` to send sample runs (needs Docker). See the [local stack guide](examples/6_dq_metrics/otel_stack/README.md).
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/govtech-data-practice/vowl/main/docs/img/otel-dashboard-teaser.png" alt="Grafana DQ dashboard showing contract pass rates, a scorecard and row pass rate trends" width="900">
+</p>
+
+See [Exporting to OpenTelemetry](docs/dq-metrics/otel-export.md) for every parameter, the span and log attributes, and how to use your own OTel providers.
 
 ## Architecture
 
@@ -1129,7 +1161,7 @@ result.display_full_report()
 | ✅ **Multi-Schema Checks**         | Cross-table referential checks within a single contract                                                                                                                                                                                        |
 | ✅ **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                                                                                                    |
 | ✅ **Foreign Key Checks**          | Checks built from ODCS `relationships` (`foreignKey`), including composite, self-referencing and external-file targets                                                                                                                         |
-| ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                                                                                                 |
+| ✅ **Optional Extras**             | Add optional Spark support with `.[spark]`, OpenTelemetry export with `.[otel]`, or install `.[all]`                                                                                                                                           |
 | ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                                                                                                    |
 | ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                                                                                                     |
 | ✅ **Annotated Output**            | Failed rows marked on a copy of the source table, with residues for checks that can't be merged                                                                                                                                                |
