@@ -70,6 +70,13 @@ Each contract gets its own in-memory DuckDB connection, the same way separate
 pipelines would each run their own validation. Use `--contracts` to send only
 some of them.
 
+On rounds 1, 3, 5 and so on, the `retail` contract's `orders` table arrives
+without its `amount` column, as if an upstream change dropped it. Its three
+`amount` checks end in `ERROR`, and an errored check may hide failed rows, so
+that run's row numbers are marked approximate. On the other rounds they are
+exact. This gives the dashboard's approximate markers something to show. Edit
+`DRIFT` in `send_sample_runs.py` to change or remove it.
+
 ## What you need
 
 - Docker, with Docker Compose
@@ -78,7 +85,13 @@ some of them.
 
 ## Quick start
 
-This folder has its own Makefile. From this folder:
+Every `make` command on this page runs from this folder. From the repo root:
+
+```bash
+cd examples/6_dq_metrics/otel_stack
+```
+
+Then:
 
 ```bash
 make otel-up
@@ -93,8 +106,7 @@ The second sends 5 rounds about 2 seconds apart, each validating all four
 contracts. Then open the dashboard at
 <http://localhost:3000/d/vowl-dq>. There is no login.
 
-From the repo root, use `make -C examples/6_dq_metrics/otel_stack otel-up` and so on. Run
-`make help` to list every target.
+Run `make help` to list every target.
 
 | Target                    | What it does                                                    |
 | ------------------------- | --------------------------------------------------------------- |
@@ -201,7 +213,7 @@ Athena, Spark, Trino or Snowflake external tables.
 
 ## Read the dashboard
 
-The screenshots come from 6 rounds of all four contracts. The dashboard reads
+The screenshots come from 5 rounds of all four contracts. The dashboard reads
 top to bottom, from the whole catalog down to single checks.
 
 ### Filters
@@ -230,9 +242,14 @@ contracts are left:
   latest run of every contract. Big contracts weigh more than small ones.
 - **Failed rows (latest runs)** adds up the rows that failed in every
   contract's latest run. Checks that are not attributable are not in it.
+- **Row numbers** says whether the row numbers you are looking at can be
+  trusted as they are. It shows **All exact** in green, or how many
+  contracts' latest runs are approximate in amber.
 - **Contract scorecard** has one row per contract, worst check pass rate
   first. Start here to decide which contract to look at. Pass rates show as a
-  bar, and failed checks counts both FAILED and ERROR.
+  bar, and failed checks counts both FAILED and ERROR. **Row numbers** marks
+  each contract's row pass rate and failed rows **Exact** or
+  **≈ Approximate**.
 
 The colours are muted on purpose. A pass rate is green at 99% or more, amber
 at 90% or more and red below that. A count turns red above 0. In this data
@@ -240,6 +257,29 @@ every contract has some failing checks on purpose, so the failure tiles are
 red. The payroll contract shows a row pass rate of 0% because its tables
 have only 2 and 3 rows and every row fails at least one check. On tiny tables
 the row pass rate swings hard, so read it with the row counts.
+
+### Exact or approximate row numbers
+
+Every row number on the dashboard, such as a row pass rate or a failed row
+count, counts the table rows that failed at least one row-level check. Most of
+the time vowl counts them exactly. Sometimes it cannot, for example when a
+row-level check ended in `ERROR` and may hide failed rows, and then it marks
+the number approximate. See [Approximate row counts](../../../docs/dq-metrics/understanding-metrics.md#approximate-row-counts) for every
+cause.
+
+The dashboard shows this in four places:
+
+| Where                                              | What it shows                                             |
+| -------------------------------------------------- | --------------------------------------------------------- |
+| **Row numbers** tile                               | Whether any contract's latest row numbers are approximate |
+| **Row numbers** column of the scorecard            | Which contract                                            |
+| Amber dots on the schema and dimension row panels  | Which table or dimension, and in which runs               |
+| **Approximate row numbers** table, near the bottom | Which check caused it and why                             |
+
+The table sits with the traces and logs, since it is for digging in once the
+tile or scorecard says a number is approximate.
+
+Hover over the ⓘ next to a panel title for what its numbers count.
 
 ### Trends
 
@@ -264,6 +304,12 @@ as its own point.
   bad contract is not hidden by the good ones. Pick a single contract to see
   its own numbers.
 
+In both, an amber dot over a line marks a point whose row numbers are
+approximate. Here the `retail / orders` line gets dots on the rounds where
+`amount` is missing. On the dimension panel a dot appears only when the lowest
+value itself is approximate, so here it marks `completeness`, where
+`retail / orders` ties for the lowest value.
+
 ### Per check tables
 
 ![Per check tables](images/dashboard-checks.png)
@@ -280,8 +326,19 @@ Both tables show the latest run of each contract. Each row is
 
 ![Traces and logs panels](images/dashboard-traces-logs.png)
 
+- **Approximate row numbers: which checks and why** lists the checks behind
+  every approximate run in the time range, with how many runs each one
+  affected and when it was last seen. A check that ended in `ERROR` shows
+  **ERROR, may hide failed rows**. For any other cause a **Reason** column
+  appears with the check's `row.attribution_note`, such as
+  `truncated by max_failed_rows`. When nothing is approximate, it says every
+  row number is exact.
+- **Saves** lists one `vowl.save` span per save, with its duration and how
+  many files it wrote. Click a span ID to open it in its trace.
 - **Validation runs** lists one `vowl.validate` trace per validation, filtered
-  by the pickers. Click a trace ID to open it.
+  by the pickers. Click a trace ID to open it. Expand a row to see whether its
+  row numbers are approximate (`row.approximate`) and how many checks were not
+  attributable (`row.checks_not_attributable`).
 - **Failed and errored checks** shows one log line per failing check, formatted
   as `[status] contract / schema / check: message`. Failed checks log at WARN
   and errored checks at ERROR.
@@ -313,6 +370,16 @@ Click a `vowl.check` span to see its attributes:
   row. `send_sample_runs.py` sends up to 3 per check through
   `max_failed_rows_sample=3`. This is off by default because it sends real
   cell values.
+
+After the checks comes one `vowl.save` span per `result.save(...)` made before
+`export_otel()`. Its bar is the real time the save took, and it carries
+`outputs` and `file.count`. `send_sample_runs.py` saves each run's annotated
+table and `dq_metrics.json` to a temporary folder first, so every trace has
+one. The root span is extended to cover the save, so a run's duration in Tempo
+includes it, while `vowl.run.duration` measures the validation only. See
+[Save span](../../../docs/dq-metrics/otel-export.md#save-span-vowlsave).
+
+![A trace with its checks and the save span at the end](images/trace-save.png)
 
 Every check span has the same name, `vowl.check`, so you cannot tell checks
 apart in the tree without opening them. To find the failed ones, search Tempo

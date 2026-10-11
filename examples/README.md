@@ -22,7 +22,7 @@ The folders follow the docs. `5_results/` goes with
 [The Results Object](../docs/results.md), and `6_dq_metrics/` goes with the
 [DQ Metrics](../docs/dq-metrics/understanding-metrics.md) guides. `otel_stack/`
 sits inside `6_dq_metrics/` because it sends the same signals the notebook shows
-to a real backend.
+to a real backend. It has its own [README](6_dq_metrics/otel_stack/README.md) and goes with [OpenTelemetry Export](../docs/dq-metrics/otel-export.md).
 
 Notebooks 1, 2, 5, and 6 write generated artifacts into their own local `outputs/`
 folder, which also holds pre-generated files for reference. `5_results/outputs/`
@@ -54,5 +54,5 @@ jupyter lab examples/1_basic_tutorial/basic_tutorial.ipynb
 > notebooks run on pandas, Polars, and in-memory DuckDB with no external services.
 >
 > `6_dq_metrics/otel_stack/` also needs Docker. Start it with `make otel-up` in that folder, send sample
-> runs with `make otel-add-vowl-runs`, and open <http://localhost:3000/d/vowl-dq>. See its
+> runs with `make otel-add-vowl-runs`, and open <http://localhost:3000/d/vowl-dq>. See the
 > [README](6_dq_metrics/otel_stack/README.md).

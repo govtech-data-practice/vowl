@@ -10,6 +10,7 @@ draw. Run from the repo root (or use `make otel-add-vowl-runs` in this folder):
 """
 
 import argparse
+import tempfile
 import time
 import warnings
 from dataclasses import dataclass
@@ -55,6 +56,11 @@ CATALOG = {
 }
 
 
+# Schema drift: on odd rounds this table arrives without this column, so its
+# checks end in ERROR and the row numbers of that run are marked approximate.
+DRIFT = ("retail", "orders", "amount")
+
+
 def load(entry: Entry) -> dict[str, pd.DataFrame]:
     frames = {}
     for schema, (csv, dtype) in entry.tables.items():
@@ -85,15 +91,21 @@ def main() -> None:
 
     warnings.filterwarnings("ignore", message="Arrow type conversion failed")
     data = {name: load(CATALOG[name]) for name in names}
+    # Each run is saved before it is exported, so its trace has a vowl.save span.
+    out_dir = tempfile.mkdtemp(prefix="vowl-otel-")
 
     for i in range(args.runs):
         frac = 0.5 + 0.5 * (i + 1) / args.runs
         for name in names:
             con = ibis.duckdb.connect()
             for schema, df in data[name].items():
-                con.create_table(schema, sample(df, frac, seed=i))
+                df = sample(df, frac, seed=i)
+                if i % 2 == 0 and (name, schema) == DRIFT[:2]:
+                    df = df.drop(columns=[DRIFT[2]])
+                con.create_table(schema, df)
             result = validate_data(contract=str(CATALOG[name].contract),
                                    adapters={schema: IbisAdapter(con) for schema in data[name]})
+            result.save(out_dir, prefix=f"{name}_{i + 1}", outputs=["annotated_table", "dq_metrics"])
             run_id = result.export_otel(
                 endpoint=ENDPOINTS[args.protocol],
                 protocol=args.protocol,
@@ -102,8 +114,9 @@ def main() -> None:
                 max_failed_rows_sample=3,
             )
             summary = result.summary["validation_summary"]
+            approximate = any(result.get_dq_metrics_df(by="schema")["approximate"])
             print(f"round {i + 1}/{args.runs} {name:<8} {summary['passed']}/{summary['total_checks']} checks passed, "
-                  f"run_id={run_id}")
+                  f"rows {'approximate' if approximate else 'exact'}, run_id={run_id}")
         if i + 1 < args.runs:
             time.sleep(args.sleep)
 

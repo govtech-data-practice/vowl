@@ -70,6 +70,7 @@ vowl (vee-owl 🦉) is a validation engine for [Open Data Contract Standard (ODC
 - **Declarative ODCS Contracts**: Define validation rules in YAML following the [Open Data Contract Standard](https://github.com/bitol-io/open-data-contract-standard).
 - **Flexible Filtering**: Filter conditions with wildcard pattern matching, ideal for incremental validation of new data.
 - **Rich Reporting**: Detailed summaries, row-level failure analysis, saveable reports, and a chainable `ValidationResult` API.
+- **DQ Metrics & OpenTelemetry**: Row-level pass rates per table, dimension and check, saved to `dq_metrics.json` or exported as OTLP metrics, traces and logs.
 - **No Silent Gaps**: Unimplemented or unrecognised checks surface as `ERROR`, not quietly skipped, so nothing slips through the cracks.
 
 ## Installation
@@ -84,7 +85,7 @@ Or install from source:
 pip install git+https://github.com/govtech-data-practice/vowl.git
 ```
 
-Optional extras are available: `vowl[spark]`, `vowl[all]`. `vowl[spark]` supports both classic Spark and Spark Connect (`pyspark[connect]`, requires pyspark >= 3.4). On runtimes pinned to pyspark 3.0–3.3, use `vowl[spark-classic]` for classic Spark only (no Spark Connect).
+Optional extras are available: `vowl[spark]`, `vowl[otel]`, `vowl[all]`. `vowl[otel]` adds the OpenTelemetry SDK and OTLP exporter that `export_otel()` needs. `vowl[spark]` supports both classic Spark and Spark Connect (`pyspark[connect]`, requires pyspark >= 3.4). On runtimes pinned to pyspark 3.0–3.3, use `vowl[spark-classic]` for classic Spark only (no Spark Connect).
 For local development, testing, and release workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Validate in 3 lines
@@ -492,7 +493,10 @@ The `validate_data` function returns a powerful `ValidationResult` object that p
 | **`get_output_dfs(checks=None, scope="failed")`**                                | Returns per-check failed rows as `{check_id: DataFrame}`. `scope="all"` returns the rows of every row-level check, with a `status` column                                                                                | Dict[str, DataFrame]            |
 | **`get_annotated_output(checks=None, check_info=None)`**                         | Returns full in-scope tables with a `check_info` column (JSON array of objects) annotating failed rows                                                                                                                   | Dict[str, Dict[str, DataFrame]] |
 | **`get_dq_metrics_df(by="schema")`**                                             | Returns how many rows of each table failed at least one check, and the pass rate. `by` can be `"schema"`, `"dimension"` or `"check"`                                                                                     | DataFrame                       |
+| **`get_check_results_df()`**                                                     | Returns one row per check with its status, dimension and counts                                                                                                                                                          | DataFrame                       |
+| **`get_consolidated_output_dfs(checks=None)`**                                   | Returns the failed rows grouped per table set, the frames behind the grouped failed-rows CSVs. Never downloads a table except to copy the tables of a cross-source check, so it suits large tables                       | Dict[str, DataFrame]            |
 | **`get_dq_metrics()`**                                                           | Returns the run's DQ metrics at check, dimension, schema and run level: the content of `dq_metrics.json`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md)                                       | dict                            |
+| **`export_otel(endpoint=None, signals=("metrics", "traces", "logs"))`**          | Sends the run's DQ metrics, traces and logs over OTLP. Needs `vowl[otel]`. See [Exporting to OpenTelemetry](docs/dq-metrics/otel-export.md)                                                                              | `str` (run id)                  |
 | **`.passed`** (property)                                                         | Boolean indicating if all checks passed                                                                                                                                                                                  | `True`/`False`                  |
 
 #### Row Quality
@@ -507,7 +511,7 @@ result.get_dq_metrics_df(by="check")        # which checks are row-level, and ho
 
 By default only failed checks add rows. A check that passed within its tolerance (for example 50 rows under `mustBeLessThan: 100`) adds nothing. Set [`ValidationConfig(fetch_tolerated_rows=True)`](docs/run-settings.md#fetch_tolerated_rows) to fetch its rows too, so they count in the row counts and appear in every output, marked as tolerated. See [Tolerated rows](docs/design-considerations/checks/check-results.md#tolerated-rows).
 
-Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, vowl attributes each failed row to the source table, so a row that fails several checks counts once. On DuckDB, SQLite, Spark, Databricks and PostgreSQL the data source does this. Elsewhere vowl downloads the table and holds it in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download. This work runs only when you ask for DQ metrics. `print_summary()`, `get_check_results_df()` and `save()` use the scalar counts only.
+Checks that are plain row filters are counted inside your data source wherever it supports it. For other checks, such as ones with `DISTINCT` or a join, vowl attributes each failed row to the source table, so a row that fails several checks counts once. On DuckDB, SQLite, Spark, Databricks and PostgreSQL the data source does this. Elsewhere vowl downloads the table and holds it in memory, about 1 to 1.5 GiB for 1 million rows at 6 columns. Annotated output reuses the same download. This work runs only when you ask for DQ metrics or annotated output, which includes the default `save()` and `export_otel()`. `print_summary()`, `get_check_results_df()` and `save(outputs=["consolidated_query_outputs"])` use the scalar counts only.
 
 See [Counting Mechanisms](docs/design-considerations/checks/counting-mechanisms.md).
 
@@ -1112,25 +1116,25 @@ result.display_full_report()
 
 ### Completed
 
-| Capability                         | Description                                                                                                                                                             |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ **Ibis Connectors**             | Interoperability with 20+ data sources via Ibis (PostgreSQL, Snowflake, BigQuery, Databricks, etc.)                                                                     |
-| ✅ **Remote Contract Loading**     | Load contracts from S3 (`s3://`) and Git (GitHub/GitLab URLs)                                                                                                           |
-| ✅ **Remote Result Saving**        | Save results straight to S3, Google Cloud, Azure, or HDFS with `result.save("s3://...")`                                                                                |
-| ✅ **JSONPath Navigation**         | Navigate contract elements using JSONPath expressions (`contract.resolve("$.schema[0].name")`)                                                                          |
-| ✅ **Static Checks**               | Auto-generated checks from contract elements: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`                                                   |
-| ✅ **Library Metrics**             | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. SQL auto-generated at runtime |
-| ✅ **ODCS Schema Validation**      | Contracts validated against ODCS JSON Schema before execution                                                                                                           |
-| ✅ **Filter Conditions**           | Incremental quality testing with wildcard pattern matching - optimised for append-only data sources                                                                     |
-| ✅ **Multi-Schema Checks**         | Cross-table referential checks within a single contract                                                                                                                 |
-| ✅ **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                             |
-| ✅ **Foreign Key Checks**          | Checks built from ODCS `relationships` (`foreignKey`), including composite, self-referencing and external-file targets                                                  |
-| ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                          |
-| ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                             |
-| ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                              |
-| ✅ **Annotated Output**            | Failed rows marked on a copy of the source table, with residues for checks that can't be merged                                                                         |
-| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/understanding-metrics.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra                            |
-| ✅ **DQ Metrics Export**           | Row-level pass and fail counts per table, dimension and check, saved to `dq_metrics.json`                                                                               |
+| Capability                         | Description                                                                                                                                                                                                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ **Ibis Connectors**             | Interoperability with 20+ data sources via Ibis (PostgreSQL, Snowflake, BigQuery, Databricks, etc.)                                                                                                                                            |
+| ✅ **Remote Contract Loading**     | Load contracts from S3 (`s3://`) and Git (GitHub/GitLab URLs)                                                                                                                                                                                  |
+| ✅ **Remote Result Saving**        | Save results straight to S3, Google Cloud, Azure, or HDFS with `result.save("s3://...")`                                                                                                                                                       |
+| ✅ **JSONPath Navigation**         | Navigate contract elements using JSONPath expressions (`contract.resolve("$.schema[0].name")`)                                                                                                                                                 |
+| ✅ **Static Checks**               | Auto-generated checks from contract elements: `logicalType`, `logicalTypeOptions`, `required`, `unique`, `primaryKey`                                                                                                                          |
+| ✅ **Library Metrics**             | Declare common data quality metrics (`nullValues`, `missingValues`, `invalidValues`, `duplicateValues`, `rowCount`) with `type: library`. SQL auto-generated at runtime                                                                        |
+| ✅ **ODCS Schema Validation**      | Contracts validated against ODCS JSON Schema before execution                                                                                                                                                                                  |
+| ✅ **Filter Conditions**           | Incremental quality testing with wildcard pattern matching - optimised for append-only data sources                                                                                                                                            |
+| ✅ **Multi-Schema Checks**         | Cross-table referential checks within a single contract                                                                                                                                                                                        |
+| ✅ **Multi-Connection Checks**     | Cross-table referential checks between different servers/databases via `MultiSourceAdapter`                                                                                                                                                    |
+| ✅ **Foreign Key Checks**          | Checks built from ODCS `relationships` (`foreignKey`), including composite, self-referencing and external-file targets                                                                                                                         |
+| ✅ **Optional Extras**             | Add optional Spark support with `.[spark]` or install `.[all]`                                                                                                                                                                                 |
+| ✅ **Custom Adapters & Executors** | Extensible architecture - create custom adapters and executors by extending `BaseAdapter`, `BaseExecutor`, or `SQLExecutor`                                                                                                                    |
+| ✅ **Parallel Check Execution**    | Run checks in parallel for faster validation across large contracts via the pooled adapter                                                                                                                                                     |
+| ✅ **Annotated Output**            | Failed rows marked on a copy of the source table, with residues for checks that can't be merged                                                                                                                                                |
+| ✅ **OpenTelemetry Export**        | Export [DQ metrics](docs/dq-metrics/understanding-metrics.md), traces, and logs via OpenTelemetry (OTLP), behind the optional `[otel]` extra. Try it locally with the [Grafana DQ dashboard stack](examples/6_dq_metrics/otel_stack/README.md) |
+| ✅ **DQ Metrics Export**           | Row-level pass and fail counts per table, dimension and check, saved to `dq_metrics.json`                                                                                                                                                      |
 
 ### Planned
 
