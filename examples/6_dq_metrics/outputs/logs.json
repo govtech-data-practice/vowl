@@ -6,7 +6,7 @@
     "attributes": {
       "service.name": "vowl",
       "vowl.version": "0.0.7.dev3",
-      "vowl.run.id": "29d78212-e5d3-4d3f-82b3-8450c0851d38",
+      "vowl.run.id": "7892ce9d-0e4d-4fee-b978-3cbedd1737d3",
       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
       "vowl.contract.name": "HDB Resale Flat Prices",
       "vowl.contract.version": "1.0.0",
@@ -35,16 +35,16 @@
     },
     "dropped_attributes": 0,
     "timestamp": null,
-    "observed_timestamp": "2026-10-09T10:21:30.584494Z",
-    "trace_id": "0xa2e98c492f20752a1e54a8e1c5da9d37",
-    "span_id": "0x8db144cc36c6627b",
+    "observed_timestamp": "2026-10-11T05:50:16.111609Z",
+    "trace_id": "0xbc4a7f199ee06d0b16167921ddf6fd43",
+    "span_id": "0x9119de8d769751c6",
     "trace_flags": 3,
     "resource": {
       "attributes": {
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "a5deb43a-4a86-4166-b45c-99a762da9247",
+        "service.instance.id": "8949558d-d47b-4054-9e5e-92c0fff24398",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -58,7 +58,7 @@
     "attributes": {
       "service.name": "vowl",
       "vowl.version": "0.0.7.dev3",
-      "vowl.run.id": "29d78212-e5d3-4d3f-82b3-8450c0851d38",
+      "vowl.run.id": "7892ce9d-0e4d-4fee-b978-3cbedd1737d3",
       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
       "vowl.contract.name": "HDB Resale Flat Prices",
       "vowl.contract.version": "1.0.0",
@@ -86,16 +86,16 @@
     },
     "dropped_attributes": 0,
     "timestamp": null,
-    "observed_timestamp": "2026-10-09T10:21:30.584566Z",
-    "trace_id": "0xa2e98c492f20752a1e54a8e1c5da9d37",
-    "span_id": "0x7dd243c6619b7336",
+    "observed_timestamp": "2026-10-11T05:50:16.111666Z",
+    "trace_id": "0xbc4a7f199ee06d0b16167921ddf6fd43",
+    "span_id": "0x7121b1215db9b757",
     "trace_flags": 3,
     "resource": {
       "attributes": {
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "a5deb43a-4a86-4166-b45c-99a762da9247",
+        "service.instance.id": "8949558d-d47b-4054-9e5e-92c0fff24398",
         "service.name": "unknown_service"
       },
       "schema_url": ""
