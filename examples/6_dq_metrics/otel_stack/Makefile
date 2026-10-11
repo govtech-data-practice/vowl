@@ -2,7 +2,7 @@
 # Run from this folder (`make otel-up`) or from the repo root (`make -C examples/6_dq_metrics/otel_stack otel-up`).
 # Requires Docker. See README.md.
 
-.PHONY: help otel-up otel-add-vowl-runs otel-logs otel-down otel-clean otel-clean-all otel-dashboard otel-query-archive
+.PHONY: help otel-up otel-add-vowl-runs otel-logs otel-down otel-clean otel-clean-all otel-query-archive
 
 UV ?= uv
 COMPOSE := docker compose -f docker-compose.yml
@@ -16,7 +16,6 @@ help:
 	@echo "  otel-down           Stop the stack, keeping its data"
 	@echo "  otel-clean          Stop the stack and delete Prometheus, Tempo, Loki and Grafana data (keeps the S3 archive)"
 	@echo "  otel-clean-all      Stop the stack and delete all data, including the S3 archive"
-	@echo "  otel-dashboard      Rebuild grafana/dashboards/vowl-dq.json"
 	@echo "  otel-query-archive  Query the S3 archive with SQL (SQL=\"SELECT ...\")"
 
 otel-up:
@@ -40,9 +39,6 @@ otel-clean:
 
 otel-clean-all:
 	$(COMPOSE) down -v
-
-otel-dashboard:
-	$(UV) run python grafana/build_dashboard.py
 
 otel-query-archive:
 	$(UV) run python query_archive.py $(if $(SQL),--sql "$(SQL)")

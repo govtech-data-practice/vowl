@@ -70,9 +70,8 @@ Open questions to settle before coding:
 
 `vowl.check.row.count` changes meaning. The project is pre-1.0 (latest tag
 `v0.0.6`), but call it out in the commit message and the docs. The example
-Grafana dashboard queries it:
-`examples/6_dq_metrics/otel_stack/grafana/build_dashboard.py` around lines
-149 and 153, and the generated `dashboards/vowl-dq.json`.
+Grafana dashboard queries it in
+`examples/6_dq_metrics/otel_stack/grafana/dashboards/vowl-dq.json`.
 
 ## Where to change
 
