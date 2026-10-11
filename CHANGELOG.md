@@ -7,80 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+This release adds **DQ metrics** and **OpenTelemetry export**, so you can track how many rows pass your checks over time and send the results to your monitoring stack. `save()` now takes `outputs=[...]` to choose which files to write, and can write straight to cloud storage. Several outputs were renamed or reshaped along the way, so read **Changed (Breaking)** before upgrading.
+
 ### Changed (Breaking)
-- **Each method does only the work it needs.** `print_summary()`, `get_check_results_df()` and `result.summary` use what the checks returned. `show_failed_rows()`, `get_output_dfs()` and `save()` with `"failed_query_outputs"` or `"consolidated_query_outputs"` also run the row query of each failed check. `get_output_dfs(scope="all")` and `"all_query_outputs"` run it for every check that did not end in `ERROR`. `get_dq_metrics()`, `get_dq_metrics_df()`, `export_otel()` and `"dq_metrics"` also attribute failed rows to their tables, which can download a table. `get_annotated_output()` and `"annotated_table"` download every table. See [What each method costs](docs/results.md#what-each-method-costs).
-- `print_summary()` no longer prints **Unique Passed Rows**. Each schema's **Overall** block shows **Failed Rows (approximate)** instead, the sum of the failed counts of the checks that return rows. Use `get_dq_metrics_df(by="schema")` for exact row counts and pass rates.
-- `print_summary()`: the **Multi Table** block's **Non-unique Failed Rows** is renamed **Failed Rows (approximate)**, the same name as in **Overall**. It now sums every cross-table row-level check, not only the failed ones, and shows `N/A` instead of `0` when there are none.
-- summary.json and `result.summary["validation_summary"]`: `failed_rows` is renamed `failed_rows_approximate`, and `total_rows_by_schema` is removed. `validate_data()` no longer counts each table's rows. Table totals are in the `total_rows` column of `get_dq_metrics_df(by="schema")`.
-- **`save()` takes `outputs=[...]`**, the list of files to write, in place of `output_mode`. With no `outputs`, it now writes every output except `"failed_query_outputs"`: per-check row files, the grouped failed-rows CSVs, annotated tables with residues and `dq_metrics.json`. In 0.0.6 it wrote the grouped CSVs only. Pass `outputs=["consolidated_query_outputs"]` to keep that. See [Saving results](docs/results.md#saving-results).
-- Output keys and file names now include the column, so checks with the same name on different columns no longer overwrite each other:
-  - `get_output_dfs()` and the `"residues"` of `get_annotated_output()` key a column-level check by `"<schema>.<column>::<check_name>"`. Schema-level checks keep `"<schema>::<check_name>"`.
-  - Residue files are `<prefix>_<schema>__<column>__<check>_residue.csv` (`<prefix>_<schema>__<check>_residue.csv` for a schema-level check), not `<prefix>_<schema>_<check>_residue.csv`.
-  - File names spell out comparison operators (`amount > 0` becomes `amount_gt_0`). Names that still clash, ignoring case, get `_2`, `_3` and so on (`amount_2`), in the order the checks ran. summary.json's `saved_outputs` maps each file to its check.
-- Checks whose operator does not mark the matched rows as bad, such as `mustBeGreaterThan` or `mustBe: 5`, are no longer row-level. They are left out of annotated tables, residues and the DQ metrics row counts. Their verdict is unchanged.
-- The `rowCount` library check now behaves like `SELECT COUNT(*) FROM t`: its `failed_rows_count` is the table size. Under an upper limit such as `mustBeLessThan` it annotates every row. Under other operators it is not row-level and has no residue. Before, it reported `0` failed rows and a failing `rowCount` made the whole table a residue.
-- A contract with two checks of the same name on one column, or two schema-level checks of the same name, now raises `ValueError` when it loads.
-- The grouped failed-rows CSVs and `get_consolidated_output_dfs()` hold one file per table set, `<prefix>_<tables>.csv`. Checks that return different columns of the same tables are no longer split into `<tables>__1` and `<tables>__2` keys and `_1`, `_2` files. Missing columns are null.
-- `get_output_dfs()` leaves out checks that passed, and failed checks whose operator sets no upper limit (such as `mustBeGreaterThan`), whose rows are the passing ones. With `fetch_tolerated_rows=True` it also holds the checks that passed within their threshold. In 0.0.6 it returned every check that did not end in `ERROR`. `get_output_dfs(scope="all")` still does, with a `status` column.
-- summary.json's `config` no longer holds `output_mode`. It holds `outputs` and `fetch_tolerated_rows` instead.
-- A composite primary key (two or more properties with `primaryKey: true`) is now checked as one key, with one `<schema>_<col1>_<col2>_primary_key_check`. Previously each column got its own check, so valid data failed whenever one column repeated on its own. The per-column check names are gone, so update any dashboards or alerts that use them. Single-column keys are unchanged.
+- **`save()` takes `outputs=[...]` instead of `output_mode`**, and by default now writes every output except `"failed_query_outputs"`. Pass `outputs=["consolidated_query_outputs"]` to keep the 0.0.6 default. See [Outputs](docs/results.md#outputs).
+- **Output keys and file names include the column**, so checks with the same name on different columns no longer overwrite each other. See [Per-check files](docs/results.md#per-check-files).
+- **`get_output_dfs()` returns only checks with failed rows.** Use `get_output_dfs(scope="all")` for the 0.0.6 behaviour. See [Failed rows per check](docs/results.md#failed-rows-per-check).
+- **The grouped failed-rows CSVs hold one file per table set**, instead of splitting by the columns each check returns. See [Consolidated files](docs/results.md#consolidated-files).
+- **`print_summary()` and summary.json no longer show passed rows or table totals**, as the 0.0.6 numbers could be approximate. `failed_rows` is renamed `failed_rows_approximate` and `total_rows_by_schema` is removed. For exact row counts, use `result.get_dq_metrics_df()`. See [Row counts](docs/results.md#row-counts).
+- **Composite primary keys are checked as one key**, with one `<schema>_<col1>_<col2>_primary_key_check`. Update any dashboards or alerts that use the old per-column check names. See [Composite Primary Keys](docs/contracts.md#composite-primary-keys).
+- **Some checks are no longer row-level**: those whose operator doesn't mark the matched rows as bad, such as `mustBeGreaterThan`, and `rowCount` outside an upper limit. Their verdict is unchanged. See [Check result types](docs/design-considerations/checks/check-results.md#counted-checks).
+- **Duplicate check names on one column or schema raise `ValueError`** when the contract loads. See [Fields of a check](docs/contracts.md#fields-of-a-check).
 
 ### Added
-- **OpenTelemetry export**: `result.export_otel()` sends a run's results as OTLP metrics, traces and logs. Install with `pip install vowl[otel]`. See [Exporting to OpenTelemetry](docs/dq-metrics/otel-export.md).
-- Each `result.save(...)` made before `export_otel()` adds a `vowl.save` span inside the `vowl.validate` span, with its real start and end, its outputs and its file count. The run span is extended to cover it, and `vowl.run.duration` still measures the validation only. See [Save span](docs/dq-metrics/otel-export.md#save-span-vowlsave).
-- **DQ metrics** at four levels (check, dimension, schema and run), named `vowl.<level>.<unit>.<measure>`. `result.get_dq_metrics()` returns them and `save(outputs=[..., "dq_metrics"])` writes them to `<prefix>_dq_metrics.json`, with the same names and values as the OpenTelemetry metrics. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md).
-- **Row-quality statistics**: `result.get_dq_metrics_df(by="schema" | "dimension" | "check")` reports how many rows of each table failed at least one row-level check, how many passed, the pass rate and whether each number is approximate. `by="check"` shows each check's `scalar_count`, `attributed_rows`, `attribution_method` and an `attribution_note` saying why a check was left out or is approximate. Annotated output and the DQ metrics share the same numbers.
-- Row counts are computed inside the data source where vowl can, so they are exact on large tables and count every copy of a duplicated row. This is tested on DuckDB, SQLite, Spark and PostgreSQL. Databricks uses the same code as Spark. Elsewhere vowl matches the failed rows onto the downloaded table, and marks a number approximate where it could be off. See [How Attributed Rows Work](docs/design-considerations/checks/how-attributed-rows-work.md).
-- `vowl.<level>.row.approximate` gauges, `1` when that level's row counts could be off, so you can alert on them. See [Approximate row counts](docs/dq-metrics/understanding-metrics.md#approximate-row-counts).
-- `result.run_id`, an ID given to every run and shared by `dq_metrics.json` and `export_otel()`. Set it to use your own.
-- **Saving to cloud storage**: `save()` takes a URI (`s3://`, `gs://`, `abfs://`, `hdfs://`, `file://`) as `output_dir`, or a `pyarrow.fs.FileSystem` through `filesystem=`. See [Cloud storage](docs/results.md#cloud-storage).
-- Per-check row files, `<prefix>_checks/<schema>__<column>__<check>.csv`. `outputs=["failed_query_outputs"]` writes them for failed checks. `"all_query_outputs"` writes them for every check that did not end in `ERROR`, with a `status` column, and is in the default outputs.
-- `get_output_dfs(scope="all")` returns what the row query of each check returned, with a `status` column. It includes passed checks and checks with no upper limit, and leaves out checks that ended in `ERROR`.
-- summary.json has a `saved_outputs` key. It lists what each output wrote, with the check, tables or schema, the row count and the file. A check with no rows is listed with `"rows": 0` and no file.
-- `ValidationConfig(fetch_tolerated_rows=True)` also fetches the failed rows of checks that passed within their threshold. Every output then includes them: `get_output_dfs()` adds a `tolerated` column, the grouped CSVs add `tolerated_check_ids`, annotated `check_info` items carry `"tolerated": true` and `show_failed_rows()` labels them `(tolerated)`. Off by default.
-- `ValidationConfig(outputs=[...])` sets what `save()` writes when you pass no `outputs`. See [Run settings](docs/run-settings.md#outputs).
-- Adapter hooks: `BaseAdapter.run_arrow_query()` and `BaseAdapter.get_column_types()` are optional, and an adapter that implements them gets its row counts computed in the data source. `IbisAdapter.with_filter_conditions()` returns a copy with other filters, which lets a filtered cross-table join run in the database.
-- `get_check_results_df()` has a `dimension` column, `"unknown"` when a check declares none.
-- `examples/6_dq_metrics/otel_stack/`: a local OpenTelemetry Collector, Prometheus, Tempo, Loki and Grafana stack with a DQ dashboard, for trying `export_otel()` end to end. It also keeps an S3 archive you can query with SQL. Run `make otel-up` and `make otel-add-vowl-runs` in that folder.
+- **DQ metrics**: how many rows of each table passed or failed, at check, dimension, schema and run level. Get them with `result.get_dq_metrics()`, `result.get_dq_metrics_df()` or `save(outputs=[..., "dq_metrics"])`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md).
+- **OpenTelemetry export**: `result.export_otel()` sends a run's results as OTLP metrics, traces and logs. Install with `pip install vowl[otel]`. See [Exporting to OpenTelemetry](docs/dq-metrics/otel-export.md). To try it locally, `examples/6_dq_metrics/otel_stack/` has a Grafana stack with a DQ dashboard.
+- **Saving to cloud storage**: `save()` accepts an `s3://`, `gs://`, `abfs://` or `hdfs://` URI, or a `pyarrow.fs.FileSystem`. See [Cloud storage](docs/results.md#cloud-storage).
+- **Per-check row files**, `get_output_dfs(scope="all")` and a `saved_outputs` list in summary.json. See [Saving results](docs/results.md#saving-results).
+- **Tolerated rows**: `ValidationConfig(fetch_tolerated_rows=True)` also fetches the failed rows of checks that passed within their threshold. See [Tolerated rows](docs/design-considerations/checks/check-results.md#tolerated-rows).
+- `ValidationConfig(outputs=[...])` sets the default for `save()`. See [Run settings](docs/run-settings.md#outputs).
+- `get_check_results_df()` has a `dimension` column.
+- Optional adapter hooks let custom adapters count rows inside their data source. See [Custom Adapters and Executors](docs/usage-patterns.md#custom-adapters-and-executors).
 
 ### Changed
-- Annotated output downloads every table in full into memory on the machine running vowl. DQ metrics download a table when it has a row-level check the data source cannot attribute, such as a cross-source check. At 6 columns this took about 3 s and 1 to 1.5 GiB for 1 million rows. Annotated output and DQ metrics download each table at most once per run. The methods that only read check results or failed rows never download a table, except that a cross-source check copies its tables into memory again to fetch its failed rows. See [What each method costs](docs/results.md#what-each-method-costs).
-- When `max_failed_rows` cuts a check's failed rows short, `get_annotated_output()` warns and marks its `check_info` items `"truncated": true` instead of raising `ValueError`. This now also applies at `max_failed_rows=0` and to `DISTINCT` checks.
-- Annotated output now merges a check whose failed rows hold the table's declared primary key but not all its columns, when that key is unique.
-- `COUNT(DISTINCT x)` checks are row-level. Their failed rows are the rows holding the counted values.
-- A cross-table check whose tables share one connection now runs in that database even when adapters have filter conditions, with each table keeping its own filters. Before, any filter made vowl download every table in the join. A cross-table check whose tables are all served by one `PooledAdapter` also runs in the database. See [PooledAdapter: Joins Across Pools Are Copied](docs/known-issues.md#pooledadapter-joins-across-pools-are-copied).
-- Schemas sharing one `PooledAdapter` now run their checks side by side, up to `max_concurrency` connections in total. Before, the pool ran one schema's checks at a time.
-- `get_consolidated_output_dfs()` and `save(outputs=["consolidated_query_outputs"])` are no longer deprecated. They are the cheap choice for large tables. They run one query per failed check and never download a table, except that a cross-source check copies its tables again.
-- `DataSourceMapper.get_adapter` given an adapter other than `IbisAdapter` still raises `TypeError`. The message now says to pass the adapter to `validate_data` as it is.
-- The warnings when a table cannot be downloaded now read `No adapter for schema '<name>', so its table cannot be downloaded.` and `Could not download the table of '<name>': <error>`.
+- **Annotated output loads every table into memory**, and DQ metrics may too. See [What each method costs](docs/results.md#what-each-method-costs) before using them on large tables.
+- **More cross-table checks run inside the database**, including with filter conditions or a shared `PooledAdapter`. See [Copying tables into memory](docs/design-considerations/cross-table/how-it-works.md#copying-tables-into-memory).
+- **Schemas sharing one `PooledAdapter` run their checks in parallel**, up to `max_concurrency`.
+- **`"consolidated_query_outputs"` is no longer the only default output.** `save()` now writes the grouped failed-rows CSVs alongside the other outputs. The 0.0.5 deprecation of `get_consolidated_output_dfs()` and `"consolidated_query_outputs"` is withdrawn, as they are the cheapest choice for large tables. See [Outputs](docs/results.md#outputs).
+- `get_annotated_output()` warns instead of raising `ValueError` when `max_failed_rows` cuts a check short. See [Capping Failed Rows](docs/design-considerations/checks/capping-failed-rows.md).
+- Annotated output can merge more checks, including `COUNT(DISTINCT x)` checks and checks that return only a unique primary key.
+- Clearer messages when an adapter is the wrong type or a table can't be downloaded.
 
 ### Deprecated
-- `save(output_mode=...)` and `ValidationConfig(output_mode=...)`. The 0.0.6 names still work with a `FutureWarning`: `"failed_rows"` maps to `outputs=["consolidated_query_outputs"]`, `"annotated"` to `["annotated_table", "dq_metrics"]` and `"both"` to all three. Passing both `output_mode=` and `outputs=` raises `ValueError`.
-- `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` emit a `DeprecationWarning` and have no effect.
-- `ValidationResult.save_dataframe()` emits a `DeprecationWarning`. Write the frame with its own library instead, for example `pyarrow.parquet.write_table(df.to_arrow(), "my-bucket/rows.parquet", filesystem=fs)`.
+- `output_mode` in `save()` and `ValidationConfig` emits a `FutureWarning`. Use `outputs=` instead. See [output_mode](docs/results.md#deprecated-output_mode).
+- `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` have no effect.
+- `ValidationResult.save_dataframe()`. Write the frame with its own library instead.
 
 ### Fixed
-- A SQL check with a syntax error now ends as `ERROR` and the other checks keep their results. Previously `validate_data` raised a sqlglot `ParseError` and the whole run was lost.
-- A quality rule with a `metric` and no `type` now runs as a library check, the ODCS default. An ODCS v3.0.2 rule with `rule:` and no `type` ends as `ERROR` saying to use `metric:`. Both previously crashed the run.
-- External references next to a contract loaded from `s3://`, including `../` paths, now resolve.
-- The failed-row cap uses `TOP` on SQL Server and Fabric and `FETCH FIRST` on Oracle, which reject `LIMIT`.
-- The `max_failed_rows` cap is no longer skipped when a query merely mentions `LIMIT`, for example in a `credit_limit` column.
-- A SQL check that joins a table the contract doesn't declare, such as a lookup table, now reads it through its own schema's adapter. Previously it failed with `No adapter configured for table '...'`.
-- `validate_data` accepts a `PooledAdapter` or a custom `BaseAdapter` subclass directly. Previously it raised `TypeError: Unsupported adapter type`.
-- `PooledAdapter.get_total_rows` leases a connection from the pool, so calling it from several threads no longer crashes on DuckDB.
-- The grouped failed-rows CSVs no longer list the passing rows of a failed check with no upper limit, such as `mustBeGreaterThan`.
-- Annotated output now flags every copy of a failing row that holds NaN, keeps `-0.0` apart from `0.0`, supports list, struct, map and fixed-size array columns, matches nanosecond timestamps and keeps `UBIGINT` values above 2^63. On PySpark, NaN values are no longer turned into NULL on download.
-- `get_annotated_output()` no longer raises `ArrowTypeError` when two checks return different types for one column, such as `int32` and `int64`.
-- A check that aliases its count, such as `SELECT COUNT(*) AS n`, now derives a row query, and a `COUNT(col)` check's row query leaves out the rows where `col` is NULL.
-- A failed-rows fetch that returns zero rows keeps its column names, so the check is still mergeable.
+- A SQL check with a syntax error now ends as `ERROR` instead of stopping the whole run.
+- Quality rules with a `metric` and no `type`, and ODCS v3.0.2 rules with `rule:` and no `type`, no longer crash the run.
+- SQL checks can join a lookup table the contract doesn't declare.
+- `validate_data` accepts a `PooledAdapter` or a custom `BaseAdapter` directly.
+- `PooledAdapter.get_total_rows` no longer crashes on DuckDB when called from several threads.
+- External references next to a contract loaded from `s3://` now resolve.
+- The `max_failed_rows` cap now works on SQL Server, Fabric and Oracle, and is no longer skipped when a column name contains `limit`.
+- The grouped failed-rows CSVs no longer list the passing rows of checks such as `mustBeGreaterThan`.
+- Annotated output handles NaN, `-0.0`, nested types, nanosecond timestamps, large unsigned integers and mixed column types correctly.
+- Checks that alias their count, such as `SELECT COUNT(*) AS n`, now get a row query, and `COUNT(col)` row queries leave out NULLs.
+- A failed-rows query that returns no rows keeps its columns, so the check can still be merged.
 
 ### Docs
-- Regrouped the guides: [Results](docs/results.md), [Run settings](docs/run-settings.md), DQ metrics ([Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md), [OpenTelemetry](docs/dq-metrics/otel-export.md), [dq_metrics.json](docs/dq-metrics/json-export.md)) and a Design Considerations tab covering [Checks](docs/design-considerations/checks/check-results.md) and [Cross-Server and Cross-Table Checks](docs/design-considerations/cross-table/how-it-works.md). The old Design Considerations page redirects to the new pages.
-- New example notebooks: `examples/5_results/results_tour.ipynb` tours the results object and `save()`, and `examples/6_dq_metrics/dq_metrics.ipynb` covers DQ metrics and OpenTelemetry export.
+- Regrouped the guides into Results, Run settings, DQ metrics and a new Design Considerations tab. The old Design Considerations page redirects to the new pages.
+- New example notebooks: `examples/5_results/results_tour.ipynb` and `examples/6_dq_metrics/dq_metrics.ipynb`.
 
 ### Dependencies
-- Capped `sqlglot` below `30.18`. Newer versions broke DataFrame, Arrow and multi-source checks with `Parser Error: syntax error at end of input`.
-- New optional `otel` extra (`opentelemetry-sdk`, `opentelemetry-exporter-otlp`), also included in `all`.
+- `sqlglot` now needs `>=30.5,<30.18`. The new minimum skips 30.2 and 30.4, which leak memory and slow down long DuckDB runs. 30.18 breaks DataFrame, Arrow and multi-source checks through ibis, so it stays out until ibis releases the fix ([ibis-project/ibis#12104](https://github.com/ibis-project/ibis/pull/12104)), expected in 13.0.0.
+- New optional `otel` extra, also included in `all`.
 
 ## [0.0.6] - 2026-09-21
 
