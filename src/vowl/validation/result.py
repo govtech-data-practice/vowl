@@ -169,7 +169,7 @@ def _fit_file_stem(stem: str, limit: int = _MAX_FILE_STEM_BYTES) -> str:
     """
     if len(stem.encode("utf-8")) <= limit:
         return stem
-    digest = hashlib.sha1(stem.encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha256(stem.encode("utf-8")).hexdigest()[:8]
     head = stem.encode("utf-8")[: limit - len(digest) - 1].decode("utf-8", errors="ignore").rstrip("._-")
     return f"{head}_{digest}"
 

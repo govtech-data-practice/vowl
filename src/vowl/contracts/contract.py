@@ -235,7 +235,7 @@ def _number_clashing_names(refs: list["CheckReference"]) -> None:
     # Authored names are reserved first, so a number never lands on a name the
     # author wrote later in the contract.
     taken = {(target, name) for ref, target, name in keyed if _is_authored_name(ref)}
-    seen: dict[tuple[str, str], "CheckReference"] = {}
+    seen: dict[tuple[str, str], CheckReference] = {}
     for ref, target, name in keyed:
         earlier = seen.get((target, name))
         if earlier is None:
@@ -322,7 +322,7 @@ class Contract:
         # the raw file reference string as written in this contract.
         self._external_cache: dict[str, Contract] = {}
         # The check references, built once (see get_check_references_by_schema).
-        self._check_refs: dict[str, list["CheckReference"]] | None = None
+        self._check_refs: dict[str, list[CheckReference]] | None = None
 
         # Validate on construction using jsonschema
         api_version = contract_data.get("apiVersion")
