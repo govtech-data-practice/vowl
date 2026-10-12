@@ -42,6 +42,8 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - `output_mode` in `save()` and `ValidationConfig` emits a `FutureWarning`. Use `outputs=` instead. See [output_mode](docs/results.md#deprecated-output_mode).
 - `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` have no effect.
 - `ValidationResult.save_dataframe()`. Write the frame with its own library instead.
+- `SQLCheckReference.get_failed_rows_query()` is renamed `get_row_query()`. The old name still works with a `FutureWarning`, and a subclass that overrides it is still used.
+- `vowl.config.OutputMode`, the type of `output_mode`. Use `SaveOutput` with `outputs=` instead.
 
 ### Fixed
 - A SQL check with a syntax error now ends as `ERROR` instead of stopping the whole run.

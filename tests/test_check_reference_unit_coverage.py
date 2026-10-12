@@ -622,3 +622,26 @@ def test_jdk_format_to_regex_handles_non_pattern_letters():
     result = _jdk_format_to_regex("yyyyMMddTHHmmss")
     assert result is not None
     assert "T" in result
+
+
+def test_get_failed_rows_query_is_a_deprecated_alias_of_get_row_query():
+    ref = _StubSQLCheckReference("SELECT COUNT(*) FROM users WHERE id > 1")
+
+    with pytest.warns(FutureWarning, match="get_row_query"):
+        assert ref.get_failed_rows_query("postgres") == ref.get_row_query("postgres")
+
+
+def test_a_0_0_6_get_failed_rows_query_override_is_still_used():
+    with pytest.warns(FutureWarning, match="override get_row_query"):
+
+        class _Legacy(_StubSQLCheckReference):
+            def get_failed_rows_query(self, dialect, filter_conditions=None, use_try_cast=False):
+                return "SELECT id FROM legacy"
+
+    assert _Legacy("SELECT COUNT(*) FROM users").get_row_query("postgres") == "SELECT id FROM legacy"
+
+
+def test_output_mode_type_is_still_importable():
+    from vowl.config import OutputMode
+
+    assert OutputMode is not None

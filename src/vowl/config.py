@@ -53,6 +53,10 @@ DEFAULT_SAVE_OUTPUTS: tuple[str, ...] = (
 
 #: The ``output_mode`` values v0.0.6 shipped, mapped to the outputs that write
 #: the same files.
+#: The deprecated ``output_mode`` values. Kept so ``from vowl.config import
+#: OutputMode`` still works. Use :data:`SaveOutput` with ``outputs=`` instead.
+OutputMode = Literal["failed_rows", "annotated", "both"]
+
 _DEPRECATED_OUTPUT_MODES: dict[str, tuple[str, ...]] = {
     "failed_rows": ("consolidated_query_outputs",),
     "annotated": ("annotated_table", "dq_metrics"),

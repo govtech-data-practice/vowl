@@ -6,6 +6,7 @@ TRY_CAST rewriting, etc.) live in :mod:`vowl.contracts.sql_transforms`.
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import cached_property
@@ -129,6 +130,32 @@ class SQLCheckReference(CheckReference, ABC):
         metadata = super().get_result_metadata()
         metadata["aggregation_type"] = self.aggregation_type
         return metadata
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # A subclass written against 0.0.6 overrides get_failed_rows_query.
+        # Route get_row_query to it so its rows are not silently replaced.
+        if "get_failed_rows_query" in cls.__dict__ and "get_row_query" not in cls.__dict__:
+            warnings.warn(
+                f"{cls.__name__}.get_failed_rows_query is deprecated, override get_row_query instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            cls.get_row_query = cls.__dict__["get_failed_rows_query"]
+
+    def get_failed_rows_query(
+        self,
+        dialect: str,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
+        use_try_cast: bool = False,
+    ) -> str | None:
+        """Deprecated alias of :meth:`get_row_query`."""
+        warnings.warn(
+            "get_failed_rows_query is deprecated, use get_row_query instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.get_row_query(dialect, filter_conditions, use_try_cast=use_try_cast)
 
     def get_row_query(
         self,
