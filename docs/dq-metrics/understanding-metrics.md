@@ -344,13 +344,13 @@ such as `vowl.contract.id`.
   </thead>
   <tbody>
     <tr class="table-group"><th colspan="2">Check level<small>One reading per check.</small></th></tr>
-    <tr><td><code>vowl.check.check.count</code></td><td><code>status</code>, <code>check_name</code>, <code>schema_name</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
-    <tr><td><code>vowl.check.row.count</code></td><td><code>status</code>, <code>check_name</code>, <code>schema_name</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
-    <tr><td><code>vowl.check.row.pass_rate</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
-    <tr><td><code>vowl.check.row.approximate</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
-    <tr><td><code>vowl.check.row.scalar_count</code></td><td><code>status</code>, <code>check_name</code>, <code>schema_name</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
-    <tr><td><code>vowl.check.row.scalar_pass_rate</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
-    <tr><td><code>vowl.check.duration</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
+    <tr><td><code>vowl.check.check.count</code></td><td><code>status</code>, <code>check_name</code>, <code>schema_name</code>, <code>target</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
+    <tr><td><code>vowl.check.row.count</code></td><td><code>status</code>, <code>check_name</code>, <code>schema_name</code>, <code>target</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
+    <tr><td><code>vowl.check.row.pass_rate</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>target</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
+    <tr><td><code>vowl.check.row.approximate</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>target</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
+    <tr><td><code>vowl.check.row.scalar_count</code></td><td><code>status</code>, <code>check_name</code>, <code>schema_name</code>, <code>target</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
+    <tr><td><code>vowl.check.row.scalar_pass_rate</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>target</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
+    <tr><td><code>vowl.check.duration</code></td><td><code>check_name</code>, <code>schema_name</code>, <code>target</code>, <code>dimension</code>, <code>severity</code>, <code>engine</code></td></tr>
     <tr class="table-group"><th colspan="2">Dimension level<small>One reading per schema and dimension.</small></th></tr>
     <tr><td><code>vowl.dimension.check.count</code></td><td><code>status</code>, <code>schema_name</code>, <code>dimension</code></td></tr>
     <tr><td><code>vowl.dimension.check.pass_rate</code></td><td><code>schema_name</code>, <code>dimension</code></td></tr>
@@ -379,6 +379,58 @@ the counts, so you can filter and join them the same way. `severity` is left
 out when the contract does not set one. The
 [traces and logs](otel-export.md#traces) carry the same numbers under the same
 names, without the level.
+
+### How a check is identified
+
+A check is identified by three attributes, the same three as in
+[`check_results.csv`](../results.md#check-results):
+
+| Attribute     | Example         | What it is                                                   |
+| ------------- | --------------- | ------------------------------------------------------------ |
+| `schema_name` | `orders`        | The schema the check belongs to.                             |
+| `target`      | `orders.amount` | `<schema>.<column>`, or `<schema>` for a schema-level check. |
+| `check_name`  | `amount_gt_0`   | The check's name.                                            |
+
+So a check named `not_null` on `orders.amount` and one on `orders.email` are
+two series, and neither is merged with a schema-level `not_null` on `orders`.
+The contract makes sure no two checks share all three. See
+[Check names](../contracts.md#check-names).
+
+`target` is used instead of a separate column attribute because every check
+has one, so schema-level checks have a value to filter on rather than a
+missing label. It is also the value you see in `check_results.csv`. Use it as a
+whole value: schema and column names can contain dots, so do not split it.
+Filter on `schema_name` for a schema, and on `target` for one column or one
+schema's own checks.
+
+`get_dq_metrics_df(by="check")` has the same three columns, so it joins with
+`get_check_results_df()` on `schema_name`, `target` and `check_name`.
+
+### Which check fields are attributes
+
+Metric attributes only hold fields that tell checks apart and stay the same
+from run to run. Each distinct value starts a new series in your monitoring
+tool, so a field that changes every run, or has many values, would make
+thousands of series. The traces and logs carry more, because each span or log
+record is one check in one run.
+
+| Field                                                                 | Metric attribute | Span and log attribute  | Why                                                                                                                   |
+| --------------------------------------------------------------------- | ---------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `check_name`, `schema_name`, `target`                                 | Yes              | Yes                     | They identify the check.                                                                                              |
+| `dimension`                                                           | Yes              | Yes                     | A small, fixed set, useful to group by.                                                                               |
+| `severity`                                                            | Yes, when set    | Yes, when set           | From the contract, and useful for alerting. It is also a `check_results.csv` column.                                  |
+| `engine`                                                              | Yes              | Yes                     | A small set, such as `sql`.                                                                                           |
+| `status`                                                              | On counts only   | Yes                     | The counts are split by status.                                                                                       |
+| `check_path`                                                          | No               | Yes                     | Unique within a contract, but it changes when you reorder the contract, which would start new series.                 |
+| `tables_in_query`                                                     | No               | Yes                     | A list.                                                                                                               |
+| `operator`, `expected_value`, `actual_value`, `query`, the definition | No               | Yes                     | Values and free text, too many to be labels.                                                                          |
+| `failed_rows_count`, `message`                                        | No               | Counts and log body     | These are the readings themselves.                                                                                    |
+| `is_generated`, `aggregation_type`, `logical_type`                    | No               | As `check.definition.*` | They describe the check rather than tell checks apart. The flattened check definition on spans and logs carries them. |
+
+`check_results.csv` has no `type` or `description` column. Earlier versions
+listed them, but no check ever filled them. The check's type is in
+`check_definition`, and its `description` is the result's details, shown in
+the report.
 
 ## The run ID
 

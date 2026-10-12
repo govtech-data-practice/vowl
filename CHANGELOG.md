@@ -17,9 +17,13 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - **`print_summary()` and summary.json no longer show passed rows or table totals**, as the 0.0.6 numbers could be approximate. `failed_rows` is renamed `failed_rows_approximate` and `total_rows_by_schema` is removed. For exact row counts, use `result.get_dq_metrics_df()`. See [Row counts](docs/results.md#row-counts).
 - **Composite primary keys are checked as one key**, with one `<schema>_<col1>_<col2>_primary_key_check`. Update any dashboards or alerts that use the old per-column check names. See [Composite Primary Keys](docs/contracts.md#composite-primary-keys).
 - **Some checks are no longer row-level**: those whose operator doesn't mark the matched rows as bad, such as `mustBeGreaterThan`, and `rowCount` outside an upper limit. Their verdict is unchanged. See [Check result types](docs/design-considerations/checks/check-results.md#counted-checks).
-- **Duplicate check names on one column or schema raise `ValueError`** when the contract loads. See [Fields of a check](docs/contracts.md#fields-of-a-check).
+- **Check names are unique on each column and schema, generated ones included.** A name you give two checks on one column or one schema, or a name that matches one vowl generates there (such as `email_required_check`), raises `ValueError` when the contract loads. An `id` counts as a name. Two checks whose names vowl made up, such as two unnamed checks, are numbered `_2`, `_3` instead. Two schemas with the same name also raise, where 0.0.6 silently dropped the first one's checks. See [Check names](docs/contracts.md#check-names).
+- **Foreign key checks name both ends**: `<schema>_<columns>_to_<target schema>_<target columns>_foreign_key_check`, for example `orders_customer_id_to_customers_customer_id_foreign_key_check`. Two foreign keys from one column now get different names. Update any filters or alerts on the old names. See [Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys).
+- **`check_results.csv` has no `type` or `description` column**, which no check ever filled. It gains `severity` when a check sets one.
 
 ### Added
+- **Every check is identified by `schema_name`, `target` and `check_name`** in DQ metrics, `dq_metrics.json`, OpenTelemetry metrics, spans and logs, and `get_dq_metrics_df(by="check")`, the same as in `check_results.csv`. `target` is `<schema>.<column>`, or `<schema>` for a schema-level check. Checks with the same name on different columns, or on a column and its schema, are no longer merged. See [How a check is identified](docs/dq-metrics/understanding-metrics.md#how-a-check-is-identified).
+- Check spans and logs carry `check_path` and `tables_in_query`. `get_dq_metrics_df(by="check")` has `target`, `severity` and `engine` columns.
 - **DQ metrics**: how many rows of each table passed or failed, at check, dimension, schema and run level. Get them with `result.get_dq_metrics()`, `result.get_dq_metrics_df()` or `save(outputs=[..., "dq_metrics"])`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md).
 - **OpenTelemetry export**: `result.export_otel()` sends a run's results as OTLP metrics, traces and logs. Install with `pip install vowl[otel]`. See [Exporting to OpenTelemetry](docs/dq-metrics/otel-export.md). To try it locally, `examples/6_dq_metrics/otel_stack/` has a Grafana stack with a DQ dashboard.
 - **Saving to cloud storage**: `save()` accepts an `s3://`, `gs://`, `abfs://` or `hdfs://` URI, or a `pyarrow.fs.FileSystem`. See [Cloud storage](docs/results.md#cloud-storage).
@@ -46,6 +50,9 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - `vowl.config.OutputMode`, the type of `output_mode`. Use `SaveOutput` with `outputs=` instead.
 
 ### Fixed
+- Unsupported checks nested under a property, such as an unknown `logicalTypeOptions.format` or an `items` option, now report their schema and column instead of a wrong or missing one.
+- A check whose engine has no executor, or whose schema has no adapter, keeps its schema and target in its `ERROR` result.
+- `save()` no longer fails with "File name too long" on long schema, column or check names. A name over about 230 bytes is shortened and ends in a hash of the full name. See [Consolidated files](docs/results.md#consolidated-files).
 - A SQL check with a syntax error now ends as `ERROR` instead of stopping the whole run.
 - Quality rules with a `metric` and no `type`, and ODCS v3.0.2 rules with `rule:` and no `type`, no longer crash the run.
 - SQL checks can join a lookup table the contract doesn't declare.

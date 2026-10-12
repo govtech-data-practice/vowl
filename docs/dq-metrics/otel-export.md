@@ -331,9 +331,9 @@ holds one value per name, so the status is part of the name:
 
 One per check. Its status is `ERROR` for a check that could not run, and `OK`
 otherwise, including for a check that failed. Its `check_name`, `status`,
-`schema_name`, `dimension`, `severity` and `engine` are the same as on the
-check-level metrics, so you can go from a metric to its span by filtering on
-them. For an `ERROR` status, the
+`schema_name`, `target`, `dimension`, `severity` and `engine` are the same as
+on the check-level metrics, so you can go from a metric to its span by
+filtering on them. For an `ERROR` status, the
 status description is the check's message, such as the database error.
 
 Only row-level checks have row attributes, as with the check-level row
@@ -360,6 +360,9 @@ Durations are exact, and start times are approximate.
 | `check_name`                     | Name of the check                                                                                                                                                                                                          | Always                                            |
 | `status`                         | `PASSED`, `FAILED`, or `ERROR`                                                                                                                                                                                             | Always                                            |
 | `schema_name`                    | Schema the check belongs to                                                                                                                                                                                                | When known                                        |
+| `target`                         | `<schema>.<column>`, or `<schema>` for a schema-level check. With `schema_name` and `check_name` it identifies the check. See [How a check is identified](understanding-metrics.md#how-a-check-is-identified).             | When known                                        |
+| `check_path`                     | Where the check is in the contract, such as `$.schema[0].properties[1].quality[0]`. Unique in the contract, so it tells two checks apart in a trace or log, but it changes when you reorder the contract.                  | When known                                        |
+| `tables_in_query`                | The tables the check's query read, as a list                                                                                                                                                                               | When known                                        |
 | `dimension`                      | Quality dimension (for example `completeness` or `consistency`)                                                                                                                                                            | Always. `"unknown"` when the check has none.      |
 | `severity`                       | Check severity (for example `error` or `warning`)                                                                                                                                                                          | When the contract sets one                        |
 | `engine`                         | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                                                                                                | When known                                        |
@@ -439,7 +442,7 @@ Trace 7f3a...  (inside the pipeline's trace, if there is one)
    |   row.approximate=true  row.checks_not_attributable=0
    |
    +- SPAN vowl.check  email_required_check          status=OK       38ms
-   |     schema_name=orders  dimension=completeness  severity=error
+   |     schema_name=orders  target=orders.email  dimension=completeness  severity=error
    |     status=FAILED  engine=sql
    |     row.count.passed=958  row.count.failed=42  row.pass_rate=0.958
    |     row.approximate=false  row.attribution_method=server_predicate
@@ -505,23 +508,26 @@ check, filter on the `status` attribute instead.
 
 ### Log record attributes
 
-| Attribute                                                           | Description                                                                                                                                | Presence                                                 |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| `check_name`                                                        | Name of the check                                                                                                                          | Always                                                   |
-| `status`                                                            | `FAILED` or `ERROR`                                                                                                                        | Always                                                   |
-| `schema_name`                                                       | Schema the check belongs to                                                                                                                | When known                                               |
-| `dimension`                                                         | Quality dimension                                                                                                                          | Always. `"unknown"` when the check has none.             |
-| `severity`                                                          | Check severity                                                                                                                             | When the contract sets one                               |
-| `engine`                                                            | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                | When known                                               |
-| `row.count.passed`                                                  | The table's rows minus the check's attributed rows, as on its span                                                                         | When the check has attributed rows                       |
-| `row.count.failed`                                                  | The check's attributed rows, as on its span                                                                                                | When the check has attributed rows                       |
-| `row.pass_rate`                                                     | Share of rows that passed this check, as on its span                                                                                       | When the check has attributed rows                       |
-| `row.scalar_count.*`                                                | The scalar count and its pass rate, as on its span                                                                                         | When the check gets row counts                           |
-| `row.approximate`, `row.attribution_method`, `row.attribution_note` | How the check took part in the row counts, as on its span                                                                                  | As on its span                                           |
-| `query`                                                             | The SQL the check ran                                                                                                                      | When known                                               |
-| `check.definition.*`                                                | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it. | When known                                               |
-| `check.definition.custom.<name>`                                    | The check's `customProperties`, one key per property                                                                                       | When the contract sets them                              |
-| `vowl.failed_rows_sample`                                           | Sampled failed rows, as a JSON list                                                                                                        | When `max_failed_rows_sample` is above 0 and rows failed |
+| Attribute                                                           | Description                                                                                                                                                                                                    | Presence                                                 |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `check_name`                                                        | Name of the check                                                                                                                                                                                              | Always                                                   |
+| `status`                                                            | `FAILED` or `ERROR`                                                                                                                                                                                            | Always                                                   |
+| `schema_name`                                                       | Schema the check belongs to                                                                                                                                                                                    | When known                                               |
+| `target`                                                            | `<schema>.<column>`, or `<schema>` for a schema-level check. With `schema_name` and `check_name` it identifies the check. See [How a check is identified](understanding-metrics.md#how-a-check-is-identified). | When known                                               |
+| `check_path`                                                        | Where the check is in the contract, such as `$.schema[0].properties[1].quality[0]`. Unique in the contract, so it tells two checks apart in a trace or log, but it changes when you reorder the contract.      | When known                                               |
+| `tables_in_query`                                                   | The tables the check's query read, as a list                                                                                                                                                                   | When known                                               |
+| `dimension`                                                         | Quality dimension                                                                                                                                                                                              | Always. `"unknown"` when the check has none.             |
+| `severity`                                                          | Check severity                                                                                                                                                                                                 | When the contract sets one                               |
+| `engine`                                                            | How the check ran: `sql` for SQL checks, or the engine a custom check names                                                                                                                                    | When known                                               |
+| `row.count.passed`                                                  | The table's rows minus the check's attributed rows, as on its span                                                                                                                                             | When the check has attributed rows                       |
+| `row.count.failed`                                                  | The check's attributed rows, as on its span                                                                                                                                                                    | When the check has attributed rows                       |
+| `row.pass_rate`                                                     | Share of rows that passed this check, as on its span                                                                                                                                                           | When the check has attributed rows                       |
+| `row.scalar_count.*`                                                | The scalar count and its pass rate, as on its span                                                                                                                                                             | When the check gets row counts                           |
+| `row.approximate`, `row.attribution_method`, `row.attribution_note` | How the check took part in the row counts, as on its span                                                                                                                                                      | As on its span                                           |
+| `query`                                                             | The SQL the check ran                                                                                                                                                                                          | When known                                               |
+| `check.definition.*`                                                | The check's full definition, one key per field. For a check vowl generated (such as `required`), this is the definition vowl wrote for it.                                                                     | When known                                               |
+| `check.definition.custom.<name>`                                    | The check's `customProperties`, one key per property                                                                                                                                                           | When the contract sets them                              |
+| `vowl.failed_rows_sample`                                           | Sampled failed rows, as a JSON list                                                                                                                                                                            | When `max_failed_rows_sample` is above 0 and rows failed |
 
 ### Worked example
 
@@ -532,19 +538,19 @@ passed write nothing. The first line of each record is its body.
 [WARN]  Column 'email' must not contain NULL values
         trace_id=7f3a...  span_id=a11c...
         check_name=email_required_check  status=FAILED
-        schema_name=orders  dimension=completeness
+        schema_name=orders  target=orders.email  dimension=completeness
         row.count.passed=958  row.count.failed=42  row.pass_rate=0.958
 
 [WARN]  Column 'order_id' must contain unique values
         trace_id=7f3a...  span_id=b02d...
         check_name=order_id_unique_check  status=FAILED
-        schema_name=orders  dimension=consistency
+        schema_name=orders  target=orders.order_id  dimension=consistency
         row.count.passed=997  row.count.failed=3  row.pass_rate=0.997
 
 [ERROR] Error executing check: Binder Error: Referenced column "region" not found
         trace_id=7f3a...  span_id=c73e...
         check_name=region_valid  status=ERROR
-        schema_name=orders  dimension=conformity
+        schema_name=orders  target=orders.region  dimension=conformity
         query='SELECT COUNT(*) FROM "orders" WHERE region NOT IN (...)'
 ```
 

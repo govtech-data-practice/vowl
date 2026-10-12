@@ -348,7 +348,7 @@ schema:
             to: demo_employee_list.employee_id
 ```
 
-This generates a check named `demo_employee_payroll_employee_id_foreign_key_check`. A payroll row whose `employee_id` is `NULL` is **skipped**, so an optional foreign key is allowed. A value fails only when it is present but has no match in the master list. Because failed rows carry only the payroll table's columns, they appear **in the `demo_employee_payroll` annotated table** rather than a separate residue.
+This generates a check named `demo_employee_payroll_employee_id_to_demo_employee_list_employee_id_foreign_key_check`. A payroll row whose `employee_id` is `NULL` is **skipped**, so an optional foreign key is allowed. A value fails only when it is present but has no match in the master list. Because failed rows carry only the payroll table's columns, they appear **in the `demo_employee_payroll` annotated table** rather than a separate residue.
 
 Need composite keys, cross-file references, or cross-source joins? See [Data Contracts: Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys).
 

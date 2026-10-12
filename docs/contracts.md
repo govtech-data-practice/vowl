@@ -108,7 +108,22 @@ schema:
 | `unit`        | `percent` turns a library check's count into a percentage of all rows. `rowCount` ignores it.                                                     |
 | An operator   | What the number must be for the check to pass. See below.                                                                                         |
 
-Check names must be unique within one `quality` list. Two checks with the same name on one column, or both on the schema, make `Contract.load` raise a `ValueError`. The same name on different columns is fine.
+#### Check names
+
+Every result identifies a check by its schema, its `target` (`<schema>.<column>`,
+or `<schema>` for a schema-level check) and its name. So no two checks can share
+all three. When the contract loads:
+
+- Two checks you named the same on one column, or both on the schema, make
+  `Contract.load` raise a `ValueError`. So does a name that matches one vowl
+  generates there, such as a check you name `email_required_check` on a
+  required `email` column. An `id` counts as a name.
+- Two checks whose names vowl made up are numbered instead, in contract order:
+  two unnamed `completeness` checks on `email` are `email_completeness` and
+  `email_completeness_2`. The same goes for a relationship declared twice.
+- Two schemas with the same name raise a `ValueError`.
+
+The same name on different columns, or on a column and on its schema, is fine.
 
 ### Check types
 
@@ -572,10 +587,10 @@ schema:
             to: customers.customer_id
 ```
 
-This generates a check named `orders_customer_id_foreign_key_check`. Rows with a `NULL` key are skipped, so an optional foreign key is allowed. A value fails only when it is present but has no match in the target.
+This generates a check named `orders_customer_id_to_customers_customer_id_foreign_key_check`, `<schema>_<columns>_to_<target schema>_<target columns>_foreign_key_check`. Both ends are in the name, so two foreign keys from one column get different names. Rows with a `NULL` key are skipped, so an optional foreign key is allowed. A value fails only when it is present but has no match in the target.
 
 ```sql
--- orders_customer_id_foreign_key_check
+-- orders_customer_id_to_customers_customer_id_foreign_key_check
 SELECT COUNT(*) FROM "orders" AS "_vowl_fk_from"
 WHERE NOT "_vowl_fk_from"."customer_id" IS NULL
   AND NOT EXISTS(
@@ -620,7 +635,7 @@ schema:
 A composite row is skipped if **any** of its key columns is `NULL`.
 
 ```sql
--- order_items_category_sku_foreign_key_check
+-- order_items_category_sku_to_products_category_sku_foreign_key_check
 SELECT COUNT(*) FROM "order_items" AS "_vowl_fk_from"
 WHERE NOT "_vowl_fk_from"."category" IS NULL
   AND NOT "_vowl_fk_from"."sku" IS NULL

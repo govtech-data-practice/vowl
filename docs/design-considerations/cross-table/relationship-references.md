@@ -89,7 +89,7 @@ From there the check runs like any [cross-table check](how-it-works.md#where-eac
 - **A target vowl can't find**, such as a missing property or an external
   file with no known location to start from. The check ends in `ERROR`, with
   the reason in its message. It is named after the column, for example
-  `customer_id_check`, not `<schema>_<column>_foreign_key_check`.
+  `customer_id_check`, not `<schema>_<column>_to_<target>_foreign_key_check`.
 
 In every case the rest of the run goes ahead. A target schema in the same
 contract is different. With `adapters={...}` it needs its own adapter like

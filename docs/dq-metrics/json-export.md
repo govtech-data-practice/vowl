@@ -68,6 +68,7 @@ are three of them, one of each type:
       "attributes": {
         "check_name": "email_required_check",
         "schema_name": "orders",
+        "target": "orders.email",
         "dimension": "completeness",
         "engine": "sql",
         "status": "FAILED"
@@ -174,22 +175,22 @@ Pivot the check level to see each check's rows side by side:
 
 ```python
 points[points["name"] == "vowl.check.row.count"].pivot_table(
-    index=["attributes.schema_name", "attributes.check_name"],
+    index=["attributes.target", "attributes.check_name"],
     columns="attributes.status",
     values="value",
 )
 ```
 
 ```
-attributes.status                                    FAILED  PASSED
-attributes.schema_name attributes.check_name
-orders                 email_column_exists_check        0.0   100.0
-                       email_required_check             5.0    95.0
-                       order_id_column_exists_check     0.0   100.0
-                       order_id_required_check          0.0   100.0
-                       order_id_unique_check            3.0    97.0
-refunds                amount_column_exists_check       0.0    20.0
-                       refund_positive                  2.0    18.0
+attributes.status                               FAILED  PASSED
+attributes.target attributes.check_name
+orders.email      email_column_exists_check        0.0   100.0
+                  email_required_check             5.0    95.0
+orders.order_id   order_id_column_exists_check     0.0   100.0
+                  order_id_required_check          0.0   100.0
+                  order_id_unique_check            3.0    97.0
+refunds.amount    amount_column_exists_check       0.0    20.0
+                  refund_positive                  2.0    18.0
 ```
 
 Or take everything at run level for a one-line summary of the run:
@@ -239,10 +240,9 @@ Each entry in `points` has:
 The metric names always start with `vowl`. The `prefix` of `save()` only names the
 file.
 
-Two readings with the same name and attributes, such as two checks with the
-same name in one schema, are merged the way OpenTelemetry merges them. Counters
-add up and the last gauge reading wins. Every timing is kept. Give checks
-unique names to see each one on its own.
+Each check has its own readings, because `schema_name`, `target` and
+`check_name` together are unique in a run. See
+[How a check is identified](understanding-metrics.md#how-a-check-is-identified).
 
 ## Loading many runs
 

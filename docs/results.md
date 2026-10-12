@@ -51,16 +51,18 @@ library you use.
 
 `get_check_results_df()` returns one row per check. The main columns are:
 
-| Column                                       | What it holds                                                                                                                                                                                                         |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `check_name`                                 | The check's name                                                                                                                                                                                                      |
-| `schema_name`                                | The schema the check belongs to                                                                                                                                                                                       |
-| `dimension`                                  | The check's dimension, such as `completeness`                                                                                                                                                                         |
-| `status`                                     | `PASSED`, `FAILED` or `ERROR`                                                                                                                                                                                         |
-| `operator`, `expected_value`, `actual_value` | What the check compared, for example `mustBe`, `0` and `3`                                                                                                                                                            |
-| `failed_rows_count`                          | The check's scalar count when it failed. `0` when it passed or ended in `ERROR`, or when it returns one number, such as an average. `actual_value` always holds the scalar. For `COUNT(DISTINCT x)` it counts values. |
-| `message`                                    | Why the check ended in `ERROR`. Empty otherwise.                                                                                                                                                                      |
-| `execution_time_ms`                          | How long the check took                                                                                                                                                                                               |
+| Column                                       | What it holds                                                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check_name`                                 | The check's name                                                                                                                                                                                                          |
+| `schema_name`                                | The schema the check belongs to                                                                                                                                                                                           |
+| `target`                                     | `<schema>.<column>`, or `<schema>` for a schema-level check. With `schema_name` and `check_name` it identifies the check. See [How a check is identified](dq-metrics/understanding-metrics.md#how-a-check-is-identified). |
+| `dimension`                                  | The check's dimension, such as `completeness`                                                                                                                                                                             |
+| `severity`                                   | The check's `severity` from the contract, such as `error`. Only present when a check sets it.                                                                                                                             |
+| `status`                                     | `PASSED`, `FAILED` or `ERROR`                                                                                                                                                                                             |
+| `operator`, `expected_value`, `actual_value` | What the check compared, for example `mustBe`, `0` and `3`                                                                                                                                                                |
+| `failed_rows_count`                          | The check's scalar count when it failed. `0` when it passed or ended in `ERROR`, or when it returns one number, such as an average. `actual_value` always holds the scalar. For `COUNT(DISTINCT x)` it counts values.     |
+| `message`                                    | Why the check ended in `ERROR`. Empty otherwise.                                                                                                                                                                          |
+| `execution_time_ms`                          | How long the check took                                                                                                                                                                                                   |
 
 Pass `include_check_definition=True` to add each check's definition as JSON,
 and `include_contract_definition=True` to add the part of the contract it came
@@ -80,7 +82,9 @@ in how much data they read.
 | Downloads tables    | No                                                                              | No                                                           | Every table in the contract                   |
 | Saved by `outputs=` | `"failed_query_outputs"` (default scope), `"all_query_outputs"` (`scope="all"`) | `"consolidated_query_outputs"`                               | `"annotated_table"`                           |
 
-All three take `checks=["check_a", "check_b"]` to return only those checks, and
+All three take `checks=["check_a", "check_b"]` to return only those checks. A
+name picks every check with that name, so `checks=["not_null"]` returns
+`not_null` on every column that has it. They also
 share the failed rows they fetch, so a second call queries nothing again. They
 include the same checks. [`get_output_dfs(scope="all")`](#every-checks-rows)
 includes more:
@@ -458,6 +462,12 @@ when two names clean to the same name, such as `Orders` and `orders`, which are
 one file on macOS and Windows. It also happens when a name matches a file
 `save()` always writes, such as a table named `check_results`, whose file is
 `orders_check_results_2.csv`. The `saved_outputs` list says which file is which.
+
+A name too long for the file system, over about 230 bytes, is cut short and
+ends in `_` and 8 characters of a hash of the full name, such as
+`orders__a_very_long_column_name…_3f9a2c1b.csv`. The hash is the same on every
+run, and keeps two long names that start alike apart. Names that fit are left
+as they are.
 
 ### The saved_outputs list
 
