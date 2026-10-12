@@ -15,6 +15,7 @@ its own counts, not a running total since the process started.
 
 from __future__ import annotations
 
+import contextlib
 import warnings
 from dataclasses import dataclass, field
 from typing import Any
@@ -234,36 +235,44 @@ def resolve_providers(
             return ResolvedProvider(get_global(), owned=False)
         return ResolvedProvider(build(), owned=True)
 
-    if "metrics" in signals:
-        rp = _resolve(
-            metric_provider,
-            _metrics.get_meter_provider,
-            lambda: _build_meter_provider(
-                resource if metrics_resource is None else metrics_resource, protocol, endpoint, headers, failed
-            ),
-        )
-        resolved.meter = rp.provider
-        if rp.owned:
-            resolved._owned.append(rp.provider)
+    # A provider built for an earlier signal is shut down if a later one
+    # fails to build, so its export thread does not outlive the call.
+    try:
+        if "metrics" in signals:
+            rp = _resolve(
+                metric_provider,
+                _metrics.get_meter_provider,
+                lambda: _build_meter_provider(
+                    resource if metrics_resource is None else metrics_resource, protocol, endpoint, headers, failed
+                ),
+            )
+            resolved.meter = rp.provider
+            if rp.owned:
+                resolved._owned.append(rp.provider)
 
-    if "traces" in signals:
-        rp = _resolve(
-            tracer_provider,
-            _trace.get_tracer_provider,
-            lambda: _build_tracer_provider(resource, protocol, endpoint, headers, failed),
-        )
-        resolved.tracer = rp.provider
-        if rp.owned:
-            resolved._owned.append(rp.provider)
+        if "traces" in signals:
+            rp = _resolve(
+                tracer_provider,
+                _trace.get_tracer_provider,
+                lambda: _build_tracer_provider(resource, protocol, endpoint, headers, failed),
+            )
+            resolved.tracer = rp.provider
+            if rp.owned:
+                resolved._owned.append(rp.provider)
 
-    if "logs" in signals:
-        rp = _resolve(
-            logger_provider,
-            get_logger_provider,
-            lambda: _build_logger_provider(resource, protocol, endpoint, headers, failed),
-        )
-        resolved.logger = rp.provider
-        if rp.owned:
-            resolved._owned.append(rp.provider)
+        if "logs" in signals:
+            rp = _resolve(
+                logger_provider,
+                get_logger_provider,
+                lambda: _build_logger_provider(resource, protocol, endpoint, headers, failed),
+            )
+            resolved.logger = rp.provider
+            if rp.owned:
+                resolved._owned.append(rp.provider)
+    except BaseException:
+        # The build error is the one to report, not a shutdown error.
+        with contextlib.suppress(Exception):
+            resolved.flush_and_shutdown()
+        raise
 
     return resolved

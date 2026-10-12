@@ -170,6 +170,40 @@ def test_export_otel_without_extra_raises_friendly_error(monkeypatch, result):
         result.export_otel()
 
 
+def test_export_otel_with_only_the_api_raises_friendly_error(monkeypatch, result):
+    """opentelemetry-api alone (often pulled in by other libraries) is not enough."""
+    monkeypatch.setitem(sys.modules, "opentelemetry.sdk", None)
+    with pytest.raises(ImportError, match=r"pip install vowl\[otel\]"):
+        result.export_otel(endpoint="http://127.0.0.1:1")
+
+
+def test_built_providers_are_shut_down_when_a_later_one_fails(monkeypatch, result):
+    from vowl.otel import _providers
+
+    shut_down = []
+    original = _providers._build_meter_provider
+
+    def meter_provider(*args, **kwargs):
+        provider = original(*args, **kwargs)
+        real_shutdown = provider.shutdown
+
+        def shutdown(*a, **k):
+            shut_down.append(provider)
+            return real_shutdown(*a, **k)
+
+        provider.shutdown = shutdown
+        return provider
+
+    def broken_tracer_provider(*args, **kwargs):
+        raise RuntimeError("simulated tracer build failure")
+
+    monkeypatch.setattr(_providers, "_build_meter_provider", meter_provider)
+    monkeypatch.setattr(_providers, "_build_tracer_provider", broken_tracer_provider)
+    with pytest.raises(RuntimeError, match="simulated tracer build failure"):
+        result.export_otel(endpoint="http://127.0.0.1:1")
+    assert len(shut_down) == 1
+
+
 # --------------------------------------------------------------------------- #
 # Shared resource / attribute builders
 # --------------------------------------------------------------------------- #

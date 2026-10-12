@@ -1534,6 +1534,10 @@ class ValidationResult:
                 reached, for any provider vowl built itself.
         """
         try:
+            # vowl.otel itself only needs opentelemetry-api, which other
+            # libraries often pull in, so probe the SDK as well.
+            import opentelemetry.sdk  # noqa: F401
+
             from ..otel import OtelExporter
         except ImportError as exc:
             raise ImportError(
