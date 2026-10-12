@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -153,6 +154,26 @@ def _check_file_stem(cr: CheckResult) -> str:
     return "__".join(_file_name_part(part) for part in parts if part)
 
 
+# Most file systems allow 255 bytes per file name. A stem over this is
+# shortened, leaving room for a ``_2`` number, ``_residue`` and the extension.
+# Names that already fit are left as they are.
+_MAX_FILE_STEM_BYTES = 230
+
+
+def _fit_file_stem(stem: str, limit: int = _MAX_FILE_STEM_BYTES) -> str:
+    """*stem*, or a shortened one ending in a hash of the whole stem when it is too long.
+
+    The length is counted in UTF-8 bytes, so a non-ASCII name is cut at a
+    character, never inside one. The hash keeps two long names that start
+    alike apart, and is the same on every run.
+    """
+    if len(stem.encode("utf-8")) <= limit:
+        return stem
+    digest = hashlib.sha1(stem.encode("utf-8")).hexdigest()[:8]
+    head = stem.encode("utf-8")[: limit - len(digest) - 1].decode("utf-8", errors="ignore").rstrip("._-")
+    return f"{head}_{digest}"
+
+
 def _check_file_stems(checks: Sequence[CheckResult]) -> dict[int, str]:
     """The file name stem of each check, keyed by ``id()``.
 
@@ -162,7 +183,7 @@ def _check_file_stems(checks: Sequence[CheckResult]) -> dict[int, str]:
     check has. Every check gets a stem, whatever its status, so the name
     depends on the contract alone.
     """
-    base = [_check_file_stem(cr) for cr in checks]
+    base = [_fit_file_stem(_check_file_stem(cr)) for cr in checks]
     reserved = {stem.casefold() for stem in base}
     used: set[str] = set()
     stems: dict[int, str] = {}
@@ -184,6 +205,9 @@ def _claim_file_name(name: str, taken: set[str]) -> str:
     The name returned is added to *taken*.
     """
     stem, dot, ext = name.rpartition(".")
+    # Room for a "_<n>" number and the extension within 255 bytes.
+    stem = _fit_file_stem(stem, 255 - 8 - len(dot + ext))
+    name = f"{stem}{dot}{ext}"
     candidate, n = name, 2
     while candidate.casefold() in taken:
         candidate = f"{stem}_{n}{dot}{ext}"
@@ -1325,9 +1349,7 @@ class ValidationResult:
         "target",
         "schema_name",
         "engine",
-        "type",
         "dimension",
-        "description",
         "status",
         "severity",
         "operator",
@@ -1376,9 +1398,12 @@ class ValidationResult:
         ``checks_not_attributable``. A missing value (null) means the number is
         unavailable, for example a dimension with no attributable checks.
 
-        Columns for ``"check"``: ``schema_name``, ``check_name``,
-        ``dimension``, ``status``, ``row_level``, ``attribution_method``, ``attribution_note``,
-        ``scalar_count``, ``attributed_rows`` and ``approximate``. ``scalar_count`` is the count the check's own query
+        Columns for ``"check"``: ``schema_name``, ``target``, ``check_name``,
+        ``dimension``, ``severity``, ``engine``, ``status``, ``row_level``,
+        ``attribution_method``, ``attribution_note``, ``scalar_count``,
+        ``attributed_rows`` and ``approximate``. ``schema_name``, ``target``
+        and ``check_name`` identify the check, as in ``get_check_results_df()``.
+        ``scalar_count`` is the count the check's own query
         returned. ``attributed_rows`` is the rows of the table the check
         caught, which differs when the query does not return each such row
         once, for example under ``DISTINCT``. It is null when the check is not

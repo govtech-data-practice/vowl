@@ -484,3 +484,25 @@ def test_no_saved_file_overwrites_another(tmp_path):
     listed += ["r_check_results.csv", "r_summary.json"]
     assert len({name.casefold() for name in listed}) == len(listed)
     assert set(listed) <= _files(tmp_path)
+
+
+def test_long_names_are_shortened_to_fit_with_a_stable_hash(tmp_path):
+    long_schema = "s" * 150
+    checks = [_check("c" * 150, schema=long_schema), _check("c" * 150 + "x", schema=long_schema)]
+    for run in ("one", "two"):
+        _result(*checks, schemas=(long_schema,)).save(str(tmp_path / run), prefix="r")
+    names = sorted(_files(tmp_path / "one"))
+    assert names == sorted(_files(tmp_path / "two"))
+    assert all(len(name.rsplit("/", 1)[-1].encode()) <= 255 for name in names)
+    stems = [e["file"] for e in _saved_outputs(tmp_path / "one")["all_query_outputs"]]
+    assert len(set(stems)) == 2
+
+
+def test_short_names_are_never_shortened(tmp_path):
+    from vowl.validation.result import _fit_file_stem
+
+    assert _fit_file_stem("orders__amount__not_null") == "orders__amount__not_null"
+    long = "客" * 100
+    fitted = _fit_file_stem(long)
+    assert len(fitted.encode()) <= 230
+    assert fitted.startswith("客") and fitted == _fit_file_stem(long)
