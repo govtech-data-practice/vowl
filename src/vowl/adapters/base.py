@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
+from vowl.contracts.check_reference_base import safe_result_metadata
+
 if TYPE_CHECKING:
     from vowl.contracts.check_reference import CheckReference
     from vowl.executors.base import BaseExecutor, CheckResult
@@ -214,6 +216,7 @@ class BaseAdapter(ABC):  # noqa: B024
                             status="ERROR",
                             details=str(e),
                             execution_time_ms=0,
+                            metadata=safe_result_metadata(ref),
                         )
                         for ref in type_refs
                     ]
@@ -243,6 +246,7 @@ class BaseAdapter(ABC):  # noqa: B024
                         status="ERROR",
                         details=f"Error executing check: {e}",
                         execution_time_ms=0,
+                        metadata=safe_result_metadata(ref),
                     )
                 )
         return results

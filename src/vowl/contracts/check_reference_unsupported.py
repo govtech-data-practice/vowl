@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from .check_reference_base import CheckReference, ColumnCheckMixin, TableCheckMixin
@@ -40,12 +41,31 @@ class UnsupportedCheckReference(CheckReference):
         return "$"
 
 
+# The schema and property a path sits under, however deep it is: an
+# unsupported check can be a quality rule, ``logicalTypeOptions.format`` or
+# ``items.logicalTypeOptions.x``, so a fixed number of levels up is wrong.
+_SCHEMA_PATH_RE = re.compile(r"^\$\.schema\[\d+\]")
+_PROPERTY_PATH_RE = re.compile(r"^\$\.schema\[\d+\]\.properties\[\d+\]")
+
+
 class UnsupportedTableCheckReference(TableCheckMixin, UnsupportedCheckReference):
     """Table-level unsupported check reference."""
+
+    def get_schema_path(self) -> str:
+        match = _SCHEMA_PATH_RE.match(self._path)
+        return match.group(0) if match else super().get_schema_path()
 
 
 class UnsupportedColumnCheckReference(ColumnCheckMixin, UnsupportedCheckReference):
     """Column-level unsupported check reference."""
+
+    def get_schema_path(self) -> str:
+        match = _SCHEMA_PATH_RE.match(self._path)
+        return match.group(0) if match else super().get_schema_path()
+
+    def get_column_path(self) -> str:
+        match = _PROPERTY_PATH_RE.match(self._path)
+        return match.group(0) if match else super().get_column_path()
 
 
 __all__ = [

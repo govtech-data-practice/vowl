@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import sqlglot
 from sqlglot import exp
 
+from ..contracts.check_reference_base import safe_result_metadata
 from .base import BaseAdapter
 
 if TYPE_CHECKING:
@@ -321,6 +322,7 @@ class MultiSourceAdapter(BaseAdapter):
                         status="ERROR",
                         details=f"No adapter configured for schema '{schema_name}'",
                         execution_time_ms=0,
+                        metadata=safe_result_metadata(check_ref),
                     )
                     for check_ref in single_table_refs
                 ]
