@@ -136,7 +136,12 @@ def _tracer_provider():
 
 def _logger_provider():
     from opentelemetry.sdk._logs import LoggerProvider
-    from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter, SimpleLogRecordProcessor
+    from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
+
+    try:
+        from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
+    except ImportError:  # renamed in 1.39.0
+        from opentelemetry.sdk._logs.export import InMemoryLogExporter as InMemoryLogRecordExporter
 
     exporter = InMemoryLogRecordExporter()
     provider = LoggerProvider()

@@ -131,6 +131,9 @@ lean-ci-test = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "setuptools>=80.10.2",
+    # Without these, tests/test_otel_export.py is skipped by its importorskip.
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
 ]
 # Packaging tools used by `make release-check`. Locked here (rather than
 # installed imperatively) so the build/validate step is reproducible and

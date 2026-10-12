@@ -3906,6 +3906,8 @@ dev = [
 lean-ci-test = [
     { name = "boto3" },
     { name = "ibis-framework", extra = ["postgres"] },
+    { name = "opentelemetry-exporter-otlp" },
+    { name = "opentelemetry-sdk" },
     { name = "pyspark", extra = ["connect"] },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -3963,6 +3965,8 @@ dev = [
 lean-ci-test = [
     { name = "boto3", specifier = ">=1.42.38" },
     { name = "ibis-framework", extras = ["postgres"], specifier = ">=11.0.0" },
+    { name = "opentelemetry-exporter-otlp", specifier = ">=1.27.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.27.0" },
     { name = "pyspark", extras = ["connect"], specifier = ">=3.4.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
