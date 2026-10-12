@@ -425,8 +425,10 @@ writes no file. Residue files are named the same way.
 Each part is cleaned for use in a file name. Comparison operators are spelled
 out (`>` as `gt`, `>=` as `gte`, `<` as `lt`, `<=` as `lte`, `=` and `==` as
 `eq`, `!=` and `<>` as `ne`) and any other character that is not a letter,
-digit, `.`, `_` or `-` becomes `_`. So check `amount > 0` on column `amount` of
-schema `orders` writes `orders_checks/orders__amount__amount_gt_0.csv`.
+digit, `.`, `_` or `-` becomes `_`. Letters and digits of any script are kept,
+so schema `客户` writes `orders_客户_annotated.csv`. A part with no letters or
+digits becomes `output`. So check `amount > 0` on column `amount` of schema
+`orders` writes `orders_checks/orders__amount__amount_gt_0.csv`.
 
 If two checks still clean to the same name, compared without case, such as
 `Amount` and `amount` on one column, the later one in the run gets `_2`, the
@@ -451,11 +453,11 @@ joined by `_`. The files have the same
 Table and schema names are cleaned the same way as
 [per-check files](#per-check-files). If a consolidated or annotated file would
 take a name another file already has, compared without case, it gets `_2`, the
-next `_3` and so on. This happens when two names clean to the same name, such as
-two names with no ASCII letters, which both clean to `output`. It also happens
-when a name matches a file `save()` always writes, such as a table named
-`check_results`, whose file is `orders_check_results_2.csv`. The
-`saved_outputs` list says which file is which.
+next `_3` and so on, so no file `save()` writes overwrites another. This happens
+when two names clean to the same name, such as `Orders` and `orders`, which are
+one file on macOS and Windows. It also happens when a name matches a file
+`save()` always writes, such as a table named `check_results`, whose file is
+`orders_check_results_2.csv`. The `saved_outputs` list says which file is which.
 
 ### The saved_outputs list
 

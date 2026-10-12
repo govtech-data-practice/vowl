@@ -305,8 +305,16 @@ def test_a_table_named_check_results_does_not_overwrite_the_check_results(tmp_pa
 @pytest.mark.parametrize(
     ("schemas", "consolidated", "annotated"),
     [
-        # Non-ASCII names both clean to "output".
-        (("客户", "订单"), ["r_output.csv", "r_output_2.csv"], ["r_output_annotated.csv", "r_output_annotated_2.csv"]),
+        # Non-ASCII names keep their letters.
+        (("客户", "订单"), ["r_客户.csv", "r_订单.csv"], ["r_客户_annotated.csv", "r_订单_annotated.csv"]),
+        # Names with no letters or digits both clean to "output".
+        (("***", "+++"), ["r_output.csv", "r_output_2.csv"], ["r_output_annotated.csv", "r_output_annotated_2.csv"]),
+        # Names that differ only in case are one file on macOS and Windows.
+        (
+            ("Orders", "orders"),
+            ["r_Orders.csv", "r_orders_2.csv"],
+            ["r_Orders_annotated.csv", "r_orders_annotated_2.csv"],
+        ),
         # x's annotated file and x_annotated's consolidated file share a name.
         (
             ("x", "x_annotated"),
@@ -461,3 +469,18 @@ def test_failed_save_is_recorded_with_its_error(tmp_path, monkeypatch):
     (record,) = result._saves
     assert record.error == "OSError: disk full"
     assert record.file_count == 1  # check_results.csv was written before summary.json failed
+
+
+def test_no_saved_file_overwrites_another(tmp_path):
+    # Every clash at once: a fixed name, case-only twins, names with no letters
+    # and a table named like another table's annotated file.
+    schemas = ("check_results", "Orders", "orders", "***", "+++", "x", "x_annotated")
+    checks = [_check(f"c{i}", schema=schema) for i, schema in enumerate(schemas)]
+    checks.append(_residue_check("join check", schema="x"))
+    _result(*checks, schemas=schemas).save(str(tmp_path), prefix="r", outputs=list(SAVE_OUTPUTS[1:]))
+
+    saved = _saved_outputs(tmp_path)
+    listed = [e["file"] for entries in saved.values() for e in entries if "file" in e]
+    listed += ["r_check_results.csv", "r_summary.json"]
+    assert len({name.casefold() for name in listed}) == len(listed)
+    assert set(listed) <= _files(tmp_path)

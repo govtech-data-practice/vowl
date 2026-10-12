@@ -59,6 +59,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - A failed-rows query that returns no rows keeps its columns, so the check can still be merged.
 - DQ metrics no longer fail on engines that return unquoted column names in upper case, such as Snowflake.
 - `save()` no longer overwrites a file when two table or schema names clean to the same file name, or when a table is named `check_results`. The later file gets `_2`. See [Consolidated files](docs/results.md#consolidated-files).
+- Output file names keep non-ASCII letters and digits, so schema `客户` writes `<prefix>_客户_annotated.csv` instead of `<prefix>_output_annotated.csv`, and `café` no longer becomes `caf`. ASCII names are unchanged.
 - The `max_failed_rows` cap no longer adds a second `OFFSET` or `FETCH` to an ordered `UNION` that already has one on SQL Server, Fabric and Oracle.
 - `export_otel()` gives the `pip install vowl[otel]` message when only `opentelemetry-api` is installed, and shuts down any provider it built if a later one fails to build.
 

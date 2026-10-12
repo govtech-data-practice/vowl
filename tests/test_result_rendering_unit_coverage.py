@@ -19,6 +19,14 @@ from vowl.validation.result_rendering import format_failed_rows_approximate
         ("", "output"),
         ("nul\x00byte", "nul_byte"),
         ("a b, c", "a_b_c"),
+        ("a\\b:c*d?e|f", "a_b_c_d_e_f"),
+        # Letters and digits of any script are kept.
+        ("客户", "客户"),
+        ("café", "café"),
+        ("客户_orders", "客户_orders"),
+        # Combining accents (as macOS stores them) clean to the composed form.
+        ("cafe\u0301", "café"),
+        ("***", "output"),
     ],
 )
 def test_safe_filename_component_strips_traversal(value: str, expected: str):

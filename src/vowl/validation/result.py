@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, fields
@@ -71,8 +72,9 @@ _METADATA_COLUMNS = METADATA_COLUMNS
 
 # Characters allowed in a generated output filename component. Everything else
 # (path separators, "..", NUL, etc.) is collapsed to "_" so that table/schema
-# names taken from a contract cannot escape the output directory.
-_FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
+# names taken from a contract cannot escape the output directory. Letters and
+# digits of any script are kept, so non-ASCII names keep their meaning.
+_FILENAME_SAFE_RE = re.compile(r"[^\w.-]+")
 
 
 def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
@@ -83,8 +85,12 @@ def _safe_filename_component(value: str, *, fallback: str = "output") -> str:
     underscores, and strips leading/trailing separators. The result cannot
     traverse directories (``..``, ``/etc/...``) or be interpreted as an
     option. Empty or all-separator inputs collapse to *fallback*.
+
+    The value is normalised to NFC first, so a name typed with combining
+    accents (as macOS often stores them) cleans to the same file as its
+    composed form. ASCII names clean exactly as before.
     """
-    cleaned = _FILENAME_SAFE_RE.sub("_", str(value))
+    cleaned = _FILENAME_SAFE_RE.sub("_", unicodedata.normalize("NFC", str(value)))
     # Neutralize any remaining parent-directory references.
     cleaned = cleaned.replace("..", "_")
     # Collapse repeated underscores and trim leading/trailing separators.
@@ -1731,15 +1737,14 @@ class ValidationResult:
         # which can clean to the same name or to a fixed one (a schema named
         # check_results, or two non-ASCII names that both clean to "output").
         # They claim a free name so no file overwrites another.
-        residue_names = {id(cr): f"{prefix}_{file_stems[id(cr)]}_residue.csv" for cr, _df in residues}
         taken = {
             name.casefold()
-            for name in (
-                f"{prefix}_check_results.csv",
-                f"{prefix}_summary.json",
-                f"{prefix}_dq_metrics.json",
-                *residue_names.values(),
-            )
+            for name in (f"{prefix}_check_results.csv", f"{prefix}_summary.json", f"{prefix}_dq_metrics.json")
+        }
+        # Residue names come from the check stems, which are already unique, so
+        # they are claimed first and stay the same whatever else fails.
+        residue_names = {
+            id(cr): _claim_file_name(f"{prefix}_{file_stems[id(cr)]}_residue.csv", taken) for cr, _df in residues
         }
 
         if query_scope:
