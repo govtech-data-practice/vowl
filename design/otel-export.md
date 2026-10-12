@@ -435,15 +435,18 @@ via `custom_attributes`. Adding a field to the list is a deliberate change to
 Metric label cardinality is the main operational footgun. The defaults keep it
 bounded:
 
-- `check_name`, `schema_name`, `dimension`, `severity`, and `engine` are bounded
-  by the contract, so they are safe as metric attributes. `status` has at most
+- `check_name`, `schema_name`, `target`, `dimension`, `severity`, and `engine`
+  are bounded by the contract, so they are safe as metric attributes.
+  `schema_name`, `target` and `check_name` together identify a check, and the
+  contract keeps them unique, so no two checks share a series. `status` has at most
   three values (`PASSED`, `FAILED`, `ERROR`), and only two on row counts.
 - Row-level failed-row contents are off metrics entirely, and off all signals by
   default. An opt-in bounded sample can ride logs and span events. Full
   failed-row output stays the job of `save()` / `get_annotated_output()`.
-- High-cardinality per-event values, such as the engine-rendered `query` and the
-  flattened `check.definition.*` keys, ride on spans and logs only, never on
-  metric labels.
+- High-cardinality per-event values, such as the engine-rendered `query`, the
+  flattened `check.definition.*` keys, `check_path` (it changes when the
+  contract is reordered) and `tables_in_query`, ride on spans and logs only,
+  never on metric labels.
 - `vowl.run.id` is never a metric attribute. A new value every run would start
   a new metric series every run. It rides on spans and logs, where one run is
   looked up.
