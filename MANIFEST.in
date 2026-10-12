@@ -1,0 +1,9 @@
+# The sdist carries only what is needed to build and run vowl: the source,
+# the build config, and the license files. setuptools_scm adds every tracked
+# file, so the rest of the repository is dropped here. Docs, examples, tests
+# and repo tooling live in the git repository.
+prune *
+graft src
+exclude *
+include pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES CHANGELOG.md
+global-exclude __pycache__ *.py[cod] .DS_Store

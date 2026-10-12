@@ -67,6 +67,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 ### Dependencies
 - `sqlglot` now needs `>=30.5,<30.18`. The new minimum skips 30.2 and 30.4, which leak memory and slow down long DuckDB runs. 30.18 breaks DataFrame, Arrow and multi-source checks through ibis, so it stays out until ibis releases the fix ([ibis-project/ibis#12104](https://github.com/ibis-project/ibis/pull/12104)), expected in 13.0.0.
 - New optional `otel` extra, also included in `all`.
+- The source distribution now holds only the package source, `pyproject.toml`, the README, CHANGELOG and license files. Docs, examples and tests stay in the git repository.
 
 ## [0.0.6] - 2026-09-21
 
