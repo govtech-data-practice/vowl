@@ -158,17 +158,28 @@ _EXTERNAL_REF_RE = re.compile(r"^((?:https?://)?[A-Za-z0-9._\-/]+\.ya?ml)#(.+)$"
 
 
 def _reject_duplicate_check_names(contract_data: dict[str, Any]) -> None:
-    """Raise when two quality checks in one ``quality`` list share a name.
+    """Raise when two schemas, or two quality checks in one ``quality`` list, share a name.
 
     Results are keyed and saved by schema, column and check name, so two checks
     with one name on the same column, or both on the schema, would overwrite
     each other. The same name on different columns is fine.
 
+    Two schemas with one name would map to one table, and the later one used
+    to replace the earlier one's checks.
+
     Raises:
         ValueError: Naming the schema, the column if any, and the check.
     """
+    seen_schemas: set[str] = set()
     for schema_obj in contract_data.get("schema") or []:
         schema_name = schema_obj.get("name")
+        if schema_name in seen_schemas:
+            raise ValueError(
+                f"Two schemas are both named '{schema_name}'. "
+                "Schema names must be unique in a contract, as each one maps to one table. Rename one."
+            )
+        if schema_name:
+            seen_schemas.add(schema_name)
         lists = [(schema_name, schema_obj.get("quality"))]
         lists += [
             (f"{schema_name}.{prop.get('name')}", prop.get("quality")) for prop in schema_obj.get("properties") or []
@@ -185,6 +196,62 @@ def _reject_duplicate_check_names(contract_data: dict[str, Any]) -> None:
                         "Check names must be unique per column, and per schema for schema-level checks. Rename one."
                     )
                 seen.add(name)
+
+
+def _check_target(ref: "CheckReference") -> str:
+    """The ``target`` a check's results carry, ``<schema>.<column>`` or ``<schema>``."""
+    schema = ref.get_schema_name() or ""
+    column = ref.get_column_name()
+    if column:
+        return f"{schema}.{column}" if schema else column
+    return schema
+
+
+def _is_authored_name(ref: "CheckReference") -> bool:
+    """Whether the contract author wrote this check's name.
+
+    True when the contract entry the check points at (a quality rule) has a
+    ``name`` or ``id``. Generated checks point at a property attribute or a
+    relationship, which never has one, so their names are vowl's.
+    """
+    raw = ref._contract.resolve(ref.path)
+    return isinstance(raw, dict) and bool(raw.get("name") or raw.get("id"))
+
+
+def _number_clashing_names(refs: list["CheckReference"]) -> None:
+    """Make each check's name unique on its target, or raise when the author clashed.
+
+    A check is identified by its schema, target and name in every output, so
+    two checks with one name on one target would merge. A clash between two
+    names the author wrote, or between an author's name and one vowl
+    generates, raises. A clash between names vowl made up (a fallback for a
+    check with no name, or a relationship declared twice) numbers the later
+    ones ``_2``, ``_3`` in contract order. Names are compared exactly.
+
+    Raises:
+        ValueError: Naming the target and the check.
+    """
+    keyed = [(ref, _check_target(ref), ref.get_check_name()) for ref in refs]
+    # Authored names are reserved first, so a number never lands on a name the
+    # author wrote later in the contract.
+    taken = {(target, name) for ref, target, name in keyed if _is_authored_name(ref)}
+    seen: dict[tuple[str, str], "CheckReference"] = {}
+    for ref, target, name in keyed:
+        earlier = seen.get((target, name))
+        if earlier is None:
+            seen[(target, name)] = ref
+            continue
+        if _is_authored_name(ref) or _is_authored_name(earlier):
+            raise ValueError(
+                f"Two checks on '{target}' are both named '{name}'. "
+                "A check name must be unique on its column, or on its schema for schema-level checks, "
+                "and must not match the name of a check vowl generates there. Rename one."
+            )
+        n = 2
+        while (target, f"{name}_{n}") in seen or (target, f"{name}_{n}") in taken:
+            n += 1
+        ref._name_override = f"{name}_{n}"
+        seen[(target, ref._name_override)] = ref
 
 
 def _quality_check_type(rule: dict[str, Any]) -> str:
@@ -254,6 +321,8 @@ class Contract:
         # External contracts loaded to resolve cross-file references, cached by
         # the raw file reference string as written in this contract.
         self._external_cache: dict[str, Contract] = {}
+        # The check references, built once (see get_check_references_by_schema).
+        self._check_refs: dict[str, list["CheckReference"]] | None = None
 
         # Validate on construction using jsonschema
         api_version = contract_data.get("apiVersion")
@@ -263,6 +332,10 @@ class Contract:
             )
         validate_contract(contract_data, api_version)
         _reject_duplicate_check_names(contract_data)
+        # Builds every check now, so a clash between check names (authored or
+        # generated) fails when the contract loads, not mid-run. The result is
+        # kept, so the run does not build them again.
+        self.get_check_references_by_schema()
 
     @property
     def origin(self) -> str | None:
@@ -729,8 +802,15 @@ class Contract:
         - Foreign key checks: for property- or schema-level relationships of
           type foreignKey (validates every non-null key exists in the target)
 
+        The references are built once per contract and reused. Each call
+        returns new lists, so changing them does not change the contract.
+
         Returns:
             Dict mapping schema names to lists of CheckReference objects.
+
+        Raises:
+            ValueError: When two checks on one target share a name the author
+                wrote (see :func:`_number_clashing_names`).
 
         Example:
             >>> contract = Contract.load("my_contract.yaml")
@@ -739,6 +819,12 @@ class Contract:
             ...     for ref in refs:
             ...         print(f"{ref.get_check().get('name')}: {ref.get_logical_type()}")
         """
+        if self._check_refs is None:
+            self._check_refs = self._build_check_references()
+        return {schema: list(refs) for schema, refs in self._check_refs.items()}
+
+    def _build_check_references(self) -> dict[str, list["CheckReference"]]:
+        """Build every check reference of the contract, grouped by schema name."""
         from .check_reference import (
             LOGICAL_TYPE_TO_SQL,
             ArrayItemsCheckReference,
@@ -1011,6 +1097,8 @@ class Contract:
                         else:
                             refs_by_schema[schema_name].append(col_cls(self, check_path))
 
+        for refs in refs_by_schema.values():
+            _number_clashing_names(refs)
         return refs_by_schema
 
     def get_servers(self) -> list[Server]:

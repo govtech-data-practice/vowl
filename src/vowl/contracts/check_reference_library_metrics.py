@@ -96,6 +96,8 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
         return (check.get("unit") or "").lower() == "percent"
 
     def get_check_name(self) -> str:
+        if self._name_override:
+            return self._name_override
         check = self.get_check()
         if check.get("name"):
             return check["name"]
@@ -302,6 +304,8 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
     """Intermediate base for library metrics at schema level."""
 
     def get_check_name(self) -> str:
+        if self._name_override:
+            return self._name_override
         check = self.get_check()
         if check.get("name"):
             return check["name"]

@@ -122,7 +122,7 @@ def _check_names_of(cell) -> list[str]:
 class TestPropertyLevelForeignKey:
     """orders.customer_id -> customers.customer_id (shorthand notation)."""
 
-    FK_NAME = "orders_customer_id_foreign_key_check"
+    FK_NAME = "orders_customer_id_to_customers_customer_id_foreign_key_check"
 
     def _validate(self):
         import ibis
@@ -172,7 +172,7 @@ class TestForeignKeyAnnotatedMerge:
     columns, so it MERGES onto the annotated ``orders`` table rather than
     landing in residues."""
 
-    FK_NAME = "orders_customer_id_foreign_key_check"
+    FK_NAME = "orders_customer_id_to_customers_customer_id_foreign_key_check"
 
     def _validate(self):
         import ibis
@@ -234,7 +234,7 @@ class TestCrossSourceForeignKey:
     """The two tables live in two independent DuckDB connections, so the check
     is routed through the MultiSourceExecutor."""
 
-    FK_NAME = "orders_customer_id_foreign_key_check"
+    FK_NAME = "orders_customer_id_to_customers_customer_id_foreign_key_check"
 
     def test_fk_fails_across_separate_connections(self):
         import ibis
@@ -272,7 +272,7 @@ class TestCompositeForeignKeyFqn:
     """order_items (category, sku) -> products (category, sku), where the target
     columns are addressed by FQN (``/schema/<id>/properties/<id>``)."""
 
-    FK_NAME = "order_items_category_sku_foreign_key_check"
+    FK_NAME = "order_items_category_sku_to_products_category_sku_foreign_key_check"
 
     def test_composite_fk_fails_on_orphan_and_skips_null_key(self):
         import ibis
@@ -317,7 +317,7 @@ class TestSelfReferentialForeignKey:
     """employees.manager_id -> employees.employee_id.  Only one table is
     detected, so the check stays single-table."""
 
-    FK_NAME = "employees_manager_id_foreign_key_check"
+    FK_NAME = "employees_manager_id_to_employees_employee_id_foreign_key_check"
 
     def test_self_referential_fk_fails_and_skips_root(self):
         import ibis
@@ -353,7 +353,7 @@ class TestExternalFileForeignKey:
     file via ``file.yaml#/schema/.../properties/...``.  Resolving that reference
     needs the contract's ``origin``, so it must be loaded from disk."""
 
-    FK_NAME = "orders_customer_id_foreign_key_check"
+    FK_NAME = "orders_customer_id_to_customers_customer_id_foreign_key_check"
 
     def test_external_target_gates_rows(self):
         import ibis
@@ -422,7 +422,7 @@ class TestExternalFileForeignKey:
 class TestForeignKeyPasses:
     """A dataset with no orphan rows reports the FK check as PASSED."""
 
-    FK_NAME = "orders_customer_id_foreign_key_check"
+    FK_NAME = "orders_customer_id_to_customers_customer_id_foreign_key_check"
 
     def test_fk_passes_when_all_references_resolve(self):
         import ibis

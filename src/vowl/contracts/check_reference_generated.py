@@ -1378,7 +1378,12 @@ class _ForeignKeyMixin:
         from_cols_disp = ", ".join(self._from_cols)
         to_cols_disp = ", ".join(self._to_cols)
         return {
-            "name": f"{self._from_schema}_{'_'.join(self._from_cols)}_foreign_key_check",
+            # Both ends are in the name, so two foreign keys from one column
+            # (to different tables) get different names.
+            "name": (
+                f"{self._from_schema}_{'_'.join(self._from_cols)}_to_"
+                f"{self._to_schema}_{'_'.join(self._to_cols)}_foreign_key_check"
+            ),
             "type": "sql",
             "dimension": "consistency",
             "description": (

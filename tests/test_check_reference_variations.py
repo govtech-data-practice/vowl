@@ -1546,7 +1546,7 @@ class TestForeignKeyCheck:
         ref = fks[0]
         assert isinstance(ref, PropertyForeignKeyCheckReference)
         check = ref.get_check()
-        assert check["name"] == "orders_customer_id_foreign_key_check"
+        assert check["name"] == "orders_customer_id_to_customers_id_foreign_key_check"
         assert check["dimension"] == "consistency"
         assert check["type"] == "sql"
         assert check["mustBe"] == 0
@@ -1623,7 +1623,7 @@ class TestForeignKeyCheck:
         assert len(fks) == 1
         ref = fks[0]
         assert isinstance(ref, SchemaForeignKeyCheckReference)
-        assert ref.get_check()["name"] == "stores_store_country_store_zone_foreign_key_check"
+        assert ref.get_check()["name"] == "stores_store_country_store_zone_to_regions_country_zone_foreign_key_check"
 
         con = ibis.duckdb.connect()
         con.create_table("regions", pa.table({"country": ["SG", "MY"], "zone": ["A", "B"]}))
@@ -1709,9 +1709,10 @@ class TestForeignKeyCheck:
                 ],
             },
         ]
-        contract = _make_fk_contract(monkeypatch, schemas)
+        # The checks are built when the contract loads, so that is when it warns.
         with pytest.warns(UserWarning, match="not declared unique or primaryKey"):
-            fks = _fk_refs(contract, "orders")
+            contract = _make_fk_contract(monkeypatch, schemas)
+        fks = _fk_refs(contract, "orders")
         assert len(fks) == 1
         assert isinstance(fks[0], PropertyForeignKeyCheckReference)
 
