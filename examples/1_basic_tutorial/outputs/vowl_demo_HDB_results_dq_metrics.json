@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "run": {
-    "vowl.version": "0.0.7.dev3",
-    "vowl.run.id": "b2d7c8c9-5657-4970-949a-bfba504f7bc3",
+    "vowl.version": "0.0.7.dev89",
+    "vowl.run.id": "0657ed21-d9c0-43d7-911c-8aa56eeafb20",
     "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
     "vowl.contract.name": "HDB Resale Flat Prices",
     "vowl.contract.version": "1.0.0",
     "vowl.contract.api_version": "v3.2.0"
   },
-  "run_started_at": "2026-10-11T05:49:03.959962+00:00",
-  "run_finished_at": "2026-10-11T05:49:04.247276+00:00",
+  "run_started_at": "2026-10-12T13:59:26.135183+00:00",
+  "run_finished_at": "2026-10-12T13:59:26.348061+00:00",
   "points": [
     {
       "name": "vowl.check.check.count",
@@ -19,6 +19,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -32,6 +33,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -45,6 +47,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "ERROR"
@@ -58,6 +61,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -71,6 +75,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -84,6 +89,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "ERROR"
@@ -97,6 +103,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -110,6 +117,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -123,6 +131,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "ERROR"
@@ -136,6 +145,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -149,6 +159,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -162,6 +173,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "ERROR"
@@ -175,6 +187,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -188,6 +201,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -201,6 +215,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql",
         "status": "ERROR"
@@ -214,6 +229,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -227,6 +243,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -240,6 +257,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql",
         "status": "ERROR"
@@ -253,6 +271,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -266,6 +285,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -279,6 +299,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "ERROR"
@@ -292,6 +313,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql",
         "status": "PASSED"
@@ -305,6 +327,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql",
         "status": "FAILED"
@@ -318,6 +341,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql",
         "status": "ERROR"
@@ -331,6 +355,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql",
         "status": "PASSED"
@@ -344,6 +369,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql",
         "status": "FAILED"
@@ -357,6 +383,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql",
         "status": "ERROR"
@@ -366,10 +393,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.295208025723696,
+      "value": 1.279209041967988,
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -378,10 +406,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 9.001540951430798,
+      "value": 2.3198749404400587,
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -390,10 +419,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 4.009541007690132,
+      "value": 0.9345000144094229,
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -402,10 +432,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 7.233042037114501,
+      "value": 2.660832949914038,
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -414,10 +445,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 3.9382909890264273,
+      "value": 0.9125419892370701,
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -426,10 +458,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 5.512458039447665,
+      "value": 0.9073340333998203,
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -438,10 +471,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 16.75687509123236,
+      "value": 13.629291905090213,
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -450,10 +484,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 13.00841593183577,
+      "value": 9.250833070836961,
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -462,10 +497,11 @@
       "name": "vowl.check.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 12.788792024366558,
+      "value": 8.968957932665944,
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -478,6 +514,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -491,6 +528,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -504,6 +542,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -517,6 +556,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -530,6 +570,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -543,6 +584,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -556,6 +598,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -569,6 +612,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -582,6 +626,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -595,6 +640,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -608,6 +654,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -621,6 +668,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -634,6 +682,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -647,6 +696,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -660,6 +710,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql",
         "status": "PASSED"
@@ -673,6 +724,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql",
         "status": "FAILED"
@@ -686,6 +738,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql",
         "status": "PASSED"
@@ -699,6 +752,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql",
         "status": "FAILED"
@@ -712,6 +766,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -724,6 +779,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -736,6 +792,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -748,6 +805,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -760,6 +818,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -772,6 +831,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -784,6 +844,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -796,6 +857,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -808,6 +870,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -820,6 +883,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -833,6 +897,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -846,6 +911,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -859,6 +925,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -872,6 +939,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -885,6 +953,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -898,6 +967,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -911,6 +981,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -924,6 +995,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -937,6 +1009,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -950,6 +1023,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -963,6 +1037,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -976,6 +1051,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "PASSED"
@@ -989,6 +1065,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql",
         "status": "FAILED"
@@ -1002,6 +1079,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql",
         "status": "PASSED"
@@ -1015,6 +1093,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql",
         "status": "FAILED"
@@ -1028,6 +1107,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql",
         "status": "PASSED"
@@ -1041,6 +1121,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql",
         "status": "FAILED"
@@ -1054,6 +1135,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1066,6 +1148,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1078,6 +1161,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1090,6 +1174,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1102,6 +1187,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1114,6 +1200,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1126,6 +1213,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1138,6 +1226,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -1150,6 +1239,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -1162,6 +1252,7 @@
       "attributes": {
         "check_name": "month_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1174,6 +1265,7 @@
       "attributes": {
         "check_name": "month_logical_type_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1186,6 +1278,7 @@
       "attributes": {
         "check_name": "flat_type_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1198,6 +1291,7 @@
       "attributes": {
         "check_name": "flat_type_enum_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.flat_type",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1210,6 +1304,7 @@
       "attributes": {
         "check_name": "floor_area_sqm_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1222,6 +1317,7 @@
       "attributes": {
         "check_name": "resale_price_column_exists_check",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1234,6 +1330,7 @@
       "attributes": {
         "check_name": "Month",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.month",
         "dimension": "conformity",
         "engine": "sql"
       }
@@ -1246,6 +1343,7 @@
       "attributes": {
         "check_name": "floor_area_must_be_less_than_200",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.floor_area_sqm",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -1258,6 +1356,7 @@
       "attributes": {
         "check_name": "resale_price_must_not_exceed_2m",
         "schema_name": "hdb_resale_prices",
+        "target": "hdb_resale_prices.resale_price",
         "dimension": "consistency",
         "engine": "sql"
       }
@@ -1606,7 +1705,7 @@
       "name": "vowl.run.duration",
       "type": "histogram",
       "unit": "ms",
-      "value": 287.314,
+      "value": 212.878,
       "attributes": {}
     }
   ]

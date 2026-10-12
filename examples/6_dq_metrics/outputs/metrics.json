@@ -6,7 +6,7 @@
           "telemetry.sdk.language": "python",
           "telemetry.sdk.name": "opentelemetry",
           "telemetry.sdk.version": "1.44.0",
-          "service.instance.id": "8949558d-d47b-4054-9e5e-92c0fff24398",
+          "service.instance.id": "9c7a6664-9c6e-410f-b1b4-1c43b0e356d8",
           "service.name": "unknown_service"
         },
         "schema_url": ""
@@ -29,513 +29,540 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110270000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139105000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110276000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139112000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110280000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139117000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110284000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139122000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110287000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139125000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110290000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139129000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110294000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139132000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110297000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139135000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110306000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139139000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110309000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139142000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110313000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139145000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110316000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139149000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110320000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139152000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110323000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139155000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110326000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139160000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110329000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139163000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110333000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139166000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110336000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139169000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110339000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139173000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110342000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139176000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110345000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139180000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110349000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139183000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110352000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139186000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110357000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139190000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110360000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139193000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110363000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139197000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110366000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139201000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -553,24 +580,25 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110387000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139223000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 6.161500001326203,
+                    "sum": 1.0917920153588057,
                     "bucket_counts": [
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -602,31 +630,32 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 6.161500001326203,
-                    "max": 6.161500001326203,
+                    "min": 1.0917920153588057,
+                    "max": 1.0917920153588057,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110396000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139232000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 7.224833010695875,
+                    "sum": 1.9785830518230796,
                     "bucket_counts": [
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -658,31 +687,32 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 7.224833010695875,
-                    "max": 7.224833010695875,
+                    "min": 1.9785830518230796,
+                    "max": 1.9785830518230796,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110401000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139238000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 5.6486669927835464,
+                    "sum": 0.8925420697778463,
                     "bucket_counts": [
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -714,31 +744,32 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 5.6486669927835464,
-                    "max": 5.6486669927835464,
+                    "min": 0.8925420697778463,
+                    "max": 0.8925420697778463,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110406000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139243000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 5.90687501244247,
+                    "sum": 2.599500003270805,
                     "bucket_counts": [
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -770,31 +801,32 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 5.90687501244247,
-                    "max": 5.90687501244247,
+                    "min": 2.599500003270805,
+                    "max": 2.599500003270805,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110411000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139248000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 5.011584027670324,
+                    "sum": 1.2007920304313302,
                     "bucket_counts": [
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -826,27 +858,28 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 5.011584027670324,
-                    "max": 5.011584027670324,
+                    "min": 1.2007920304313302,
+                    "max": 1.2007920304313302,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110416000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139253000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 4.28304192610085,
+                    "sum": 0.8787499973550439,
                     "bucket_counts": [
                       0,
                       1,
@@ -882,27 +915,28 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 4.28304192610085,
-                    "max": 4.28304192610085,
+                    "min": 0.8787499973550439,
+                    "max": 0.8787499973550439,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110422000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139258000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 18.970999983139336,
+                    "sum": 13.22791597340256,
                     "bucket_counts": [
                       0,
                       0,
@@ -938,32 +972,33 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 18.970999983139336,
-                    "max": 18.970999983139336,
+                    "min": 13.22791597340256,
+                    "max": 13.22791597340256,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110428000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139263000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 14.983792090788484,
+                    "sum": 8.858291897922754,
                     "bucket_counts": [
                       0,
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -994,32 +1029,33 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 14.983792090788484,
-                    "max": 14.983792090788484,
+                    "min": 8.858291897922754,
+                    "max": 8.858291897922754,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
-                    "start_time_unix_nano": 1791697816110434000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139267000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 14.710291987285018,
+                    "sum": 8.85308301076293,
                     "bucket_counts": [
                       0,
                       0,
-                      0,
                       1,
+                      0,
                       0,
                       0,
                       0,
@@ -1050,8 +1086,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 14.710291987285018,
-                    "max": 14.710291987285018,
+                    "min": 8.85308301076293,
+                    "max": 8.85308301076293,
                     "exemplars": []
                   }
                 ],
@@ -1067,342 +1103,360 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201877,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 2,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201867,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 12,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -1418,162 +1472,171 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.9999900930755552,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.999940558453331,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   }
@@ -1589,342 +1652,360 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201877,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 2,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201867,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 12,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201879,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql",
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -1940,162 +2021,171 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.9999900930755552,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.999940558453331,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1.0,
                     "exemplars": []
                   }
@@ -2111,162 +2201,171 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "month_logical_type_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "flat_type_enum_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.flat_type",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_sqm_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_column_exists_check",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "Month",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.month",
                       "dimension": "conformity",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "floor_area_must_be_less_than_200",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.floor_area_sqm",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "check_name": "resale_price_must_not_exceed_2m",
                       "schema_name": "hdb_resale_prices",
+                      "target": "hdb_resale_prices.resale_price",
                       "dimension": "consistency",
                       "engine": "sql"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2282,7 +2381,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2291,15 +2390,15 @@
                       "dimension": "conformity",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110884000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139754000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 6,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2308,15 +2407,15 @@
                       "dimension": "conformity",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110887000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139758000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2325,15 +2424,15 @@
                       "dimension": "conformity",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110890000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139761000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2342,15 +2441,15 @@
                       "dimension": "consistency",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110893000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139764000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2359,15 +2458,15 @@
                       "dimension": "consistency",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110896000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139767000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2376,8 +2475,8 @@
                       "dimension": "consistency",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110899000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139770000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2395,7 +2494,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2404,14 +2503,14 @@
                       "dimension": "conformity"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.8571428571428571,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2420,7 +2519,7 @@
                       "dimension": "consistency"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.5,
                     "exemplars": []
                   }
@@ -2436,7 +2535,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2446,14 +2545,14 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201877,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2463,14 +2562,14 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 2,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2480,14 +2579,14 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201867,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2497,7 +2596,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 12,
                     "exemplars": []
                   }
@@ -2513,7 +2612,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2522,14 +2621,14 @@
                       "dimension": "conformity"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.9999900930755552,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2538,7 +2637,7 @@
                       "dimension": "consistency"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.999940558453331,
                     "exemplars": []
                   }
@@ -2554,7 +2653,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2563,14 +2662,14 @@
                       "dimension": "conformity"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2579,7 +2678,7 @@
                       "dimension": "consistency"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2595,7 +2694,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2603,15 +2702,15 @@
                       "schema_name": "hdb_resale_prices",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816110964000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139836000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 7,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2619,15 +2718,15 @@
                       "schema_name": "hdb_resale_prices",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816110969000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139839000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 2,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2635,8 +2734,8 @@
                       "schema_name": "hdb_resale_prices",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816110972000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139846000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2654,7 +2753,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2662,7 +2761,7 @@
                       "schema_name": "hdb_resale_prices"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.7777777777777778,
                     "exemplars": []
                   }
@@ -2678,7 +2777,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2687,14 +2786,14 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201865,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2703,7 +2802,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 14,
                     "exemplars": []
                   }
@@ -2719,7 +2818,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2727,7 +2826,7 @@
                       "schema_name": "hdb_resale_prices"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.9999306515288862,
                     "exemplars": []
                   }
@@ -2743,7 +2842,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2751,7 +2850,7 @@
                       "schema_name": "hdb_resale_prices"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2767,45 +2866,45 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816111015000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139891000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816111018000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139894000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 1,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816111021000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139897000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2823,45 +2922,45 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "status": "PASSED"
                     },
-                    "start_time_unix_nano": 1791697816111028000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139906000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 7,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "status": "FAILED"
                     },
-                    "start_time_unix_nano": 1791697816111031000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139910000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 2,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0",
                       "status": "ERROR"
                     },
-                    "start_time_unix_nano": 1791697816111034000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604139914000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2879,14 +2978,14 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.7777777777777778,
                     "exemplars": []
                   }
@@ -2902,7 +3001,7 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2910,14 +3009,14 @@
                       "status": "PASSED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 201865,
                     "exemplars": []
                   },
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
@@ -2925,7 +3024,7 @@
                       "status": "FAILED"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 14,
                     "exemplars": []
                   }
@@ -2941,14 +3040,14 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0.9999306515288862,
                     "exemplars": []
                   }
@@ -2964,14 +3063,14 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0"
                     },
                     "start_time_unix_nano": null,
-                    "time_unix_nano": 1791697816111730000,
+                    "time_unix_nano": 1791813604140796000,
                     "value": 0,
                     "exemplars": []
                   }
@@ -2987,16 +3086,16 @@
                   {
                     "attributes": {
                       "service.name": "vowl",
-                      "vowl.version": "0.0.7.dev3",
+                      "vowl.version": "0.0.7.dev89",
                       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
                       "vowl.contract.name": "HDB Resale Flat Prices",
                       "vowl.contract.version": "1.0.0",
                       "vowl.contract.api_version": "v3.2.0"
                     },
-                    "start_time_unix_nano": 1791697816111080000,
-                    "time_unix_nano": 1791697816111730000,
+                    "start_time_unix_nano": 1791813604140019000,
+                    "time_unix_nano": 1791813604140796000,
                     "count": 1,
-                    "sum": 336.206,
+                    "sum": 259.327,
                     "bucket_counts": [
                       0,
                       0,
@@ -3032,8 +3131,8 @@
                       7500.0,
                       10000.0
                     ],
-                    "min": 336.206,
-                    "max": 336.206,
+                    "min": 259.327,
+                    "max": 259.327,
                     "exemplars": []
                   }
                 ],
