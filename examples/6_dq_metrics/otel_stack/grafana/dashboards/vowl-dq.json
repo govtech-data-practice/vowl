@@ -1132,8 +1132,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vowl_contract_name, schema_name, check_name, dimension) (vowl_check_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"})",
-          "legendFormat": "{{vowl_contract_name}} / {{schema_name}} / {{check_name}} ({{dimension}})",
+          "expr": "max by (vowl_contract_name, schema_name, target, check_name, dimension) (vowl_check_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"})",
+          "legendFormat": "{{vowl_contract_name}} / {{target}} / {{check_name}} ({{dimension}})",
           "instant": false,
           "range": true,
           "format": "time_series",
@@ -1233,8 +1233,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vowl_contract_name, schema_name, check_name, dimension) (vowl_check_row_count{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=\"FAILED\"})",
-          "legendFormat": "{{vowl_contract_name}} / {{schema_name}} / {{check_name}} ({{dimension}})",
+          "expr": "max by (vowl_contract_name, schema_name, target, check_name, dimension) (vowl_check_row_count{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=\"FAILED\"})",
+          "legendFormat": "{{vowl_contract_name}} / {{target}} / {{check_name}} ({{dimension}})",
           "instant": false,
           "range": true,
           "format": "time_series",
@@ -1333,7 +1333,7 @@
           "limit": 20,
           "tableType": "spans",
           "spss": 20,
-          "query": "{ name = \"vowl.validate\" && span.row.approximate = true && resource.service.name =~ \"${service:regex}\" && resource.vowl.domain =~ \"${domain:regex}\" && resource.vowl.contract.name =~ \"${contract:regex}\" } > { name = \"vowl.check\" && (span.row.approximate = true || span.status = \"ERROR\") } | select(resource.vowl.contract.name, span.schema_name, span.check_name, span.status, span.row.attribution_note)"
+          "query": "{ name = \"vowl.validate\" && span.row.approximate = true && resource.service.name =~ \"${service:regex}\" && resource.vowl.domain =~ \"${domain:regex}\" && resource.vowl.contract.name =~ \"${contract:regex}\" } > { name = \"vowl.check\" && (span.row.approximate = true || span.status = \"ERROR\") } | select(resource.vowl.contract.name, span.schema_name, span.target, span.check_name, span.status, span.row.attribution_note)"
         }
       ],
       "options": {
@@ -1409,6 +1409,10 @@
                 "aggregations": [],
                 "operation": "groupby"
               },
+              "target": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
               "check_name": {
                 "aggregations": [],
                 "operation": "groupby"
@@ -1437,15 +1441,17 @@
             "indexByName": {
               "vowl.contract.name": 0,
               "schema_name": 1,
-              "check_name": 2,
-              "status": 3,
-              "row.attribution_note": 4,
-              "Start time (max)": 5,
-              "Start time (count)": 6
+              "target": 2,
+              "check_name": 3,
+              "status": 4,
+              "row.attribution_note": 5,
+              "Start time (max)": 6,
+              "Start time (count)": 7
             },
             "renameByName": {
               "vowl.contract.name": "Contract",
               "schema_name": "Schema",
+              "target": "Target",
               "check_name": "Check",
               "status": "Status",
               "row.attribution_note": "Reason",
@@ -1574,7 +1580,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "{service_name=~\"${service:regex}\"} | vowl_domain=~\"${domain:regex}\" | vowl_contract_name=~\"${contract:regex}\" | line_format \"[{{.status}}] {{.vowl_contract_name}} / {{.schema_name}} / {{.check_name}}: {{__line__}}\""
+          "expr": "{service_name=~\"${service:regex}\"} | vowl_domain=~\"${domain:regex}\" | vowl_contract_name=~\"${contract:regex}\" | line_format \"[{{.status}}] {{.vowl_contract_name}} / {{.target}} / {{.check_name}}: {{__line__}}\""
         }
       ],
       "options": {

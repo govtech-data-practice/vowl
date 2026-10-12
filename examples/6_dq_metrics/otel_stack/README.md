@@ -189,11 +189,11 @@ rate) and the checks that failed most often. Pass your own query with `SQL`:
 make otel-query-archive SQL="SELECT contract, check_name, rows_failed FROM checks WHERE status = 'FAILED'"
 ```
 
-| View     | One row per       | Columns                                                                                                                                      |
-| -------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `runs`   | validation run    | `started_at`, `run_id`, `service`, `domain`, `contract`, `contract_version`, `checks_passed`, `checks_failed`, `check_pass_rate`, `trace_id` |
-| `checks` | check in a run    | `started_at`, `run_id`, `domain`, `contract`, `schema_name`, `check_name`, `dimension`, `status`, `rows_failed`, `rows_passed`, `trace_id`   |
-| `spans`  | span, unprocessed | `started_at`, `name`, `trace_id`, `res` (resource attributes) and `attr` (span attributes), both as maps                                     |
+| View     | One row per       | Columns                                                                                                                                              |
+| -------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runs`   | validation run    | `started_at`, `run_id`, `service`, `domain`, `contract`, `contract_version`, `checks_passed`, `checks_failed`, `check_pass_rate`, `trace_id`         |
+| `checks` | check in a run    | `started_at`, `run_id`, `domain`, `contract`, `schema_name`, `target`, `check_name`, `dimension`, `status`, `rows_failed`, `rows_passed`, `trace_id` |
+| `spans`  | span, unprocessed | `started_at`, `name`, `trace_id`, `res` (resource attributes) and `attr` (span attributes), both as maps                                             |
 
 Metrics and logs are archived too, as `metrics_*.json` and `logs_*.json` next
 to the traces. The views read only the traces, because every check span already
@@ -354,7 +354,9 @@ they ran. The bar length is how long that check's query took.
 
 Click a `vowl.check` span to see its attributes:
 
-- `check_name`, `schema_name`, `dimension` identify the check.
+- `schema_name`, `target` and `check_name` identify the check. `target` is
+  `<schema>.<column>`, or `<schema>` for a schema-level check, as in
+  `check_results.csv`.
 - `status` is the check result (PASSED, FAILED or ERROR). The span status stays
   `ok` for a FAILED check because the query itself ran fine.
 - `row.count.failed`, `row.count.passed` and `row.pass_rate` are the check's
@@ -386,7 +388,7 @@ apart in the tree without opening them. To find the failed ones, search Tempo
 in Grafana Explore with TraceQL:
 
 ```text
-{ name = "vowl.check" && span.status = "FAILED" } | select(resource.vowl.contract.name, span.check_name, span.dimension, span.row.count.failed)
+{ name = "vowl.check" && span.status = "FAILED" } | select(resource.vowl.contract.name, span.target, span.check_name, span.dimension, span.row.count.failed)
 ```
 
 Set **Table Format** to **Spans** to get one row per failed check across all

@@ -59,7 +59,8 @@ FROM spans WHERE name = 'vowl.validate';
 CREATE VIEW checks AS
 SELECT started_at, res['vowl.run.id'] AS run_id, res['vowl.domain'] AS domain,
        res['vowl.contract.name'] AS contract, attr['schema_name'] AS schema_name,
-       attr['check_name'] AS check_name, attr['dimension'] AS dimension, attr['status'] AS status,
+       attr['target'] AS target, attr['check_name'] AS check_name, attr['dimension'] AS dimension,
+       attr['status'] AS status,
        attr['row.count.failed']::BIGINT AS rows_failed, attr['row.count.passed']::BIGINT AS rows_passed,
        trace_id
 FROM spans WHERE name = 'vowl.check';
@@ -71,7 +72,7 @@ DEFAULT_QUERIES = {
                round(avg(check_pass_rate), 4) AS avg_check_pass_rate
         FROM runs GROUP BY ALL ORDER BY domain, contract""",
     "Checks that failed most often": """
-        SELECT contract, schema_name, check_name, dimension,
+        SELECT contract, schema_name, target, check_name, dimension,
                count(*) FILTER (WHERE status = 'FAILED') AS times_failed, count(*) AS times_run
         FROM checks GROUP BY ALL HAVING times_failed > 0 ORDER BY times_failed DESC, contract LIMIT 10""",
 }
