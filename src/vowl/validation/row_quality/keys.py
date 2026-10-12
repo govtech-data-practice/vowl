@@ -128,6 +128,10 @@ def null_safe_equal(left_sql: str, right_sql: str, dialect: str) -> str:
     """Render ``left IS NOT DISTINCT FROM right`` in *dialect*."""
     if dialect == "sqlite":
         return f"({left_sql}) IS ({right_sql})"
+    if dialect == "oracle":
+        # Oracle has no IS NOT DISTINCT FROM, even in 23ai. DECODE treats two
+        # NULLs as equal.
+        return f"DECODE({left_sql}, {right_sql}, 1, 0) = 1"
     return _null_safe_template(dialect).replace("_vowl_l", f"({left_sql})", 1).replace("_vowl_r", f"({right_sql})", 1)
 
 

@@ -285,6 +285,25 @@ class RowQuality:
         return RowQualityReport(schemas=schemas, dimensions=dimensions, checks=checks)
 
 
+def _for_dialect(sql: str, dialect: str | None) -> str:
+    """*sql* as *dialect* accepts it.
+
+    The statements are written once for every engine. Oracle rejects two
+    things in them: ``AS`` before a table alias, and unquoted names that start
+    with ``_``, such as ``_vowl_total``. For Oracle the statement is parsed and
+    rendered again by sqlglot, which drops the ``AS``, with every ``_vowl_``
+    name quoted. The result columns keep their lower-case names, which
+    :class:`~vowl.validation.row_quality.pushdown.PushdownRunner` reads.
+    """
+    if dialect != "oracle":
+        return sql
+    tree = sqlglot.parse_one(sql, dialect=dialect)
+    for identifier in tree.find_all(exp.Identifier):
+        if identifier.name.lower().startswith("_vowl_"):
+            identifier.set("quoted", True)
+    return tree.sql(dialect=dialect)
+
+
 def _check_severity(check_result: CheckResult) -> str | None:
     """A check's ``severity`` from its metadata or its ``check_definition``, as text."""
     metadata = check_result.metadata
@@ -362,7 +381,7 @@ class _SchemaComputation:
             return None
 
     def _run_query(self, sql: str) -> pa.Table:
-        return self._adapter.run_arrow_query(sql)
+        return self._adapter.run_arrow_query(_for_dialect(sql, self._dialect))
 
     # -- steps ---------------------------------------------------------
 

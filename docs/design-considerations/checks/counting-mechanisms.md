@@ -36,6 +36,10 @@ vowl asks up to three questions about each check:
    value, which is only safe where values are compared exactly (see
    [When two values count as the same](how-attributed-rows-work.md#how-values-are-compared)).
    The tested sources are DuckDB, SQLite, Spark, Databricks and PostgreSQL. Databricks uses the same code as Spark but has no test of its own.
+   Other sources, such as Oracle and SQL Server, still count plain filters
+   with `server_predicate`. On Oracle this is tested against a real Oracle
+   database. A check that is not a plain filter takes `client_lookup` there,
+   which downloads the table.
 
 ```text
  1. Can the data source count?

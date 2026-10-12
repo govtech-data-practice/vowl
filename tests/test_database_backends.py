@@ -604,6 +604,83 @@ class TestOracleConnection:
         # The actual validation tests above confirm query execution works.
         assert adapter is not None
 
+    def test_oracle_counts_plain_filters_in_the_database(self, oracle_connection):
+        """Row counts of plain row filters run in Oracle, without downloading the table.
+
+        Oracle rejects ``AS`` before a table alias and unquoted names that start
+        with ``_``, and has no ``IS NOT DISTINCT FROM``. If the statements
+        fail, the checks quietly fall back to ``client_lookup``, so this checks
+        the attribution method, not just that the run worked.
+
+        The table is created unquoted, as most Oracle tables are, so Oracle
+        stores it as ``RQ_PLAIN`` with columns ``ID`` and ``C``.
+        """
+        from conftest import _ORIGINAL_VALIDATE_DATA as validate_data
+
+        from vowl.adapters import IbisAdapter
+        from vowl.contracts.contract import Contract
+
+        con = oracle_connection
+        try:
+            con.raw_sql("DROP TABLE rq_plain")
+        except Exception:
+            pass  # Table may not exist yet; ignore drop failure
+        con.raw_sql("CREATE TABLE rq_plain (id NUMBER(10), c NUMBER(10))")
+        rows = [(1, -1), (1, -1), (2, 6), (3, 2), (3, 2), (4, 3), (5, 1), (6, -2), (7, None)]
+        for row_id, value in rows:
+            con.raw_sql(f"INSERT INTO rq_plain VALUES ({row_id}, {'NULL' if value is None else value})")
+        con.raw_sql("COMMIT")
+
+        def check(name: str, where: str) -> dict:
+            return {
+                "type": "sql",
+                "name": name,
+                "dimension": "conformity",
+                "query": f'SELECT COUNT(*) FROM "RQ_PLAIN" WHERE {where}',
+                "mustBe": 0,
+            }
+
+        contract = Contract(
+            {
+                "apiVersion": "v3.1.0",
+                "kind": "DataContract",
+                "id": "oracle-row-quality",
+                "version": "1.0.0",
+                "status": "active",
+                "schema": [
+                    {
+                        "name": "RQ_PLAIN",
+                        "properties": [{"name": "ID", "primaryKey": True}, {"name": "C"}],
+                        "quality": [
+                            check("negative", '"C" < 0'),
+                            check("too_big", '"C" > 5'),
+                            check("null_c", '"C" IS NULL'),
+                        ],
+                    }
+                ],
+            }
+        )
+        adapter = IbisAdapter(con)
+        sent: list[str] = []
+        run_arrow_query = adapter.run_arrow_query
+
+        def recording(sql: str):
+            sent.append(sql)
+            return run_arrow_query(sql)
+
+        adapter.run_arrow_query = recording
+        result = validate_data(contract, adapters={"RQ_PLAIN": adapter})
+
+        checks = {row["check_name"]: row for row in result.get_dq_metrics_df(by="check").to_arrow().to_pylist()}
+        for name, failed in (("ID_primary_key_check", 4), ("negative", 3), ("too_big", 1), ("null_c", 1)):
+            row = checks[name]
+            assert (row["attribution_method"], row["attributed_rows"]) == ("server_predicate", failed), (name, row)
+        [schema] = result.get_dq_metrics_df(by="schema").to_arrow().to_pylist()
+        # Rows with id 1 and 3 have a duplicated id (4 rows); ids 2, 6 and 7 fail a filter.
+        assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (9, 7, False)
+        # Counted in the database: no statement downloads the whole table.
+        assert all(sql.strip().upper() != "SELECT * FROM RQ_PLAIN" for sql in sent)
+
 
 # ============================================================================
 # Cross-backend integration

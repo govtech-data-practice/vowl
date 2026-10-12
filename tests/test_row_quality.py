@@ -1277,6 +1277,38 @@ def test_statements_are_single_selects_the_validator_accepts(dialect: str):
     assert "GROUP BY" in pushdown.preflight_statement(spec)
 
 
+def test_oracle_statements_drop_the_alias_as_and_quote_vowl_names():
+    import re
+
+    from vowl.validation.row_quality import _for_dialect
+
+    spec = pushdown.KeySpec("oracle", "SELECT * FROM t", ["id", "c"], [None, None])
+    branches = [
+        pushdown.Branch(0, "server_predicate", "SELECT * FROM t WHERE c < 0"),
+        pushdown.Branch(1, "server_lookup", "SELECT DISTINCT * FROM t WHERE c = 2"),
+    ]
+    chunk = pushdown.Chunk(branches)
+    for sql in (
+        pushdown.per_row_statement(spec, chunk),
+        pushdown.histogram_statement(spec, chunk),
+        pushdown.preflight_statement(spec),
+        pushdown.duplicate_key_statement(spec),
+        pushdown.count_statement(spec.anchor_sql, "oracle"),
+        pushdown.column_probe_statement("SELECT * FROM t WHERE c < 0", "oracle"),
+    ):
+        rendered = _for_dialect(sql, "oracle")
+        # ORA-00933: Oracle rejects AS before a table alias, such as
+        # ``(...) AS "_vowl_a"``. Column aliases keep their AS.
+        for alias in sqlglot.parse_one(rendered, dialect="oracle").find_all(sqlglot.exp.TableAlias):
+            assert f") AS {alias.sql(dialect='oracle')}" not in rendered, rendered
+        # ORA-00911: an unquoted name cannot start with "_".
+        assert re.search(r'(?<!["\w])_vowl_', rendered) is None, rendered
+        assert "IS NOT DISTINCT FROM" not in rendered
+    # Every other dialect gets the statement unchanged.
+    sql = pushdown.preflight_statement(pushdown.KeySpec("duckdb", "SELECT * FROM t", ["id"], [None]))
+    assert _for_dialect(sql, "duckdb") == sql
+
+
 def test_mysql_casts_use_its_own_type_names():
     spec = pushdown.KeySpec("mysql", "SELECT * FROM t", ["id"], [None])
     chunk = pushdown.Chunk([pushdown.Branch(0, "server_predicate", "SELECT * FROM t WHERE id < 0")])

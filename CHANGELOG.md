@@ -50,6 +50,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - `vowl.config.OutputMode`, the type of `output_mode`. Use `SaveOutput` with `outputs=` instead.
 
 ### Fixed
+- DQ metrics on Oracle count plain row filters in the database, instead of always downloading the table. The statements vowl sends no longer put `AS` before a table alias or leave `_vowl_` names unquoted, and use `DECODE` where Oracle has no `IS NOT DISTINCT FROM`.
 - Unsupported checks nested under a property, such as an unknown `logicalTypeOptions.format` or an `items` option, now report their schema and column instead of a wrong or missing one.
 - A check whose engine has no executor, or whose schema has no adapter, keeps its schema and target in its `ERROR` result.
 - `save()` no longer fails with "File name too long" on long schema, column or check names. A name over about 230 bytes is shortened and ends in a hash of the full name. See [Consolidated files](docs/results.md#consolidated-files).
