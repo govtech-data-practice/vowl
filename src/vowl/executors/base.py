@@ -325,16 +325,21 @@ class SQLExecutor(BaseExecutor):
         except sqlglot.errors.SqlglotError:
             has_limit = re.search(r"\bLIMIT\b", query, re.IGNORECASE) is not None
             return query if has_limit else f"{query} LIMIT {max_rows}"
-        if parsed.args.get("limit") is not None:
+        # The T-SQL parser hangs a UNION's trailing ORDER BY, OFFSET and FETCH
+        # on its last branch, so both nodes are checked.
+        is_union = isinstance(parsed, sqlglot.exp.SetOperation)
+        parts = [parsed, parsed.expression] if is_union else [parsed]
+        if any(part.args.get("limit") is not None for part in parts):
             return query
         if not _uses_fetch_for_limit(dialect) or not isinstance(parsed, sqlglot.exp.Query):
             return f"{query} LIMIT {max_rows}"
-        if isinstance(parsed, sqlglot.exp.SetOperation) and (
-            parsed.args.get("order") or parsed.expression.args.get("order")
-        ):
+        if is_union and any(part.args.get("order") for part in parts):
             # sqlglot would wrap an ordered UNION in a subquery, and T-SQL
             # rejects ORDER BY inside a derived table.  OFFSET and FETCH after
-            # the trailing ORDER BY work in both T-SQL and Oracle.
+            # the trailing ORDER BY work in both T-SQL and Oracle.  An OFFSET
+            # the query already has takes only the FETCH.
+            if any(part.args.get("offset") is not None for part in parts):
+                return f"{query} FETCH NEXT {max_rows} ROWS ONLY"
             return f"{query} OFFSET 0 ROWS FETCH NEXT {max_rows} ROWS ONLY"
         return parsed.limit(max_rows).sql(dialect=dialect)
 

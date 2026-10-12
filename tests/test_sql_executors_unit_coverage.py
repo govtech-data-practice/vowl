@@ -732,6 +732,33 @@ def test_to_table_expression_rejects_non_table_results(monkeypatch: pytest.Monke
             "tsql",
             "SELECT * FROM users ORDER BY id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY",
         ),
+        # An ordered UNION with its own OFFSET takes only the FETCH, and one
+        # with its own FETCH is left alone.
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS",
+            "tsql",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS FETCH NEXT 3 ROWS ONLY",
+        ),
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS",
+            "oracle",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS FETCH NEXT 3 ROWS ONLY",
+        ),
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS FETCH NEXT 10 ROWS ONLY",
+            "tsql",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS FETCH NEXT 10 ROWS ONLY",
+        ),
+        (
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS FETCH NEXT 10 ROWS ONLY",
+            "oracle",
+            "SELECT id FROM a UNION ALL SELECT id FROM b ORDER BY id OFFSET 2 ROWS FETCH NEXT 10 ROWS ONLY",
+        ),
+        (
+            "SELECT * FROM users ORDER BY id OFFSET 2 ROWS",
+            "oracle",
+            "SELECT * FROM users ORDER BY id OFFSET 2 ROWS FETCH FIRST 3 ROWS ONLY",
+        ),
     ],
 )
 def test_with_row_cap_uses_each_dialects_row_limit_syntax(query: str, dialect: str, expected: str):
