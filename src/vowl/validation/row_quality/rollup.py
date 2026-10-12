@@ -53,6 +53,11 @@ class CheckRowQuality:
     """How one check took part in the row-quality numbers.
 
     Attributes:
+        target: ``<schema>.<column>``, or ``<schema>`` for a schema-level
+            check. With ``schema_name`` and ``check_name`` it identifies the
+            check, and joins with ``get_check_results_df()``.
+        severity: The check's ``severity`` from the contract, or None.
+        engine: The engine that ran the check, such as ``"sql"``.
         attribution_method: ``"server_predicate"``, ``"server_lookup"`` or
             ``"client_lookup"``, or empty when the check is not row-level or not
             attributed.
@@ -69,8 +74,11 @@ class CheckRowQuality:
     """
 
     schema_name: str
+    target: str
     check_name: str
     dimension: str
+    severity: str | None
+    engine: str | None
     status: str
     row_level: bool
     attribution_method: str

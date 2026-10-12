@@ -11,7 +11,14 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-from ._common import check_attributes, check_query, check_row_attributes, flatten_check_definition, severity_for
+from ._common import (
+    check_attributes,
+    check_query,
+    check_record_attributes,
+    check_row_attributes,
+    flatten_check_definition,
+    severity_for,
+)
 
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
@@ -62,6 +69,7 @@ class LogEmitter:
 
             attrs = dict(self._ctx_attrs)
             attrs.update(check_attributes(check_result))
+            attrs.update(check_record_attributes(check_result))
             attrs.update(row_attrs.get(id(check_result), {}))
             query = check_query(check_result)
             if query is not None:

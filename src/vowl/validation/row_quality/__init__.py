@@ -285,6 +285,13 @@ class RowQuality:
         return RowQualityReport(schemas=schemas, dimensions=dimensions, checks=checks)
 
 
+def _check_severity(check_result: CheckResult) -> str | None:
+    """A check's ``severity`` from its metadata or its ``check_definition``, as text."""
+    metadata = check_result.metadata
+    severity = metadata.get("severity") or (metadata.get("check_definition") or {}).get("severity")
+    return None if severity is None else str(severity)
+
+
 class _SchemaComputation:
     """Steps 1 to 5 for one schema."""
 
@@ -852,8 +859,11 @@ class _SchemaComputation:
         checks = [
             CheckRowQuality(
                 schema_name=self._schema,
+                target=work.result.metadata.get("target") or self._schema,
                 check_name=work.result.check_name,
                 dimension=work.selection.dimension,
+                severity=_check_severity(work.result),
+                engine=work.result.metadata.get("engine"),
                 status=work.result.status,
                 row_level=work.row_level,
                 attribution_method=work.route if work.row_level else "",

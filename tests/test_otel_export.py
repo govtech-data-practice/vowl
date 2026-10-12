@@ -270,10 +270,12 @@ def test_contract_attributes_never_backfill_version_from_api_version():
 def test_check_attributes_resolve_dimension_and_severity_from_definition(result):
     from vowl.otel._common import check_attributes
 
-    attrs = check_attributes(_failed_check(result))
+    check = _failed_check(result)
+    attrs = check_attributes(check)
     assert attrs["dimension"] == "consistency"
     assert attrs["severity"] == "error"
     assert attrs["schema_name"] == "orders"
+    assert attrs["target"] == check.metadata["target"]
     assert attrs["status"] == "FAILED"
 
 
@@ -1365,15 +1367,16 @@ def test_check_level_metrics_share_one_attribute_set(result):
     from ``status`` on the counts), so they filter and join the same way."""
     from vowl.validation.dq_metrics import compute_points
 
-    by_check: dict[str, set] = {}
+    by_check: dict[tuple, set] = {}
     for point in compute_points(result):
         if point.name.startswith("vowl.check."):
             attrs = {k: v for k, v in point.attributes.items() if k != "status"}
-            by_check.setdefault(point.attributes["check_name"], set()).add(tuple(sorted(attrs.items())))
-    for check_name, attr_sets in by_check.items():
-        assert len(attr_sets) == 1, check_name
+            key = (point.attributes["schema_name"], point.attributes["target"], point.attributes["check_name"])
+            by_check.setdefault(key, set()).add(tuple(sorted(attrs.items())))
+    for key, attr_sets in by_check.items():
+        assert len(attr_sets) == 1, key
         (attrs,) = attr_sets
-        assert {"check_name", "schema_name", "dimension", "engine"} <= dict(attrs).keys()
+        assert {"check_name", "schema_name", "target", "dimension", "engine"} <= dict(attrs).keys()
 
 
 def test_check_span_row_attributes_match_the_metrics(result):
@@ -1455,3 +1458,114 @@ def test_failed_check_log_carries_row_attributes(result):
     assert record.attributes["row.count.failed"] == 2
     assert record.attributes["row.count.passed"] == 2
     assert record.attributes["row.pass_rate"] == 0.5
+
+
+# --------------------------------------------------------------------------- #
+# One series per check
+# --------------------------------------------------------------------------- #
+
+
+def _identity_contract(schema: dict) -> Contract:
+    return Contract(
+        {
+            "apiVersion": "v3.1.0",
+            "kind": "DataContract",
+            "version": "1.0.0",
+            "id": "identity",
+            "status": "active",
+            "schema": [schema, {"name": "u", "properties": [{"name": "id"}, {"name": "code"}]}],
+        }
+    )
+
+
+def _sql(name: str | None, where: str, *, table: str = "t", dimension: str = "conformity") -> dict:
+    check = {"type": "sql", "dimension": dimension, "query": f"SELECT COUNT(*) FROM {table} WHERE {where}", "mustBe": 0}
+    if name is not None:
+        check["name"] = name
+    return check
+
+
+_IDENTITY_CASES = {
+    "same_name_on_two_columns": {
+        "name": "t",
+        "properties": [
+            {"name": "a", "quality": [_sql("nonneg", "a < 0")]},
+            {"name": "b", "quality": [_sql("nonneg", "b < 0")]},
+        ],
+    },
+    "same_name_on_schema_and_column": {
+        "name": "t",
+        "quality": [_sql("nonneg", "a < 0 OR b < 0")],
+        "properties": [{"name": "a", "quality": [_sql("nonneg", "a < 0")]}, {"name": "b"}],
+    },
+    "two_foreign_keys_on_one_column": {
+        "name": "t",
+        "properties": [
+            {
+                "name": "a",
+                "relationships": [{"type": "foreignKey", "to": "u.id"}, {"type": "foreignKey", "to": "u.code"}],
+            },
+            {"name": "b"},
+        ],
+    },
+    "two_unnamed_checks": {
+        "name": "t",
+        "properties": [{"name": "a", "quality": [_sql(None, "a < 0"), _sql(None, "a > 100")]}, {"name": "b"}],
+    },
+}
+
+
+@pytest.mark.parametrize("case", list(_IDENTITY_CASES))
+def test_every_check_gets_its_own_series(case: str):
+    import ibis
+
+    from vowl.adapters.ibis_adapter import IbisAdapter
+    from vowl.validation.dq_metrics import compute_points
+
+    con = ibis.duckdb.connect()
+    con.create_table("t", pd.DataFrame({"a": [-1, -2, 1, 200], "b": [-1, 1, 1, 1]}))
+    con.create_table("u", pd.DataFrame({"id": [1], "code": [9]}))
+    adapters = {"t": IbisAdapter(con), "u": IbisAdapter(con)}
+    result = _run_validation(_identity_contract(_IDENTITY_CASES[case]), adapters=adapters)
+
+    identities = [
+        (cr.metadata.get("schema_name"), cr.metadata.get("target"), cr.check_name) for cr in result.check_results
+    ]
+    assert len(set(identities)) == len(identities)
+
+    counts = [p for p in compute_points(result) if p.name == "vowl.check.check.count"]
+    series = {(p.attributes["schema_name"], p.attributes["target"], p.attributes["check_name"]) for p in counts}
+    assert series == set(identities)
+    # One check per series, so no count was summed.
+    assert all(p.value <= 1 for p in counts)
+
+    provider, reader = _meter_provider()
+    result.export_otel(signals=("metrics",), metric_provider=provider)
+    exported = {
+        (dict(dp.attributes)["target"], dict(dp.attributes)["check_name"], dict(dp.attributes)["status"]): dp.value
+        for dp in _metric_points(reader).get("vowl.check.check.count", [])
+    }
+    expected = {(p.attributes["target"], p.attributes["check_name"], p.attributes["status"]): p.value for p in counts}
+    assert exported == expected
+
+
+def test_check_spans_carry_target_check_path_and_tables(result):
+    provider, exporter = _tracer_provider()
+    result.export_otel(signals=("traces",), tracer_provider=provider)
+    check_spans = [span for span in exporter.get_finished_spans() if span.name == "vowl.check"]
+    assert check_spans
+    for span in check_spans:
+        assert span.attributes["target"]
+        assert span.attributes["check_path"].startswith("$.schema[")
+    assert any(tuple(span.attributes.get("tables_in_query", ())) for span in check_spans)
+
+
+def test_severity_fills_check_results_and_the_by_check_frame(result):
+    check = _failed_check(result)
+    assert check.metadata["severity"] == "error"
+    results = result.get_check_results_df().to_arrow().to_pylist()
+    assert {row["check_name"]: row.get("severity") for row in results}[check.check_name] == "error"
+    assert "type" not in result.get_check_results_df().columns
+    by_check = result.get_dq_metrics_df(by="check").to_arrow().to_pylist()
+    row = next(r for r in by_check if r["check_name"] == check.check_name and r["target"] == check.metadata["target"])
+    assert (row["severity"], row["engine"]) == ("error", check.metadata["engine"])

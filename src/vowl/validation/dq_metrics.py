@@ -167,6 +167,11 @@ def check_attributes(check_result: Any) -> dict[str, AttrValue]:
             "check_name": check_result.check_name,
             "status": check_result.status,
             "schema_name": metadata.get("schema_name"),
+            # <schema>.<column>, or <schema> for a schema-level check: with
+            # schema_name and check_name it identifies the check, as in
+            # check_results.csv. See "How a check is identified" in
+            # docs/dq-metrics/understanding-metrics.md.
+            "target": metadata.get("target"),
             "dimension": check_dimension(check_result),
             "severity": check_severity(check_result),
             "engine": metadata.get("engine"),

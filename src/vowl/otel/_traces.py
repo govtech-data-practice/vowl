@@ -24,7 +24,14 @@ from ..validation.dq_metrics import (
     run_row_counts,
     schema_status_counts,
 )
-from ._common import check_attributes, check_query, check_row_attributes, coerce_attr, flatten_check_definition
+from ._common import (
+    check_attributes,
+    check_query,
+    check_record_attributes,
+    check_row_attributes,
+    coerce_attr,
+    flatten_check_definition,
+)
 
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
@@ -158,6 +165,7 @@ class TraceEmitter:
     def _check_span_attributes(self, check_result: Any, row_attrs: dict[str, Any]) -> dict[str, Any]:
         attrs = dict(self._ctx_attrs)
         attrs.update(check_attributes(check_result))
+        attrs.update(check_record_attributes(check_result))
         attrs.update(row_attrs)
         metadata = check_result.metadata
         extra = {

@@ -12,8 +12,6 @@ from typing import TYPE_CHECKING, Any
 
 from opentelemetry._logs import SeverityNumber
 
-# The attribute helpers live with the DQ metrics computation, so the OTel
-# signals and dq_metrics.json label a run and a check the same way.
 from ..validation.dq_metrics import (
     attributed_pass_rate,
     check_attributes,
@@ -28,6 +26,10 @@ from ..validation.dq_metrics import (
     scalar_pass_rate,
 )
 
+# The attribute helpers live with the DQ metrics computation, so the OTel
+# signals and dq_metrics.json label a run and a check the same way.
+from ..validation.result_rendering import get_tables_in_query
+
 if TYPE_CHECKING:
     from ..validation.result import ValidationResult
 
@@ -37,6 +39,7 @@ __all__ = [
     "check_attributes",
     "check_dimension",
     "check_query",
+    "check_record_attributes",
     "check_row_attributes",
     "check_severity",
     "coerce_attr",
@@ -120,6 +123,23 @@ def check_query(check_result: Any) -> str | None:
     metadata = check_result.metadata
     definition = metadata.get("check_definition") or {}
     return metadata.get("rendered_implementation") or definition.get("query")
+
+
+def check_record_attributes(check_result: Any) -> dict[str, Any]:
+    """Where a check sits in the contract and which tables it read, for spans and logs.
+
+    ``check_path`` is unique within a contract but changes when the contract is
+    reordered, and ``tables_in_query`` is a list, so both stay off metric
+    labels (see :func:`check_attributes`).
+    """
+    metadata = check_result.metadata
+    attrs: dict[str, Any] = {}
+    if metadata.get("check_path"):
+        attrs["check_path"] = str(metadata["check_path"])
+    tables = get_tables_in_query(check_result)
+    if tables:
+        attrs["tables_in_query"] = [str(table) for table in tables]
+    return attrs
 
 
 def check_row_attributes(result: ValidationResult) -> dict[int, dict[str, Any]]:
