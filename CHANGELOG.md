@@ -58,6 +58,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - Checks that alias their count, such as `SELECT COUNT(*) AS n`, now get a row query, and `COUNT(col)` row queries leave out NULLs.
 - A failed-rows query that returns no rows keeps its columns, so the check can still be merged.
 - DQ metrics no longer fail on engines that return unquoted column names in upper case, such as Snowflake.
+- `save()` no longer overwrites a file when two table or schema names clean to the same file name, or when a table is named `check_results`. The later file gets `_2`. See [Consolidated files](docs/results.md#consolidated-files).
 - `export_otel()` gives the `pip install vowl[otel]` message when only `opentelemetry-api` is installed, and shuts down any provider it built if a later one fails to build.
 
 ### Docs

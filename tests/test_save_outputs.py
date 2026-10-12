@@ -294,6 +294,36 @@ def test_column_level_checks_name_their_column(tmp_path):
     ]
 
 
+def test_a_table_named_check_results_does_not_overwrite_the_check_results(tmp_path):
+    _result(_check("c", schema="check_results"), schemas=("check_results",)).save(str(tmp_path), prefix="r")
+    assert (tmp_path / "r_check_results.csv").read_text().startswith('"check_name"')
+    [consolidated] = _saved_outputs(tmp_path)["consolidated_query_outputs"]
+    assert consolidated["file"] == "r_check_results_2.csv"
+    assert "r_check_results_2.csv" in _files(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("schemas", "consolidated", "annotated"),
+    [
+        # Non-ASCII names both clean to "output".
+        (("客户", "订单"), ["r_output.csv", "r_output_2.csv"], ["r_output_annotated.csv", "r_output_annotated_2.csv"]),
+        # x's annotated file and x_annotated's consolidated file share a name.
+        (
+            ("x", "x_annotated"),
+            ["r_x.csv", "r_x_annotated.csv"],
+            ["r_x_annotated_2.csv", "r_x_annotated_annotated.csv"],
+        ),
+    ],
+)
+def test_tables_whose_names_clean_to_one_file_get_numbered_files(tmp_path, schemas, consolidated, annotated):
+    checks = [_check(f"c{i}", schema=schema) for i, schema in enumerate(schemas)]
+    _result(*checks, schemas=schemas).save(str(tmp_path), prefix="r")
+    saved = _saved_outputs(tmp_path)
+    assert [e["file"] for e in saved["consolidated_query_outputs"]] == consolidated
+    assert [e["file"] for e in saved["annotated_table"]] == annotated
+    assert set(consolidated + annotated) <= _files(tmp_path)
+
+
 def test_same_check_name_on_two_columns_gives_two_files_and_keys(tmp_path):
     start = _check("Date With Timezone", target="orders.start_dt")
     end = _check("Date With Timezone", target="orders.end_dt", failed_rows=pa.table({"id": [3], "name": ["c"]}))

@@ -448,6 +448,15 @@ joined by `_`. The files have the same
 | `orders`                 | `orders_orders.csv`           |
 | `orders` and `customers` | `orders_customers_orders.csv` |
 
+Table and schema names are cleaned the same way as
+[per-check files](#per-check-files). If a consolidated or annotated file would
+take a name another file already has, compared without case, it gets `_2`, the
+next `_3` and so on. This happens when two names clean to the same name, such as
+two names with no ASCII letters, which both clean to `output`. It also happens
+when a name matches a file `save()` always writes, such as a table named
+`check_results`, whose file is `orders_check_results_2.csv`. The
+`saved_outputs` list says which file is which.
+
 ### The saved_outputs list
 
 `orders_summary.json` has a `saved_outputs` key that lists the files of each

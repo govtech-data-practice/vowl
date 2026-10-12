@@ -171,6 +171,21 @@ def _check_file_stems(checks: Sequence[CheckResult]) -> dict[int, str]:
     return stems
 
 
+def _claim_file_name(name: str, taken: set[str]) -> str:
+    """*name*, or ``<stem>_2.<ext>``, ``_3`` and so on when it is taken.
+
+    Names are compared with ``casefold()``, as in :func:`_check_file_stems`.
+    The name returned is added to *taken*.
+    """
+    stem, dot, ext = name.rpartition(".")
+    candidate, n = name, 2
+    while candidate.casefold() in taken:
+        candidate = f"{stem}_{n}{dot}{ext}"
+        n += 1
+    taken.add(candidate.casefold())
+    return candidate
+
+
 def _check_entry(cr: CheckResult) -> dict[str, Any]:
     """Who a ``saved_outputs`` entry is about: schema, column (when there is one) and check."""
     entry: dict[str, Any] = {"schema": cr.metadata.get("schema_name") or ""}
@@ -1712,6 +1727,20 @@ class ValidationResult:
             )
         )
         saved_outputs: dict[str, list[dict[str, Any]]] = {}
+        # Consolidated and annotated names come from table and schema names,
+        # which can clean to the same name or to a fixed one (a schema named
+        # check_results, or two non-ASCII names that both clean to "output").
+        # They claim a free name so no file overwrites another.
+        residue_names = {id(cr): f"{prefix}_{file_stems[id(cr)]}_residue.csv" for cr, _df in residues}
+        taken = {
+            name.casefold()
+            for name in (
+                f"{prefix}_check_results.csv",
+                f"{prefix}_summary.json",
+                f"{prefix}_dq_metrics.json",
+                *residue_names.values(),
+            )
+        }
 
         if query_scope:
             listed = saved_outputs.setdefault(f"{query_scope}_query_outputs", [])
@@ -1728,18 +1757,19 @@ class ValidationResult:
         if "consolidated_query_outputs" in chosen:
             listed = saved_outputs.setdefault("consolidated_query_outputs", [])
             for table_key, df in self._get_consolidated_output_dfs().items():
-                name = f"{prefix}_{_safe_filename_component(table_key.replace(', ', '_').replace(' ', '_'))}.csv"
+                safe_key = _safe_filename_component(table_key.replace(", ", "_").replace(" ", "_"))
+                name = _claim_file_name(f"{prefix}_{safe_key}.csv", taken)
                 saved_files.append(target.write_csv(name, df.to_arrow()))
                 listed.append({"tables": table_key, "rows": len(df), "file": name})
 
         if "annotated_table" in chosen:
             listed = saved_outputs.setdefault("annotated_table", [])
             for schema, df in annotated.items():
-                name = f"{prefix}_{_safe_filename_component(schema)}_annotated.csv"
+                name = _claim_file_name(f"{prefix}_{_safe_filename_component(schema)}_annotated.csv", taken)
                 saved_files.append(target.write_csv(name, df.to_arrow()))
                 listed.append({"schema": schema, "rows": len(df), "file": name})
             for cr, df in residues:
-                name = f"{prefix}_{file_stems[id(cr)]}_residue.csv"
+                name = residue_names[id(cr)]
                 saved_files.append(target.write_csv(name, df.to_arrow()))
                 listed.append({**_check_entry(cr), "rows": len(df), "file": name})
 
