@@ -627,6 +627,24 @@ def test_a_branch_that_fails_is_not_attributable(monkeypatch: pytest.MonkeyPatch
     assert (schema["checks_not_row_level"], schema["checks_not_attributable"]) == (0, 1)
 
 
+def test_upper_case_result_columns_are_read(monkeypatch: pytest.MonkeyPatch):
+    # Snowflake and Oracle fold unquoted aliases such as _vowl_total to upper case.
+    original = IbisAdapter.run_arrow_query
+
+    def upper(self, sql: str):
+        table = original(self, sql)
+        return table.rename_columns(
+            [name.upper() if name.startswith("_vowl_") else name for name in table.column_names]
+        )
+
+    monkeypatch.setattr(IbisAdapter, "run_arrow_query", upper)
+    con, result = _mixed("duckdb")
+
+    schema = _schema_row(result)
+    assert (schema["total_rows"], schema["failed_rows"], schema["approximate"]) == (11, 9, False)
+    assert _check_rows(result)["twos_distinct"]["attributed_rows"] == 3
+
+
 def test_single_scan_form_matches_the_union_form(monkeypatch: pytest.MonkeyPatch):
     statements: list[str] = []
     original = IbisAdapter.run_arrow_query

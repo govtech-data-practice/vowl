@@ -55,6 +55,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - Annotated output handles NaN, `-0.0`, nested types, nanosecond timestamps, large unsigned integers and mixed column types correctly.
 - Checks that alias their count, such as `SELECT COUNT(*) AS n`, now get a row query, and `COUNT(col)` row queries leave out NULLs.
 - A failed-rows query that returns no rows keeps its columns, so the check can still be merged.
+- DQ metrics no longer fail on engines that return unquoted column names in upper case, such as Snowflake.
 
 ### Docs
 - Regrouped the guides into Results, Run settings, DQ metrics and a new Design Considerations tab. The old Design Considerations page redirects to the new pages.

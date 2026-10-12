@@ -436,8 +436,19 @@ class PushdownRunner:
     """Runs the chunks of one schema against the anchor adapter."""
 
     def __init__(self, run_query: Callable[[str], pa.Table], spec: KeySpec) -> None:
-        self._run = run_query
+        self._run_query = run_query
         self._spec = spec
+
+    def _run(self, sql: str) -> pa.Table:
+        """Run *sql* and lower-case its ``_vowl_*`` column names.
+
+        The aliases are unquoted, so engines that fold unquoted names to
+        upper case (Snowflake, Oracle) return ``_VOWL_TOTAL``. The readers
+        below look the columns up by their lower-case names.
+        """
+        table = self._run_query(sql)
+        names = [name.lower() if name.lower().startswith("_vowl_") else name for name in table.column_names]
+        return table if names == table.column_names else table.rename_columns(names)
 
     def run(self, branches: Sequence[Branch], *, histogram: bool) -> PushdownOutcome:
         outcome = PushdownOutcome()
