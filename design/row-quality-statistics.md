@@ -14,8 +14,8 @@ status: Implemented
 
     `row_counts` and the `server_scalar` route were removed later. Attribution
     is now the only DQ-metrics mode, and it runs only when DQ metrics are
-    asked for. See `design/two-tier-row-counts-plan.md`. The passages below
-    that mention `row_counts="scalar"` or `"off"` are kept as history.
+    asked for. The passages below that mention `row_counts="scalar"` or
+    `"off"` are kept as history.
 
 Internal design record for how vowl counts the rows with issues in each table,
 in total and per data-quality dimension, and turns those counts into pass rates.
