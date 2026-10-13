@@ -345,6 +345,9 @@ A check joins a pushdown chunk only if its row query is a pure row
 filter of the anchor. sqlglot must find:
 
 - a single `SELECT` with no `WITH`, whose select list is `*` or `anchor.*`
+  with no `EXCLUDE`/`EXCEPT`, `REPLACE`, `RENAME` or `ILIKE` modifier. Those
+  drop, rename or change the table's columns, so the rows no longer match the
+  table
 - a single `FROM`, which is the anchor table. The table must match the schema's
   table including any qualifiers the query writes, so `SELECT * FROM other.t`
   does not certify for schema `t`. An unqualified `t` in the query still matches
@@ -353,6 +356,14 @@ filter of the anchor. sqlglot must find:
 - none of `DISTINCT`, `GROUP BY`, `HAVING`, `LIMIT`/`TOP`/`FETCH`, `OFFSET`
   (reported as `LIMIT`), `QUALIFY`, `TABLESAMPLE`, `LATERAL`, `PIVOT`, set
   operations, joins or nondeterministic functions (`random`, `uuid`, `now`)
+- no `TABLESAMPLE` anywhere, and no `LIMIT`/`TOP`/`FETCH` in a `WHERE`
+  subquery unless it has an `ORDER BY` or sits directly inside `EXISTS`
+- no clock or row-numbering construct anywhere, including the dialect forms
+  sqlglot does not map to `CURRENT_*`: Oracle `ROWNUM` (unquoted, unqualified)
+  and `SYS_GUID()`, SQLite `date('now')` and the other date functions given
+  `'now'` or no arguments, Postgres `clock_timestamp()` and `'now'::timestamp`,
+  SQL Server `GETUTCDATE()`, MySQL `UTC_TIMESTAMP()` and argument-less
+  `UNIX_TIMESTAMP()`, and Spark `monotonically_increasing_id()`
 - no window functions outside `WHERE`
 - a scalar query with a single `COUNT`, optionally aliased. For `COUNT(expr)`
   the derived row query adds `expr IS NOT NULL`, so it skips the same

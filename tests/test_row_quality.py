@@ -446,6 +446,117 @@ def test_certification_rejects_top_and_fetch(query: str, dialect: str):
     assert certify_row_query(query, "t", dialect) == (False, "LIMIT")
 
 
+@pytest.mark.parametrize(
+    ("query", "dialect"),
+    [
+        ("SELECT * REPLACE (c * 2 AS c) FROM t WHERE c < 0", "duckdb"),
+        ("SELECT * EXCLUDE (c) FROM t WHERE c < 0", "duckdb"),
+        ("SELECT * RENAME (c AS d) FROM t WHERE c < 0", "duckdb"),
+        ("SELECT * ILIKE 'i%' FROM t WHERE c < 0", "duckdb"),
+        ("SELECT t.* EXCLUDE (c) FROM t WHERE c < 0", "duckdb"),
+        ("SELECT * EXCEPT (c) FROM t WHERE c < 0", "bigquery"),
+        ("SELECT * REPLACE (c * 2 AS c) FROM t WHERE c < 0", "bigquery"),
+        ("SELECT * EXCLUDE (c) FROM t WHERE c < 0", "snowflake"),
+        ("SELECT * RENAME (c AS d) FROM t WHERE c < 0", "snowflake"),
+        ("SELECT * EXCEPT (c) FROM t WHERE c < 0", "databricks"),
+    ],
+)
+def test_certification_rejects_star_modifiers(query: str, dialect: str):
+    assert certify_row_query(query, "t", dialect) == (False, "a select list that is not *")
+
+
+@pytest.mark.parametrize(
+    ("query", "dialect", "rule"),
+    [
+        ("SELECT * FROM t WHERE ROWNUM <= 5", "oracle", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE c > 0 AND rownum < 10", "oracle", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE id IN (SELECT id FROM u WHERE ROWNUM <= 5)", "oracle", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE id = SYS_GUID()", "oracle", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE d < datetime('now')", "sqlite", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE d < date('now', '-1 day')", "sqlite", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE d < strftime('%s', 'now')", "sqlite", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE d < 'now'::timestamp", "postgres", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE d < clock_timestamp()", "postgres", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE d < GETUTCDATE()", "tsql", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE d < UTC_TIMESTAMP()", "mysql", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE c = monotonically_increasing_id()", "spark", "a nondeterministic function"),
+        ("SELECT * FROM t WHERE id IN (SELECT id FROM t TABLESAMPLE 10%)", "duckdb", "TABLESAMPLE"),
+        ("SELECT * FROM t WHERE id IN (SELECT id FROM t SAMPLE (10))", "oracle", "TABLESAMPLE"),
+        ("SELECT * FROM t WHERE id IN (SELECT id FROM u LIMIT 5)", "duckdb", "LIMIT"),
+        ("SELECT * FROM t WHERE id IN (SELECT TOP 5 id FROM u)", "tsql", "LIMIT"),
+    ],
+)
+def test_certification_rejects_row_limits_and_clocks_anywhere(query: str, dialect: str, rule: str):
+    assert certify_row_query(query, "t", dialect) == (False, rule)
+
+
+@pytest.mark.parametrize(
+    ("query", "dialect"),
+    [
+        ('SELECT * FROM t WHERE "ROWNUM" > 0', "oracle"),
+        ("SELECT * FROM t WHERE rownum > 0", "duckdb"),
+        ("SELECT * FROM t WHERE d < date('2020-01-01')", "sqlite"),
+        ("SELECT * FROM t WHERE strftime('%Y', d) = '2020'", "sqlite"),
+        ("SELECT * FROM t WHERE c = 'now'", "postgres"),
+        ("SELECT * FROM t WHERE UNIX_TIMESTAMP(d) > 0", "mysql"),
+        ("SELECT * FROM t WHERE id IN (SELECT id FROM u ORDER BY id LIMIT 5)", "duckdb"),
+        ("SELECT * FROM t WHERE EXISTS (SELECT 1 FROM u WHERE u.id = t.id LIMIT 1)", "duckdb"),
+    ],
+)
+def test_certification_keeps_deterministic_look_alikes(query: str, dialect: str):
+    assert certify_row_query(query, "t", dialect) == (True, "")
+
+
+def test_current_date_freshness_checks_stay_uncertified():
+    assert certify_row_query("SELECT * FROM t WHERE d < current_date", "t", "duckdb") == (
+        False,
+        "a nondeterministic function",
+    )
+
+
+@pytest.mark.parametrize("where", ["c = q'[x]'", "c MOD 2 = 1"])
+def test_oracle_sql_sqlglot_cannot_parse_is_not_certified(where: str):
+    # Keeps such SQL off the pushdown, whose Oracle rendering would raise on it.
+    assert certify_row_query(f"SELECT * FROM t WHERE {where}", "t", "oracle") == (
+        False,
+        "SQL that could not be parsed",
+    )
+
+
+def test_star_replace_is_not_counted_as_a_row_filter():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, -1), (3, 5), (4, -3)")
+    replaced = {
+        "name": "replaced",
+        "dimension": "validity",
+        "query": "SELECT * REPLACE (c * 2 AS c) FROM t WHERE c < 0",
+        "mustBe": 0,
+    }
+
+    result = _validate(con, [_schema("t", [replaced, _check("negative", "c < 0")])])
+
+    # Both checks fail the same three rows of a four-row table.
+    assert _check_rows(result)["replaced"]["attribution_method"] != "server_predicate"
+    assert _schema_row(result)["failed_rows"] == 3
+
+
+def test_star_exclude_is_not_reported_as_a_failed_query():
+    con = _connect("duckdb")
+    con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+    con.raw_sql("INSERT INTO t VALUES (1, -1), (2, 5)")
+    excluded = {
+        "name": "excluded",
+        "dimension": "validity",
+        "query": "SELECT * EXCLUDE (c) FROM t WHERE c < 0",
+        "mustBe": 0,
+    }
+
+    result = _validate(con, [_schema("t", [excluded])])
+
+    assert _check_rows(result)["excluded"]["attribution_note"] != REASON_QUERY_FAILED
+
+
 def test_certification_matches_the_qualifiers_the_query_writes():
     assert certify_row_query("SELECT * FROM t", "db.t", "duckdb") == (True, "")
     assert certify_row_query("SELECT * FROM db.t", "db.t", "duckdb") == (True, "")

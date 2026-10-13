@@ -22,6 +22,14 @@ _NONDETERMINISTIC_NODES: tuple[type[exp.Expression], ...] = (
     exp.CurrentDate,
     exp.CurrentTime,
     exp.CurrentDatetime,
+    exp.CurrentTimestampLTZ,
+    exp.Localtime,
+    exp.Localtimestamp,
+    exp.Systimestamp,
+    exp.UtcDate,
+    exp.UtcTime,
+    exp.UtcTimestamp,
+    exp.Shuffle,
 )
 
 _NONDETERMINISTIC_NAMES = frozenset(
@@ -39,8 +47,39 @@ _NONDETERMINISTIC_NAMES = frozenset(
         "sysdatetime",
         "current_timestamp",
         "localtimestamp",
+        "sys_guid",
+        "newsequentialid",
+        "uuid_short",
+        "getutcdate",
+        "sysutcdatetime",
+        "clock_timestamp",
+        "statement_timestamp",
+        "transaction_timestamp",
+        "timeofday",
+        "get_current_timestamp",
+        "setseed",
+        "monotonically_increasing_id",
+        "spark_partition_id",
+        "input_file_name",
     }
 )
+
+# Functions that read the clock only when called without arguments.
+_NULLARY_CLOCK_NAMES = frozenset({"unix_timestamp", "unixepoch"})
+
+# Pseudocolumns that number rows or change between statements. An Oracle
+# ROWNUM filter keeps the first rows the engine returns, a LIMIT in disguise.
+_ROW_LIMITING_COLUMNS = frozenset({"rownum"})
+
+# SQLite date functions read the clock for a 'now' argument or none at all.
+_SQLITE_CLOCK_FUNCTIONS = frozenset({"date", "time", "datetime", "julianday", "unixepoch", "strftime", "timediff"})
+
+# String values that SQLite date functions and Postgres casts read as the clock.
+_CLOCK_LITERALS = frozenset({"now", "today", "tomorrow", "yesterday"})
+
+# The arguments sqlglot keeps on a Star for DuckDB, BigQuery and Snowflake
+# select-list modifiers: * EXCLUDE/EXCEPT, * REPLACE, * RENAME, * ILIKE.
+_STAR_MODIFIERS = ("except_", "except", "replace", "rename", "ilike")
 
 
 def _from_clause(select: exp.Select) -> exp.From | None:
@@ -48,8 +87,41 @@ def _from_clause(select: exp.Select) -> exp.From | None:
     return select.args.get("from_") or select.args.get("from")
 
 
-def _is_nondeterministic(node: exp.Expression) -> bool:
+def _reads_sqlite_clock(node: exp.Expression) -> bool:
+    """``date('now')``, ``datetime()`` and the like, which sqlglot does not map to CURRENT_*."""
+    if isinstance(node, exp.Date) and not node.args.get("this"):
+        return True
+    if not isinstance(node, exp.Anonymous) or node.name.lower() not in _SQLITE_CLOCK_FUNCTIONS:
+        return False
+    arguments = node.expressions
+    if not arguments:
+        return True
+    first = arguments[0]
+    return isinstance(first, exp.Literal) and first.is_string and first.name.lower() == "now"
+
+
+def _is_nondeterministic(node: exp.Expression, dialect: str) -> bool:
     if isinstance(node, _NONDETERMINISTIC_NODES):
+        return True
+    if isinstance(node, exp.Anonymous) and node.name.lower() in _NULLARY_CLOCK_NAMES and not node.expressions:
+        return True
+    if (
+        dialect == "oracle"
+        and isinstance(node, exp.Column)
+        and not node.table
+        and isinstance(node.this, exp.Identifier)
+    ):
+        # A quoted "ROWNUM" is an ordinary column.
+        return not node.this.quoted and node.name.lower() in _ROW_LIMITING_COLUMNS
+    if isinstance(node, exp.Literal) and node.is_string and node.name.lower() in _CLOCK_LITERALS:
+        parent = node.parent
+        # SQLite date('now') and strftime(f, 'now') parse to Date and
+        # TsOrDsToTimestamp. Postgres 'now'::timestamp is a Cast.
+        if isinstance(parent, (exp.Date, exp.TsOrDsToTimestamp)):
+            return True
+        if isinstance(parent, (exp.Cast, exp.TryCast)) and parent.to.is_type(*exp.DataType.TEMPORAL_TYPES):
+            return True
+    if _reads_sqlite_clock(node):
         return True
     if isinstance(node, (exp.Anonymous, exp.Func)):
         name = node.name if isinstance(node, exp.Anonymous) else node.sql_name()
@@ -147,15 +219,32 @@ def certify_row_query(query: str | None, schema_name: str, dialect: str) -> tupl
     )
     if not (is_star or is_anchor_star):
         return False, "a select list that is not *"
+    star = projection if is_star else projection.this
+    if any(star.args.get(modifier) for modifier in _STAR_MODIFIERS):
+        # EXCLUDE, RENAME and ILIKE drop or rename table columns. REPLACE
+        # returns changed values under the table's column names.
+        return False, "a select list that is not *"
 
     outer = _outer_scope_nodes(parsed)
     if any(isinstance(node, exp.Window) for node in outer):
         return False, "a window function"
     if any(isinstance(node, (exp.Subquery, exp.Select)) for node in outer):
         return False, "a subquery outside WHERE"
-    if any(isinstance(node, exp.TableSample) for node in outer):
+    if any(isinstance(node, exp.TableSample) for node in parsed.walk()):
+        # A sample inside a WHERE subquery changes the rows the filter keeps.
         return False, "TABLESAMPLE"
-    if any(_is_nondeterministic(node) for node in parsed.walk()):
+    for node in parsed.walk():
+        if (
+            node is not parsed
+            and isinstance(node, exp.Select)
+            and not node.args.get("order")
+            and not isinstance(node.parent, exp.Exists)
+        ):
+            if node.args.get("limit") or node.args.get("offset"):
+                # Which rows an unordered LIMIT keeps can change between runs.
+                # EXISTS only asks whether a row exists, so it is exempt.
+                return False, "LIMIT"
+    if any(_is_nondeterministic(node, dialect) for node in parsed.walk()):
         return False, "a nondeterministic function"
     return True, ""
 
