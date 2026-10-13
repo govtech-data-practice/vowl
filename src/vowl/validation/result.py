@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 import narwhals as nw
 import pyarrow as pa
 
-from ..config import CheckInfoPreset, SaveOutput, ValidationConfig, _resolve_outputs
+from ..config import CheckInfoPreset, SaveOutput, ValidationConfig, _resolve_outputs, _writes_residues
 from ..contracts.contract import Contract
 from ..contracts.models.ODCS_types import DataContract
 from ..executors.base import CheckResult
@@ -1673,15 +1673,17 @@ class ValidationResult:
         is then a path inside that filesystem.
 
         ``output_mode`` is deprecated. Its v0.0.6 names still work with a
-        ``FutureWarning``, mapped to outputs: ``"failed_rows"`` to
-        ``["consolidated_query_outputs"]``, ``"annotated"`` to
-        ``["annotated_table", "dq_metrics"]`` and ``"both"`` to all three.
-        It will be removed in a future release.
+        ``FutureWarning`` and write the files v0.0.6 wrote: ``"failed_rows"``
+        to ``["consolidated_query_outputs"]``, ``"annotated"`` to
+        ``["annotated_table"]`` and ``"both"`` to both, without the residue
+        files. It will be removed in a future release.
 
         Each call, including one that raises, is timed and becomes a
         ``vowl.save`` span in the trace of a later :meth:`export_otel`.
         """
         chosen = set(_resolve_outputs(outputs, output_mode, stacklevel=2, default=self._config.outputs))
+        # The config's output_mode applies only when this call picks no outputs.
+        legacy_mode = output_mode if output_mode is not None or outputs is not None else self._config.output_mode
         if check_info is not None and "annotated_table" not in chosen:
             warnings.warn(
                 "check_info only shapes the annotated_table output, which this save() does not write.",
@@ -1702,6 +1704,7 @@ class ValidationResult:
                 include_contract_definition=include_contract_definition,
                 check_info=check_info,
                 filesystem=filesystem,
+                write_residues=_writes_residues(legacy_mode),
             )
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
@@ -1733,6 +1736,7 @@ class ValidationResult:
         include_contract_definition: bool,
         check_info: CheckInfoPreset | None,
         filesystem: Any | None,
+        write_residues: bool = True,
     ) -> None:
         """The work of :meth:`save`. Appends each written file to *saved_files*."""
         query_scope = "all" if "all_query_outputs" in chosen else "failed" if "failed_query_outputs" in chosen else None
@@ -1741,6 +1745,8 @@ class ValidationResult:
         residues: list[tuple[CheckResult, nw.DataFrame]] = []
         if "annotated_table" in chosen:
             annotated, residues = self._annotated_output(None, check_info)
+            if not write_residues:
+                residues = []
         file_stems = _check_file_stems(self.check_results)
 
         target = OutputDir(output_dir, filesystem)

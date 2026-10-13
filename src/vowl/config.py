@@ -7,7 +7,7 @@ from __future__ import annotations
 import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import Literal, cast
 
 #: Outputs ``save()`` can write, picked as a list. ``check_results.csv`` and
 #: ``summary.json`` are always written and are not in the list:
@@ -51,16 +51,17 @@ DEFAULT_SAVE_OUTPUTS: tuple[str, ...] = (
     "dq_metrics",
 )
 
-#: The ``output_mode`` values v0.0.6 shipped, mapped to the outputs that write
-#: the same files.
 #: The deprecated ``output_mode`` values. Kept so ``from vowl.config import
 #: OutputMode`` still works. Use :data:`SaveOutput` with ``outputs=`` instead.
 OutputMode = Literal["failed_rows", "annotated", "both"]
 
+#: The ``output_mode`` values v0.0.6 shipped, mapped to the outputs that write
+#: the same files. ``"both"`` also skipped the residue files, which ``save()``
+#: does too (see :func:`_writes_residues`).
 _DEPRECATED_OUTPUT_MODES: dict[str, tuple[str, ...]] = {
     "failed_rows": ("consolidated_query_outputs",),
-    "annotated": ("annotated_table", "dq_metrics"),
-    "both": ("consolidated_query_outputs", "annotated_table", "dq_metrics"),
+    "annotated": ("annotated_table",),
+    "both": ("consolidated_query_outputs", "annotated_table"),
 }
 
 
@@ -78,6 +79,9 @@ def _resolve_outputs(
     :data:`DEFAULT_SAVE_OUTPUTS`) is used.
     """
     if output_mode is not None:
+        if outputs is not None and tuple(outputs) == _DEPRECATED_OUTPUT_MODES.get(output_mode):
+            # A copy of a config built from output_mode, e.g. dataclasses.replace().
+            return tuple(outputs)
         if outputs is not None:
             raise ValueError("Pass outputs= or the deprecated output_mode=, not both.")
         if output_mode not in _DEPRECATED_OUTPUT_MODES:
@@ -106,6 +110,11 @@ def _resolve_outputs(
             "and 'all_query_outputs' already holds the failed rows."
         )
     return tuple(name for name in SAVE_OUTPUTS if name in chosen)
+
+
+def _writes_residues(output_mode: str | None) -> bool:
+    """Whether ``save()`` writes residue files. v0.0.6's ``"both"`` did not."""
+    return output_mode != "both"
 
 
 #: Presets controlling the contents of the annotated table's ``check_info``
@@ -151,10 +160,12 @@ class ValidationConfig:
             call. ``check_results.csv`` and ``summary.json`` are always
             written.
         output_mode: **Deprecated**, use ``outputs``. The v0.0.6 names map
-            to outputs with a ``FutureWarning``: ``"failed_rows"`` to
-            ``["consolidated_query_outputs"]``, ``"annotated"`` to
-            ``["annotated_table", "dq_metrics"]`` and ``"both"`` to all
-            three. It will be removed in a future release.
+            to outputs with a ``FutureWarning`` and write the files v0.0.6
+            wrote: ``"failed_rows"`` to ``["consolidated_query_outputs"]``,
+            ``"annotated"`` to ``["annotated_table"]`` and ``"both"`` to
+            both, without the residue files. It stays readable, and
+            ``outputs`` holds the outputs it maps to. It will be removed in
+            a future release.
         annotated_check_info: Preset controlling the annotated table's
             ``check_info`` column.  One of ``"names"`` (default),
             ``"summary"``, or ``"full"``.  See :data:`CheckInfoPreset`.
@@ -188,8 +199,7 @@ class ValidationConfig:
     fetch_tolerated_rows: bool = False
 
     def __post_init__(self) -> None:
-        self.outputs = list(_resolve_outputs(self.outputs, self.output_mode, stacklevel=3))
-        self.output_mode = None
+        self.outputs = cast("list[SaveOutput]", list(_resolve_outputs(self.outputs, self.output_mode, stacklevel=3)))
         if self.enable_additional_schema_statistics is not None:
             warnings.warn(
                 "enable_additional_schema_statistics is deprecated and has no effect.",
@@ -207,8 +217,8 @@ class ValidationConfig:
         """Return a plain dict representation of the config.
 
         The deprecated ``enable_additional_schema_statistics`` and
-        ``output_mode`` are left out. ``output_mode`` is already resolved into
-        ``outputs``.
+        ``output_mode`` are left out. ``outputs`` already holds the outputs
+        ``output_mode`` maps to.
         """
         data = asdict(self)
         data.pop("enable_additional_schema_statistics", None)

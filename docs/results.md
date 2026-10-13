@@ -592,11 +592,12 @@ These still work but will be removed in a future release.
 ### output_mode
 
 `output_mode` still works with a `FutureWarning` and writes the files it wrote
-in v0.0.6. It will be removed in a future release. Passing it with
-`outputs` raises a `ValueError`.
+in v0.0.6, so it writes no `dq_metrics.json`. `"both"` also writes no residue
+files, as in v0.0.6. `ValidationConfig.output_mode` stays readable. It will be
+removed in a future release. Passing it with `outputs` raises a `ValueError`.
 
-| `output_mode`   | Use instead                                                               |
-| --------------- | ------------------------------------------------------------------------- |
-| `"failed_rows"` | `outputs=["consolidated_query_outputs"]`                                  |
-| `"annotated"`   | `outputs=["annotated_table", "dq_metrics"]`                               |
-| `"both"`        | `outputs=["consolidated_query_outputs", "annotated_table", "dq_metrics"]` |
+| `output_mode`   | Use instead                                                                      |
+| --------------- | -------------------------------------------------------------------------------- |
+| `"failed_rows"` | `outputs=["consolidated_query_outputs"]`                                         |
+| `"annotated"`   | `outputs=["annotated_table"]`                                                    |
+| `"both"`        | `outputs=["consolidated_query_outputs", "annotated_table"]`, which adds residues |

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import warnings
 
@@ -141,8 +142,8 @@ def test_check_info_and_definitions_with_annotated_table_do_not_warn(tmp_path):
     ("mode", "outputs"),
     [
         ("failed_rows", ["consolidated_query_outputs"]),
-        ("annotated", ["annotated_table", "dq_metrics"]),
-        ("both", ["consolidated_query_outputs", "annotated_table", "dq_metrics"]),
+        ("annotated", ["annotated_table"]),
+        ("both", ["consolidated_query_outputs", "annotated_table"]),
     ],
 )
 def test_output_mode_maps_to_outputs_with_a_warning(tmp_path, mode, outputs):
@@ -152,7 +153,53 @@ def test_output_mode_maps_to_outputs_with_a_warning(tmp_path, mode, outputs):
     with pytest.warns(FutureWarning, match=rf"output_mode='{mode}' is deprecated"):
         config = ValidationConfig(output_mode=mode)
     assert config.outputs == outputs
-    assert config.output_mode is None
+    # Still readable, as on 0.0.6. outputs is what save() uses.
+    assert config.output_mode == mode
+    assert "output_mode" not in config.to_dict()
+
+
+def test_replace_keeps_a_config_built_from_output_mode():
+    with pytest.warns(FutureWarning):
+        config = ValidationConfig(output_mode="both")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        copy = dataclasses.replace(config, max_failed_rows=5)
+    assert (copy.outputs, copy.output_mode) == (config.outputs, "both")
+
+
+@pytest.mark.parametrize("via_config", [False, True])
+def test_output_mode_both_writes_the_0_0_6_files(tmp_path, via_config):
+    checks = (_check("c"), _residue_check("join check"))
+    with pytest.warns(FutureWarning, match="output_mode='both'"):
+        if via_config:
+            _result(*checks, config=ValidationConfig(output_mode="both")).save(str(tmp_path), prefix="r")
+        else:
+            _result(*checks).save(str(tmp_path), prefix="r", output_mode="both")
+    # 0.0.6 wrote no residues for "both", and had no dq_metrics.
+    files = _files(tmp_path)
+    assert not any(name.endswith("_residue.csv") for name in files), files
+    assert "r_dq_metrics.json" not in files
+    assert "r_orders_annotated.csv" in files
+
+
+def test_output_mode_annotated_writes_the_0_0_6_files(tmp_path):
+    with pytest.warns(FutureWarning):
+        _result(_check("c"), _residue_check("join check")).save(str(tmp_path), prefix="r", output_mode="annotated")
+    assert _files(tmp_path) == {
+        "r_check_results.csv",
+        "r_summary.json",
+        "r_orders_annotated.csv",
+        "r_orders__join_check_residue.csv",
+    }
+
+
+def test_explicit_outputs_keep_residues_on_a_config_built_from_both(tmp_path):
+    with pytest.warns(FutureWarning):
+        config = ValidationConfig(output_mode="both")
+    _result(_check("c"), _residue_check("join check"), config=config).save(
+        str(tmp_path), prefix="r", outputs=["annotated_table"]
+    )
+    assert "r_orders__join_check_residue.csv" in _files(tmp_path)
 
 
 @pytest.mark.parametrize("mode", ["as_is", "attributed", "anotated"])
