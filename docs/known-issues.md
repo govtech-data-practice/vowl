@@ -27,6 +27,34 @@ properties:
 
 This catches nulls directly, regardless of which database backend runs the validation.
 
+### PostgreSQL and MySQL: No Safe Cast
+
+When a check compares a column to a number, such as `WHERE floor_area_sqm >= 200`, vowl casts the column first (see [`use_try_cast`](run-settings.md#use_try_cast)). Where the database has a safe cast, vowl uses it, so a value that can't be converted becomes `NULL` and the query still runs. PostgreSQL and MySQL have no safe cast, so vowl writes a plain `CAST`:
+
+| Backend    | SQL vowl runs                               |
+| ---------- | ------------------------------------------- |
+| DuckDB     | `TRY_CAST(floor_area_sqm AS BIGINT) >= 200` |
+| PostgreSQL | `CAST(floor_area_sqm AS BIGINT) >= 200`     |
+| MySQL      | `CAST(floor_area_sqm AS SIGNED) >= 200`     |
+
+This only matters when the column is stored as text. Casting a numeric column to a number doesn't fail.
+
+**PostgreSQL** is strict. One value it can't convert fails the whole query, and the check ends in `ERROR`. A decimal string such as `"44.0"` is not valid integer text, so it fails too:
+
+```
+invalid input syntax for type bigint: "44.0"
+```
+
+**MySQL** never fails a cast. It truncates decimals (`"199.9"` becomes `199`) and turns text it can't read into `0` (`"abc"` and `""` both become `0`). The check runs, but a bad value is compared as `0` instead of being reported, so the count can be wrong without any error.
+
+vowl also writes a plain `CAST` for Snowflake and SQLite. Their behaviour has not been tested.
+
+**Workarounds:**
+
+- Store numbers in numeric columns (`INTEGER`, `NUMERIC`). The database then rejects bad values on insert, and the cast in the check can't fail.
+- Write the cast in the check yourself, to a type that accepts the values, for example `WHERE CAST(floor_area_sqm AS NUMERIC) >= 200`. PostgreSQL accepts `"44.0"` as `NUMERIC`. Text that isn't a number, such as `"abc"`, still fails.
+- Run the checks through DuckDB, which has `TRY_CAST`. For PostgreSQL and MySQL, DuckDB can attach the database and read it in place (see the [real databases example](https://github.com/govtech-data-practice/vowl/blob/main/examples/3_real_databases/real_databases.ipynb)).
+
 ### MSSQL: No Regex Support
 
 SQL Server does not support regex (`REGEXP_LIKE`). Any check that uses pattern matching will return `ERROR` when run against MSSQL.
