@@ -311,7 +311,7 @@ class Contract:
         contract_data (Dict[str, Any]): The parsed contract data from YAML or JSON
     """
 
-    def __init__(self, contract_data: dict[str, Any], *, origin: str | None = None):
+    def __init__(self, contract_data: dict[str, Any], *, origin: str | None = None, _build_checks: bool = True):
         self.contract_data: DataContract = contract_data
         # Retrieval location this contract was loaded from (local path, http(s)
         # URL, or s3 URI); None when constructed directly from an in-memory dict.
@@ -331,6 +331,12 @@ class Contract:
                 f"Contract does not specify an apiVersion. Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
         validate_contract(contract_data, api_version)
+        if not _build_checks:
+            # Loaded only to resolve another contract's foreign key, which reads
+            # just its schema and properties. Building its checks would follow
+            # its own references too, and loop when two contracts point at
+            # each other.
+            return
         _reject_duplicate_check_names(contract_data)
         # Builds every check now, so a clash between check names (authored or
         # generated) fails when the contract loads, not mid-run. The result is
@@ -448,7 +454,7 @@ class Contract:
             raise OSError(f"Error fetching contract from S3 {s3_path}: {e}") from e
 
     @classmethod
-    def load(cls, contract_file_path: str) -> "Contract":
+    def load(cls, contract_file_path: str, *, _build_checks: bool = True) -> "Contract":
         """
         Create a Contract instance from a local path or remote URI.
 
@@ -509,7 +515,7 @@ class Contract:
                 f"Invalid contract YAML/JSON in {contract_file_path}: {yaml_parsing_error}"
             ) from yaml_parsing_error
 
-        return cls(contract_data, origin=origin)
+        return cls(contract_data, origin=origin, _build_checks=_build_checks)
 
     def get_schema_properties(self) -> dict[str, Any]:
         """
@@ -777,7 +783,7 @@ class Contract:
             location = os.path.normpath(os.path.join(os.path.dirname(self._origin), file_ref))
 
         try:
-            external = Contract.load(location)
+            external = Contract.load(location, _build_checks=False)
         except Exception as exc:
             raise ValueError(f"could not load external contract '{file_ref}': {exc}") from exc
 

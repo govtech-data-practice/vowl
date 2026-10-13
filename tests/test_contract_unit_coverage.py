@@ -16,6 +16,7 @@ from vowl.contracts.check_reference import (
     EnumCheckReference,
     LogicalTypeCheckReference,
     PrimaryKeyCheckReference,
+    PropertyForeignKeyCheckReference,
     RequiredCheckReference,
     SQLColumnCheckReference,
     SQLTableCheckReference,
@@ -910,7 +911,7 @@ def test_load_external_resolves_relative_to_local_origin(monkeypatch: pytest.Mon
     contract = _fk_resolver_contract(monkeypatch, origin="/data/contracts/main.yaml")
     captured: list[str] = []
 
-    def fake_load(location: str) -> Contract:
+    def fake_load(location: str, **_kwargs) -> Contract:
         captured.append(location)
         return _fk_resolver_contract(monkeypatch)
 
@@ -924,7 +925,7 @@ def test_load_external_resolves_relative_to_http_origin(monkeypatch: pytest.Monk
     contract = _fk_resolver_contract(monkeypatch, origin="https://example.com/contracts/main.yaml")
     captured: list[str] = []
 
-    def fake_load(location: str) -> Contract:
+    def fake_load(location: str, **_kwargs) -> Contract:
         captured.append(location)
         return _fk_resolver_contract(monkeypatch)
 
@@ -949,7 +950,7 @@ def test_load_external_resolves_relative_to_s3_origin(
     contract = _fk_resolver_contract(monkeypatch, origin=origin)
     captured: list[str] = []
 
-    def fake_load(location: str) -> Contract:
+    def fake_load(location: str, **_kwargs) -> Contract:
         captured.append(location)
         return _fk_resolver_contract(monkeypatch)
 
@@ -958,11 +959,79 @@ def test_load_external_resolves_relative_to_s3_origin(
     assert captured == [expected]
 
 
+def _external_fk_contract(contract_id: str, table: str, fk_to: str) -> dict:
+    return {
+        "apiVersion": "v3.2.0",
+        "kind": "DataContract",
+        "version": "1.0.0",
+        "id": contract_id,
+        "status": "active",
+        "schema": [
+            {
+                "id": f"{table}_schema",
+                "name": table,
+                "properties": [
+                    {"id": f"{table}_id", "name": "id", "logicalType": "integer", "primaryKey": True},
+                    {
+                        "name": "other_id",
+                        "logicalType": "integer",
+                        "relationships": [{"type": "foreignKey", "to": fk_to}],
+                    },
+                ],
+            }
+        ],
+    }
+
+
+def _foreign_key_names(contract: Contract, schema: str) -> list[str]:
+    refs = contract.get_check_references_by_schema()[schema]
+    return [ref.get_check_name() for ref in refs if isinstance(ref, PropertyForeignKeyCheckReference)]
+
+
+def test_mutually_referencing_contracts_load_once_each(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    a = write_contract(
+        tmp_path, _external_fk_contract("a", "a_tbl", "b.yaml#/schema/b_tbl_schema/properties/b_tbl_id"), "a.yaml"
+    )
+    write_contract(
+        tmp_path, _external_fk_contract("b", "b_tbl", "a.yaml#/schema/a_tbl_schema/properties/a_tbl_id"), "b.yaml"
+    )
+    loads: list[str] = []
+    real_load = Contract.load.__func__
+
+    def counting_load(cls, path, *args, **kwargs):
+        loads.append(path)
+        return real_load(cls, path, *args, **kwargs)
+
+    monkeypatch.setattr(Contract, "load", classmethod(counting_load))
+    contract = Contract.load(str(a))
+
+    # a.yaml itself, then b.yaml once. b's own foreign key back to a is not followed.
+    assert len(loads) == 2
+    assert _foreign_key_names(contract, "a_tbl") == ["a_tbl_other_id_to_b_tbl_id_foreign_key_check"]
+
+
+def test_a_ref_target_with_its_own_name_clash_can_still_be_referenced(tmp_path: Path):
+    target = _external_fk_contract("t", "t_tbl", "t_tbl.id")
+    # An authored name equal to a generated one fails when t.yaml is loaded on its own.
+    target["schema"][0]["properties"][0]["quality"] = [
+        {"type": "sql", "name": "id_primary_key_check", "query": "SELECT 0", "mustBe": 0}
+    ]
+    target_path = write_contract(tmp_path, target, "t.yaml")
+    with pytest.raises(ValueError, match="both named 'id_primary_key_check'"):
+        Contract.load(str(target_path))
+
+    src = write_contract(
+        tmp_path, _external_fk_contract("s", "s_tbl", "t.yaml#/schema/t_tbl_schema/properties/t_tbl_id"), "src.yaml"
+    )
+    contract = Contract.load(str(src))
+    assert _foreign_key_names(contract, "s_tbl") == ["s_tbl_other_id_to_t_tbl_id_foreign_key_check"]
+
+
 def test_load_external_caches_per_reference(monkeypatch: pytest.MonkeyPatch):
     contract = _fk_resolver_contract(monkeypatch, origin="/data/main.yaml")
     calls: list[str] = []
 
-    def fake_load(location: str) -> Contract:
+    def fake_load(location: str, **_kwargs) -> Contract:
         calls.append(location)
         return _fk_resolver_contract(monkeypatch)
 
