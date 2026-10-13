@@ -43,13 +43,15 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - Clearer messages when an adapter is the wrong type or a table can't be downloaded.
 
 ### Deprecated
-- `output_mode` in `save()` and `ValidationConfig` emits a `FutureWarning`. Use `outputs=` instead. See [output_mode](docs/results.md#deprecated-output_mode).
+- `output_mode` in `save()` and `ValidationConfig` emits a `FutureWarning`. Use `outputs=` instead. It still writes the files 0.0.6 wrote, and `ValidationConfig.output_mode` stays readable. See [output_mode](docs/results.md#deprecated-output_mode).
 - `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` have no effect.
 - `ValidationResult.save_dataframe()`. Write the frame with its own library instead.
 - `SQLCheckReference.get_failed_rows_query()` is renamed `get_row_query()`. The old name still works with a `FutureWarning`, and a subclass that overrides it is still used.
 - `vowl.config.OutputMode`, the type of `output_mode`. Use `SaveOutput` with `outputs=` instead.
 
 ### Fixed
+- OpenTelemetry log records carry the service name, contract and run id on SDK 1.27 to 1.38, where they were exported as `unknown_service`. `vowl[otel]` on Python 3.14 needs `opentelemetry-exporter-otlp` 1.28 or later.
+- DQ metrics no longer count a check as a plain row filter when it uses `SELECT *` with `EXCLUDE`, `EXCEPT`, `REPLACE`, `RENAME` or `ILIKE`, or a clock or row-numbering construct sqlglot does not recognise, such as Oracle `ROWNUM`, SQLite `date('now')` or a `TABLESAMPLE` or unordered `LIMIT` inside a subquery. Their rows are matched exactly instead.
 - DQ metrics on Oracle count plain row filters in the database, instead of always downloading the table. The statements vowl sends no longer put `AS` before a table alias or leave `_vowl_` names unquoted, and use `DECODE` where Oracle has no `IS NOT DISTINCT FROM`.
 - Unsupported checks nested under a property, such as an unknown `logicalTypeOptions.format` or an `items` option, now report their schema and column instead of a wrong or missing one.
 - A check whose engine has no executor, or whose schema has no adapter, keeps its schema and target in its `ERROR` result.
