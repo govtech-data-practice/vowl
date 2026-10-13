@@ -135,7 +135,6 @@ class MultiSourceSQLExecutor(SQLExecutor):
         Args:
             table_name: Table referenced in the check's query.
             owner_schema: Schema the check sits under.
-            max_rows: The row limit. Defaults to the adapter's ``max_failed_rows``.
 
         Returns:
             The adapter, or None if neither lookup finds one.
@@ -412,7 +411,6 @@ class MultiSourceSQLExecutor(SQLExecutor):
             query: The SQL query to execute.
             table_names: Tables referenced in the query.
             owner_schema: Schema the check sits under.
-            max_rows: The row limit. Defaults to the adapter's ``max_failed_rows``.
 
         Returns:
             Query result (first row).
