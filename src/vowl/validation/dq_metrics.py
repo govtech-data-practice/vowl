@@ -415,10 +415,10 @@ def _check_level(points: _Points, result: ValidationResult) -> None:
     # is reported as is so an overcount stays visible.
     row_counts = check_row_counts(result)
     rated = [(cr, row_counts[id(cr)]) for cr in result.check_results if id(cr) in row_counts]
-    attributed = [(cr, rows) for cr, rows in rated if rows.attributed_rows is not None]
-    for cr, rows in attributed:
-        points.row_counts("check.row.count", rows.total_rows, rows.attributed_rows, check_level_attributes(cr))
-    for cr, rows in attributed:
+    attributed = [(cr, rows, n) for cr, rows in rated if (n := rows.attributed_rows) is not None]
+    for cr, rows, attributed_rows in attributed:
+        points.row_counts("check.row.count", rows.total_rows, attributed_rows, check_level_attributes(cr))
+    for cr, rows, _ in attributed:
         points.pass_rate("check.row.pass_rate", attributed_pass_rate(rows), check_level_attributes(cr))
     for cr, rows in rated:
         points.row_counts(
@@ -455,14 +455,15 @@ def _dimension_level(points: _Points, result: ValidationResult) -> None:
     # Row counts come from the row-quality component, the same numbers as
     # print_summary and get_dq_metrics_df. A bucket without them (no row-level
     # checks) is left out rather than reported as 100%.
-    rows = [
-        item
+    counted = [
+        (item, total, failed)
         for item in result._row_quality_report().dimensions
-        if item.total_rows is not None and item.failed_rows is not None
+        if (total := item.total_rows) is not None and (failed := item.failed_rows) is not None
     ]
-    for item in rows:
+    rows = [item for item, _, _ in counted]
+    for item, total, failed in counted:
         attrs = {"schema_name": item.schema_name, "dimension": item.dimension}
-        points.row_counts("dimension.row.count", item.total_rows, item.failed_rows, attrs)
+        points.row_counts("dimension.row.count", total, failed, attrs)
     for item in rows:
         attrs = {"schema_name": item.schema_name, "dimension": item.dimension}
         points.pass_rate("dimension.row.pass_rate", item.pass_rate, attrs)
@@ -479,14 +480,15 @@ def _schema_level(points: _Points, result: ValidationResult, counts: dict[str, d
 
     # Same rule as the dimension rows: counts need a total and a failed count,
     # the rate also needs a non-empty table.
-    rows = [
-        item
+    counted = [
+        (item, total, failed)
         for item in result._row_quality_report().schemas
-        if item.total_rows is not None and item.failed_rows is not None
+        if (total := item.total_rows) is not None and (failed := item.failed_rows) is not None
     ]
-    for item in rows:
+    rows = [item for item, _, _ in counted]
+    for item, total, failed in counted:
         attrs = {"schema_name": item.schema_name}
-        points.row_counts("schema.row.count", item.total_rows, item.failed_rows, attrs)
+        points.row_counts("schema.row.count", total, failed, attrs)
     for item in rows:
         attrs = {"schema_name": item.schema_name}
         points.pass_rate("schema.row.pass_rate", item.pass_rate, attrs)

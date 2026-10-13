@@ -43,7 +43,7 @@ class CappedFetch:
         cap = self._max_rows()
         frame = self._run(cap + 1 if cap >= 0 else cap)
         self.truncated = cap >= 0 and frame is not None and len(frame) > cap
-        return frame.head(cap) if self.truncated else frame
+        return frame.head(cap) if self.truncated and frame is not None else frame
 
 
 def _uses_fetch_for_limit(dialect: str) -> bool:

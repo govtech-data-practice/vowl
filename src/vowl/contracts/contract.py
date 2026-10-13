@@ -5,6 +5,7 @@ import posixpath
 import re
 import socket
 import warnings
+from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -257,7 +258,7 @@ def _number_clashing_names(refs: list["CheckReference"]) -> None:
         seen[(target, ref._name_override)] = ref
 
 
-def _quality_check_type(rule: dict[str, Any]) -> str:
+def _quality_check_type(rule: Mapping[str, Any]) -> str:
     """Return a quality rule's ``type``, defaulting the way ODCS does where it matters.
 
     ODCS defaults ``type`` to ``library``, so a rule with a ``metric``, or the
@@ -270,7 +271,7 @@ def _quality_check_type(rule: dict[str, Any]) -> str:
     return "library" if ("metric" in rule or "rule" in rule) else "sql"
 
 
-def _unsupported_library_message(rule: dict[str, Any], level: str, supported: Any) -> str:
+def _unsupported_library_message(rule: Mapping[str, Any], level: str, supported: Any) -> str:
     """Explain why a library rule has no check, naming a v3.0.2 ``rule`` when that is the cause."""
     metric = rule.get("metric")
     if metric is None and "rule" in rule:
