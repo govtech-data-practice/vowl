@@ -50,6 +50,10 @@ class LogEmitter:
         context_attributes: dict[str, Any] | None = None,
     ) -> None:
         self._logger = logger_provider.get_logger("vowl")
+        # SDK 1.27 to 1.38 export the record's own resource, which defaults to
+        # an empty one, so pass the emitting provider's. 1.39+ fills it itself
+        # and its LogRecord has no resource argument, which _build_record drops.
+        self._resource = getattr(logger_provider, "resource", None)
         self._ns = namespace
         self._span_contexts = span_contexts
         self._samples = sample_rows_by_check
@@ -98,6 +102,7 @@ class LogEmitter:
                 severity_text=severity_text,
                 body=body,
                 attributes=attrs,
+                resource=self._resource,
             )
             self._logger.emit(record)
 

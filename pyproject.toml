@@ -66,6 +66,8 @@ spark-classic = [
 otel = [
     "opentelemetry-sdk>=1.27.0",
     "opentelemetry-exporter-otlp>=1.27.0",
+    # 1.27 pins protobuf<5, which fails at import on Python 3.14.
+    "opentelemetry-exporter-otlp>=1.28.0; python_version >= '3.14'",
 ]
 
 # Everything (base + spark + aws + otel)
@@ -73,6 +75,7 @@ all = [
     "boto3>=1.42.38",
     "ibis-framework[pyspark]>=11.0.0",
     "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-exporter-otlp>=1.28.0; python_version >= '3.14'",
     "opentelemetry-sdk>=1.27.0",
     "pyspark[connect]>=3.4.0",
 ]

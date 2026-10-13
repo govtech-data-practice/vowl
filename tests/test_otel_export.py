@@ -786,6 +786,43 @@ def test_log_emitter_is_silent_when_all_checks_pass():
     assert len(exporter.get_finished_logs()) == 0
 
 
+def _record_resource(log_data):
+    """The Resource an exporter sees: on the record before SDK 1.39, beside it after."""
+    resource = getattr(log_data, "resource", None)
+    return resource if resource is not None else log_data.log_record.resource
+
+
+def test_log_records_carry_the_resource_of_the_provider_vowl_builds(monkeypatch, result):
+    """SDK 1.27 to 1.38 export a record's own Resource, which defaults to an empty one."""
+    import opentelemetry.exporter.otlp.proto.grpc._log_exporter as grpc_logs
+
+    _, exporter = _logger_provider()
+    monkeypatch.setattr(grpc_logs, "OTLPLogExporter", lambda **_: exporter)
+
+    run_id = result.export_otel(signals=("logs",), endpoint="http://localhost:4317", protocol="grpc")
+
+    (log_data,) = exporter.get_finished_logs()
+    attrs = _record_resource(log_data).attributes
+    assert attrs["service.name"] == "vowl"
+    assert attrs["vowl.contract.id"] == "orders-contract"
+    assert attrs["vowl.run.id"] == run_id
+
+
+def test_log_records_carry_the_resource_of_a_caller_provider(result):
+    from opentelemetry.sdk._logs import LoggerProvider
+    from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
+    from opentelemetry.sdk.resources import Resource
+
+    _, exporter = _logger_provider()
+    provider = LoggerProvider(resource=Resource.create({"service.name": "orders-pipeline"}))
+    provider.add_log_record_processor(SimpleLogRecordProcessor(exporter))
+
+    result.export_otel(signals=("logs",), logger_provider=provider)
+
+    (log_data,) = exporter.get_finished_logs()
+    assert _record_resource(log_data).attributes["service.name"] == "orders-pipeline"
+
+
 # --------------------------------------------------------------------------- #
 # Facade: validation, row sampling, lifecycle
 # --------------------------------------------------------------------------- #
