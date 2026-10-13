@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -44,6 +45,33 @@ class CappedFetch:
         frame = self._run(cap + 1 if cap >= 0 else cap)
         self.truncated = cap >= 0 and frame is not None and len(frame) > cap
         return frame.head(cap) if self.truncated and frame is not None else frame
+
+
+def row_query_of(
+    check_ref: Any,
+    dialect: str,
+    filter_conditions: Any = None,
+    *,
+    use_try_cast: bool = False,
+) -> str | None:
+    """Return the check's row query, from ``get_row_query`` or its 0.0.6 name.
+
+    A ``SQLCheckReference`` subclass always has ``get_row_query``. A check
+    reference that does not subclass it, written against 0.0.6, may only
+    define ``get_failed_rows_query``. That name is called with a
+    ``FutureWarning`` instead of failing the check.
+    """
+    get_row_query = getattr(check_ref, "get_row_query", None)
+    if get_row_query is None:
+        get_row_query = getattr(check_ref, "get_failed_rows_query", None)
+        if get_row_query is None:
+            raise AttributeError(f"{type(check_ref).__name__} has no get_row_query method")
+        warnings.warn(
+            f"{type(check_ref).__name__}.get_failed_rows_query is deprecated, define get_row_query instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+    return get_row_query(dialect, filter_conditions, use_try_cast=use_try_cast)
 
 
 def _uses_fetch_for_limit(dialect: str) -> bool:

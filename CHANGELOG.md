@@ -21,6 +21,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - **Check names are unique on each column and schema, generated ones included.** A name you give two checks on one column or one schema, or a name that matches one vowl generates there (such as `email_required_check`), raises `ValueError` when the contract loads. An `id` counts as a name. Two checks whose names vowl made up, such as two unnamed checks, are numbered `_2`, `_3` instead. Two schemas with the same name also raise, where 0.0.6 silently dropped the first one's checks. See [Check names](docs/contracts.md#check-names).
 - **Foreign key checks name both ends**: `<schema>_<columns>_to_<target schema>_<target columns>_foreign_key_check`, for example `orders_customer_id_to_customers_customer_id_foreign_key_check`. Two foreign keys from one column now get different names. Update any filters or alerts on the old names. See [Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys).
 - **`check_results.csv` has no `type` or `description` column**, which no check ever filled. It gains `severity` when a check sets one.
+- **`ValidationConfig` has a new `outputs` field before `output_mode`.** Pass `output_mode` by keyword. Passed as the fifth positional argument, it now lands in `outputs` and raises `TypeError`.
 
 ### Added
 - **Every check is identified by `schema_name`, `target` and `check_name`** in DQ metrics, `dq_metrics.json`, OpenTelemetry metrics, spans and logs, and `get_dq_metrics_df(by="check")`, the same as in `check_results.csv`. `target` is `<schema>.<column>`, or `<schema>` for a schema-level check. Checks with the same name on different columns, or on a column and its schema, are no longer merged. See [How a check is identified](docs/dq-metrics/understanding-metrics.md#how-a-check-is-identified).
@@ -47,7 +48,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - `output_mode` in `save()` and `ValidationConfig` emits a `FutureWarning`. Use `outputs=` instead. It still writes the files 0.0.6 wrote, and `ValidationConfig.output_mode` stays readable. `dataclasses.replace(config, output_mode=...)` also works. Setting `config.output_mode` on an existing config does not change what `save()` writes. Build a new config or use `dataclasses.replace()`. See [output_mode](docs/results.md#deprecated-output_mode).
 - `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` have no effect.
 - `ValidationResult.save_dataframe()`. Write the frame with its own library instead.
-- `SQLCheckReference.get_failed_rows_query()` is renamed `get_row_query()`. The old name still works with a `FutureWarning`, and a subclass that overrides it is still used.
+- `SQLCheckReference.get_failed_rows_query()` is renamed `get_row_query()`. The old name still works with a `FutureWarning`. A subclass that overrides it is still used, and so is a check reference that defines only the old name without subclassing `SQLCheckReference`.
 - `vowl.config.OutputMode`, the type of `output_mode`. Use `SaveOutput` with `outputs=` instead.
 
 ### Fixed

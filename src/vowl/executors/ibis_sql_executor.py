@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import narwhals as nw
 import pyarrow as pa
 
-from vowl.executors.base import CappedFetch, CheckResult, RowSource, SQLExecutor
+from vowl.executors.base import CappedFetch, CheckResult, RowSource, SQLExecutor, row_query_of
 from vowl.executors.security import SQLSecurityError
 
 if TYPE_CHECKING:
@@ -198,11 +198,7 @@ class IbisSQLExecutor(SQLExecutor):
                     security_violation=sec_error.violation_type,
                 )
 
-            failed_query = check_ref.get_row_query(
-                dialect,
-                filters,
-                use_try_cast=use_try_cast,
-            )
+            failed_query = row_query_of(check_ref, dialect, filters, use_try_cast=use_try_cast)
 
             fetcher = CappedFetch(
                 lambda limit, q=failed_query: self._fetch_failed_rows(q, limit), self._max_failed_rows

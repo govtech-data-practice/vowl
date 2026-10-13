@@ -625,6 +625,57 @@ def test_ibis_run_single_check_failed_result_defaults_row_count_to_zero(monkeypa
     assert result.failed_rows.to_pandas().to_dict(orient="records") == [{"id": 1}]
 
 
+class OldNameCheckReference(StubCheckReference):
+    """A 0.0.6 check reference that is not a SQLCheckReference subclass."""
+
+    get_row_query = None
+
+    def get_failed_rows_query(self, output_dialect, query_filters, use_try_cast=True):
+        return "SELECT * FROM users WHERE id < 0"
+
+
+def test_ibis_run_single_check_uses_old_row_query_name(monkeypatch: pytest.MonkeyPatch):
+    executor = IbisSQLExecutor(StubIbisAdapter(StubRawSQLConnection(lambda query: None)))
+    queries: list[str] = []
+
+    monkeypatch.setattr(executor, "_execute_query", lambda query: 1)
+    monkeypatch.setattr(
+        executor,
+        "_fetch_failed_rows",
+        lambda query, max_rows=None: queries.append(query) or nw.from_native(pa.table({"id": [-1]}), eager_only=True),
+    )
+
+    with pytest.warns(FutureWarning, match="define get_row_query instead"):
+        result = executor.run_single_check(OldNameCheckReference())
+
+    assert result.status == "FAILED"
+    assert result.failed_rows.to_pandas().to_dict(orient="records") == [{"id": -1}]
+    assert queries == ["SELECT * FROM users WHERE id < 0"]
+
+
+def test_multisource_run_single_check_uses_old_row_query_name(monkeypatch: pytest.MonkeyPatch):
+    executor = MultiSourceSQLExecutor(StubMultiAdapter({}))
+    queries: list[str] = []
+
+    monkeypatch.setattr(executor, "_detect_tables", lambda query: {"users"})
+    monkeypatch.setattr(executor, "_are_backends_compatible", lambda table_names, owner_schema=None: False)
+    monkeypatch.setattr(executor, "_execute_query", lambda query, table_names, owner_schema=None: [1])
+    monkeypatch.setattr(
+        executor,
+        "_fetch_failed_rows",
+        lambda query, table_names, owner_schema=None, max_rows=None: (
+            queries.append(query) or nw.from_native(pa.table({"id": [-1]}), eager_only=True)
+        ),
+    )
+
+    with pytest.warns(FutureWarning, match="define get_row_query instead"):
+        result = executor.run_single_check(OldNameCheckReference())
+
+    assert result.status == "FAILED"
+    assert result.failed_rows.to_pandas().to_dict(orient="records") == [{"id": -1}]
+    assert queries == ["SELECT * FROM users WHERE id < 0"]
+
+
 def test_validate_read_only_query_raises_parse_error(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "vowl.executors.security.sqlglot.parse",

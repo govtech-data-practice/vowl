@@ -16,7 +16,7 @@ import sqlglot
 from sqlglot import exp
 
 from vowl.contracts.sql_transforms import matching_filter_conditions
-from vowl.executors.base import CappedFetch, CheckResult, RowSource, SQLExecutor
+from vowl.executors.base import CappedFetch, CheckResult, RowSource, SQLExecutor, row_query_of
 from vowl.executors.security import SQLSecurityError, sanitize_identifier
 
 if TYPE_CHECKING:
@@ -493,11 +493,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                     security_violation=sec_error.violation_type,
                 )
 
-            failed_query = check_ref.get_row_query(
-                output_dialect,
-                query_filters,
-                use_try_cast=use_try_cast,
-            )
+            failed_query = row_query_of(check_ref, output_dialect, query_filters, use_try_cast=use_try_cast)
 
             fetcher = CappedFetch(
                 lambda limit, q=failed_query, t=table_names, o=owner_schema: self._fetch_failed_rows(q, t, o, limit),
@@ -701,11 +697,7 @@ class MultiSourceSQLExecutor(SQLExecutor):
                         )
                         return
 
-                    failed_query = ref.get_row_query(
-                        output_dialect,
-                        None,
-                        use_try_cast=use_try_cast,
-                    )
+                    failed_query = row_query_of(ref, output_dialect, None, use_try_cast=use_try_cast)
 
                     def run(max_r, q=failed_query, con=local_con):
                         if not q:

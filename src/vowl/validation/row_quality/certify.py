@@ -12,6 +12,7 @@ from typing import Any
 import sqlglot
 from sqlglot import exp
 
+from ...executors.base import row_query_of
 from ...executors.security import to_table_expression
 
 _NONDETERMINISTIC_NODES: tuple[type[exp.Expression], ...] = (
@@ -295,7 +296,7 @@ def certify_check(
         if rendered is not None:
             row_query, scalar_query = rendered
         else:
-            row_query = check_ref.get_row_query(dialect, None, use_try_cast=use_try_cast)
+            row_query = row_query_of(check_ref, dialect, None, use_try_cast=use_try_cast)
             scalar_query = check_ref.get_query(dialect, None, use_try_cast=use_try_cast)
         aggregation_type = check_ref.aggregation_type
     except Exception:
