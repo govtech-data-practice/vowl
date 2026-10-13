@@ -170,11 +170,24 @@ def tuple_in_subquery_to_exists(ast: exp.Expression) -> exp.Expression:
 
     The columns are qualified with the enclosing SELECT's table, so the
     rewrite applies only when that SELECT reads a single table without joins.
-    NULL keys never match either way, so the result is the same.
+
+    ``IN`` is UNKNOWN when a key is NULL and no row matches, where ``EXISTS``
+    is FALSE. A WHERE or HAVING filter drops both, and AND and OR cannot turn
+    either into TRUE, so the rewrite runs only when the ``IN`` reaches the
+    filter through AND, OR and parentheses. Under NOT, IS, CASE or a
+    comparison the two differ, so the ``IN`` is left as written.
     """
+
+    def _in_filter_position(node: exp.Expression) -> bool:
+        parent = node.parent
+        while isinstance(parent, (exp.And, exp.Or, exp.Paren)):
+            parent = parent.parent
+        return isinstance(parent, (exp.Where, exp.Having))
 
     def _transform(node: exp.Expression) -> exp.Expression:
         if not isinstance(node, exp.In) or not isinstance(node.this, exp.Tuple):
+            return node
+        if not _in_filter_position(node):
             return node
         query = node.args.get("query")
         if query is None:

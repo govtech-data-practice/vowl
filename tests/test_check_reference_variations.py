@@ -1940,3 +1940,30 @@ class TestCompositePrimaryKeyCheck:
         )
         rewritten = sqlglot.transpile(ref.get_query("trino"), read="trino", write="duckdb")[0]
         assert _scalar(con, rewritten) == _scalar(con, ref.get_query("duckdb")) == 3
+
+    @pytest.mark.parametrize(
+        ("query", "rewritten"),
+        [
+            ("SELECT COUNT(*) FROM t WHERE (a, b) IN (SELECT a, b FROM u)", True),
+            ("SELECT COUNT(*) FROM t WHERE a = 9 OR (b > 0 AND (a, b) IN (SELECT a, b FROM u))", True),
+            ("SELECT COUNT(*) FROM t WHERE NOT (a, b) IN (SELECT a, b FROM u)", False),
+            ("SELECT SUM(CASE WHEN NOT (a, b) IN (SELECT a, b FROM u) THEN 1 ELSE 0 END) FROM t", False),
+            ("SELECT COUNT(*) FROM t WHERE ((a, b) IN (SELECT a, b FROM u)) IS NULL", False),
+        ],
+    )
+    def test_row_value_in_rewrite_only_in_filter_position(self, query: str, rewritten: bool):
+        # IN is UNKNOWN for a NULL key with no match, EXISTS is FALSE. Only a
+        # WHERE/HAVING filter treats the two alike, so only there is it rewritten.
+        import ibis
+        import sqlglot
+
+        from vowl.contracts.sql_transforms import transpile
+
+        out = transpile(query, "postgres", "trino")
+        assert ("EXISTS" in out) is rewritten
+        con = ibis.duckdb.connect()
+        con.create_table("t", pa.table({"a": [1, None, 1, 5], "b": [1, 2, 1, None]}))
+        con.create_table("u", pa.table({"a": [1, 3], "b": [1, None]}))
+        if rewritten:
+            back = sqlglot.transpile(out, read="trino", write="duckdb")[0]
+            assert _scalar(con, back) == _scalar(con, query)
