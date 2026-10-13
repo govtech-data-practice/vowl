@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from types import SimpleNamespace
 
 import pytest
@@ -639,6 +640,73 @@ def test_a_0_0_6_get_failed_rows_query_override_is_still_used():
                 return "SELECT id FROM legacy"
 
     assert _Legacy("SELECT COUNT(*) FROM users").get_row_query("postgres") == "SELECT id FROM legacy"
+
+
+def test_a_0_0_6_override_that_calls_super_gets_the_parent_rows():
+    with pytest.warns(FutureWarning, match="override get_row_query"):
+
+        class _Legacy(_StubSQLCheckReference):
+            def get_failed_rows_query(self, dialect, filter_conditions=None, use_try_cast=False):
+                query = super().get_failed_rows_query(dialect, filter_conditions, use_try_cast)
+                return f"{query} LIMIT 5"
+
+    ref = _Legacy("SELECT COUNT(*) FROM users WHERE id > 1")
+    with pytest.warns(FutureWarning, match="use get_row_query"):
+        assert ref.get_row_query("postgres") == "SELECT * FROM users WHERE id > 1 LIMIT 5"
+
+
+def test_0_0_6_overrides_that_call_super_stack_on_a_new_style_parent():
+    class _NewStyle(_StubSQLCheckReference):
+        def get_row_query(self, dialect, filter_conditions=None, use_try_cast=False):
+            return super().get_row_query(dialect, filter_conditions, use_try_cast) + " ORDER BY id"
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+
+        class _Legacy(_NewStyle):
+            def get_failed_rows_query(self, dialect, filter_conditions=None, use_try_cast=False):
+                return super().get_failed_rows_query(dialect, filter_conditions, use_try_cast) + " LIMIT 5"
+
+        class _LegacyChild(_Legacy):
+            def get_failed_rows_query(self, dialect, filter_conditions=None, use_try_cast=False):
+                return super().get_failed_rows_query(dialect, filter_conditions, use_try_cast) + " OFFSET 1"
+
+        class _NewStyleChild(_LegacyChild):
+            def get_row_query(self, dialect, filter_conditions=None, use_try_cast=False):
+                return "/* x */ " + super().get_row_query(dialect, filter_conditions, use_try_cast)
+
+        rows = "SELECT * FROM users WHERE id > 1 ORDER BY id"
+        assert _Legacy("SELECT COUNT(*) FROM users WHERE id > 1").get_row_query("postgres") == f"{rows} LIMIT 5"
+        assert (
+            _LegacyChild("SELECT COUNT(*) FROM users WHERE id > 1").get_row_query("postgres")
+            == f"{rows} LIMIT 5 OFFSET 1"
+        )
+        assert (
+            _NewStyleChild("SELECT COUNT(*) FROM users WHERE id > 1").get_row_query("postgres")
+            == f"/* x */ {rows} LIMIT 5 OFFSET 1"
+        )
+
+
+def test_the_old_name_warns_once_per_call_and_returns_the_new_style_rows():
+    class _NewStyle(_StubSQLCheckReference):
+        def get_row_query(self, dialect, filter_conditions=None, use_try_cast=False):
+            return "SELECT 1 FROM t"
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert _NewStyle("x").get_failed_rows_query("postgres") == "SELECT 1 FROM t"
+    assert len(caught) == 1
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+
+        class _Legacy(_StubSQLCheckReference):
+            def get_failed_rows_query(self, dialect, filter_conditions=None, use_try_cast=False):
+                return super().get_failed_rows_query(dialect, filter_conditions, use_try_cast)
+
+        assert len(caught) == 1
+        _Legacy("SELECT COUNT(*) FROM users").get_row_query("postgres")
+    assert len(caught) == 2
 
 
 def test_output_mode_type_is_still_importable():

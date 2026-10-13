@@ -57,6 +57,32 @@ def _counts_whole_values(argument: exp.Expression) -> bool:
     return not (isinstance(argument, exp.Anonymous) and argument.name.upper() == "ROW")
 
 
+def _deprecated_alias_of(get_row_query: Callable[..., str | None]) -> Callable[..., str | None]:
+    """A deprecated ``get_failed_rows_query`` that calls *get_row_query*.
+
+    Each class gets an alias bound to its own ``get_row_query``, not one that
+    calls ``self.get_row_query``. A 0.0.6 override that calls
+    ``super().get_failed_rows_query`` then reaches its parent's rows, instead
+    of dispatching back to itself forever.
+    """
+
+    def get_failed_rows_query(
+        self: SQLCheckReference,
+        dialect: str,
+        filter_conditions: dict[str, FilterConditionType] | None = None,
+        use_try_cast: bool = False,
+    ) -> str | None:
+        """Deprecated alias of :meth:`get_row_query`."""
+        warnings.warn(
+            "get_failed_rows_query is deprecated, use get_row_query instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return get_row_query(self, dialect, filter_conditions, use_try_cast=use_try_cast)
+
+    return get_failed_rows_query
+
+
 class SQLCheckReference(CheckReference, ABC):
     """
     Abstract base for all SQL-based check references.
@@ -142,20 +168,8 @@ class SQLCheckReference(CheckReference, ABC):
                 stacklevel=2,
             )
             cls.get_row_query = cls.__dict__["get_failed_rows_query"]
-
-    def get_failed_rows_query(
-        self,
-        dialect: str,
-        filter_conditions: dict[str, FilterConditionType] | None = None,
-        use_try_cast: bool = False,
-    ) -> str | None:
-        """Deprecated alias of :meth:`get_row_query`."""
-        warnings.warn(
-            "get_failed_rows_query is deprecated, use get_row_query instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        return self.get_row_query(dialect, filter_conditions, use_try_cast=use_try_cast)
+        elif "get_row_query" in cls.__dict__ and "get_failed_rows_query" not in cls.__dict__:
+            cls.get_failed_rows_query = _deprecated_alias_of(cls.__dict__["get_row_query"])
 
     def get_row_query(
         self,
@@ -332,6 +346,9 @@ class SQLCheckReference(CheckReference, ABC):
     # Expose Oracle constants for any code that referenced them on the class.
     _ORACLE_STRING_TYPES = _sql._ORACLE_STRING_TYPES
     _ORACLE_SIZEABLE_TYPES = _sql._ORACLE_SIZEABLE_TYPES
+
+
+SQLCheckReference.get_failed_rows_query = _deprecated_alias_of(SQLCheckReference.get_row_query)
 
 
 class SQLTableCheckReference(TableCheckMixin, SQLCheckReference):
