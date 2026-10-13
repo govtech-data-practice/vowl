@@ -112,6 +112,23 @@ def _resolve_outputs(
     return tuple(name for name in SAVE_OUTPUTS if name in chosen)
 
 
+class _ResolvedOutputs(list):
+    """The outputs ``ValidationConfig`` resolved itself, from ``output_mode`` or the default.
+
+    ``dataclasses.replace()`` hands this list to the new config as ``outputs``.
+    The marker tells it apart from outputs a user passed, so a new
+    ``output_mode`` resolves again instead of clashing with the copy.
+    """
+
+    output_mode: str | None = None
+
+    @classmethod
+    def of(cls, outputs: Iterable[str], output_mode: str | None) -> _ResolvedOutputs:
+        resolved = cls(outputs)
+        resolved.output_mode = output_mode
+        return resolved
+
+
 def _writes_residues(output_mode: str | None) -> bool:
     """Whether ``save()`` writes residue files. v0.0.6's ``"both"`` did not."""
     return output_mode != "both"
@@ -199,7 +216,18 @@ class ValidationConfig:
     fetch_tolerated_rows: bool = False
 
     def __post_init__(self) -> None:
-        self.outputs = cast("list[SaveOutput]", list(_resolve_outputs(self.outputs, self.output_mode, stacklevel=3)))
+        derived = isinstance(self.outputs, _ResolvedOutputs)
+        if derived and self.outputs.output_mode == self.output_mode:
+            # A copy, e.g. dataclasses.replace(), with the same output_mode.
+            self.outputs = cast("list[SaveOutput]", _ResolvedOutputs.of(self.outputs, self.output_mode))
+        elif derived or self.outputs is None:
+            # Not picked by the user. Resolve from output_mode or the default.
+            resolved = _resolve_outputs(None, self.output_mode, stacklevel=3)
+            self.outputs = cast("list[SaveOutput]", _ResolvedOutputs.of(resolved, self.output_mode))
+        else:
+            self.outputs = cast(
+                "list[SaveOutput]", list(_resolve_outputs(self.outputs, self.output_mode, stacklevel=3))
+            )
         if self.enable_additional_schema_statistics is not None:
             warnings.warn(
                 "enable_additional_schema_statistics is deprecated and has no effect.",
@@ -221,6 +249,7 @@ class ValidationConfig:
         ``output_mode`` maps to.
         """
         data = asdict(self)
+        data["outputs"] = list(data["outputs"])
         data.pop("enable_additional_schema_statistics", None)
         data.pop("output_mode", None)
         return data

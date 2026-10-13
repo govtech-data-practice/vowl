@@ -167,6 +167,26 @@ def test_replace_keeps_a_config_built_from_output_mode():
     assert (copy.outputs, copy.output_mode) == (config.outputs, "both")
 
 
+@pytest.mark.parametrize("start", [None, "both"])
+def test_replace_can_change_output_mode(start):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        config = ValidationConfig() if start is None else ValidationConfig(output_mode=start)
+        copy = dataclasses.replace(config, output_mode="annotated")
+    assert (copy.outputs, copy.output_mode) == (["annotated_table"], "annotated")
+    assert type(copy.to_dict()["outputs"]) is list
+    # Back to the default once output_mode is cleared.
+    assert dataclasses.replace(copy, output_mode=None).outputs == ValidationConfig().outputs
+
+
+def test_replace_still_rejects_user_outputs_with_output_mode():
+    config = ValidationConfig(outputs=["dq_metrics"])
+    with pytest.raises(ValueError, match="not both"):
+        dataclasses.replace(config, output_mode="both")
+    with pytest.raises(ValueError, match="not both"):
+        ValidationConfig(outputs=["annotated_table"], output_mode="failed_rows")
+
+
 @pytest.mark.parametrize("via_config", [False, True])
 def test_output_mode_both_writes_the_0_0_6_files(tmp_path, via_config):
     checks = (_check("c"), _residue_check("join check"))

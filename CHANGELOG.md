@@ -44,7 +44,7 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - Clearer messages when an adapter is the wrong type or a table can't be downloaded.
 
 ### Deprecated
-- `output_mode` in `save()` and `ValidationConfig` emits a `FutureWarning`. Use `outputs=` instead. It still writes the files 0.0.6 wrote, and `ValidationConfig.output_mode` stays readable. See [output_mode](docs/results.md#deprecated-output_mode).
+- `output_mode` in `save()` and `ValidationConfig` emits a `FutureWarning`. Use `outputs=` instead. It still writes the files 0.0.6 wrote, and `ValidationConfig.output_mode` stays readable. `dataclasses.replace(config, output_mode=...)` also works. Setting `config.output_mode` on an existing config does not change what `save()` writes. Build a new config or use `dataclasses.replace()`. See [output_mode](docs/results.md#deprecated-output_mode).
 - `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` have no effect.
 - `ValidationResult.save_dataframe()`. Write the frame with its own library instead.
 - `SQLCheckReference.get_failed_rows_query()` is renamed `get_row_query()`. The old name still works with a `FutureWarning`, and a subclass that overrides it is still used.
