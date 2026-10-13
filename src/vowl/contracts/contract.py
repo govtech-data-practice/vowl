@@ -210,10 +210,13 @@ def _check_target(ref: "CheckReference") -> str:
 def _is_authored_name(ref: "CheckReference") -> bool:
     """Whether the contract author wrote this check's name.
 
-    True when the contract entry the check points at (a quality rule) has a
-    ``name`` or ``id``. Generated checks point at a property attribute or a
-    relationship, which never has one, so their names are vowl's.
+    True when the check is a quality rule with a ``name`` or ``id``. Generated
+    checks point at a property attribute or a relationship. A relationship can
+    have an ``id`` of its own, but that does not name its foreign key check, so
+    their names are always vowl's.
     """
+    if ".quality[" not in ref.path:
+        return False
     raw = ref._contract.resolve(ref.path)
     return isinstance(raw, dict) and bool(raw.get("name") or raw.get("id"))
 

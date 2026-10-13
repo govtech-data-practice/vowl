@@ -1328,6 +1328,56 @@ def test_unnamed_checks_with_one_fallback_name_are_numbered():
     assert names[-3:] == ["email_completeness", "email_completeness_2", "email_completeness_3"]
 
 
+def _null_values(**extra) -> dict:
+    return {"type": "library", "metric": "nullValues", "mustBe": 0, **extra}
+
+
+def test_library_checks_with_distinct_ids_are_named_by_id():
+    data = minimal_contract_data()
+    data["schema"][0]["properties"][1]["quality"] = [_null_values(id="email_strict"), _null_values(id="email_warn")]
+    data["schema"][0]["quality"] = [
+        {"type": "library", "metric": "rowCount", "mustBeGreaterThan": 0, "id": "rows_a"},
+        {"type": "library", "metric": "rowCount", "mustBeGreaterThan": 0, "id": "rows_b"},
+    ]
+    names = _check_names(Contract(data))
+    assert {
+        ("users.email", "email_strict"),
+        ("users.email", "email_warn"),
+        ("users", "rows_a"),
+        ("users", "rows_b"),
+    } <= set(names)
+
+
+def test_a_library_check_with_an_id_beside_an_unnamed_one_keeps_both():
+    data = minimal_contract_data()
+    data["schema"][0]["properties"][1]["quality"] = [_null_values(id="email_strict"), _null_values()]
+    names = [name for target, name in _check_names(Contract(data)) if target == "users.email"]
+    assert names[-2:] == ["email_strict", "email_nullValues"]
+
+
+def test_unnamed_library_checks_with_one_fallback_name_are_numbered():
+    data = minimal_contract_data()
+    data["schema"][0]["properties"][1]["quality"] = [_null_values(), _null_values()]
+    names = [name for target, name in _check_names(Contract(data)) if target == "users.email"]
+    assert names[-2:] == ["email_nullValues", "email_nullValues_2"]
+
+
+def test_a_relationship_id_does_not_make_its_foreign_key_name_authored():
+    data = minimal_contract_data()
+    data["schema"].append(
+        {"name": "customers", "properties": [{"name": "cid", "logicalType": "integer", "unique": True}]}
+    )
+    data["schema"][0]["properties"][1]["relationships"] = [
+        {"type": "foreignKey", "to": "customers.cid", "id": "fk_a"},
+        {"type": "foreignKey", "to": "customers.cid", "id": "fk_b"},
+    ]
+    names = [name for target, name in _check_names(Contract(data)) if target == "users.email"]
+    assert names[-2:] == [
+        "users_email_to_customers_cid_foreign_key_check",
+        "users_email_to_customers_cid_foreign_key_check_2",
+    ]
+
+
 def test_numbering_skips_a_name_the_author_wrote():
     data = minimal_contract_data()
     unnamed = {"type": "sql", "dimension": "completeness", "query": "SELECT COUNT(*) FROM users", "mustBe": 0}

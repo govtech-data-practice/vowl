@@ -99,8 +99,9 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
         if self._name_override:
             return self._name_override
         check = self.get_check()
-        if check.get("name"):
-            return check["name"]
+        # An id counts as a name, as in CheckReference.get_check_name.
+        if name := check.get("name") or check.get("id"):
+            return name
         metric = check.get("metric", "library")
         col = self.get_column_name() or "unknown"
         return f"{col}_{metric}"
@@ -307,8 +308,9 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
         if self._name_override:
             return self._name_override
         check = self.get_check()
-        if check.get("name"):
-            return check["name"]
+        # An id counts as a name, as in CheckReference.get_check_name.
+        if name := check.get("name") or check.get("id"):
+            return name
         metric = check.get("metric", "library")
         schema = self.get_schema_name() or "unknown"
         return f"{schema}_{metric}"
