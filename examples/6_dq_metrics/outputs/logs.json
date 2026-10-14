@@ -5,8 +5,8 @@
     "severity_text": "WARN",
     "attributes": {
       "service.name": "vowl",
-      "vowl.version": "0.0.7.dev89",
-      "vowl.run.id": "c87931f1-70b3-469c-bd2f-b39e16bf36cb",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
       "vowl.contract.name": "HDB Resale Flat Prices",
       "vowl.contract.version": "1.0.0",
@@ -40,16 +40,16 @@
     },
     "dropped_attributes": 0,
     "timestamp": null,
-    "observed_timestamp": "2026-10-12T14:00:04.140651Z",
-    "trace_id": "0x86966a058dc41242ee24da5d9fea816f",
-    "span_id": "0xdbda0bcabebdf7e9",
+    "observed_timestamp": "2026-10-14T03:30:24.490336Z",
+    "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+    "span_id": "0x08012107394c0a09",
     "trace_flags": 3,
     "resource": {
       "attributes": {
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "9c7a6664-9c6e-410f-b1b4-1c43b0e356d8",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
         "service.name": "unknown_service"
       },
       "schema_url": ""
@@ -62,8 +62,8 @@
     "severity_text": "WARN",
     "attributes": {
       "service.name": "vowl",
-      "vowl.version": "0.0.7.dev89",
-      "vowl.run.id": "c87931f1-70b3-469c-bd2f-b39e16bf36cb",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
       "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
       "vowl.contract.name": "HDB Resale Flat Prices",
       "vowl.contract.version": "1.0.0",
@@ -96,16 +96,16 @@
     },
     "dropped_attributes": 0,
     "timestamp": null,
-    "observed_timestamp": "2026-10-12T14:00:04.140717Z",
-    "trace_id": "0x86966a058dc41242ee24da5d9fea816f",
-    "span_id": "0x56956e3a16048724",
+    "observed_timestamp": "2026-10-14T03:30:24.490433Z",
+    "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+    "span_id": "0x4fa8b190a9581e06",
     "trace_flags": 3,
     "resource": {
       "attributes": {
         "telemetry.sdk.language": "python",
         "telemetry.sdk.name": "opentelemetry",
         "telemetry.sdk.version": "1.44.0",
-        "service.instance.id": "9c7a6664-9c6e-410f-b1b4-1c43b0e356d8",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
         "service.name": "unknown_service"
       },
       "schema_url": ""
