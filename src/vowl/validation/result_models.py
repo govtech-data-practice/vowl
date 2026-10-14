@@ -15,36 +15,54 @@ class CheckStatusSummary:
 
 
 @dataclass(frozen=True)
-class SingleTableSummary(CheckStatusSummary):
-    """Single-table validation summary including row-quality counts."""
+class OverallSummary(CheckStatusSummary):
+    """A schema's check counts plus its approximate failed rows.
 
-    failed_unique_rows: int
-    passed_unique_rows: int
-    total_rows: int | None
-    passed_row_percentage: float | None
+    ``failed_rows_approximate`` sums ``failed_rows_count`` over the schema's
+    row-level checks. A row caught by two checks counts twice, so the sum is
+    approximate. It is None when the schema has no row-level check.
+    """
+
+    failed_rows_approximate: int | None
+
+
+@dataclass(frozen=True)
+class SingleTableSummary(CheckStatusSummary):
+    """Check counts of the checks that read one table."""
 
 
 @dataclass(frozen=True)
 class MultiTableSummary(CheckStatusSummary):
-    """Multi-table validation summary including failing row counts."""
+    """Check counts of the checks that read more than one table, plus their approximate failed rows.
 
-    failed_non_unique_rows: int
+    ``failed_rows_approximate`` is computed like the one in ``OverallSummary``,
+    over the multi-table row-level checks only.
+    """
+
+    failed_rows_approximate: int | None
 
 
 @dataclass(frozen=True)
 class SchemaValidationBreakdown:
     """Typed breakdown of validation metrics for one schema."""
 
-    overall: CheckStatusSummary
+    overall: OverallSummary
     single_table: SingleTableSummary
     multi_table: MultiTableSummary
 
 
 @dataclass(frozen=True)
-class RowQualitySummary:
-    """Typed row-quality counters for a schema or aggregate result."""
+class SaveRecord:
+    """One call to ``ValidationResult.save()``, kept for the OpenTelemetry trace.
 
-    total_rows: int
-    records_with_issues: int
-    clean_records: int
-    data_quality: float
+    ``started_ns`` and ``finished_ns`` are epoch nanoseconds, like the run
+    window. ``outputs`` holds the outputs the call wrote, sorted.
+    ``file_count`` counts the files it wrote. ``error`` is
+    ``"<ExceptionType>: <message>"`` when the call raised, else None.
+    """
+
+    started_ns: int
+    finished_ns: int
+    outputs: tuple[str, ...]
+    file_count: int
+    error: str | None = None

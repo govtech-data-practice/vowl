@@ -177,6 +177,47 @@ class TestSQLCheckReferenceProperties:
         )
         assert ref.supports_row_level_output is False
 
+    @pytest.mark.parametrize(
+        ("query", "counted"),
+        [
+            ("SELECT COUNT(DISTINCT item) FROM t WHERE price <= 0", True),
+            ("SELECT COUNT(DISTINCT a, b) FROM t", True),
+            ("SELECT COUNT(DISTINCT upper(item)) FROM t", True),
+            ("SELECT COUNT(DISTINCT (a, b)) FROM t", False),
+            ("SELECT COUNT(DISTINCT ROW(a, b)) FROM t", False),
+        ],
+        ids=["column", "two_columns", "expression", "tuple", "row"],
+    )
+    def test_supports_row_level_output_for_count_distinct(self, query: str, counted: bool):
+        # A row value is not NULL when only some of its fields are, so the
+        # failed rows would not match the counted values.
+        ref = DummySQLCheckReference({"type": "sql", "query": query}, query)
+        assert ref.aggregation_type == "count_distinct"
+        assert ref.supports_row_level_output is counted
+
+    @pytest.mark.parametrize(
+        ("query", "expected"),
+        [
+            (
+                "SELECT COUNT(DISTINCT item) FROM t WHERE price <= 0",
+                "SELECT * FROM t WHERE price <= 0 AND NOT item IS NULL",
+            ),
+            (
+                "SELECT COUNT(DISTINCT a, b) FROM t",
+                "SELECT * FROM t WHERE NOT a IS NULL AND NOT b IS NULL",
+            ),
+        ],
+        ids=["column", "two_columns"],
+    )
+    def test_row_query_for_count_distinct_skips_nulls(self, query: str, expected: str):
+        ref = DummySQLCheckReference({"type": "sql", "query": query}, query)
+        assert ref.get_row_query("postgres", None) == expected
+
+    def test_failed_rows_count_for_count_distinct_is_the_value_count(self):
+        query = "SELECT COUNT(DISTINCT item) FROM t"
+        ref = DummySQLCheckReference({"type": "sql", "query": query}, query)
+        assert ref.compute_failed_rows_count(2) == 2
+
     def test_get_result_metadata_includes_aggregation_metadata(self):
         ref = DummySQLCheckReference(
             {"type": "sql", "unit": "rows", "query": "SELECT COUNT(*) FROM t"},
@@ -228,7 +269,7 @@ class StubCheckReference:
         *,
         check: dict | None = None,
         rendered_query: str = "SELECT COUNT(*) FROM users",
-        failed_rows_query: str | None = "SELECT * FROM users",
+        row_query: str | None = "SELECT * FROM users",
         schema_name: str = "users",
         path: str = "$.checks[0]",
     ):
@@ -239,7 +280,7 @@ class StubCheckReference:
             "mustBe": 0,
         }
         self._rendered_query = rendered_query
-        self._failed_rows_query = failed_rows_query
+        self._row_query = row_query
         self._schema_name = schema_name
         self.path = path
 
@@ -302,8 +343,8 @@ class StubCheckReference:
                 return 0
         return 0
 
-    def get_failed_rows_query(self, output_dialect, query_filters, use_try_cast=True):
-        return self._failed_rows_query
+    def get_row_query(self, output_dialect, query_filters, use_try_cast=True):
+        return self._row_query
 
     def get_check_name(self):
         check = self._check
@@ -419,7 +460,7 @@ class TestIbisExecutorAggregationType:
                 "mustBeLessThan": 1000,
             },
             rendered_query="SELECT AVG(price) FROM products",
-            failed_rows_query=None,
+            row_query=None,
         )
 
         result = executor.run_single_check(check_ref)
@@ -438,7 +479,7 @@ class TestIbisExecutorAggregationType:
                 "mustBeLessThan": 1000,
             },
             rendered_query="SELECT AVG(price) FROM products",
-            failed_rows_query=None,
+            row_query=None,
         )
 
         result = executor.run_single_check(check_ref)
@@ -513,7 +554,7 @@ class TestRowQualityExcludesNonCount:
 
 
 class TestGetFailedRowsQueryPlainSelect:
-    """get_failed_rows_query returns the query itself for plain SELECTs."""
+    """get_row_query returns the query itself for plain SELECTs."""
 
     def test_plain_select_has_no_aggregates(self):
         """Sanity: confirm plain SELECT is detected as having no aggregates."""
@@ -532,11 +573,11 @@ class TestGetFailedRowsQueryPlainSelect:
 
 
 class TestGetFailedRowsQueryIntegration:
-    """Integration test: SQLCheckReference.get_failed_rows_query with real parsing."""
+    """Integration test: SQLCheckReference.get_row_query with real parsing."""
 
     @pytest.fixture()
     def _make_ref(self):
-        """Create a minimal SQLCheckReference-like object for testing get_failed_rows_query."""
+        """Create a minimal SQLCheckReference-like object for testing get_row_query."""
 
         class FakeRef:
             def get_query(self, dialect, filter_conditions, use_try_cast=False):
@@ -552,28 +593,28 @@ class TestGetFailedRowsQueryIntegration:
     def test_plain_select_returns_self(self, _make_ref):
         query = "SELECT * FROM users WHERE active = 0"
         ref = _make_ref(query)
-        result = SQLCheckReference.get_failed_rows_query(ref, "duckdb", None, use_try_cast=False)
+        result = SQLCheckReference.get_row_query(ref, "duckdb", None, use_try_cast=False)
         assert result == query
 
     def test_select_columns_returns_self(self, _make_ref):
         query = "SELECT col1, col2 FROM t WHERE col1 > 10"
         ref = _make_ref(query)
-        result = SQLCheckReference.get_failed_rows_query(ref, "duckdb", None, use_try_cast=False)
+        result = SQLCheckReference.get_row_query(ref, "duckdb", None, use_try_cast=False)
         assert result == query
 
     def test_count_returns_star(self, _make_ref):
         ref = _make_ref("SELECT COUNT(*) FROM users WHERE active = 0")
-        result = SQLCheckReference.get_failed_rows_query(ref, "duckdb", None, use_try_cast=False)
+        result = SQLCheckReference.get_row_query(ref, "duckdb", None, use_try_cast=False)
         assert result == "SELECT * FROM users WHERE active = 0"
 
     def test_avg_returns_none(self, _make_ref):
         ref = _make_ref("SELECT AVG(price) FROM products")
-        result = SQLCheckReference.get_failed_rows_query(ref, "duckdb", None, use_try_cast=False)
+        result = SQLCheckReference.get_row_query(ref, "duckdb", None, use_try_cast=False)
         assert result is None
 
     def test_sum_returns_none(self, _make_ref):
         ref = _make_ref("SELECT SUM(amount) FROM orders")
-        result = SQLCheckReference.get_failed_rows_query(ref, "duckdb", None, use_try_cast=False)
+        result = SQLCheckReference.get_row_query(ref, "duckdb", None, use_try_cast=False)
         assert result is None
 
 
@@ -598,7 +639,7 @@ class TestPlainSelectExecutor:
                 "mustBe": 0,
             },
             rendered_query="SELECT * FROM t WHERE price > 2000000",
-            failed_rows_query="SELECT * FROM t WHERE price > 2000000",
+            row_query="SELECT * FROM t WHERE price > 2000000",
         )
 
         result = executor.run_single_check(check_ref)
@@ -668,7 +709,7 @@ class TestPlainSelectExecutor:
                 "mustBeLessThan": 50,
             },
             rendered_query="SELECT COUNT(*) * 100.0 / 500 FROM t WHERE x > 0",
-            failed_rows_query=None,
+            row_query=None,
         )
 
         result = executor.run_single_check(check_ref)

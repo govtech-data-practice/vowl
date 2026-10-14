@@ -1,0 +1,1593 @@
+{
+  "uid": "vowl-dq",
+  "title": "vowl DQ metrics",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "service.name",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(vowl_run_check_pass_rate_ratio, service_name)",
+          "refId": "service"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "domain",
+        "label": "domain",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(vowl_run_check_pass_rate_ratio{service_name=~\"$service\"}, vowl_domain)",
+          "refId": "domain"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "contract",
+        "label": "contract",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(vowl_run_check_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\"}, vowl_contract_name)",
+          "refId": "contract"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Contracts",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (vowl_contract_name) (last_over_time(vowl_run_check_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range])))",
+          "legendFormat": "",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#8ea8c3",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Contracts with failing checks",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (vowl_contract_name) (last_over_time(vowl_run_check_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range])) < 1) or vector(0)",
+          "legendFormat": "",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#6baf7b",
+                "value": null
+              },
+              {
+                "color": "#d16d6d",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Catalog check pass rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(last_over_time(vowl_run_check_count_total{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=\"PASSED\"}[$__range])) / sum(last_over_time(vowl_run_check_count_total{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range]))",
+          "legendFormat": "",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#d16d6d",
+                "value": null
+              },
+              {
+                "color": "#d9a54a",
+                "value": 0.9
+              },
+              {
+                "color": "#6baf7b",
+                "value": 0.99
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Failed rows (latest runs)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(max by (vowl_contract_name) (last_over_time(vowl_run_row_count{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=\"FAILED\"}[$__range])))",
+          "legendFormat": "",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#6baf7b",
+                "value": null
+              },
+              {
+                "color": "#d16d6d",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Failed rows of each contract's latest run, summed. Attributed rows: the table rows that failed at least one row-level check, every copy counted. Exact unless marked approximate. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts)."
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Row numbers",
+      "description": "Whether the row numbers of each contract's latest run are exact. When some are approximate, the table **Approximate row numbers: which checks and why** near the bottom says which check caused it and why. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "",
+          "expr": "count(max by (vowl_contract_name) (last_over_time(vowl_run_row_approximate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range])) == 1) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#6baf7b",
+                "value": null
+              },
+              {
+                "color": "#d9a54a",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "All exact",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 1,
+                "to": 1,
+                "result": {
+                  "text": "1 contract approximate",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 2,
+                "to": null,
+                "result": {
+                  "text": "${__value.raw} contracts approximate",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Contract scorecard (latest run of each contract)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (vowl_domain, vowl_contract_name) (last_over_time(vowl_run_check_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (vowl_domain, vowl_contract_name) (last_over_time(vowl_run_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (vowl_domain, vowl_contract_name) (last_over_time(vowl_run_check_count_total{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (vowl_domain, vowl_contract_name) (last_over_time(vowl_run_check_count_total{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=~\"FAILED|ERROR\"}[$__range]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (vowl_domain, vowl_contract_name) (last_over_time(vowl_run_row_count{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=\"FAILED\"}[$__range]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "F",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "",
+          "expr": "max by (vowl_domain, vowl_contract_name) (last_over_time(vowl_run_row_approximate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}[$__range]))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "vowl_domain": 0,
+              "vowl_contract_name": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #F": 4,
+              "Value #C": 5,
+              "Value #D": 6,
+              "Value #E": 7
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vowl_contract_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Contract"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vowl_domain"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Domain"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Check pass rate"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#d16d6d",
+                      "value": null
+                    },
+                    {
+                      "color": "#d9a54a",
+                      "value": 0.9
+                    },
+                    {
+                      "color": "#6baf7b",
+                      "value": 0.99
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Row pass rate"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#d16d6d",
+                      "value": null
+                    },
+                    {
+                      "color": "#d9a54a",
+                      "value": 0.9
+                    },
+                    {
+                      "color": "#6baf7b",
+                      "value": 0.99
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Checks"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #D"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Failed checks"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#6baf7b",
+                      "value": null
+                    },
+                    {
+                      "color": "#d16d6d",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #E"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Failed rows"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#6baf7b",
+                      "value": null
+                    },
+                    {
+                      "color": "#d16d6d",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #F"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Row numbers"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "Exact",
+                        "color": "#6baf7b",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "≈ Approximate",
+                        "color": "#d9a54a",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Check pass rate",
+            "desc": false
+          }
+        ]
+      },
+      "description": "The latest run of each contract. **Row numbers** says whether its row pass rate and failed rows are exact or approximate. Attributed rows: the table rows that failed at least one row-level check, every copy counted. Exact unless marked approximate. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts)."
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Check pass rate by contract",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (vowl_contract_name) (vowl_run_check_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"})",
+          "legendFormat": "{{vowl_contract_name}}",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Check pass rate by domain",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (vowl_domain) (vowl_run_check_count_total{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=\"PASSED\"}) / sum by (vowl_domain) (vowl_run_check_count_total{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"})",
+          "legendFormat": "{{vowl_domain}}",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Schema row pass rate (amber dots: approximate)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (vowl_contract_name, schema_name) (vowl_schema_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"})",
+          "legendFormat": "{{vowl_contract_name}} / {{schema_name}}",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "B",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "expr": "max by (vowl_contract_name, schema_name) (vowl_schema_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}) and on (vowl_contract_name, schema_name) (max by (vowl_contract_name, schema_name) (vowl_schema_row_approximate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}) == 1)",
+          "legendFormat": "≈ {{vowl_contract_name}} / {{schema_name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 9
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d9a54a"
+                }
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Row pass rate of each table. An amber dot marks a run whose row numbers for that table are approximate. Attributed rows: the table rows that failed at least one row-level check, every copy counted. Exact unless marked approximate. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts)."
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Dimension row pass rate (worst contract, amber dots: approximate)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "min by (dimension) (vowl_dimension_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"})",
+          "legendFormat": "{{dimension}}",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "B",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "expr": "min by (dimension) (vowl_dimension_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"}) == on (dimension) min by (dimension) (vowl_dimension_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"} and on (vowl_contract_name, schema_name, dimension) (vowl_dimension_row_approximate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"} == 1))",
+          "legendFormat": "≈ {{dimension}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 9
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d9a54a"
+                }
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "The lowest row pass rate of each dimension across contracts. An amber dot marks a point where that lowest number is approximate. Attributed rows: the table rows that failed at least one row-level check, every copy counted. Exact unless marked approximate. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts)."
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Check row pass rate (latest run)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (vowl_contract_name, schema_name, target, check_name, dimension) (vowl_check_row_pass_rate_ratio{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\"})",
+          "legendFormat": "{{vowl_contract_name}} / {{target}} / {{check_name}} ({{dimension}})",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ],
+            "mode": "seriesToRows"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "cellOptions": {
+              "type": "gauge",
+              "mode": "basic",
+              "valueDisplayMode": "text"
+            }
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#d16d6d",
+                "value": null
+              },
+              {
+                "color": "#d9a54a",
+                "value": 0.9
+              },
+              {
+                "color": "#6baf7b",
+                "value": 0.99
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Field"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Check"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Last *",
+            "desc": false
+          }
+        ]
+      },
+      "description": "Checks that are not attributable have no attributed rows and are not listed. When they may have failed rows, the run's row numbers are marked approximate. Attributed rows: the table rows that failed at least one row-level check, every copy counted. Exact unless marked approximate. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts)."
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Failed rows per check (latest run)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (vowl_contract_name, schema_name, target, check_name, dimension) (vowl_check_row_count{service_name=~\"$service\", vowl_domain=~\"$domain\", vowl_contract_name=~\"$contract\", status=\"FAILED\"})",
+          "legendFormat": "{{vowl_contract_name}} / {{target}} / {{check_name}} ({{dimension}})",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ],
+            "mode": "seriesToRows"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "cellOptions": {
+              "type": "color-text"
+            }
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#6baf7b",
+                "value": null
+              },
+              {
+                "color": "#d16d6d",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Field"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Check"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Last *",
+            "desc": true
+          }
+        ]
+      },
+      "description": "Checks that are not attributable have no attributed rows and are not listed. When they may have failed rows, the run's row numbers are marked approximate. Attributed rows: the table rows that failed at least one row-level check, every copy counted. Exact unless marked approximate. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts)."
+    },
+    {
+      "id": 15,
+      "type": "table",
+      "title": "Approximate row numbers: which checks and why (Tempo)",
+      "description": "The checks that made a run's row numbers approximate, in runs whose row numbers are approximate. **Reason** is the check's `row.attribution_note`. A check that ended in `ERROR` has no note: it may hide failed rows. Click a trace ID to open the run. See [Approximate row counts](https://github.com/govtech-data-practice/vowl/blob/main/docs/dq-metrics/understanding-metrics.md#approximate-row-counts).",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "limit": 20,
+          "tableType": "spans",
+          "spss": 20,
+          "query": "{ name = \"vowl.validate\" && span.row.approximate = true && resource.service.name =~ \"${service:regex}\" && resource.vowl.domain =~ \"${domain:regex}\" && resource.vowl.contract.name =~ \"${contract:regex}\" } > { name = \"vowl.check\" && (span.row.approximate = true || span.status = \"ERROR\") } | select(resource.vowl.contract.name, span.schema_name, span.target, span.check_name, span.status, span.row.attribution_note)"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Last seen",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Every row number in this time range is exact."
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "ERROR": {
+                        "text": "ERROR, may hide failed rows",
+                        "color": "#d9a54a",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last seen"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "vowl.contract.name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "schema_name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "target": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "check_name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "status": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "row.attribution_note": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Start time": {
+                "aggregations": [
+                  "max",
+                  "count"
+                ],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "vowl.contract.name": 0,
+              "schema_name": 1,
+              "target": 2,
+              "check_name": 3,
+              "status": 4,
+              "row.attribution_note": 5,
+              "Start time (max)": 6,
+              "Start time (count)": 7
+            },
+            "renameByName": {
+              "vowl.contract.name": "Contract",
+              "schema_name": "Schema",
+              "target": "Target",
+              "check_name": "Check",
+              "status": "Status",
+              "row.attribution_note": "Reason",
+              "Start time (max)": "Last seen",
+              "Start time (count)": "Approximate runs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Validation runs (Tempo, click a trace ID)",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 14,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "limit": 50,
+          "query": "{ name = \"vowl.validate\" && resource.service.name =~ \"${service:regex}\" && resource.vowl.domain =~ \"${domain:regex}\" && resource.vowl.contract.name =~ \"${contract:regex}\" } | select(resource.vowl.contract.name, span.check.count.failed, span.row.approximate, span.row.checks_not_attributable)"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "table",
+      "title": "Saves (Tempo vowl.save spans)",
+      "description": "One row per `result.save(...)` made before `export_otel()`. **Duration** is the real time the save took. The run span is extended to cover it, so a run's duration includes its saves, while `vowl.run.duration` measures the validation only. Click a span ID to see the save next to the checks. Open the span to see its `outputs`.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 45,
+        "w": 10,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "limit": 50,
+          "tableType": "spans",
+          "spss": 10,
+          "query": "{ name = \"vowl.save\" && resource.service.name =~ \"${service:regex}\" && resource.vowl.domain =~ \"${domain:regex}\" && resource.vowl.contract.name =~ \"${contract:regex}\" } | select(resource.vowl.contract.name, span.file.count)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Trace Service": true,
+              "Trace Name": true,
+              "Name": true,
+              "service.name": true,
+              "vowl.domain": true,
+              "traceService": true,
+              "traceName": true,
+              "name": true,
+              "outputs": true
+            },
+            "indexByName": {
+              "vowl.contract.name": 0,
+              "Start time": 1,
+              "Duration": 2,
+              "file.count": 3,
+              "Span ID": 4
+            },
+            "renameByName": {
+              "vowl.contract.name": "Contract",
+              "file.count": "Files",
+              "Span ID": "Span"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "logs",
+      "title": "Failed and errored checks (Loki)",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 54,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "refId": "A",
+          "expr": "{service_name=~\"${service:regex}\"} | vowl_domain=~\"${domain:regex}\" | vowl_contract_name=~\"${contract:regex}\" | line_format \"[{{.status}}] {{.vowl_contract_name}} / {{.target}} / {{.check_name}}: {{__line__}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "enableLogDetails": true,
+        "wrapLogMessage": true
+      }
+    }
+  ]
+}

@@ -286,7 +286,7 @@ schema:
       - name: orphan_payroll_rows_merge_onto_payroll
         description: >-
           Same referential-integrity intent as
-          employee_id_exists_in_master_list, but the failed-rows query is
+          employee_id_exists_in_master_list, but the row query is
           shaped to project only the payroll (anchor) table's columns via an
           inner ``SELECT payroll.*``. Because the failed rows match the payroll
           schema exactly, this cross-table check MERGES onto the payroll

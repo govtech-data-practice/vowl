@@ -1,0 +1,101 @@
+# Local OTel stack for checking vowl's export_otel end to end.
+#   vowl --OTLP--> collector --> Prometheus (metrics), Tempo (traces), Loki (logs) --> Grafana
+#                            --> S3 archive (every batch, kept forever) --> SQL via query_archive.py
+# Data lives in named volumes, so it survives `docker compose down` (`make otel-clean-all` wipes it).
+name: vowl-otel
+
+services:
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.130.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      # Local S3 needs no real credentials, but the AWS SDK insists on some.
+      AWS_ACCESS_KEY_ID: vowl
+      AWS_SECRET_ACCESS_KEY: vowl-local
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      prometheus: {condition: service_started}
+      tempo: {condition: service_started}
+      loki: {condition: service_started}
+      s3-init: {condition: service_completed_successfully}
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+  tempo:
+    image: grafana/tempo:2.8.1
+    user: "0"
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"
+
+  loki:
+    image: grafana/loki:3.5.0
+    user: "0"
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+
+  # Long-term archive. An S3-compatible object store (SeaweedFS) that keeps every
+  # OTLP batch as a JSON file with no expiry. Query it with SQL (see query_archive.py).
+  s3:
+    image: chrislusf/seaweedfs:3.97
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-master.volumeSizeLimitMB=64"]
+    volumes:
+      - s3-data:/data
+    ports:
+      - "8333:8333"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8333/healthz"]
+      interval: 5s
+      retries: 20
+
+  # Creates the archive bucket once, then exits.
+  s3-init:
+    image: chrislusf/seaweedfs:3.97
+    entrypoint: ["sh", "-c", "echo 's3.bucket.create -name vowl-otel-archive' | weed shell -master=s3:9333"]
+    depends_on:
+      s3:
+        condition: service_healthy
+    restart: "no"
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus, tempo, loki]
+
+volumes:
+  prometheus-data:
+  tempo-data:
+  loki-data:
+  grafana-data:
+  s3-data:

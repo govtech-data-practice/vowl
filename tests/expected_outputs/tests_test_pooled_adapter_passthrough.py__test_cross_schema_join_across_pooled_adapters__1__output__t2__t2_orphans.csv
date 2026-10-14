@@ -1,0 +1,2 @@
+id,t1_id,id.1,amount,check_id,tables_in_query
+3,9,,,t2_orphans,"t1, t2"

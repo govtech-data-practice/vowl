@@ -1,0 +1,2 @@
+order_id,currency,code,is_active,check_id,tables_in_query
+3,EUR,,,unknown_currency,"currencies, orders"

@@ -203,7 +203,7 @@ def test_spark_types_returns_none_when_pyspark_import_fails(monkeypatch: pytest.
 def test_mapper_rejects_non_ibis_base_adapter():
     mapper = DataSourceMapper()
 
-    with pytest.raises(TypeError, match="Only IbisAdapter is supported"):
+    with pytest.raises(TypeError, match="is already an adapter.*Pass the adapter to validate_data"):
         mapper.get_adapter(DummyAdapter())
 
 

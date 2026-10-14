@@ -1,0 +1,3 @@
+id,c,check_id,tables_in_query
+1,"{'a': 1, 'b': 'x'}",a,t
+1,"{'a': 1, 'b': 'x'}",a,t

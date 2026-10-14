@@ -307,9 +307,10 @@ class TestOdcs32Support:
                 }
             ],
         }
-        contract = Contract(contract_data)
+        # The checks are built when the contract loads, so that is when it warns.
         with pytest.warns(UserWarning, match="No type check generated"):
-            refs_by_schema = contract.get_check_references_by_schema()
+            contract = Contract(contract_data)
+        refs_by_schema = contract.get_check_references_by_schema()
         assert "documents" in refs_by_schema
 
     def test_v320_enum_property_validates_and_generates_enum_check(self):
@@ -385,7 +386,7 @@ class TestOdcs32Support:
         fk_refs = [r for r in refs if isinstance(r, PropertyForeignKeyCheckReference)]
         assert len(fk_refs) == 1
         check = fk_refs[0].get_check()
-        assert check["name"] == "orders_customer_id_foreign_key_check"
+        assert check["name"] == "orders_customer_id_to_customers_id_foreign_key_check"
         assert check["dimension"] == "consistency"
 
 

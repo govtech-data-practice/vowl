@@ -169,7 +169,8 @@ class DataSourceMapper:
                 - pyspark.sql.DataFrame
                 - pyspark.sql.SparkSession
                 - str (connection URI)
-                - BaseAdapter (returned as-is if IbisAdapter)
+                - IbisAdapter (returned as is). Other adapters raise
+                  TypeError, since validate_data takes them directly.
                 - ibis.BaseBackend
             table_name: Name to register the table as (for DataFrame inputs).
                 Defaults to "source_data".
@@ -180,12 +181,18 @@ class DataSourceMapper:
         Raises:
             TypeError: If the data source type is not supported
         """
-        # Already an adapter - return if IbisAdapter, otherwise wrap
+        # Already an adapter. An IbisAdapter is returned as is. Any other
+        # adapter cannot become an IbisAdapter, and validate_data takes it
+        # directly.
         if isinstance(data_source, IbisAdapter):
             return data_source
 
         if isinstance(data_source, BaseAdapter):
-            raise TypeError(f"Unsupported adapter type: {type(data_source).__name__}. Only IbisAdapter is supported.")
+            raise TypeError(
+                f"{type(data_source).__name__} is already an adapter. get_adapter only turns raw data "
+                "sources (DataFrames, connection strings, Ibis backends) into an IbisAdapter. "
+                "Pass the adapter to validate_data as it is."
+            )
 
         # PySpark DataFrame - use ibis pyspark backend (check before narwhals
         # since PySpark DataFrames need special handling via the Spark backend)

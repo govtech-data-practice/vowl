@@ -1,0 +1,4 @@
+id,ref,id.1,ref.1,check_ids,tables_in_query
+1,1,,,s1_orphans,"s0, s1"
+2,2,,,s1_orphans,"s0, s1"
+5,5,,,s1_orphans,"s0, s1"

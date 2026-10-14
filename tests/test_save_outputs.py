@@ -1,0 +1,575 @@
+"""``save(outputs=[...])``: choosing outputs, per-check file names and the deprecated ``output_mode``."""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import warnings
+
+import pyarrow as pa
+import pyarrow.csv as pa_csv
+import pytest
+from test_annotated_output import _FakeAdapter, _make_check, _make_result
+
+from vowl.config import DEFAULT_SAVE_OUTPUTS, SAVE_OUTPUTS, ValidationConfig
+
+_FULL = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+
+
+def _check(name, schema="orders", **kwargs):
+    kwargs.setdefault("failed_rows", pa.table({"id": [2], "name": ["b"]}))
+    kwargs.setdefault("tables_in_query", schema)
+    return _make_check(name, schema, **kwargs)
+
+
+def _result(*checks, config=None, schemas=("orders",)):
+    return _make_result(list(checks), {s: _FakeAdapter(_FULL) for s in schemas}, config=config)
+
+
+def _files(root):
+    return {str(p.relative_to(root)) for p in root.rglob("*") if p.is_file()}
+
+
+def _saved_outputs(root, prefix="r"):
+    return json.loads((root / f"{prefix}_summary.json").read_text())["saved_outputs"]
+
+
+# --------------------------------------------------------------------------- #
+# Choosing outputs
+# --------------------------------------------------------------------------- #
+
+
+def test_default_is_every_output_but_failed_query_outputs():
+    assert set(SAVE_OUTPUTS) - set(DEFAULT_SAVE_OUTPUTS) == {"failed_query_outputs"}
+    assert ValidationConfig().outputs == list(DEFAULT_SAVE_OUTPUTS)
+
+
+def test_default_file_set(tmp_path):
+    _result(_check("c")).save(str(tmp_path), prefix="r")
+    assert _files(tmp_path) == {
+        "r_check_results.csv",
+        "r_summary.json",
+        "r_checks/orders__c.csv",
+        "r_orders.csv",
+        "r_orders_annotated.csv",
+        "r_dq_metrics.json",
+    }
+
+
+@pytest.mark.parametrize(
+    ("output", "written"),
+    [
+        ("failed_query_outputs", {"r_checks/orders__c.csv"}),
+        ("all_query_outputs", {"r_checks/orders__c.csv"}),
+        ("consolidated_query_outputs", {"r_orders.csv"}),
+        ("annotated_table", {"r_orders_annotated.csv"}),
+        ("dq_metrics", {"r_dq_metrics.json"}),
+    ],
+)
+def test_each_output_alone(tmp_path, output, written):
+    _result(_check("c")).save(str(tmp_path), prefix="r", outputs=[output])
+    assert _files(tmp_path) == {"r_check_results.csv", "r_summary.json"} | written
+    assert list(_saved_outputs(tmp_path)) == [output]
+
+
+def test_empty_list_writes_the_summary_only(tmp_path):
+    _result(_check("c")).save(str(tmp_path), prefix="r", outputs=[])
+    assert _files(tmp_path) == {"r_check_results.csv", "r_summary.json"}
+    assert _saved_outputs(tmp_path) == {}
+
+
+def test_unknown_output_raises(tmp_path):
+    with pytest.raises(ValueError, match="annotated_tables"):
+        _result(_check("c")).save(str(tmp_path), outputs=["annotated_tables"])
+    assert not list(tmp_path.iterdir())
+
+
+def test_a_bare_string_raises(tmp_path):
+    with pytest.raises(TypeError):
+        _result(_check("c")).save(str(tmp_path), outputs="dq_metrics")
+
+
+def test_failed_and_all_query_outputs_together_raise(tmp_path):
+    with pytest.raises(ValueError, match="failed_query_outputs.*all_query_outputs"):
+        _result(_check("c")).save(str(tmp_path), outputs=["failed_query_outputs", "all_query_outputs"])
+    with pytest.raises(ValueError, match="failed_query_outputs.*all_query_outputs"):
+        ValidationConfig(outputs=["all_query_outputs", "failed_query_outputs"])
+
+
+def test_outputs_from_the_config(tmp_path):
+    result = _result(_check("c"), config=ValidationConfig(outputs=["dq_metrics"]))
+    result.save(str(tmp_path), prefix="r")
+    assert _files(tmp_path) == {"r_check_results.csv", "r_summary.json", "r_dq_metrics.json"}
+
+
+def test_save_outputs_override_the_config(tmp_path):
+    result = _result(_check("c"), config=ValidationConfig(outputs=["dq_metrics"]))
+    result.save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+    assert "r_dq_metrics.json" not in _files(tmp_path)
+    assert "r_orders_annotated.csv" in _files(tmp_path)
+
+
+def test_config_records_outputs_not_output_mode():
+    as_dict = ValidationConfig(outputs=["dq_metrics"]).to_dict()
+    assert as_dict["outputs"] == ["dq_metrics"]
+    assert "output_mode" not in as_dict
+
+
+def test_check_info_without_annotated_table_warns(tmp_path):
+    with pytest.warns(UserWarning, match="check_info"):
+        _result(_check("c")).save(str(tmp_path), outputs=["dq_metrics"], check_info="summary")
+
+
+def test_check_info_and_definitions_with_annotated_table_do_not_warn(tmp_path):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _result(_check("c")).save(
+            str(tmp_path),
+            outputs=["annotated_table"],
+            check_info="summary",
+            include_check_definition=True,
+            include_contract_definition=True,
+        )
+        _result(_check("c")).save(str(tmp_path), outputs=[], include_check_definition=True)
+
+
+# --------------------------------------------------------------------------- #
+# Deprecated output_mode
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("mode", "outputs"),
+    [
+        ("failed_rows", ["consolidated_query_outputs"]),
+        ("annotated", ["annotated_table"]),
+        ("both", ["consolidated_query_outputs", "annotated_table"]),
+    ],
+)
+def test_output_mode_maps_to_outputs_with_a_warning(tmp_path, mode, outputs):
+    with pytest.warns(FutureWarning, match=rf"output_mode='{mode}' is deprecated, use outputs=.*a future release"):
+        _result(_check("c")).save(str(tmp_path), prefix="r", output_mode=mode)
+    assert list(_saved_outputs(tmp_path)) == outputs
+    with pytest.warns(FutureWarning, match=rf"output_mode='{mode}' is deprecated"):
+        config = ValidationConfig(output_mode=mode)
+    assert config.outputs == outputs
+    # Still readable, as on 0.0.6. outputs is what save() uses.
+    assert config.output_mode == mode
+    assert "output_mode" not in config.to_dict()
+
+
+def test_replace_keeps_a_config_built_from_output_mode():
+    with pytest.warns(FutureWarning):
+        config = ValidationConfig(output_mode="both")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        copy = dataclasses.replace(config, max_failed_rows=5)
+    assert (copy.outputs, copy.output_mode) == (config.outputs, "both")
+
+
+@pytest.mark.parametrize("start", [None, "both"])
+def test_replace_can_change_output_mode(start):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        config = ValidationConfig() if start is None else ValidationConfig(output_mode=start)
+        copy = dataclasses.replace(config, output_mode="annotated")
+    assert (copy.outputs, copy.output_mode) == (["annotated_table"], "annotated")
+    assert type(copy.to_dict()["outputs"]) is list
+    # Back to the default once output_mode is cleared.
+    assert dataclasses.replace(copy, output_mode=None).outputs == ValidationConfig().outputs
+
+
+def test_replace_still_rejects_user_outputs_with_output_mode():
+    config = ValidationConfig(outputs=["dq_metrics"])
+    with pytest.raises(ValueError, match="not both"):
+        dataclasses.replace(config, output_mode="both")
+    with pytest.raises(ValueError, match="not both"):
+        ValidationConfig(outputs=["annotated_table"], output_mode="failed_rows")
+
+
+@pytest.mark.parametrize("via_config", [False, True])
+def test_output_mode_both_writes_the_0_0_6_files(tmp_path, via_config):
+    checks = (_check("c"), _residue_check("join check"))
+    with pytest.warns(FutureWarning, match="output_mode='both'"):
+        if via_config:
+            _result(*checks, config=ValidationConfig(output_mode="both")).save(str(tmp_path), prefix="r")
+        else:
+            _result(*checks).save(str(tmp_path), prefix="r", output_mode="both")
+    # 0.0.6 wrote no residues for "both", and had no dq_metrics.
+    files = _files(tmp_path)
+    assert not any(name.endswith("_residue.csv") for name in files), files
+    assert "r_dq_metrics.json" not in files
+    assert "r_orders_annotated.csv" in files
+
+
+def test_output_mode_annotated_writes_the_0_0_6_files(tmp_path):
+    with pytest.warns(FutureWarning):
+        _result(_check("c"), _residue_check("join check")).save(str(tmp_path), prefix="r", output_mode="annotated")
+    assert _files(tmp_path) == {
+        "r_check_results.csv",
+        "r_summary.json",
+        "r_orders_annotated.csv",
+        "r_orders__join_check_residue.csv",
+    }
+
+
+def test_explicit_outputs_keep_residues_on_a_config_built_from_both(tmp_path):
+    with pytest.warns(FutureWarning):
+        config = ValidationConfig(output_mode="both")
+    _result(_check("c"), _residue_check("join check"), config=config).save(
+        str(tmp_path), prefix="r", outputs=["annotated_table"]
+    )
+    assert "r_orders__join_check_residue.csv" in _files(tmp_path)
+
+
+@pytest.mark.parametrize("mode", ["as_is", "attributed", "anotated"])
+def test_unknown_output_mode_raises(tmp_path, mode):
+    with pytest.raises(ValueError, match="output_mode"):
+        _result(_check("c")).save(str(tmp_path), output_mode=mode)
+
+
+def test_output_mode_and_outputs_together_raise(tmp_path):
+    with pytest.raises(ValueError, match="outputs=.*output_mode="):
+        _result(_check("c")).save(str(tmp_path), outputs=["dq_metrics"], output_mode="both")
+    with pytest.raises(ValueError, match="outputs=.*output_mode="):
+        ValidationConfig(outputs=["dq_metrics"], output_mode="both")
+
+
+# --------------------------------------------------------------------------- #
+# Per-check files and saved_outputs
+# --------------------------------------------------------------------------- #
+
+
+def test_per_check_file_columns(tmp_path):
+    _result(_check("c")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    table = pa_csv.read_csv(tmp_path / "r_checks" / "orders__c.csv")
+    assert table.column_names == ["id", "name", "check_id", "tables_in_query"]
+    assert table.column("id").to_pylist() == [2]
+
+
+def test_all_query_outputs_cover_passed_checks_with_a_status(tmp_path):
+    passed = _check("p", status="PASSED", failed_rows=pa.table({"id": [3], "name": ["c"]}))
+    _result(_check("c"), passed).save(str(tmp_path), prefix="r", outputs=["all_query_outputs"])
+    assert _files(tmp_path) - {"r_check_results.csv", "r_summary.json"} == {
+        "r_checks/orders__c.csv",
+        "r_checks/orders__p.csv",
+    }
+    table = pa_csv.read_csv(tmp_path / "r_checks" / "orders__p.csv")
+    assert table.column("status").to_pylist() == ["PASSED"]
+
+
+def test_saved_outputs_lists_every_file_and_zero_row_checks(tmp_path):
+    empty = _check("empty", failed_rows=pa.table({"id": pa.array([], pa.int64()), "name": pa.array([], pa.string())}))
+    _result(_check("c"), empty).save(str(tmp_path), prefix="r", outputs=["all_query_outputs", "dq_metrics"])
+    assert _saved_outputs(tmp_path) == {
+        "all_query_outputs": [
+            {"schema": "orders", "check": "c", "rows": 1, "file": "r_checks/orders__c.csv"},
+            {"schema": "orders", "check": "empty", "rows": 0},
+        ],
+        "dq_metrics": [{"file": "r_dq_metrics.json"}],
+    }
+    assert not (tmp_path / "r_checks" / "orders__empty.csv").exists()
+
+
+def test_no_checks_folder_when_no_check_has_rows(tmp_path):
+    passed = _check("p", status="PASSED")
+    _result(passed).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert not (tmp_path / "r_checks").exists()
+
+
+def test_double_underscore_join_keeps_schema_and_check_apart(tmp_path):
+    first = _check("c", schema="a_b")
+    second = _check("b_c", schema="a")
+    _result(first, second, schemas=("a_b", "a")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"a_b__c.csv", "a__b_c.csv"}
+
+
+def test_check_names_are_cleaned_on_their_own(tmp_path):
+    _result(_check("amount > 0")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__amount_gt_0.csv"}
+
+
+@pytest.mark.parametrize(
+    ("name", "stem"),
+    [("a >= 0", "a_gte_0"), ("a<=0", "a_lte_0"), ("a != 0", "a_ne_0"), ("a <> 0", "a_ne_0"), ("a = 0", "a_eq_0")],
+)
+def test_comparison_operators_are_spelled_out(tmp_path, name, stem):
+    _result(_check(name)).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {f"orders__{stem}.csv"}
+
+
+def test_operator_words_keep_lossy_names_apart(tmp_path):
+    _result(_check("amount > 0"), _check("amount_0")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__amount_gt_0.csv", "orders__amount_0.csv"}
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "files"),
+    [
+        ("Amount", "amount", ["orders__Amount.csv", "orders__amount_2.csv"]),
+        ("amount gt 0", "amount > 0", ["orders__amount_gt_0.csv", "orders__amount_gt_0_2.csv"]),
+    ],
+)
+def test_names_that_clean_to_the_same_file_are_numbered_in_order(tmp_path, first, second, files):
+    _result(_check(first), _check(second)).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    entries = _saved_outputs(tmp_path)["failed_query_outputs"]
+    assert [(e["check"], e["file"]) for e in entries] == [
+        (first, f"r_checks/{files[0]}"),
+        (second, f"r_checks/{files[1]}"),
+    ]
+
+
+def test_numbering_skips_a_name_another_check_has(tmp_path):
+    checks = [_check("x"), _check("X"), _check("x_2")]
+    _result(*checks).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert [e["file"] for e in _saved_outputs(tmp_path)["failed_query_outputs"]] == [
+        "r_checks/orders__x.csv",
+        "r_checks/orders__X_3.csv",
+        "r_checks/orders__x_2.csv",
+    ]
+
+
+def test_numbering_counts_checks_with_no_file(tmp_path):
+    # The passed check writes nothing, but still holds the first name, so the
+    # file name of a check does not change with the status of another.
+    passed = _check("Amount", status="PASSED")
+    _result(passed, _check("amount")).save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__amount_2.csv"}
+
+
+def test_duplicate_check_names_are_numbered_in_save_and_warn_in_get_output_dfs(tmp_path):
+    result = _result(_check("c"), _check("c", failed_rows=pa.table({"id": [3], "name": ["c"]})))
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__c.csv", "orders__c_2.csv"}
+    with pytest.warns(UserWarning, match=r"orders::c.*Rename one"):
+        out = result.get_output_dfs()
+    assert out["orders::c"]["id"].to_list() == [3]  # the later check wins
+
+
+def test_column_level_checks_name_their_column(tmp_path):
+    result = _result(_check("not null", target="orders.amount"))
+    assert list(result.get_output_dfs()) == ["orders.amount::not null"]
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert _saved_outputs(tmp_path)["failed_query_outputs"] == [
+        {
+            "schema": "orders",
+            "column": "amount",
+            "check": "not null",
+            "rows": 1,
+            "file": "r_checks/orders__amount__not_null.csv",
+        }
+    ]
+
+
+def test_a_table_named_check_results_does_not_overwrite_the_check_results(tmp_path):
+    _result(_check("c", schema="check_results"), schemas=("check_results",)).save(str(tmp_path), prefix="r")
+    assert (tmp_path / "r_check_results.csv").read_text().startswith('"check_name"')
+    [consolidated] = _saved_outputs(tmp_path)["consolidated_query_outputs"]
+    assert consolidated["file"] == "r_check_results_2.csv"
+    assert "r_check_results_2.csv" in _files(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("schemas", "consolidated", "annotated"),
+    [
+        # Non-ASCII names keep their letters.
+        (("客户", "订单"), ["r_客户.csv", "r_订单.csv"], ["r_客户_annotated.csv", "r_订单_annotated.csv"]),
+        # Names with no letters or digits both clean to "output".
+        (("***", "+++"), ["r_output.csv", "r_output_2.csv"], ["r_output_annotated.csv", "r_output_annotated_2.csv"]),
+        # Names that differ only in case are one file on macOS and Windows.
+        (
+            ("Orders", "orders"),
+            ["r_Orders.csv", "r_orders_2.csv"],
+            ["r_Orders_annotated.csv", "r_orders_annotated_2.csv"],
+        ),
+        # x's annotated file and x_annotated's consolidated file share a name.
+        (
+            ("x", "x_annotated"),
+            ["r_x.csv", "r_x_annotated.csv"],
+            ["r_x_annotated_2.csv", "r_x_annotated_annotated.csv"],
+        ),
+    ],
+)
+def test_tables_whose_names_clean_to_one_file_get_numbered_files(tmp_path, schemas, consolidated, annotated):
+    checks = [_check(f"c{i}", schema=schema) for i, schema in enumerate(schemas)]
+    _result(*checks, schemas=schemas).save(str(tmp_path), prefix="r")
+    saved = _saved_outputs(tmp_path)
+    assert [e["file"] for e in saved["consolidated_query_outputs"]] == consolidated
+    assert [e["file"] for e in saved["annotated_table"]] == annotated
+    assert set(consolidated + annotated) <= _files(tmp_path)
+
+
+def test_same_check_name_on_two_columns_gives_two_files_and_keys(tmp_path):
+    start = _check("Date With Timezone", target="orders.start_dt")
+    end = _check("Date With Timezone", target="orders.end_dt", failed_rows=pa.table({"id": [3], "name": ["c"]}))
+    result = _result(start, end)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = result.get_output_dfs()
+    assert list(out) == ["orders.end_dt::Date With Timezone", "orders.start_dt::Date With Timezone"]
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {
+        "orders__start_dt__Date_With_Timezone.csv",
+        "orders__end_dt__Date_With_Timezone.csv",
+    }
+
+
+def test_same_check_name_on_one_column_warns_in_get_output_dfs(tmp_path):
+    result = _result(_check("c", target="orders.amount"), _check("c", target="orders.amount"))
+    with pytest.warns(UserWarning, match=r"orders\.amount::c.*Rename one"):
+        result.get_output_dfs()
+
+
+def test_column_and_schema_level_checks_with_one_name_do_not_clash(tmp_path):
+    result = _result(_check("c"), _check("c", target="orders.amount"))
+    result.save(str(tmp_path), prefix="r", outputs=["failed_query_outputs"])
+    assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__c.csv", "orders__amount__c.csv"}
+
+
+# --------------------------------------------------------------------------- #
+# Residues and grouped CSVs
+# --------------------------------------------------------------------------- #
+
+
+def _residue_check(name, schema="orders"):
+    return _check(
+        name,
+        schema,
+        failed_rows=pa.table({"id": [3], "name": ["c"], "ref_id": [None]}),
+        tables_in_query=f"{schema}, customers",
+    )
+
+
+def test_residue_files_use_the_double_underscore_join(tmp_path):
+    _result(_residue_check("join check")).save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+    assert (tmp_path / "r_orders__join_check_residue.csv").exists()
+    assert _saved_outputs(tmp_path)["annotated_table"][-1] == {
+        "schema": "orders",
+        "check": "join check",
+        "rows": 1,
+        "file": "r_orders__join_check_residue.csv",
+    }
+
+
+def test_column_level_residue_files_name_their_column(tmp_path):
+    check = _check(
+        "join check",
+        failed_rows=pa.table({"id": [3], "name": ["c"], "ref_id": [None]}),
+        tables_in_query="orders, customers",
+        target="orders.ref_id",
+    )
+    _result(check).save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+    assert (tmp_path / "r_orders__ref_id__join_check_residue.csv").exists()
+
+
+def test_residue_names_that_clash_are_numbered(tmp_path):
+    result = _result(_residue_check("join check"), _residue_check("Join_Check"))
+    result.save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+    assert (tmp_path / "r_orders__join_check_residue.csv").exists()
+    assert (tmp_path / "r_orders__Join_Check_2_residue.csv").exists()
+
+
+def test_mixed_column_sets_give_one_grouped_file_with_nulls(tmp_path):
+    both = _check("both_cols")
+    one = _check("id_only", failed_rows=pa.table({"id": [3]}))
+    result = _result(both, one)
+    rows = result.get_consolidated_output_dfs()["orders"].to_arrow().to_pylist()
+    assert {row["id"]: (row["name"], row["check_ids"]) for row in rows} == {
+        2: ("b", "both_cols"),
+        3: (None, "id_only"),
+    }
+    result.save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs"])
+    assert _files(tmp_path) == {"r_check_results.csv", "r_summary.json", "r_orders.csv"}
+    assert pa_csv.read_csv(tmp_path / "r_orders.csv").num_rows == 2
+
+
+# --------------------------------------------------------------------------- #
+# Save records (the vowl.save spans of export_otel)
+# --------------------------------------------------------------------------- #
+
+
+def test_save_records_its_window_outputs_and_file_count(tmp_path):
+    result = _result(_check("c"))
+    assert result._saves == []
+    result.save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs", "dq_metrics"])
+    (record,) = result._saves
+    assert record.started_ns <= record.finished_ns
+    assert record.outputs == ("consolidated_query_outputs", "dq_metrics")
+    assert record.file_count == len(_files(tmp_path)) == 4
+    assert record.error is None
+
+
+def test_save_with_no_outputs_records_the_two_summary_files(tmp_path):
+    result = _result(_check("c"))
+    result.save(str(tmp_path), prefix="r", outputs=[])
+    (record,) = result._saves
+    assert record.outputs == ()
+    assert record.file_count == 2
+
+
+def test_each_save_adds_a_record(tmp_path):
+    result = _result(_check("c"))
+    result.save(str(tmp_path / "a"), outputs=[])
+    result.save(str(tmp_path / "b"), outputs=["dq_metrics"])
+    first, second = result._saves
+    assert first.finished_ns <= second.started_ns
+    assert second.outputs == ("dq_metrics",)
+
+
+def test_invalid_save_arguments_leave_no_record(tmp_path):
+    result = _result(_check("c"))
+    with pytest.raises(ValueError, match="Unknown output"):
+        result.save(str(tmp_path), outputs=["nope"])
+    assert result._saves == []
+
+
+def test_failed_save_is_recorded_with_its_error(tmp_path, monkeypatch):
+    from vowl.validation._output_dir import OutputDir
+
+    def broken(self, name, text):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(OutputDir, "write_text", broken)
+    result = _result(_check("c"))
+    with pytest.raises(OSError, match="disk full"):
+        result.save(str(tmp_path), prefix="r", outputs=[])
+    (record,) = result._saves
+    assert record.error == "OSError: disk full"
+    assert record.file_count == 1  # check_results.csv was written before summary.json failed
+
+
+def test_no_saved_file_overwrites_another(tmp_path):
+    # Every clash at once: a fixed name, case-only twins, names with no letters
+    # and a table named like another table's annotated file.
+    schemas = ("check_results", "Orders", "orders", "***", "+++", "x", "x_annotated")
+    checks = [_check(f"c{i}", schema=schema) for i, schema in enumerate(schemas)]
+    checks.append(_residue_check("join check", schema="x"))
+    _result(*checks, schemas=schemas).save(str(tmp_path), prefix="r", outputs=list(SAVE_OUTPUTS[1:]))
+
+    saved = _saved_outputs(tmp_path)
+    listed = [e["file"] for entries in saved.values() for e in entries if "file" in e]
+    listed += ["r_check_results.csv", "r_summary.json"]
+    assert len({name.casefold() for name in listed}) == len(listed)
+    assert set(listed) <= _files(tmp_path)
+
+
+def test_long_names_are_shortened_to_fit_with_a_stable_hash(tmp_path):
+    long_schema = "s" * 150
+    checks = [_check("c" * 150, schema=long_schema), _check("c" * 150 + "x", schema=long_schema)]
+    for run in ("one", "two"):
+        _result(*checks, schemas=(long_schema,)).save(str(tmp_path / run), prefix="r")
+    names = sorted(_files(tmp_path / "one"))
+    assert names == sorted(_files(tmp_path / "two"))
+    assert all(len(name.rsplit("/", 1)[-1].encode()) <= 255 for name in names)
+    stems = [e["file"] for e in _saved_outputs(tmp_path / "one")["all_query_outputs"]]
+    assert len(set(stems)) == 2
+
+
+def test_short_names_are_never_shortened(tmp_path):
+    from vowl.validation.result import _fit_file_stem
+
+    assert _fit_file_stem("orders__amount__not_null") == "orders__amount__not_null"
+    long = "客" * 100
+    fitted = _fit_file_stem(long)
+    assert len(fitted.encode()) <= 230
+    assert fitted.startswith("客") and fitted == _fit_file_stem(long)

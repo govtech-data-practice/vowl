@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: vowl
+    folder: vowl
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

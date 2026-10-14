@@ -1,0 +1,35 @@
+kind: DataContract
+apiVersion: v3.2.0
+version: 1.0.0
+id: 6f1d2b8e-4a7c-4e0b-9b5d-3c8e2f1a7d40
+name: HDB Resale Flat Prices (tolerated rows)
+description:
+  purpose: >-
+    Pairs a strict check with one that allows a few bad rows, so a run has a
+    check that passes while its row query still returns rows. Used by the
+    tolerated rows section of examples/5_results/results_tour.ipynb.
+
+schema:
+  - name: hdb_resale_prices
+    properties:
+      - name: month
+        logicalType: string
+        quality:
+          - type: sql
+            name: Month
+            description: Based on ISO 8601 | YYYY-MM
+            mustBe: 0
+            query: |-
+              SELECT COUNT(*)
+              FROM "hdb_resale_prices"
+              WHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';
+            dimension: conformity
+
+      - name: floor_area_sqm
+        quality:
+          - name: few_flats_of_200_sqm_or_more
+            description: A handful of very large flats is expected, so up to 19 are allowed.
+            type: sql
+            query: SELECT COUNT(*) FROM "hdb_resale_prices" WHERE floor_area_sqm >= 200
+            mustBeLessThan: 20
+            dimension: consistency

@@ -8,14 +8,13 @@ from collections.abc import Sequence
 import pyarrow as pa
 
 from ..executors.base import CheckResult
-from .result_models import CheckStatusSummary, SchemaValidationBreakdown, SingleTableSummary
+from .result_models import CheckStatusSummary, SchemaValidationBreakdown
 
 STATUS_ORDER = ("FAILED", "ERROR", "PASSED")
 SUMMARY_LABELS = (
     "Checks Pass Rate:",
     "ERRORED Checks:",
-    "Unique Passed Rows:",
-    "Non-unique Failed Rows:",
+    "Failed Rows (approximate):",
 )
 
 
@@ -117,15 +116,23 @@ def format_ascii_table(table: pa.Table, divider_before_rows: Sequence[int] | Non
     return "\n".join(lines)
 
 
-def format_unique_passed_rows(single_table: SingleTableSummary) -> str:
-    # total_rows may be 0 (empty table, or stats unavailable), in which case
-    # passed_row_percentage is None. Treat any falsy total_rows as N/A rather
-    # than feeding None into _truncate_pct.
-    if not single_table.total_rows or single_table.passed_row_percentage is None:
-        return f"{single_table.passed_unique_rows:,} / {single_table.total_rows or 0:,} (N/A)"
-    return (
-        f"{single_table.passed_unique_rows:,} / {single_table.total_rows:,} "
-        f"({_truncate_pct(single_table.passed_row_percentage)})"
+def format_failed_rows_approximate(failed_rows_approximate: int | None) -> str:
+    """Format approximate failed rows, or ``N/A`` without row-level checks.
+
+    The number sums each row-level check's failed rows, so a row caught by
+    two checks counts twice. The DQ metrics give the exact count.
+    """
+    if failed_rows_approximate is None:
+        return "N/A"
+    return f"{failed_rows_approximate:,}"
+
+
+def _failed_rows_approximate_line(failed_rows_approximate: int | None, label_width: int) -> str:
+    return format_summary_metric(
+        "       ",
+        "Failed Rows (approximate):",
+        format_failed_rows_approximate(failed_rows_approximate),
+        label_width,
     )
 
 
@@ -160,30 +167,16 @@ def build_schema_summary_lines(
     w = summary_metric_width
 
     lines = [f"   {schema_name}:"]
-    lines += ["     Overall:"] + _check_status_lines(overall, w)
     lines += (
-        ["     Single Table:"]
-        + _check_status_lines(single_table, w)
-        + [
-            format_summary_metric(
-                "       ",
-                "Unique Passed Rows:",
-                format_unique_passed_rows(single_table),
-                w,
-            ),
-        ]
+        ["     Overall:"]
+        + _check_status_lines(overall, w)
+        + [_failed_rows_approximate_line(overall.failed_rows_approximate, w)]
     )
+    lines += ["     Single Table:"] + _check_status_lines(single_table, w)
     lines += (
         ["     Multi Table:"]
         + _check_status_lines(multi_table, w)
-        + [
-            format_summary_metric(
-                "       ",
-                "Non-unique Failed Rows:",
-                f"{multi_table.failed_non_unique_rows:,}",
-                w,
-            ),
-        ]
+        + [_failed_rows_approximate_line(multi_table.failed_rows_approximate, w)]
     )
     return "\n".join(lines)
 

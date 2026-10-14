@@ -1,0 +1,2 @@
+id,amount,check_id,tables_in_query
+3,150,amount_at_most_100,t1

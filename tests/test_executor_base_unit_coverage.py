@@ -81,6 +81,26 @@ def test_check_result_failed_rows_returns_empty_frame_when_fetcher_returns_none(
     assert fetch_calls == ["called"]
 
 
+def test_check_result_failed_rows_keeps_columns_of_zero_row_frame():
+    # A zero-row frame is falsy, so it must not be swapped for the column-less
+    # empty frame. Annotated output needs its columns to decide mergeability.
+    import narwhals as nw
+
+    def fetch_rows():
+        return nw.from_native(pa.table({"id": pa.array([], pa.int64())}), eager_only=True)
+
+    result = CheckResult(
+        check_name="row_check",
+        status="FAILED",
+        details="details",
+        failed_rows_fetcher=fetch_rows,
+        failed_rows_count=2,
+    )
+
+    assert len(result.failed_rows) == 0
+    assert result.failed_rows.columns == ["id"]
+
+
 def test_check_result_repr_is_concise():
     result = CheckResult("my_check", "PASSED", "details")
 
@@ -220,3 +240,33 @@ def test_gx_executor_init_is_reachable_via_concrete_subclass():
     executor = StubGXExecutor(adapter)
 
     assert executor.adapter is adapter
+
+
+def test_run_checks_keeps_other_results_when_a_batch_raises():
+    from vowl.adapters.base import BaseAdapter
+    from vowl.executors.base import CheckResult
+
+    class Ref:
+        def __init__(self, name: str):
+            self.name = name
+
+        def get_check_name(self) -> str:
+            return self.name
+
+        def get_execution_engine(self) -> str:
+            return "sql"
+
+    class Executor:
+        def run_batch_checks(self, refs):
+            if any(ref.name == "broken" for ref in refs):
+                raise RuntimeError("boom")
+            return [CheckResult(check_name=ref.name, status="PASSED", details="") for ref in refs]
+
+    class Adapter(BaseAdapter):
+        def _get_executor(self, engine):
+            return Executor()
+
+    results = Adapter().run_checks([Ref("ok"), Ref("broken"), Ref("also_ok")])
+
+    assert [(r.check_name, r.status) for r in results] == [("ok", "PASSED"), ("broken", "ERROR"), ("also_ok", "PASSED")]
+    assert results[1].details == "Error executing check: boom"

@@ -1,0 +1,5 @@
+id,customer_id,created_at,score,id.1,active,score.1,check_ids,tables_in_query
+5,5,2024-03-01,9,,,,orphans,"customers, orders"
+7,6,2023-06-01,8,,,,orphans,"customers, orders"
+8,7,2024-05-01,5,,,,orphans,"customers, orders"
+9,8,2023-02-01,6,,,,orphans,"customers, orders"

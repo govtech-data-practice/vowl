@@ -3,8 +3,7 @@ from __future__ import annotations
 import pytest
 
 from vowl.validation.result import _safe_filename_component
-from vowl.validation.result_models import SingleTableSummary
-from vowl.validation.result_rendering import format_unique_passed_rows
+from vowl.validation.result_rendering import format_failed_rows_approximate
 
 
 @pytest.mark.parametrize(
@@ -20,6 +19,14 @@ from vowl.validation.result_rendering import format_unique_passed_rows
         ("", "output"),
         ("nul\x00byte", "nul_byte"),
         ("a b, c", "a_b_c"),
+        ("a\\b:c*d?e|f", "a_b_c_d_e_f"),
+        # Letters and digits of any script are kept.
+        ("客户", "客户"),
+        ("café", "café"),
+        ("客户_orders", "客户_orders"),
+        # Combining accents (as macOS stores them) clean to the composed form.
+        ("cafe\u0301", "café"),
+        ("***", "output"),
     ],
 )
 def test_safe_filename_component_strips_traversal(value: str, expected: str):
@@ -31,32 +38,13 @@ def test_safe_filename_component_strips_traversal(value: str, expected: str):
     assert not result.startswith(".")
 
 
-def _summary(*, total_rows, passed_row_percentage, passed_unique_rows=0):
-    return SingleTableSummary(
-        passed_checks=0,
-        error_checks=0,
-        total_checks=0,
-        failed_unique_rows=0,
-        passed_unique_rows=passed_unique_rows,
-        total_rows=total_rows,
-        passed_row_percentage=passed_row_percentage,
-    )
+def test_format_failed_rows_approximate_groups_thousands():
+    assert format_failed_rows_approximate(1234) == "1,234"
 
 
-def test_format_unique_passed_rows_handles_none_total_rows():
-    summary = _summary(total_rows=None, passed_row_percentage=None, passed_unique_rows=5)
-    assert format_unique_passed_rows(summary) == "5 / 0 (N/A)"
+def test_format_failed_rows_approximate_shows_zero():
+    assert format_failed_rows_approximate(0) == "0"
 
 
-def test_format_unique_passed_rows_handles_zero_total_rows():
-    """A zero-row table has passed_row_percentage None; must not crash in
-    _truncate_pct. Regression for 'unsupported operand *: NoneType and int'
-    when every check errored on an empty/unstatted table."""
-    summary = _summary(total_rows=0, passed_row_percentage=None)
-    assert format_unique_passed_rows(summary) == "0 / 0 (N/A)"
-
-
-def test_format_unique_passed_rows_formats_percentage():
-    summary = _summary(total_rows=1000, passed_row_percentage=99.99, passed_unique_rows=999)
-    # Truncated (not rounded) to one decimal place.
-    assert format_unique_passed_rows(summary) == "999 / 1,000 (99.9%)"
+def test_format_failed_rows_approximate_without_row_level_checks_is_na():
+    assert format_failed_rows_approximate(None) == "N/A"

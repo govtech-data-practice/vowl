@@ -39,6 +39,7 @@ class CheckResultMetadata(TypedDict, total=False):
     multi_source: bool
     aggregation_type: str
     engine: str
+    severity: str
     check_definition: dict[str, Any]
     contract_definition: dict[str, Any]
 
@@ -62,6 +63,9 @@ class CheckReference(ABC):
         """
         self._contract = contract
         self._path = path
+        # Set by the contract when this check's made-up name clashes with an
+        # earlier check on the same target (see Contract._number_clashing_names).
+        self._name_override: str | None = None
 
     @property
     def supports_row_level_output(self) -> bool:
@@ -151,6 +155,11 @@ class CheckReference(ABC):
             else {},
         }
 
+        # ODCS severity (for example "error" or "warning"), when the check
+        # sets it. A metric label and a check_results column.
+        if check.get("severity") is not None:
+            metadata["severity"] = str(check["severity"])
+
         column_name = self.get_column_name()
         if column_name:
             metadata["target"] = f"{schema_name}.{column_name}" if schema_name else column_name
@@ -211,6 +220,8 @@ class CheckReference(ABC):
 
     def get_check_name(self) -> str:
         """Return the check name from the contract, auto-generating if absent."""
+        if self._name_override:
+            return self._name_override
         check = self.get_check()
         name = check.get("name") or check.get("id")
         if name:
@@ -287,6 +298,7 @@ class CheckReference(ABC):
                 details=check.get("description") or f"Check passed: {operator} {expected_value}",
                 actual_value=actual_value,
                 expected_value=expected_value,
+                failed_rows_fetcher=failed_rows_fetcher,
                 metadata=metadata,
                 execution_time_ms=execution_time_ms,
             )
@@ -360,4 +372,17 @@ class ColumnCheckMixin:
         return self._contract.resolve(f"{col_path}.logicalTypeOptions")
 
 
-__all__ = ["CheckReference", "CheckResultMetadata", "TableCheckMixin", "ColumnCheckMixin"]
+def safe_result_metadata(ref: Any) -> dict[str, Any]:
+    """``ref.get_result_metadata()``, or ``{}`` when it is missing or raises.
+
+    For ERROR results built outside an executor: the check could not run, but
+    it should still say which schema and target it is on. Custom references
+    may not have the method.
+    """
+    try:
+        return dict(ref.get_result_metadata())
+    except Exception:
+        return {}
+
+
+__all__ = ["CheckReference", "CheckResultMetadata", "TableCheckMixin", "ColumnCheckMixin", "safe_result_metadata"]

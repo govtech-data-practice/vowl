@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import time
 import warnings
 from pathlib import Path
 from typing import Any
 
-from ..adapters.ibis_adapter import IbisAdapter
+from ..adapters.base import BaseAdapter
 from ..adapters.multi_source_adapter import MultiSourceAdapter
 from ..config import ValidationConfig
 from ..contracts.contract import Contract
@@ -18,7 +19,7 @@ from .result import ValidationResult
 class ValidationRunner:
     contract_cls: type[Contract] = Contract
     mapper_cls: type[DataSourceMapper] = DataSourceMapper
-    adapter_cls: type[IbisAdapter] = IbisAdapter
+    adapter_cls: type[BaseAdapter] = BaseAdapter
     multi_adapter_cls: type[MultiSourceAdapter] = MultiSourceAdapter
     result_cls: type[ValidationResult] = ValidationResult
     config_cls: type[ValidationConfig] = ValidationConfig
@@ -52,7 +53,7 @@ class ValidationRunner:
             raise ValueError("Contract has no schemas with names defined")
 
         mapper = self.mapper_cls()
-        resolved: dict[str, IbisAdapter] = {}
+        resolved: dict[str, BaseAdapter] = {}
 
         # Adapter keys may legitimately name a foreign-key *target* schema that
         # lives in another contract file (an external reference), which is not
@@ -71,6 +72,8 @@ class ValidationRunner:
                     stacklevel=3,
                 )
 
+            # Any adapter (IbisAdapter, PooledAdapter, a custom BaseAdapter)
+            # is used as given. Raw sources go through the mapper.
             if isinstance(adapter_input, self.adapter_cls):
                 resolved[schema_name] = adapter_input
             else:
@@ -87,14 +90,13 @@ class ValidationRunner:
     def _build_summary(
         self,
         check_results: list[CheckResult],
-        total_rows_by_schema: dict[str, int],
         connection_results: dict[str, dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         passed = sum(1 for cr in check_results if cr.status == "PASSED")
         failed = sum(1 for cr in check_results if cr.status == "FAILED")
         errors = sum(1 for cr in check_results if cr.status == "ERROR")
         total_time = sum(cr.execution_time_ms for cr in check_results)
-        failed_rows = sum(
+        failed_rows_approximate = sum(
             cr.failed_rows_count for cr in check_results if cr.failed_rows_count and cr.supports_row_level_output
         )
 
@@ -118,9 +120,8 @@ class ValidationRunner:
                 "passed": passed,
                 "failed": failed,
                 "errors": errors,
-                "total_rows_by_schema": total_rows_by_schema,
                 "config": self._config.to_dict(),
-                "failed_rows": failed_rows,
+                "failed_rows_approximate": failed_rows_approximate,
                 "total_execution_time_ms": total_time,
                 "success_rate": (passed / len(check_results) * 100) if check_results else 100,
                 "connection_results": connection_results or {},
@@ -138,19 +139,15 @@ class ValidationRunner:
             adapter.use_try_cast = self._config.use_try_cast
 
         check_refs_by_schema = self._contract.get_check_references_by_schema()
+        run_started_ns = time.time_ns()
         connection_results = self._multi_adapter.test_connections(check_refs_by_schema)
         check_results = self._multi_adapter.run_checks(check_refs_by_schema)
+        run_finished_ns = time.time_ns()
 
-        total_rows_by_schema: dict[str, int] = {}
-        if self._config.enable_additional_schema_statistics:
-            total_rows_by_schema = self._multi_adapter.get_total_rows_by_schema(
-                self._config.max_rows_for_statistics,
-            )
-
-        summary = self._build_summary(check_results, total_rows_by_schema, connection_results)
+        summary = self._build_summary(check_results, connection_results)
         schema_names = list(self._multi_adapter.adapters.keys())
 
-        return self.result_cls(
+        result = self.result_cls(
             summary=summary,
             check_results=check_results,
             contract=self._contract,
@@ -158,3 +155,8 @@ class ValidationRunner:
             schema_names=schema_names,
             config=self._config,
         )
+        # Wall-clock run window, used for the OTel root span. Set after
+        # construction so result_cls keeps its signature.
+        result._run_started_ns = run_started_ns
+        result._run_finished_ns = run_finished_ns
+        return result

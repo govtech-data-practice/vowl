@@ -298,7 +298,7 @@ def test_mapper_reraises_retry_error_after_full_dataframe_stringification(monkey
         )
 
 
-def test_ibis_adapter_reports_filter_state_and_incompatible_adapters():
+def test_ibis_adapter_reports_filter_state_and_compatibility_by_connection():
     shared_connection = StubConnection(StubFetchOneResult((1,)))
     adapter = IbisAdapter(shared_connection, filter_conditions={"users": {"field": "id", "operator": ">", "value": 0}})
     other_connection = StubConnection(StubFetchOneResult((1,)))
@@ -306,7 +306,9 @@ def test_ibis_adapter_reports_filter_state_and_incompatible_adapters():
     assert adapter.has_filter_conditions is True
     assert adapter.is_compatible_with(StubAdapter()) is False
     assert adapter.is_compatible_with(IbisAdapter(other_connection)) is False
-    assert adapter.is_compatible_with(IbisAdapter(shared_connection)) is False
+    # Filters do not affect compatibility. The multi-source executor merges
+    # each table's own filters when it runs a join on the shared connection.
+    assert adapter.is_compatible_with(IbisAdapter(shared_connection)) is True
 
 
 def test_ibis_adapter_get_total_rows_uses_limited_subquery_when_capped():

@@ -1,0 +1,36 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  allow_structured_metadata: true
+  reject_old_samples: false
+  # vowl sets severity_text (WARN or ERROR). Without this, Loki guesses the level from the message text.
+  discover_log_levels: true
+  log_level_fields: [severity_text]
+
+pattern_ingester:
+  enabled: false

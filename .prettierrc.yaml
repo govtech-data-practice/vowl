@@ -2,3 +2,7 @@
 # proseWrap: preserve keeps existing line breaks in prose untouched (no reflowing);
 # Markdown tables are still re-aligned.
 proseWrap: preserve
+# MkDocs admonitions: leave a blank line after the `!!! type` line. Without it,
+# Prettier flattens the 4-space body and Zensical renders an empty admonition.
+# Prettier also re-indents list items to 2 spaces, which drops a nested block
+# out of the list. Wrap such lists in <!-- prettier-ignore-start/end -->.

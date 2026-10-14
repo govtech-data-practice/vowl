@@ -1,9 +1,11 @@
 import contextvars
 import ipaddress
 import os
+import posixpath
 import re
 import socket
 import warnings
+from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -12,6 +14,7 @@ from urllib.parse import urljoin, urlparse
 import yaml
 from jsonpath_ng import parse as jsonpath_parse
 
+from .keys import primary_key_columns
 from .models import SUPPORTED_VERSIONS, validate_contract
 from .models.ODCS_types import DataContract, Server
 
@@ -155,6 +158,130 @@ _SHORTHAND_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*(?:\.[A-Za-z_][A-Za-z0
 _EXTERNAL_REF_RE = re.compile(r"^((?:https?://)?[A-Za-z0-9._\-/]+\.ya?ml)#(.+)$")
 
 
+def _reject_duplicate_check_names(contract_data: dict[str, Any]) -> None:
+    """Raise when two schemas, or two quality checks in one ``quality`` list, share a name.
+
+    Results are keyed and saved by schema, column and check name, so two checks
+    with one name on the same column, or both on the schema, would overwrite
+    each other. The same name on different columns is fine.
+
+    Two schemas with one name would map to one table, and the later one used
+    to replace the earlier one's checks.
+
+    Raises:
+        ValueError: Naming the schema, the column if any, and the check.
+    """
+    seen_schemas: set[str] = set()
+    for schema_obj in contract_data.get("schema") or []:
+        schema_name = schema_obj.get("name")
+        if schema_name in seen_schemas:
+            raise ValueError(
+                f"Two schemas are both named '{schema_name}'. "
+                "Schema names must be unique in a contract, as each one maps to one table. Rename one."
+            )
+        if schema_name:
+            seen_schemas.add(schema_name)
+        lists = [(schema_name, schema_obj.get("quality"))]
+        lists += [
+            (f"{schema_name}.{prop.get('name')}", prop.get("quality")) for prop in schema_obj.get("properties") or []
+        ]
+        for label, quality in lists:
+            seen: set[str] = set()
+            for check in quality or []:
+                name = check.get("name")
+                if name is None:
+                    continue
+                if name in seen:
+                    raise ValueError(
+                        f"Two quality checks on '{label}' are both named '{name}'. "
+                        "Check names must be unique per column, and per schema for schema-level checks. Rename one."
+                    )
+                seen.add(name)
+
+
+def _check_target(ref: "CheckReference") -> str:
+    """The ``target`` a check's results carry, ``<schema>.<column>`` or ``<schema>``."""
+    schema = ref.get_schema_name() or ""
+    column = ref.get_column_name()
+    if column:
+        return f"{schema}.{column}" if schema else column
+    return schema
+
+
+def _is_authored_name(ref: "CheckReference") -> bool:
+    """Whether the contract author wrote this check's name.
+
+    True when the check is a quality rule with a ``name`` or ``id``. Generated
+    checks point at a property attribute or a relationship. A relationship can
+    have an ``id`` of its own, but that does not name its foreign key check, so
+    their names are always vowl's.
+    """
+    if ".quality[" not in ref.path:
+        return False
+    raw = ref._contract.resolve(ref.path)
+    return isinstance(raw, dict) and bool(raw.get("name") or raw.get("id"))
+
+
+def _number_clashing_names(refs: list["CheckReference"]) -> None:
+    """Make each check's name unique on its target, or raise when the author clashed.
+
+    A check is identified by its schema, target and name in every output, so
+    two checks with one name on one target would merge. A clash between two
+    names the author wrote, or between an author's name and one vowl
+    generates, raises. A clash between names vowl made up (a fallback for a
+    check with no name, or a relationship declared twice) numbers the later
+    ones ``_2``, ``_3`` in contract order. Names are compared exactly.
+
+    Raises:
+        ValueError: Naming the target and the check.
+    """
+    keyed = [(ref, _check_target(ref), ref.get_check_name()) for ref in refs]
+    # Authored names are reserved first, so a number never lands on a name the
+    # author wrote later in the contract.
+    taken = {(target, name) for ref, target, name in keyed if _is_authored_name(ref)}
+    seen: dict[tuple[str, str], CheckReference] = {}
+    for ref, target, name in keyed:
+        earlier = seen.get((target, name))
+        if earlier is None:
+            seen[(target, name)] = ref
+            continue
+        if _is_authored_name(ref) or _is_authored_name(earlier):
+            raise ValueError(
+                f"Two checks on '{target}' are both named '{name}'. "
+                "A check name must be unique on its column, or on its schema for schema-level checks, "
+                "and must not match the name of a check vowl generates there. Rename one."
+            )
+        n = 2
+        while (target, f"{name}_{n}") in seen or (target, f"{name}_{n}") in taken:
+            n += 1
+        ref._name_override = f"{name}_{n}"
+        seen[(target, ref._name_override)] = ref
+
+
+def _quality_check_type(rule: Mapping[str, Any]) -> str:
+    """Return a quality rule's ``type``, defaulting the way ODCS does where it matters.
+
+    ODCS defaults ``type`` to ``library``, so a rule with a ``metric``, or the
+    ODCS v3.0.2 ``rule`` field, and no ``type`` is a library check. A rule
+    without either keeps the older ``sql`` default, so untyped ``query`` rules
+    still run as SQL.
+    """
+    if "type" in rule:
+        return rule["type"]
+    return "library" if ("metric" in rule or "rule" in rule) else "sql"
+
+
+def _unsupported_library_message(rule: Mapping[str, Any], level: str, supported: Any) -> str:
+    """Explain why a library rule has no check, naming a v3.0.2 ``rule`` when that is the cause."""
+    metric = rule.get("metric")
+    if metric is None and "rule" in rule:
+        return (
+            f"ODCS v3.0.2 `rule: '{rule['rule']}'` is not supported. Use `metric:` (ODCS v3.1+). "
+            f"Supported {level}-level metrics: {', '.join(sorted(supported))}"
+        )
+    return f"Unsupported library metric '{metric}' at {level} level. Supported {level}-level metrics: {', '.join(sorted(supported))}"
+
+
 @dataclass(frozen=True)
 class ResolvedRef:
     """A resolved foreign-key reference endpoint.
@@ -188,7 +315,7 @@ class Contract:
         contract_data (Dict[str, Any]): The parsed contract data from YAML or JSON
     """
 
-    def __init__(self, contract_data: dict[str, Any], *, origin: str | None = None):
+    def __init__(self, contract_data: dict[str, Any], *, origin: str | None = None, _build_checks: bool = True):
         self.contract_data: DataContract = contract_data
         # Retrieval location this contract was loaded from (local path, http(s)
         # URL, or s3 URI); None when constructed directly from an in-memory dict.
@@ -198,6 +325,8 @@ class Contract:
         # External contracts loaded to resolve cross-file references, cached by
         # the raw file reference string as written in this contract.
         self._external_cache: dict[str, Contract] = {}
+        # The check references, built once (see get_check_references_by_schema).
+        self._check_refs: dict[str, list[CheckReference]] | None = None
 
         # Validate on construction using jsonschema
         api_version = contract_data.get("apiVersion")
@@ -206,6 +335,17 @@ class Contract:
                 f"Contract does not specify an apiVersion. Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
             )
         validate_contract(contract_data, api_version)
+        if not _build_checks:
+            # Loaded only to resolve another contract's foreign key, which reads
+            # just its schema and properties. Building its checks would follow
+            # its own references too, and loop when two contracts point at
+            # each other.
+            return
+        _reject_duplicate_check_names(contract_data)
+        # Builds every check now, so a clash between check names (authored or
+        # generated) fails when the contract loads, not mid-run. The result is
+        # kept, so the run does not build them again.
+        self.get_check_references_by_schema()
 
     @property
     def origin(self) -> str | None:
@@ -318,7 +458,7 @@ class Contract:
             raise OSError(f"Error fetching contract from S3 {s3_path}: {e}") from e
 
     @classmethod
-    def load(cls, contract_file_path: str) -> "Contract":
+    def load(cls, contract_file_path: str, *, _build_checks: bool = True) -> "Contract":
         """
         Create a Contract instance from a local path or remote URI.
 
@@ -379,7 +519,7 @@ class Contract:
                 f"Invalid contract YAML/JSON in {contract_file_path}: {yaml_parsing_error}"
             ) from yaml_parsing_error
 
-        return cls(contract_data, origin=origin)
+        return cls(contract_data, origin=origin, _build_checks=_build_checks)
 
     def get_schema_properties(self) -> dict[str, Any]:
         """
@@ -629,19 +769,25 @@ class Contract:
             return self._external_cache[file_ref]
 
         parsed = urlparse(file_ref)
-        if parsed.scheme in ("http", "https"):
-            location = file_ref  # absolute URL — fetched via the SSRF-guarded path
+        if parsed.scheme in ("http", "https", "s3"):
+            location = file_ref  # absolute URL or s3 URI, used as is
         elif self._origin is None:
             raise ValueError(
                 f"cannot resolve external reference '{file_ref}': contract has no origin (loaded from in-memory data)"
             )
-        elif self._origin.startswith(("http://", "https://", "s3://")):
+        elif self._origin.startswith(("http://", "https://")):
             location = urljoin(self._origin, file_ref)
+        elif self._origin.startswith("s3://"):
+            # urljoin does not know the s3 scheme and would return file_ref
+            # unchanged, so join the sibling key with posixpath instead.
+            origin = urlparse(self._origin)
+            key = posixpath.normpath(posixpath.join(posixpath.dirname(origin.path) or "/", file_ref))
+            location = f"s3://{origin.netloc}/{key.lstrip('/')}"
         else:
             location = os.path.normpath(os.path.join(os.path.dirname(self._origin), file_ref))
 
         try:
-            external = Contract.load(location)
+            external = Contract.load(location, _build_checks=False)
         except Exception as exc:
             raise ValueError(f"could not load external contract '{file_ref}': {exc}") from exc
 
@@ -666,8 +812,15 @@ class Contract:
         - Foreign key checks: for property- or schema-level relationships of
           type foreignKey (validates every non-null key exists in the target)
 
+        The references are built once per contract and reused. Each call
+        returns new lists, so changing them does not change the contract.
+
         Returns:
             Dict mapping schema names to lists of CheckReference objects.
+
+        Raises:
+            ValueError: When two checks on one target share a name the author
+                wrote (see :func:`_number_clashing_names`).
 
         Example:
             >>> contract = Contract.load("my_contract.yaml")
@@ -676,10 +829,17 @@ class Contract:
             ...     for ref in refs:
             ...         print(f"{ref.get_check().get('name')}: {ref.get_logical_type()}")
         """
+        if self._check_refs is None:
+            self._check_refs = self._build_check_references()
+        return {schema: list(refs) for schema, refs in self._check_refs.items()}
+
+    def _build_check_references(self) -> dict[str, list["CheckReference"]]:
+        """Build every check reference of the contract, grouped by schema name."""
         from .check_reference import (
             LOGICAL_TYPE_TO_SQL,
             ArrayItemsCheckReference,
             CheckReference,
+            CompositePrimaryKeyCheckReference,
             DeclaredColumnExistsCheckReference,
             EnumCheckReference,
             LogicalTypeCheckReference,
@@ -726,6 +886,10 @@ class Contract:
 
             # Auto-generated checks from property attributes (run first)
             properties = schema_obj.get("properties", [])
+            # ODCS: all primaryKey columns together form one key. A single
+            # column keeps its per-column check, two or more get one
+            # composite check after the property loop.
+            pk_columns = primary_key_columns(properties or [])
             for prop_idx, prop in enumerate(properties):
                 prop_path = f"$.schema[{schema_idx}].properties[{prop_idx}]"
                 prop_name = prop.get("name", f"property[{prop_idx}]")
@@ -846,7 +1010,7 @@ class Contract:
                     refs_by_schema[schema_name].append(UniqueCheckReference(self, prop_path))
 
                 # Primary key checks for columns with primaryKey: true
-                if prop.get("primaryKey") is True:
+                if prop.get("primaryKey") is True and len(pk_columns) < 2:
                     refs_by_schema[schema_name].append(PrimaryKeyCheckReference(self, prop_path))
 
                 # Property-level relationships (foreign keys)
@@ -856,6 +1020,13 @@ class Contract:
                         refs_by_schema[schema_name].append(PropertyForeignKeyCheckReference(self, prop_path, rel_idx))
                     except ValueError as exc:
                         refs_by_schema[schema_name].append(UnsupportedColumnCheckReference(self, rel_path, str(exc)))
+
+            if len(pk_columns) >= 2:
+                pk_path = f"$.schema[{schema_idx}].primaryKey"
+                try:
+                    refs_by_schema[schema_name].append(CompositePrimaryKeyCheckReference(self, schema_idx, pk_columns))
+                except ValueError as exc:
+                    refs_by_schema[schema_name].append(UnsupportedTableCheckReference(self, pk_path, str(exc)))
 
             # Schema-level relationships (foreign keys)
             for rel_idx, _rel in enumerate(schema_obj.get("relationships", []) or []):
@@ -869,7 +1040,7 @@ class Contract:
             table_quality = schema_obj.get("quality", [])
             for qual_idx in range(len(table_quality)):
                 check_path = f"$.schema[{schema_idx}].quality[{qual_idx}]"
-                check_type = table_quality[qual_idx].get("type", "sql")
+                check_type = _quality_check_type(table_quality[qual_idx])
 
                 if check_type == "library":
                     metric = table_quality[qual_idx].get("metric")
@@ -879,8 +1050,7 @@ class Contract:
                             UnsupportedTableCheckReference(
                                 self,
                                 check_path,
-                                f"Unsupported library metric '{metric}' at schema level. "
-                                f"Supported schema-level metrics: {', '.join(sorted(LIBRARY_TABLE_METRICS))}",
+                                _unsupported_library_message(table_quality[qual_idx], "schema", LIBRARY_TABLE_METRICS),
                             )
                         )
                     else:
@@ -906,7 +1076,7 @@ class Contract:
                 prop_quality = prop.get("quality", [])
                 for qual_idx in range(len(prop_quality)):
                     check_path = f"$.schema[{schema_idx}].properties[{prop_idx}].quality[{qual_idx}]"
-                    check_type = prop_quality[qual_idx].get("type", "sql")
+                    check_type = _quality_check_type(prop_quality[qual_idx])
 
                     if check_type == "library":
                         metric = prop_quality[qual_idx].get("metric")
@@ -916,8 +1086,9 @@ class Contract:
                                 UnsupportedColumnCheckReference(
                                     self,
                                     check_path,
-                                    f"Unsupported library metric '{metric}' at property level. "
-                                    f"Supported property-level metrics: {', '.join(sorted(LIBRARY_COLUMN_METRICS))}",
+                                    _unsupported_library_message(
+                                        prop_quality[qual_idx], "property", LIBRARY_COLUMN_METRICS
+                                    ),
                                 )
                             )
                         else:
@@ -936,6 +1107,8 @@ class Contract:
                         else:
                             refs_by_schema[schema_name].append(col_cls(self, check_path))
 
+        for refs in refs_by_schema.values():
+            _number_clashing_names(refs)
         return refs_by_schema
 
     def get_servers(self) -> list[Server]:

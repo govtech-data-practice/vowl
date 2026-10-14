@@ -1084,7 +1084,7 @@ class TestPooledAdapterBackendPatterns:
             def get_scalar_query(self, dialect, filters, **kwargs):
                 return "SELECT 1/0"
 
-            def get_failed_rows_query(self, dialect, filters, **kwargs):
+            def get_row_query(self, dialect, filters, **kwargs):
                 return None
 
             def build_result(self, actual_value, execution_time_ms, **kwargs):
@@ -1287,7 +1287,7 @@ class TestPooledAdapterBackendPatterns:
             def get_scalar_query(self, dialect, filters, **kwargs):
                 return "SELECT COUNT(*) FROM nonexistent_table_xyz"
 
-            def get_failed_rows_query(self, dialect, filters, **kwargs):
+            def get_row_query(self, dialect, filters, **kwargs):
                 return None
 
             def build_result(self, actual_value, execution_time_ms, **kwargs):
@@ -1438,7 +1438,7 @@ class TestPooledAdapterBackendPatterns:
             def get_scalar_query(self, dialect, filters, **kwargs):
                 return "SELECT COUNT(*) FROM nonexistent_xyz"
 
-            def get_failed_rows_query(self, dialect, filters, **kwargs):
+            def get_row_query(self, dialect, filters, **kwargs):
                 return None
 
             def build_result(self, actual_value, execution_time_ms, **kwargs):

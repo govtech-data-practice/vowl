@@ -1,6 +1,6 @@
 """Tests for annotated output (full in-scope table with failed rows marked).
 
-Covers ``ValidationResult.get_annotated_output`` and the ``output_mode`` wiring
+Covers ``ValidationResult.get_annotated_output`` and the ``save(outputs=...)`` wiring
 on ``save()`` / ``ValidationConfig`` introduced in the full-table-output plan.
 """
 
@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 
 import narwhals as nw
 import pyarrow as pa
 import pytest
 
 from vowl.config import ValidationConfig
-from vowl.executors.base import CheckResult
+from vowl.executors.base import CappedFetch, CheckResult
 from vowl.validation.result import ValidationResult
 
 # ---------------------------------------------------------------------------
@@ -51,6 +52,9 @@ class _FakeContract:
     def get_api_version(self) -> str:
         return "v1"
 
+    def get_version(self) -> str:
+        return "1.0.0"
+
     def get_metadata(self) -> dict:
         return {"id": "test-contract"}
 
@@ -66,8 +70,16 @@ def _make_check(
     tables_in_query: str | None = None,
     target: str | None = None,
     check_definition: dict | None = None,
+    max_failed_rows: int | None = None,
 ) -> CheckResult:
+    """Build a check result. With *max_failed_rows*, *failed_rows* are fetched
+    lazily through :class:`CappedFetch`, as the executors do."""
     fr = nw.from_native(failed_rows, eager_only=True) if failed_rows is not None else None
+    fetcher = None
+    if max_failed_rows is not None and fr is not None:
+        frame = fr
+        fetcher = CappedFetch(lambda limit: frame if limit < 0 else frame.head(limit), lambda: max_failed_rows)
+        fr = None
     count = failed_rows_count
     if count is None:
         count = failed_rows.num_rows if failed_rows is not None else 0
@@ -83,6 +95,7 @@ def _make_check(
         status=status,
         details="",
         failed_rows=fr,
+        failed_rows_fetcher=fetcher,
         failed_rows_count=count,
         supports_row_level_output=supports_row_level_output,
         metadata=meta,
@@ -497,24 +510,27 @@ class TestCrossTableMerge:
         # it has offending rows (cnt col); but the merge path is not taken.
         assert "cross_avg" in self._residue_check_names(out)
 
-    def test_truncation_guard_fires_for_merged_cross_table_check(self):
-        # A now-mergeable cross-table check whose rows were capped must raise,
-        # not silently annotate un-fetched failures as passing.
+    def test_truncation_warning_fires_for_merged_cross_table_check(self):
+        # A now-mergeable cross-table check whose rows were capped warns,
+        # because its un-fetched failures look like passing rows.
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
             "orphan_check",
             "orders",
-            failed_rows=pa.table({"id": [2], "name": ["b"]}),
-            failed_rows_count=2,
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
             tables_in_query="orders, customers",
+            max_failed_rows=1,
         )
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
-        with pytest.raises(ValueError, match="annotated output"):
-            result.get_annotated_output()
+        with pytest.warns(UserWarning, match="incomplete"):
+            out = result.get_annotated_output()
+        info = out["annotated"]["orders"]["check_info"].to_list()
+        assert info[0] is None and info[2] is None
+        assert json.loads(info[1]) == [{"check_name": "orphan_check", "truncated": True}]
 
 
 # ---------------------------------------------------------------------------
@@ -668,24 +684,85 @@ class TestFetchFailurePaths:
 
 
 class TestTruncationGuard:
-    def test_mergeable_truncated_raises(self):
+    def test_mergeable_truncated_warns_and_marks_check_info(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
-        # Fetched 1 row but true count is 2 -> truncated.
+        # 2 rows fail but the cap keeps 1, so the check is truncated.
         check = _make_check(
             "c",
             "orders",
-            failed_rows=pa.table({"id": [2], "name": ["b"]}),
-            failed_rows_count=2,
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
+            max_failed_rows=1,
         )
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
-        with pytest.raises(ValueError, match="annotated output"):
+        with pytest.warns(UserWarning, match="max_failed_rows=1 cut short the failed rows of check 'c'"):
+            out = result.get_annotated_output()
+        info = out["annotated"]["orders"]["check_info"].to_list()
+        assert info == [None, '[{"check_name": "c", "truncated": true}]', None]
+
+    def test_zero_cap_warns_instead_of_annotating_all_as_passing(self):
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        # max_failed_rows=0 keeps no rows, but the columns still match, so
+        # the check is mergeable and its 2 real failures must not go unnoticed.
+        check = _make_check(
+            "c",
+            "orders",
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
+            max_failed_rows=0,
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(max_failed_rows=0),
+        )
+        with pytest.warns(UserWarning, match="incomplete"):
+            out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list() == [None, None, None]
+
+    def test_rows_exactly_at_the_cap_are_not_truncated(self):
+        # The fetch asks for one row more than the cap, so a check with exactly
+        # cap failing rows is known to be complete.
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        check = _make_check(
+            "c",
+            "orders",
+            failed_rows=pa.table({"id": [2, 3], "name": ["b", "c"]}),
+            max_failed_rows=2,
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(max_failed_rows=2),
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = result.get_annotated_output()
+        assert out["annotated"]["orders"]["check_info"].to_list()[1] == '[{"check_name": "c"}]'
+
+    def test_a_count_above_the_rows_alone_is_not_truncation(self):
+        # The check's own count can exceed its rows without any cap, for
+        # example COUNT(DISTINCT), so it is no evidence of truncation.
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        check = _make_check(
+            "c",
+            "orders",
+            failed_rows=pa.table({"id": [2], "name": ["b"]}),
+            failed_rows_count=2,
+            max_failed_rows=5,
+        )
+        result = _make_result(
+            [check],
+            {"orders": _FakeAdapter(full)},
+            config=ValidationConfig(max_failed_rows=5),
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             result.get_annotated_output()
 
-    def test_uncapped_same_scenario_does_not_raise(self):
+    def test_uncapped_same_scenario_does_not_warn(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
             "c",
@@ -698,28 +775,31 @@ class TestTruncationGuard:
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=-1),
         )
-        out = result.get_annotated_output()  # no raise
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = result.get_annotated_output()
         assert "orders" in out["annotated"]
 
-    def test_nonmergeable_truncated_does_not_raise(self):
+    def test_nonmergeable_truncated_is_kept_as_a_marked_residue(self):
         full = pa.table({"id": [1, 2], "name": ["a", "b"]})
         check = _make_check(
             "subset",
             "orders",
-            failed_rows=pa.table({"id": [2]}),
-            failed_rows_count=5,
+            failed_rows=pa.table({"id": [2, 1]}),
             supports_row_level_output=True,
+            max_failed_rows=1,
         )
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
             config=ValidationConfig(max_failed_rows=1),
         )
-        out = result.get_annotated_output()  # no raise: non-mergeable -> residue
-        residue_checks = set()
-        for df in out["residues"].values():
-            residue_checks |= ValidationResult._check_names_in_entry(df)
-        assert "subset" in residue_checks
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # non-mergeable -> residue, no warning
+            out = result.get_annotated_output()
+        (residue,) = out["residues"].values()
+        assert residue["id"].to_list() == [2]
+        assert json.loads(residue["check_info"][0]) == [{"check_name": "subset", "truncated": True}]
 
 
 # ---------------------------------------------------------------------------
@@ -813,11 +893,11 @@ class TestCheckInfoPresets:
 
 
 # ---------------------------------------------------------------------------
-# save() output modes
+# save() outputs
 # ---------------------------------------------------------------------------
 
 
-class TestSaveModes:
+class TestSaveOutputs:
     def _result_with_failures(self):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check(
@@ -828,38 +908,101 @@ class TestSaveModes:
         )
         return _make_result([check], {"orders": _FakeAdapter(full)})
 
-    def test_failed_rows_mode_no_annotated(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="failed_rows")
+    def test_without_annotated_table_no_annotated(self, tmp_path):
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs"])
         files = {p.name for p in tmp_path.iterdir()}
         assert not any("_annotated.csv" in f for f in files)
         assert "r_check_results.csv" in files
 
-    def test_annotated_mode_writes_annotated(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="annotated")
+    def test_annotated_table_writes_annotated(self, tmp_path):
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=["annotated_table"])
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
+        assert "r_orders.csv" not in files
 
-    def test_both_mode_writes_both(self, tmp_path):
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="both")
+    def test_annotated_and_consolidated_together(self, tmp_path):
+        self._result_with_failures().save(
+            str(tmp_path), prefix="r", outputs=["annotated_table", "consolidated_query_outputs"]
+        )
         files = {p.name for p in tmp_path.iterdir()}
         assert "r_orders_annotated.csv" in files
-        assert "r_orders.csv" in files  # failed-rows CSV
+        assert "r_orders.csv" in files  # grouped CSV
 
-    def test_invalid_mode_raises(self, tmp_path):
-        with pytest.raises(ValueError, match="Unknown output_mode"):
-            self._result_with_failures().save(str(tmp_path), output_mode="anotated")
+    def test_annotated_table_writes_residues(self, tmp_path):
+        full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
+        residue = _make_check(
+            "join_check",
+            "orders",
+            failed_rows=pa.table({"id": [3], "name": ["c"], "ref_id": [None]}),
+            tables_in_query="orders, customers",
+        )
+        result = _make_result([residue], {"orders": _FakeAdapter(full)})
+        result.save(str(tmp_path), prefix="r", outputs=["annotated_table"])
+        assert (tmp_path / "r_orders__join_check_residue.csv").exists()
 
-    def test_defaults_to_config_output_mode(self, tmp_path):
+    def test_residue_of_a_tolerated_check_matches_the_grouped_csv(self, tmp_path, monkeypatch):
+        # Under fetch_tolerated_rows=True a check that passed within its
+        # tolerance writes its residue, and the grouped CSV holds the same
+        # rows, read through the same fetch.
+        import test_row_quality as rq
+
+        import vowl.contracts.contract as contract_module
+
+        monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+        con = rq._connect("duckdb")
+        con.raw_sql("CREATE TABLE t (id INTEGER, c INTEGER)")
+        con.raw_sql("INSERT INTO t VALUES (1, 3), (2, 3), (3, 5)")
+        subset = {
+            "name": "threes_subset",
+            "query": "SELECT COUNT(*) FROM (SELECT c FROM t WHERE c = 3) AS s",
+            "mustBeLessThan": 100,
+        }
+        result = rq._validate(con, [rq._schema("t", [subset])], ValidationConfig(fetch_tolerated_rows=True))
+        statuses = {c.check_name: c.status for c in result.check_results}
+        assert statuses["threes_subset"] == "PASSED"
+
+        result.save(str(tmp_path), prefix="r")
+        residue = self._read_csv(tmp_path / "r_t__threes_subset_residue.csv")
+        items = json.loads(residue.column("check_info")[0].as_py())
+        assert items == [{"check_name": "threes_subset", "tolerated": True}]
+        # Both files deduplicate identical rows, so they agree.
+        grouped = self._read_csv(tmp_path / "r_t.csv")
+        assert grouped.column("c").to_pylist() == residue.column("c").to_pylist() == [3]
+        assert grouped.column("check_ids").to_pylist() == ["threes_subset"]
+        assert grouped.column("tolerated_check_ids").to_pylist() == ["threes_subset"]
+
+    def test_defaults_to_config_outputs(self, tmp_path):
         full = pa.table({"id": [1, 2, 3], "name": ["a", "b", "c"]})
         check = _make_check("c", "orders", failed_rows=pa.table({"id": [2], "name": ["b"]}))
         result = _make_result(
             [check],
             {"orders": _FakeAdapter(full)},
-            config=ValidationConfig(output_mode="annotated"),
+            config=ValidationConfig(outputs=["annotated_table"]),
         )
-        result.save(str(tmp_path), prefix="r")  # no explicit mode
+        result.save(str(tmp_path), prefix="r")  # no explicit outputs
         files = {p.name for p in tmp_path.iterdir()}
-        assert "r_orders_annotated.csv" in files
+        assert files == {"r_check_results.csv", "r_summary.json", "r_orders_annotated.csv"}
+
+    def test_default_writes_every_output_but_failed_query_outputs_and_does_not_warn(self, tmp_path):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            self._result_with_failures().save(str(tmp_path), prefix="r")
+        assert not caught
+        files = {p.name for p in tmp_path.iterdir()}
+        assert files == {
+            "r_check_results.csv",
+            "r_summary.json",
+            "r_checks",
+            "r_orders.csv",
+            "r_orders_annotated.csv",
+            "r_dq_metrics.json",
+        }
+        assert {p.name for p in (tmp_path / "r_checks").iterdir()} == {"orders__c.csv"}
+
+    @pytest.mark.parametrize(("outputs", "written"), [(["consolidated_query_outputs"], False), (["dq_metrics"], True)])
+    def test_dq_metrics_json_follows_outputs(self, tmp_path, outputs, written):
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=outputs)
+        assert (tmp_path / "r_dq_metrics.json").exists() is written
 
     @staticmethod
     def _read_csv(path):
@@ -885,7 +1028,7 @@ class TestSaveModes:
             tables_in_query="orders, customers",
         )
         result = _make_result([mergeable, residue], {"orders": _FakeAdapter(full)})
-        result.save(str(tmp_path), prefix="r", output_mode="annotated", check_info="summary")
+        result.save(str(tmp_path), prefix="r", outputs=["annotated_table"], check_info="summary")
 
         annotated_cols = self._read_csv(tmp_path / "r_orders_annotated.csv").column_names
         assert "check_info" in annotated_cols
@@ -894,9 +1037,9 @@ class TestSaveModes:
         # Residue CSV is per-check (keyed "<schema>::<check>") and carries the
         # same check_info column (a single-element JSON array) plus
         # tables_in_query. The mergeable check is NOT written as a residue.
-        residue_csv = tmp_path / "r_orders_join_check_residue.csv"
+        residue_csv = tmp_path / "r_orders__join_check_residue.csv"
         assert residue_csv.exists()
-        assert not (tmp_path / "r_orders_row_check_residue.csv").exists()
+        assert not (tmp_path / "r_orders__row_check_residue.csv").exists()
         residue_table = self._read_csv(residue_csv)
         residue_cols = residue_table.column_names
         assert "check_info" in residue_cols
@@ -908,8 +1051,8 @@ class TestSaveModes:
         assert [item["check_name"] for item in parsed] == ["join_check"]
 
     def test_failed_rows_csv_unchanged_legacy_check_ids(self, tmp_path):
-        # failed_rows / both modes: standalone CSVs still emit legacy check_ids.
-        self._result_with_failures().save(str(tmp_path), prefix="r", output_mode="both")
+        # The grouped CSVs still emit legacy check_ids.
+        self._result_with_failures().save(str(tmp_path), prefix="r", outputs=["consolidated_query_outputs"])
         orders_cols = self._read_csv(tmp_path / "r_orders.csv").column_names
         assert "check_ids" in orders_cols
         assert "check_info" not in orders_cols
@@ -1037,6 +1180,30 @@ class TestGeneratedChecksMergeEndToEnd:
         assert len(marked) == 3
         assert "pk_primary_key_check" not in self._residue_check_names(out)
 
+    def test_composite_primary_key_merges_nulls_and_dups(self, monkeypatch: pytest.MonkeyPatch):
+        table = pa.table(
+            {
+                "a": pa.array([1, 1, 1, None], type=pa.int64()),
+                "b": pa.array([1, 2, 1, 3], type=pa.int64()),
+            }
+        )
+        out = self._validate(
+            monkeypatch,
+            properties=[
+                {"name": "a", "logicalType": "integer", "primaryKey": True, "primaryKeyPosition": 1},
+                {"name": "b", "logicalType": "integer", "primaryKey": True, "primaryKeyPosition": 2},
+            ],
+            table_quality=[],
+            table=table,
+        )
+        annotated = out["annotated"]["people"]
+        marked = [r for r in annotated.to_arrow().to_pylist() if r["check_info"]]
+        # The two (1, 1) rows + the NULL row = 3. (1, 2) is unique as a pair.
+        assert len(marked) == 3
+        assert {(r["a"], r["b"]) for r in marked} == {(1, 1), (None, 3)}
+        assert all("people_a_b_primary_key_check" in _check_names_of(r["check_info"]) for r in marked)
+        assert "people_a_b_primary_key_check" not in self._residue_check_names(out)
+
     def test_duplicate_values_table_merges(self, monkeypatch: pytest.MonkeyPatch):
         table = pa.table({"a": ["x", "x", "y"], "b": ["1", "1", "2"]})
         out = self._validate(
@@ -1152,7 +1319,7 @@ class TestPercentChecksExecuteEndToEnd:
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: a cross-table referential check whose failed-rows query projects
+# End-to-end: a cross-table referential check whose row query projects
 # only the anchor table's columns (SELECT payroll.* over a LEFT JOIN) merges
 # onto that schema's annotated table instead of falling to residues.
 # Uses the employee_payroll fixtures (tests/employee/).
@@ -1271,3 +1438,119 @@ class TestCrossTableMergeEndToEnd:
         annotated = out["annotated"]["demo_employee_payroll"]
         assert all(r["check_info"] is None for r in annotated.to_arrow().to_pylist())
         assert "employee_id_exists_in_master_list" in self._residue_check_names(out)
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: row matching is exact for values that Python equality gets wrong
+# (NaN, -0.0), for nested types that cannot be hashed as is, and for types that
+# lost precision or overflowed when the merged rows were rebuilt from Python.
+# ---------------------------------------------------------------------------
+
+
+class TestValueEqualityEndToEnd:
+    @staticmethod
+    def _validate(monkeypatch, create_sql: str, checks: list[tuple[str, str]]):
+        import ibis
+
+        import vowl.contracts.contract as contract_module
+        from vowl.adapters.ibis_adapter import IbisAdapter
+        from vowl.contracts.models import get_latest_version
+        from vowl.validate import validate_data
+
+        monkeypatch.setattr(contract_module, "validate_contract", lambda data, version: None)
+        contract = contract_module.Contract(
+            {
+                "apiVersion": get_latest_version(),
+                "kind": "DataContract",
+                "version": "1.0.0",
+                "id": "value-equality",
+                "status": "active",
+                "schema": [
+                    {
+                        "name": "t",
+                        "properties": [{"name": "id"}, {"name": "c"}],
+                        "quality": [
+                            {"type": "sql", "name": name, "query": query, "mustBe": 0} for name, query in checks
+                        ],
+                    }
+                ],
+            }
+        )
+        con = ibis.duckdb.connect()
+        con.raw_sql(create_sql)
+        source_type = con.raw_sql("SELECT c FROM t").to_arrow_table().schema.field("c").type
+        return validate_data(contract, adapters={"t": IbisAdapter(con)}), source_type
+
+    @staticmethod
+    def _flagged_ids(out) -> list[int]:
+        rows = out["annotated"]["t"].to_arrow().to_pylist()
+        return sorted(r["id"] for r in rows if r["check_info"])
+
+    @pytest.mark.parametrize(
+        ("v1", "v2"),
+        [
+            pytest.param("'NaN'::DOUBLE", "1.5::DOUBLE", id="nan"),
+            pytest.param("[1, 2]", "[3]", id="list"),
+            pytest.param("{'a': 1, 'b': 'x'}", "{'a': 2, 'b': 'y'}", id="struct"),
+            pytest.param("MAP {'k': 1}", "MAP {'j': 2}", id="map"),
+            pytest.param("[1, 2]::INT[2]", "[3, 4]::INT[2]", id="fixed_size_list"),
+            pytest.param("[1.0, 'NaN'::DOUBLE]", "[-0.0]", id="nested_floats"),
+            pytest.param("18446744073709551615::UBIGINT", "0::UBIGINT", id="ubigint_max"),
+            pytest.param(
+                "'2024-01-01 00:00:00.123456789'::TIMESTAMP_NS",
+                "'2024-01-01'::TIMESTAMP_NS",
+                id="timestamp_ns",
+            ),
+        ],
+    )
+    def test_every_copy_of_a_failing_row_is_flagged(self, monkeypatch, caplog, v1, v2):
+        create_sql = f"CREATE TABLE t AS SELECT * FROM (VALUES (1, {v1}), (1, {v1}), (2, {v2}), (3, {v2})) v(id, c)"
+        result, source_type = self._validate(
+            monkeypatch,
+            create_sql,
+            [("a", "SELECT COUNT(*) FROM t WHERE id = 1"), ("b", "SELECT COUNT(*) FROM t WHERE id = 2")],
+        )
+        with caplog.at_level(logging.WARNING):
+            out = result.get_annotated_output()
+
+        # Both copies of the id=1 row and the id=2 row. The id=3 row shares c
+        # with id=2 but differs in id, so it passes.
+        assert self._flagged_ids(out) == [1, 1, 2]
+        assert not [r for r in caplog.records if "could be matched" in r.getMessage()]
+        # The annotated table keeps the source type (no timestamp[ns] -> [us]).
+        assert out["annotated"]["t"].to_arrow().schema.field("c").type == source_type
+
+    def test_negative_zero_does_not_flag_positive_zero(self, monkeypatch):
+        result, _ = self._validate(
+            monkeypatch,
+            "CREATE TABLE t AS SELECT * FROM (VALUES (1, -0.0::DOUBLE), (1, 0.0::DOUBLE)) v(id, c)",
+            [("neg_zero", "SELECT COUNT(*) FROM t WHERE id = 1 AND signbit(c)")],
+        )
+        rows = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+        flagged = [r["c"] for r in rows if r["check_info"]]
+        assert len(flagged) == 1
+        assert str(flagged[0]) == "-0.0"
+
+    def test_negative_and_positive_zero_split_across_checks(self, monkeypatch):
+        result, _ = self._validate(
+            monkeypatch,
+            "CREATE TABLE t AS SELECT * FROM (VALUES (1, -0.0::DOUBLE), (1, 0.0::DOUBLE)) v(id, c)",
+            [
+                ("neg_zero", "SELECT COUNT(*) FROM t WHERE signbit(c)"),
+                ("pos_zero", "SELECT COUNT(*) FROM t WHERE NOT signbit(c)"),
+            ],
+        )
+        rows = result.get_annotated_output()["annotated"]["t"].to_arrow().to_pylist()
+        names_by_sign = {str(r["c"]): _check_names_of(r["check_info"]) for r in rows}
+        assert names_by_sign == {"-0.0": ["neg_zero"], "0.0": ["pos_zero"]}
+
+    def test_residue_with_nested_column_dedupes(self):
+        # A non-mergeable check (its columns differ from the table) lands in
+        # residues. Its nested column used to crash the .unique() dedupe.
+        failed = pa.table({"tags": [[1, 2], [1, 2], [3]]})
+        check = _make_check("tags_check", "t", failed_rows=failed)
+        full = pa.table({"id": [1, 2, 3], "tags": [[1, 2], [1, 2], [3]]})
+        result = _make_result([check], {"t": _FakeAdapter(full)})
+
+        residue = result.get_annotated_output()["residues"]["t::tags_check"]
+        assert residue.to_arrow().column("tags").to_pylist() == [[1, 2], [3]]

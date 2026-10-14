@@ -205,8 +205,7 @@ def _compare_or_update_golden(result: Any) -> None:
         _compare_or_update_single(df_to_compare, _golden_file_path("check_results"))
 
     # --- consolidated output (one golden per table key) ---
-    # Use the private helper: the public get_consolidated_output_dfs() is
-    # deprecated and would emit a DeprecationWarning on every golden run.
+    # The private helper is the same view as get_consolidated_output_dfs().
     if hasattr(result, "_get_consolidated_output_dfs"):
         consolidated = result._get_consolidated_output_dfs()
         for table_key, cdf in consolidated.items():

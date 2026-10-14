@@ -1,0 +1,115 @@
+[
+  {
+    "body": "Based on ISO 8601 | YYYY-MM",
+    "severity_number": 13,
+    "severity_text": "WARN",
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "Month",
+      "status": "FAILED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.month",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[0].quality[0]",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201877,
+      "row.scalar_count.failed": 2,
+      "row.scalar_pass_rate": 0.9999900930755552,
+      "row.count.passed": 201877,
+      "row.count.failed": 2,
+      "row.pass_rate": 0.9999900930755552,
+      "row.approximate": false,
+      "row.attribution_method": "server_predicate",
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT REGEXP_MATCHES(TRY_CAST(month AS TEXT), '^[0-9]{4}-(0[1-9]|1[0-2])$')",
+      "check.definition.type": "sql",
+      "check.definition.name": "Month",
+      "check.definition.description": "Based on ISO 8601 | YYYY-MM",
+      "check.definition.mustBe": 0,
+      "check.definition.query": "SELECT COUNT(*)\nFROM \"hdb_resale_prices\"\nWHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';",
+      "check.definition.dimension": "conformity",
+      "vowl.failed_rows_sample": "[{\"month\": \"2017-jan\", \"town\": \"BEDOK\", \"flat_type\": \"5 ROOM\", \"block\": \"21\", \"street_name\": \"CHAI CHEE RD\", \"storey_range\": \"07 TO 09\", \"floor_area_sqm\": 130.0, \"flat_model\": \"Adjoined flat\", \"lease_commence_date\": \"1972\", \"remaining_lease\": \"54 years 06 months\", \"resale_price\": 530000.0}, {\"month\": \"2017-jan\", \"town\": \"BISHAN\", \"flat_type\": \"3 ROOM\", \"block\": \"105\", \"street_name\": \"BISHAN ST 12\", \"storey_range\": \"04 TO 06\", \"floor_area_sqm\": 4.0, \"flat_model\": \"Simplified\", \"lease_commence_date\": \"1985\", \"remaining_lease\": \"67 years 11 months\", \"resale_price\": 395000.0}]"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2026-10-14T03:30:24.490336Z",
+    "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+    "span_id": "0x08012107394c0a09",
+    "trace_flags": 3,
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    },
+    "event_name": ""
+  },
+  {
+    "body": "Check failed: expected mustBe 0, got 12",
+    "severity_number": 13,
+    "severity_text": "WARN",
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "floor_area_must_be_less_than_200",
+      "status": "FAILED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.floor_area_sqm",
+      "dimension": "consistency",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[2].quality[0]",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201867,
+      "row.scalar_count.failed": 12,
+      "row.scalar_pass_rate": 0.999940558453331,
+      "row.count.passed": 201867,
+      "row.count.failed": 12,
+      "row.pass_rate": 0.999940558453331,
+      "row.approximate": false,
+      "row.attribution_method": "server_predicate",
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE TRY_CAST(floor_area_sqm AS BIGINT) >= 200",
+      "check.definition.name": "floor_area_must_be_less_than_200",
+      "check.definition.type": "sql",
+      "check.definition.query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE floor_area_sqm >= 200",
+      "check.definition.mustBe": 0,
+      "check.definition.dimension": "consistency",
+      "vowl.failed_rows_sample": "[{\"month\": \"2017-06\", \"town\": \"KALLANG/WHAMPOA\", \"flat_type\": \"3 ROOM\", \"block\": \"38\", \"street_name\": \"JLN BAHAGIA\", \"storey_range\": \"01 TO 03\", \"floor_area_sqm\": 215.0, \"flat_model\": \"Terrace\", \"lease_commence_date\": \"1972\", \"remaining_lease\": \"54 years 01 month\", \"resale_price\": 830000.0}, {\"month\": \"2017-09\", \"town\": \"CHOA CHU KANG\", \"flat_type\": \"EXECUTIVE\", \"block\": \"641\", \"street_name\": \"CHOA CHU KANG ST 64\", \"storey_range\": \"16 TO 18\", \"floor_area_sqm\": 215.0, \"flat_model\": \"Premium Maisonette\", \"lease_commence_date\": \"1998\", \"remaining_lease\": \"79 years 04 months\", \"resale_price\": 888000.0}]"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2026-10-14T03:30:24.490433Z",
+    "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+    "span_id": "0x4fa8b190a9581e06",
+    "trace_flags": 3,
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    },
+    "event_name": ""
+  }
+]

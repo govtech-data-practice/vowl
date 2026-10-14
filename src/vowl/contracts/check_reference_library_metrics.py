@@ -7,7 +7,7 @@ executed through the standard SQL executor pipeline.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import sqlglot
 from sqlglot import exp
@@ -96,9 +96,12 @@ class _LibraryColumnMetricBase(GeneratedColumnCheckReference):
         return (check.get("unit") or "").lower() == "percent"
 
     def get_check_name(self) -> str:
+        if self._name_override:
+            return self._name_override
         check = self.get_check()
-        if check.get("name"):
-            return check["name"]
+        # An id counts as a name, as in CheckReference.get_check_name.
+        if name := check.get("name") or check.get("id"):
+            return name
         metric = check.get("metric", "library")
         col = self.get_column_name() or "unknown"
         return f"{col}_{metric}"
@@ -302,9 +305,12 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
     """Intermediate base for library metrics at schema level."""
 
     def get_check_name(self) -> str:
+        if self._name_override:
+            return self._name_override
         check = self.get_check()
-        if check.get("name"):
-            return check["name"]
+        # An id counts as a name, as in CheckReference.get_check_name.
+        if name := check.get("name") or check.get("id"):
+            return name
         metric = check.get("metric", "library")
         schema = self.get_schema_name() or "unknown"
         return f"{schema}_{metric}"
@@ -330,25 +336,11 @@ class _LibraryTableMetricBase(GeneratedTableCheckReference):
 
 
 class RowCountCheckReference(_LibraryTableMetricBase):
-    """``rowCount``: total number of rows in a table."""
+    """``rowCount``: total number of rows in a table.
 
-    @property
-    def supports_row_level_output(self) -> bool:
-        """``rowCount`` is a whole-table aggregate, not a per-row check.
-
-        Its query is a bare ``SELECT COUNT(*) FROM t`` with no failure
-        predicate, so ``COUNT`` measures table cardinality rather than a
-        count of failing rows.  Treat it like ``AVG``/``MAX``/``SUM``: it has
-        no meaningful row-level output, so it is never merged into the
-        annotated table (it falls to residues) and does not contribute to the
-        summary's ``failed_rows`` total.
-        """
-        return False
-
-    def compute_failed_rows_count(self, actual_value: Any) -> int:
-        """A failing ``rowCount`` has no failing *rows* (the count is the table
-        size, not a violation count), so report zero like other aggregates."""
-        return 0
+    It runs ``SELECT COUNT(*) FROM t`` and behaves exactly like a ``type: sql``
+    check with that query.
+    """
 
     def get_check(self) -> DataQuality:
         return self._contract.resolve(self._path)
@@ -405,19 +397,19 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
         table = _table_ref(schema_name)
 
         # Count *participating rows* (rows whose key-tuple belongs to a
-        # duplicate group) so the auto-derived failed-rows query is
+        # duplicate group) so the auto-derived row query is
         # SELECT * FROM table WHERE EXISTS(...) -- full rows that merge into the
-        # annotated table.  A correlated EXISTS is used instead of a tuple-IN
-        # subquery because row-value IN-subqueries do not execute on SQL Server;
-        # EXISTS renders and runs portably across all supported dialects.  The
-        # inner table is aliased ``dup_src`` (no leading underscore, to avoid
-        # Oracle alias-quoting edge cases) and correlated back to the outer
-        # table.  NULL-exclusion per column preserves the original semantics.
+        # annotated table.  The duplicate groups are computed once in an
+        # uncorrelated derived table and only the equality chain is correlated
+        # back to the outer table.  Correlating the GROUP BY/HAVING itself stops
+        # planners from turning the EXISTS into a semi-join, so Postgres re-ran
+        # the grouping for every outer row (hours on ~1M rows).  EXISTS is used
+        # instead of a tuple-IN subquery because row-value IN-subqueries do not
+        # execute on SQL Server.  The derived table is aliased ``dup_src`` (no
+        # leading underscore, to avoid Oracle alias-quoting edge cases), and
+        # sqlglot drops the AS keyword where the dialect forbids it (Oracle).
+        # NULL-exclusion per column preserves the original semantics.
         inner_alias = "dup_src"
-        inner_table = exp.Table(
-            this=exp.to_identifier(schema_name, quoted=True),
-            alias=exp.TableAlias(this=exp.to_identifier(inner_alias, quoted=True)),
-        )
 
         def _inner_col(name: str) -> exp.Column:
             return exp.Column(
@@ -431,20 +423,28 @@ class DuplicateValuesTableCheckReference(_LibraryTableMetricBase):
                 table=exp.to_identifier(schema_name, quoted=True),
             )
 
-        conditions: list[exp.Expression] = []
+        all_present: exp.Expression | None = None
         for name in prop_names:
-            conditions.append(exp.EQ(this=_inner_col(name), expression=_outer_col(name)))
-            conditions.append(_inner_col(name).is_(exp.Null()).not_())
-        where = conditions[0]
-        for cond in conditions[1:]:
-            where = exp.And(this=where, expression=cond)
+            present = _col_ref(name).is_(exp.Null()).not_()
+            all_present = present if all_present is None else exp.And(this=all_present, expression=present)
+
+        dup_groups = (
+            sqlglot.select(*[_col_ref(name) for name in prop_names])
+            .from_(table)
+            .where(all_present)
+            .group_by(*[_col_ref(name) for name in prop_names])
+            .having(_count_star() > exp.Literal.number(1))
+        )
+
+        match: exp.Expression | None = None
+        for name in prop_names:
+            eq = exp.EQ(this=_inner_col(name), expression=_outer_col(name))
+            match = eq if match is None else exp.And(this=match, expression=eq)
 
         inner = (
             sqlglot.select(exp.Literal.number(1))
-            .from_(inner_table)
-            .where(where)
-            .group_by(*[_inner_col(name) for name in prop_names])
-            .having(_count_star() > exp.Literal.number(1))
+            .from_(dup_groups.subquery(exp.to_identifier(inner_alias, quoted=True)))
+            .where(match)
         )
 
         core = sqlglot.select(_count_star()).from_(table).where(exp.Exists(this=inner))

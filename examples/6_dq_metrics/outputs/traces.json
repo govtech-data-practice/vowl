@@ -1,0 +1,755 @@
+[
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0x02eb98375a23a89c",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.722698Z",
+    "end_time": "2026-10-14T03:30:22.723749Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "month_column_exists_check",
+      "status": "PASSED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.month",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[0].name",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201879,
+      "row.scalar_count.failed": 0,
+      "row.scalar_pass_rate": 1.0,
+      "row.count.passed": 201879,
+      "row.count.failed": 0,
+      "row.pass_rate": 1.0,
+      "row.approximate": false,
+      "row.attribution_note": "passed, not attributed",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM (SELECT \"month\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "expected_value": 0,
+      "actual_value": 0,
+      "check.definition.name": "month_column_exists_check",
+      "check.definition.type": "sql",
+      "check.definition.dimension": "conformity",
+      "check.definition.description": "Column 'month' must exist in 'hdb_resale_prices'",
+      "check.definition.query": "SELECT COUNT(*) FROM (SELECT \"month\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "check.definition.mustBe": 0,
+      "check.definition.tags": [
+        "vowl_generated_check"
+      ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0xeff0c4ced732361a",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.723749Z",
+    "end_time": "2026-10-14T03:30:22.725601Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "month_logical_type_check",
+      "status": "PASSED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.month",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[0].logicalType",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201879,
+      "row.scalar_count.failed": 0,
+      "row.scalar_pass_rate": 1.0,
+      "row.count.passed": 201879,
+      "row.count.failed": 0,
+      "row.pass_rate": 1.0,
+      "row.approximate": false,
+      "row.attribution_note": "passed, not attributed",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"month\" IS NULL AND TRY_CAST(\"month\" AS TEXT) IS NULL",
+      "expected_value": 0,
+      "actual_value": 0,
+      "check.definition.name": "month_logical_type_check",
+      "check.definition.type": "sql",
+      "check.definition.dimension": "conformity",
+      "check.definition.description": "Values in 'month' must be valid string",
+      "check.definition.query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"month\" IS NULL AND CAST(\"month\" AS VARCHAR) IS NULL",
+      "check.definition.mustBe": 0,
+      "check.definition.tags": [
+        "vowl_generated_check"
+      ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0x4cf193d35ccbf805",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.725601Z",
+    "end_time": "2026-10-14T03:30:22.726356Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "flat_type_column_exists_check",
+      "status": "PASSED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.flat_type",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[1].name",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201879,
+      "row.scalar_count.failed": 0,
+      "row.scalar_pass_rate": 1.0,
+      "row.count.passed": 201879,
+      "row.count.failed": 0,
+      "row.pass_rate": 1.0,
+      "row.approximate": false,
+      "row.attribution_note": "passed, not attributed",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM (SELECT \"flat_type\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "expected_value": 0,
+      "actual_value": 0,
+      "check.definition.name": "flat_type_column_exists_check",
+      "check.definition.type": "sql",
+      "check.definition.dimension": "conformity",
+      "check.definition.description": "Column 'flat_type' must exist in 'hdb_resale_prices'",
+      "check.definition.query": "SELECT COUNT(*) FROM (SELECT \"flat_type\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "check.definition.mustBe": 0,
+      "check.definition.tags": [
+        "vowl_generated_check"
+      ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0x098a15b8b5e64beb",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.726356Z",
+    "end_time": "2026-10-14T03:30:22.728981Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "flat_type_enum_check",
+      "status": "PASSED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.flat_type",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[1].enum",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201879,
+      "row.scalar_count.failed": 0,
+      "row.scalar_pass_rate": 1.0,
+      "row.count.passed": 201879,
+      "row.count.failed": 0,
+      "row.pass_rate": 1.0,
+      "row.approximate": false,
+      "row.attribution_note": "passed, not attributed",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"flat_type\" IS NULL AND NOT \"flat_type\" IN ('1 ROOM', '2 ROOM', '3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE', 'MULTI-GENERATION')",
+      "expected_value": 0,
+      "actual_value": 0,
+      "check.definition.name": "flat_type_enum_check",
+      "check.definition.type": "sql",
+      "check.definition.dimension": "conformity",
+      "check.definition.description": "Column 'flat_type' must be one of the allowed enum values",
+      "check.definition.query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT \"flat_type\" IS NULL AND NOT \"flat_type\" IN ('1 ROOM', '2 ROOM', '3 ROOM', '4 ROOM', '5 ROOM', 'EXECUTIVE', 'MULTI-GENERATION')",
+      "check.definition.mustBe": 0,
+      "check.definition.tags": [
+        "vowl_generated_check"
+      ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0xfcca10f1e8254f6c",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.728981Z",
+    "end_time": "2026-10-14T03:30:22.729895Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "floor_area_sqm_column_exists_check",
+      "status": "PASSED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.floor_area_sqm",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[2].name",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201879,
+      "row.scalar_count.failed": 0,
+      "row.scalar_pass_rate": 1.0,
+      "row.count.passed": 201879,
+      "row.count.failed": 0,
+      "row.pass_rate": 1.0,
+      "row.approximate": false,
+      "row.attribution_note": "passed, not attributed",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM (SELECT \"floor_area_sqm\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "expected_value": 0,
+      "actual_value": 0,
+      "check.definition.name": "floor_area_sqm_column_exists_check",
+      "check.definition.type": "sql",
+      "check.definition.dimension": "conformity",
+      "check.definition.description": "Column 'floor_area_sqm' must exist in 'hdb_resale_prices'",
+      "check.definition.query": "SELECT COUNT(*) FROM (SELECT \"floor_area_sqm\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "check.definition.mustBe": 0,
+      "check.definition.tags": [
+        "vowl_generated_check"
+      ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0x8fe824a23bdeb523",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.729895Z",
+    "end_time": "2026-10-14T03:30:22.730586Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "resale_price_column_exists_check",
+      "status": "PASSED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.resale_price",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[3].name",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201879,
+      "row.scalar_count.failed": 0,
+      "row.scalar_pass_rate": 1.0,
+      "row.count.passed": 201879,
+      "row.count.failed": 0,
+      "row.pass_rate": 1.0,
+      "row.approximate": false,
+      "row.attribution_note": "passed, not attributed",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM (SELECT \"resale_price\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "expected_value": 0,
+      "actual_value": 0,
+      "check.definition.name": "resale_price_column_exists_check",
+      "check.definition.type": "sql",
+      "check.definition.dimension": "conformity",
+      "check.definition.description": "Column 'resale_price' must exist in 'hdb_resale_prices'",
+      "check.definition.query": "SELECT COUNT(*) FROM (SELECT \"resale_price\" FROM \"hdb_resale_prices\" LIMIT 0) AS _vowl_column_exists",
+      "check.definition.mustBe": 0,
+      "check.definition.tags": [
+        "vowl_generated_check"
+      ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0x08012107394c0a09",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.730586Z",
+    "end_time": "2026-10-14T03:30:22.743193Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "Month",
+      "status": "FAILED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.month",
+      "dimension": "conformity",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[0].quality[0]",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201877,
+      "row.scalar_count.failed": 2,
+      "row.scalar_pass_rate": 0.9999900930755552,
+      "row.count.passed": 201877,
+      "row.count.failed": 2,
+      "row.pass_rate": 0.9999900930755552,
+      "row.approximate": false,
+      "row.attribution_method": "server_predicate",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE NOT REGEXP_MATCHES(TRY_CAST(month AS TEXT), '^[0-9]{4}-(0[1-9]|1[0-2])$')",
+      "expected_value": 0,
+      "actual_value": 2,
+      "check.definition.type": "sql",
+      "check.definition.name": "Month",
+      "check.definition.description": "Based on ISO 8601 | YYYY-MM",
+      "check.definition.mustBe": 0,
+      "check.definition.query": "SELECT COUNT(*)\nFROM \"hdb_resale_prices\"\nWHERE CAST(month AS TEXT) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$';",
+      "check.definition.dimension": "conformity"
+    },
+    "events": [
+      {
+        "name": "vowl.failed_row",
+        "timestamp": "2026-10-14T03:30:24.490017Z",
+        "attributes": {
+          "month": "2017-jan",
+          "town": "BEDOK",
+          "flat_type": "5 ROOM",
+          "block": "21",
+          "street_name": "CHAI CHEE RD",
+          "storey_range": "07 TO 09",
+          "floor_area_sqm": 130.0,
+          "flat_model": "Adjoined flat",
+          "lease_commence_date": "1972",
+          "remaining_lease": "54 years 06 months",
+          "resale_price": 530000.0
+        }
+      },
+      {
+        "name": "vowl.failed_row",
+        "timestamp": "2026-10-14T03:30:24.490029Z",
+        "attributes": {
+          "month": "2017-jan",
+          "town": "BISHAN",
+          "flat_type": "3 ROOM",
+          "block": "105",
+          "street_name": "BISHAN ST 12",
+          "storey_range": "04 TO 06",
+          "floor_area_sqm": 4.0,
+          "flat_model": "Simplified",
+          "lease_commence_date": "1985",
+          "remaining_lease": "67 years 11 months",
+          "resale_price": 395000.0
+        }
+      }
+    ],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0x4fa8b190a9581e06",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.743193Z",
+    "end_time": "2026-10-14T03:30:22.751553Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "floor_area_must_be_less_than_200",
+      "status": "FAILED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.floor_area_sqm",
+      "dimension": "consistency",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[2].quality[0]",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201867,
+      "row.scalar_count.failed": 12,
+      "row.scalar_pass_rate": 0.999940558453331,
+      "row.count.passed": 201867,
+      "row.count.failed": 12,
+      "row.pass_rate": 0.999940558453331,
+      "row.approximate": false,
+      "row.attribution_method": "server_predicate",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE TRY_CAST(floor_area_sqm AS BIGINT) >= 200",
+      "expected_value": 0,
+      "actual_value": 12,
+      "check.definition.name": "floor_area_must_be_less_than_200",
+      "check.definition.type": "sql",
+      "check.definition.query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE floor_area_sqm >= 200",
+      "check.definition.mustBe": 0,
+      "check.definition.dimension": "consistency"
+    },
+    "events": [
+      {
+        "name": "vowl.failed_row",
+        "timestamp": "2026-10-14T03:30:24.490065Z",
+        "attributes": {
+          "month": "2017-06",
+          "town": "KALLANG/WHAMPOA",
+          "flat_type": "3 ROOM",
+          "block": "38",
+          "street_name": "JLN BAHAGIA",
+          "storey_range": "01 TO 03",
+          "floor_area_sqm": 215.0,
+          "flat_model": "Terrace",
+          "lease_commence_date": "1972",
+          "remaining_lease": "54 years 01 month",
+          "resale_price": 830000.0
+        }
+      },
+      {
+        "name": "vowl.failed_row",
+        "timestamp": "2026-10-14T03:30:24.490072Z",
+        "attributes": {
+          "month": "2017-09",
+          "town": "CHOA CHU KANG",
+          "flat_type": "EXECUTIVE",
+          "block": "641",
+          "street_name": "CHOA CHU KANG ST 64",
+          "storey_range": "16 TO 18",
+          "floor_area_sqm": 215.0,
+          "flat_model": "Premium Maisonette",
+          "lease_commence_date": "1998",
+          "remaining_lease": "79 years 04 months",
+          "resale_price": 888000.0
+        }
+      }
+    ],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.check",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0xa49837d73dd129af",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:22.751553Z",
+    "end_time": "2026-10-14T03:30:22.759498Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check_name": "resale_price_must_not_exceed_2m",
+      "status": "PASSED",
+      "schema_name": "hdb_resale_prices",
+      "target": "hdb_resale_prices.resale_price",
+      "dimension": "consistency",
+      "engine": "sql",
+      "check_path": "$.schema[0].properties[3].quality[0]",
+      "tables_in_query": [
+        "hdb_resale_prices"
+      ],
+      "row.scalar_count.passed": 201879,
+      "row.scalar_count.failed": 0,
+      "row.scalar_pass_rate": 1.0,
+      "row.count.passed": 201879,
+      "row.count.failed": 0,
+      "row.pass_rate": 1.0,
+      "row.approximate": false,
+      "row.attribution_note": "passed, not attributed",
+      "operator": "mustBe",
+      "query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE TRY_CAST(resale_price AS BIGINT) > 2000000",
+      "expected_value": 0,
+      "actual_value": 0,
+      "check.definition.name": "resale_price_must_not_exceed_2m",
+      "check.definition.type": "sql",
+      "check.definition.query": "SELECT COUNT(*) FROM \"hdb_resale_prices\" WHERE resale_price > 2000000",
+      "check.definition.mustBe": 0,
+      "check.definition.dimension": "consistency"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.save",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0x547926bb7d2cf3cb",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xe4cf9ca19727eb0a",
+    "start_time": "2026-10-14T03:30:23.040472Z",
+    "end_time": "2026-10-14T03:30:24.311470Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "outputs": [
+        "all_query_outputs",
+        "annotated_table",
+        "consolidated_query_outputs",
+        "dq_metrics"
+      ],
+      "file.count": 7
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  },
+  {
+    "name": "vowl.validate",
+    "context": {
+      "trace_id": "0xfcb9dbddf52a09945f15207c98a6b4fa",
+      "span_id": "0xe4cf9ca19727eb0a",
+      "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": null,
+    "start_time": "2026-10-14T03:30:22.722698Z",
+    "end_time": "2026-10-14T03:30:24.311470Z",
+    "status": {
+      "status_code": "OK"
+    },
+    "attributes": {
+      "service.name": "vowl",
+      "vowl.version": "0.0.7.dev129",
+      "vowl.run.id": "5c03b1c7-a16d-4d34-b847-f98f7a305fcd",
+      "vowl.contract.id": "c11443ee-542f-4442-b28d-2d224342be37",
+      "vowl.contract.name": "HDB Resale Flat Prices",
+      "vowl.contract.version": "1.0.0",
+      "vowl.contract.api_version": "v3.2.0",
+      "check.count.passed": 7,
+      "check.count.failed": 2,
+      "check.count.error": 0,
+      "check.pass_rate": 0.7777777777777778,
+      "schema.count.passed": 0,
+      "schema.count.failed": 1,
+      "schema.count.error": 0,
+      "row.count.passed": 201865,
+      "row.count.failed": 14,
+      "row.pass_rate": 0.9999306515288862,
+      "row.approximate": false,
+      "row.checks_not_attributable": 0
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+      "attributes": {
+        "telemetry.sdk.language": "python",
+        "telemetry.sdk.name": "opentelemetry",
+        "telemetry.sdk.version": "1.44.0",
+        "service.instance.id": "cc56bf15-7caf-4f7b-bab4-b538c147b049",
+        "service.name": "unknown_service"
+      },
+      "schema_url": ""
+    }
+  }
+]

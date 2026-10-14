@@ -1,0 +1,3 @@
+month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_id,tables_in_query
+2017-jan,BEDOK,5 ROOM,21,CHAI CHEE RD,07 TO 09,130.0,Adjoined flat,1972,54 years 06 months,530000.0,month_logical_type_options_pattern_check,hdb_resale_prices
+2017-jan,BISHAN,3 ROOM,105,BISHAN ST 12,04 TO 06,4.0,Simplified,1985,67 years 11 months,395000.0,month_logical_type_options_pattern_check,hdb_resale_prices

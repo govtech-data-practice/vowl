@@ -1,0 +1,2 @@
+month,town,flat_type,block,street_name,storey_range,floor_area_sqm,flat_model,lease_commence_date,remaining_lease,resale_price,check_id,tables_in_query
+2017-10,BUKIT PANJANG,3 ROOM,150,PETIR RD,03,73.0,Model A,1988,69 years 11 months,250000.0,storey_range_logical_type_options_pattern_check,hdb_resale_prices

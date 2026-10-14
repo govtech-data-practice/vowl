@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+storage:
+  tsdb:
+    # Accept OTLP samples up to a day late (a run's timestamps are when it finished).
+    out_of_order_time_window: 1d
+
+otlp:
+  translation_strategy: UnderscoreEscapingWithSuffixes
+  keep_identifying_resource_attributes: true
