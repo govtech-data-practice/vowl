@@ -66,7 +66,7 @@ These still work, with a `FutureWarning`.
 - New optional `otel` extra, also included in `all`.
 - The source distribution holds only the package source, `pyproject.toml`, README, CHANGELOG and license files.
 - `build` and `twine` are locked in a `release` dependency group, fixing `make release-check` and the publish job (#63).
-- Bumped `urllib3` from 2.7.0 to 2.8.0 (#64) and `tornado` from 6.5.8 to 6.5.9 (#65).
+- Bumped `urllib3` from 2.7.0 to 2.8.0 (#64), `tornado` from 6.5.8 to 6.5.9 (#65) and `datamodel-code-generator` from 0.64.0 to 0.81.0 (#68).
 
 ## [0.0.6] - 2026-09-21
 
