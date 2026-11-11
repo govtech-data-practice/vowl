@@ -29,7 +29,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .row_quality.selection import resolve_check_dimension
@@ -532,7 +532,7 @@ def compute_points(result: ValidationResult, *, prefix: str = "vowl") -> list[Me
 def _iso(ns: int | None) -> str | None:
     if ns is None:
         return None
-    return datetime.fromtimestamp(ns / 1_000_000_000, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(ns / 1_000_000_000, tz=UTC).isoformat()
 
 
 def build_document(result: ValidationResult, *, points: Sequence[MetricPoint] | None = None) -> dict[str, Any]:
