@@ -7,7 +7,7 @@ name = "vowl"
 dynamic = ["version"]
 description = "A SQL-powered data quality validation library for pandas and spark DataFrames."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["data-quality", "data-validation", "data-contract", "odcs", "ibis", "sql", "pandas", "polars", "pyspark", "duckdb", "schema-validation"]
@@ -17,7 +17,6 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -151,7 +150,7 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]

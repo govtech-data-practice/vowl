@@ -48,7 +48,7 @@ The Makefile is the canonical source for local development commands. If a README
 ### Prerequisites
 
 - Install `uv`
-- Install Python 3.10 or newer
+- Install Python 3.11 or newer
 - Fork and clone this repository
 
 ### Clone the Repository
