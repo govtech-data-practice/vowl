@@ -15,27 +15,28 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - **`save()` takes `outputs=[...]` instead of `output_mode`**, and by default writes every output except `"failed_query_outputs"`. Pass `outputs=["consolidated_query_outputs"]` to keep the 0.0.6 default. See [Outputs](docs/results.md#outputs).
 - **`ValidationConfig` has a new `outputs` field before `output_mode`.** Pass `output_mode` by keyword, as a fifth positional argument now raises `TypeError`.
 - **Output keys and file names include the column**, so checks with the same name on different columns no longer overwrite each other. See [Per-check files](docs/results.md#per-check-files).
-- **`get_output_dfs()` returns only checks with failed rows.** Use `get_output_dfs(scope="all")` for the 0.0.6 behaviour. See [Failed rows per check](docs/results.md#failed-rows-per-check).
+- **`get_output_dfs()` returns only `FAILED` checks**, plus checks that passed within their threshold when `fetch_tolerated_rows=True`. Use `get_output_dfs(scope="all")` for the rows of every row-level check, with a `status` column. See [Failed rows per check](docs/results.md#failed-rows-per-check).
 - **The grouped failed-rows CSVs hold one file per table set**, instead of splitting by the columns each check returns. See [Consolidated files](docs/results.md#consolidated-files).
-- **`print_summary()` and summary.json no longer show passed rows or table totals**, which could be approximate. `failed_rows` is renamed `failed_rows_approximate` and `total_rows_by_schema` is removed. Use `result.get_dq_metrics_df()` for exact counts. See [Row counts](docs/results.md#row-counts).
-- **`check_results.csv` drops the always-empty `type` and `description` columns**, and gains `severity` when a check sets one.
+- **`print_summary()` and summary.json no longer show passed rows or table totals**, which could be approximate. `failed_rows` is renamed `failed_rows_approximate` and `total_rows_by_schema` is removed. Use `result.get_dq_metrics_df()` for counts that count each row once. Its `approximate` column flags any that can't be exact. See [Row counts](docs/results.md#row-counts).
+- **`check_results.csv` gains a `severity` column** when a check sets one, and a `dimension` column.
 - **Check names changed**, so update any dashboards, filters or alerts that use them:
-  - Composite primary keys are checked as one key, named `<schema>_<col1>_<col2>_primary_key_check`. See [Composite Primary Keys](docs/contracts.md#composite-primary-keys).
+  - Composite primary keys are checked as one key, named `<schema>_<col1>_<col2>_primary_key_check` with the columns in `primaryKeyPosition` order. See [Composite Primary Keys](docs/contracts.md#composite-primary-keys).
   - Foreign key checks name both ends, for example `orders_customer_id_to_customers_customer_id_foreign_key_check`. See [Relationships (Foreign Keys)](docs/contracts.md#relationships-foreign-keys).
-  - Check names must be unique on each column and schema, generated names and `id`s included, and schema names must be unique. A clash raises `ValueError` when the contract loads. See [Check names](docs/contracts.md#check-names).
-- **Some checks are no longer row-level**: those whose operator doesn't mark the matched rows as bad, such as `mustBeGreaterThan`, and `rowCount` outside an upper limit. Their verdict is unchanged. See [Check result types](docs/design-considerations/checks/check-results.md#counted-checks).
+  - Check names you write (`name` or `id`) must be unique on each column and schema, and must not match a name vowl generates there. Schema names must be unique. A clash raises `ValueError` when the contract loads. Unnamed checks that would get the same name are numbered `_2`, `_3` and so on. See [Check names](docs/contracts.md#check-names).
+- **Checks whose counted rows aren't the bad ones are no longer row-level.** For example, `mustBeGreaterThan` counts rows that must reach a minimum, so those rows are good. Their rows are left out of the failed-row outputs and DQ metrics. Their verdict is unchanged. See [Check result types](docs/design-considerations/checks/check-results.md#counted-checks).
+- **`rowCount` behaves like a SQL `COUNT(*)` check.** With an upper limit it is row-level, and a failing check reports the table's row count as `failed_rows_count` (0 in 0.0.6). Its verdict is unchanged.
 
 ### Added
 - **DQ metrics**: how many rows of each table passed or failed, at check, dimension, schema and run level. Get them with `result.get_dq_metrics()`, `result.get_dq_metrics_df()` or `save(outputs=[..., "dq_metrics"])`. Each check is identified by `schema_name`, `target` and `check_name`, as in `check_results.csv`. See [Understanding DQ Metrics](docs/dq-metrics/understanding-metrics.md).
-- **OpenTelemetry export**: `result.export_otel()` sends a run's results as OTLP metrics, traces and logs. Install with `pip install vowl[otel]` (Python 3.14 needs `opentelemetry-exporter-otlp` 1.28 or later). `examples/6_dq_metrics/otel_stack/` has a local Grafana stack with a DQ dashboard. See [Exporting to OpenTelemetry](docs/dq-metrics/otel-export.md).
+- **OpenTelemetry export**: `result.export_otel()` sends a run's results as OTLP metrics, traces and logs. Install with `pip install "vowl[otel]"` (Python 3.14 needs `opentelemetry-exporter-otlp` 1.28 or later). `examples/6_dq_metrics/otel_stack/` has a local Grafana stack with a DQ dashboard. See [Exporting to OpenTelemetry](docs/dq-metrics/otel-export.md).
 - **Saving to cloud storage**: `save()` accepts an `s3://`, `gs://`, `abfs://` or `hdfs://` URI, or a `pyarrow.fs.FileSystem`. See [Cloud storage](docs/results.md#cloud-storage).
 - **Tolerated rows**: `ValidationConfig(fetch_tolerated_rows=True)` also fetches the failed rows of checks that passed within their threshold. See [Tolerated rows](docs/design-considerations/checks/check-results.md#tolerated-rows).
 - Per-check row files, `get_output_dfs(scope="all")`, a `saved_outputs` list in summary.json, and `ValidationConfig(outputs=[...])` to set the default for `save()`. See [Saving results](docs/results.md#saving-results).
 - `get_check_results_df()` has a `dimension` column.
-- Optional adapter hooks let custom adapters count rows inside their data source. See [Custom Adapters and Executors](docs/usage-patterns.md#custom-adapters-and-executors).
+- Optional adapter hooks, `run_arrow_query()` and `get_column_types()`, let custom adapters count rows inside their data source.
 
 ### Changed
-- **Annotated output loads every table into memory**, and DQ metrics may too. See [What each method costs](docs/results.md#what-each-method-costs) before using them on large tables.
+- **Annotated output loads every table into memory.** DQ metrics count rows inside the data source, but when a check can't be counted there, vowl downloads its table and counts the rows on your machine. A default `save()` writes the annotated table, so it downloads every table unless you pass `outputs=`. See [What each method costs](docs/results.md#what-each-method-costs) before using these on large tables.
 - **More cross-table checks run inside the database**, including with filter conditions or a shared `PooledAdapter`, and schemas sharing one `PooledAdapter` run in parallel up to `max_concurrency`. See [Copying tables into memory](docs/design-considerations/cross-table/how-it-works.md#copying-tables-into-memory).
 - On SQL Server, BigQuery and Trino, a row value `IN` subquery in a check's `WHERE` or `HAVING` is rewritten to `EXISTS`, which those engines accept.
 - The 0.0.5 deprecation of `get_consolidated_output_dfs()` and `"consolidated_query_outputs"` is withdrawn, as they are the cheapest choice for large tables.
@@ -43,17 +44,17 @@ This release adds **DQ metrics** and **OpenTelemetry export**, so you can track 
 - Clearer messages when an adapter is the wrong type or a table can't be downloaded.
 
 ### Deprecated
-These still work, with a `FutureWarning`.
-- `output_mode` in `save()` and `ValidationConfig`. Use `outputs=` instead. See [output_mode](docs/results.md#deprecated-output_mode).
-- `vowl.config.OutputMode`. Use `SaveOutput` with `outputs=` instead.
-- `SQLCheckReference.get_failed_rows_query()` is renamed `get_row_query()`. Subclasses overriding the old name are still used.
-- `ValidationResult.save_dataframe()`. Write the frame with its own library instead.
-- `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` have no effect.
+These still work. Each warns as noted.
+- `output_mode` in `save()` and `ValidationConfig`. Use `outputs=` instead (`FutureWarning`). See [output_mode](docs/results.md#deprecated-output_mode).
+- `vowl.config.OutputMode`. Use `SaveOutput` with `outputs=` instead. It is kept as an alias and does not warn.
+- `SQLCheckReference.get_failed_rows_query()` is renamed `get_row_query()`. Subclasses overriding the old name are still used (`FutureWarning`).
+- `ValidationResult.save_dataframe()`. Write the frame with its own library instead (`DeprecationWarning`).
+- `ValidationConfig(enable_additional_schema_statistics=...)` and `ValidationConfig(max_rows_for_statistics=...)` have no effect (`DeprecationWarning`).
 
 ### Fixed
-- **Checks and contracts**: a SQL check with a syntax error ends as `ERROR` instead of stopping the run. Quality rules with a `metric` or ODCS v3.0.2 `rule:` and no `type` no longer crash. SQL checks can join a lookup table the contract doesn't declare. Checks that alias their count, such as `SELECT COUNT(*) AS n`, get a row query, and `COUNT(col)` row queries leave out NULLs. Unsupported nested checks and checks with no executor or adapter report the right schema and column.
-- **Adapters**: `validate_data` accepts a `PooledAdapter` or custom `BaseAdapter` directly. `PooledAdapter.get_total_rows` no longer crashes on DuckDB across threads. External references next to a contract loaded from `s3://` resolve.
-- **`max_failed_rows` cap**: works on SQL Server, Fabric and Oracle, including ordered `UNION`s, and is no longer skipped when a column name contains `limit`.
+- **Checks and contracts**: a SQL check with a syntax error ends as `ERROR` instead of stopping the run. Quality rules with no `type` no longer crash: a `metric` rule runs as a library check, and an ODCS v3.0.2 `rule:` ends as `ERROR` naming the rule. SQL checks can join a lookup table the contract doesn't declare. Checks that alias their count, such as `SELECT COUNT(*) AS n`, get a row query, and `COUNT(col)` row queries leave out NULLs. Unsupported nested checks and checks with no executor or adapter report the right schema and column.
+- **Adapters**: `validate_data` accepts a `PooledAdapter` or custom `BaseAdapter` directly. `PooledAdapter.get_total_rows` uses its own pooled connection, so it no longer shares one with other threads, for example on DuckDB. External references next to a contract loaded from `s3://` resolve.
+- **`max_failed_rows` cap**: works on SQL Server, Oracle and other dialects that use `TOP` or `FETCH` instead of `LIMIT`, including ordered `UNION`s, and is no longer skipped when a column name contains `limit`.
 - **Annotated output and failed rows**: correct handling of NaN, `-0.0`, nested types, nanosecond timestamps, large unsigned integers and mixed column types. An empty failed-rows result keeps its columns. The grouped failed-rows CSVs no longer list the passing rows of checks such as `mustBeGreaterThan`.
 - **File names**: `save()` shortens names over about 230 bytes instead of failing, adds `_2` instead of overwriting when two names clean to the same file (or a table is named `check_results`), and keeps non-ASCII letters, so `客户` and `café` stay as written. See [Consolidated files](docs/results.md#consolidated-files).
 
@@ -62,10 +63,9 @@ These still work, with a `FutureWarning`.
 - New example notebooks: `examples/5_results/results_tour.ipynb` and `examples/6_dq_metrics/dq_metrics.ipynb`.
 
 ### Dependencies
-- `sqlglot` now needs `>=30.14,<30.18`. 30.14 adds an expression type vowl uses, and 30.18 breaks checks run through ibis until [ibis-project/ibis#12104](https://github.com/ibis-project/ibis/pull/12104) ships.
+- `sqlglot` now needs `>=30.14,<30.18`. 30.14 adds an expression type vowl uses, and 30.18 breaks checks run through ibis until [ibis-project/ibis#12104](https://github.com/ibis-project/ibis/pull/12104) ships. The lock file moves `sqlglot` from 30.2.0 to 30.17.0.
 - New optional `otel` extra, also included in `all`.
 - The source distribution holds only the package source, `pyproject.toml`, README, CHANGELOG and license files.
-- `build` and `twine` are locked in a `release` dependency group, fixing `make release-check` and the publish job (#63).
 - Bumped `urllib3` from 2.7.0 to 2.8.0 (#64), `tornado` from 6.5.8 to 6.5.9 (#65) and `datamodel-code-generator` from 0.64.0 to 0.81.0 (#68).
 
 ## [0.0.6] - 2026-09-21
@@ -85,6 +85,7 @@ These still work, with a `FutureWarning`.
 - Remediated verified security scanner findings (#55).
 
 ### Dependencies
+- `build` and `twine` are locked in a `release` dependency group, fixing `make release-check` and the publish job (#63).
 - Bumped `tornado` from 6.5.7 to 6.5.8 (#53).
 - Bumped `pymdown-extensions` (#52).
 - Bumped `cryptography` (#51).
